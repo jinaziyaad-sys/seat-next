@@ -5,11 +5,13 @@ import { TableReadyFlow } from "@/components/TableReadyFlow";
 import { ProfileSection } from "@/components/ProfileSection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { UtensilsCrossed, Users, MapPin, Clock } from "lucide-react";
+import { UtensilsCrossed, Users, MapPin, Clock, ChefHat } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [showQRScan, setShowQRScan] = useState(false);
+  const navigate = useNavigate();
 
   const mockNearbyRestaurants = [
     { name: "Joe's Burger Bar", distance: "150m", wait: "12 min", rating: 4.5 },
@@ -183,6 +185,28 @@ const Index = () => {
                   </p>
                 </div>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Merchant Access */}
+        <Card className="shadow-card border-2 border-dashed border-muted-foreground/20">
+          <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-muted">
+              <ChefHat size={28} className="text-muted-foreground" />
+            </div>
+            <div>
+              <h3 className="font-semibold">Restaurant Staff?</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Access merchant dashboard to manage orders and waitlists
+              </p>
+              <Button 
+                variant="outline" 
+                onClick={() => navigate("/merchant")}
+                className="w-full"
+              >
+                Go to Merchant Dashboard
+              </Button>
             </div>
           </CardContent>
         </Card>
