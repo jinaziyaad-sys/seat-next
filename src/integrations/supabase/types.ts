@@ -14,7 +14,136 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      orders: {
+        Row: {
+          created_at: string
+          customer_name: string | null
+          customer_phone: string | null
+          eta: string | null
+          id: string
+          items: Json
+          notes: string | null
+          order_number: string
+          status: Database["public"]["Enums"]["order_status"]
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          eta?: string | null
+          id?: string
+          items?: Json
+          notes?: string | null
+          order_number: string
+          status?: Database["public"]["Enums"]["order_status"]
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string | null
+          customer_phone?: string | null
+          eta?: string | null
+          id?: string
+          items?: Json
+          notes?: string | null
+          order_number?: string
+          status?: Database["public"]["Enums"]["order_status"]
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "orders_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venues: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          name: string
+          phone: string | null
+          settings: Json | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          phone?: string | null
+          settings?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          phone?: string | null
+          settings?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      waitlist_entries: {
+        Row: {
+          created_at: string
+          customer_name: string
+          customer_phone: string | null
+          eta: string | null
+          id: string
+          party_size: number
+          position: number | null
+          preferences: string[] | null
+          status: Database["public"]["Enums"]["waitlist_status"]
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          customer_name: string
+          customer_phone?: string | null
+          eta?: string | null
+          id?: string
+          party_size?: number
+          position?: number | null
+          preferences?: string[] | null
+          status?: Database["public"]["Enums"]["waitlist_status"]
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          customer_name?: string
+          customer_phone?: string | null
+          eta?: string | null
+          id?: string
+          party_size?: number
+          position?: number | null
+          preferences?: string[] | null
+          status?: Database["public"]["Enums"]["waitlist_status"]
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_entries_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +152,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      order_status: "placed" | "in_prep" | "ready" | "collected" | "no_show"
+      waitlist_status: "waiting" | "ready" | "seated" | "cancelled" | "no_show"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +280,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      order_status: ["placed", "in_prep", "ready", "collected", "no_show"],
+      waitlist_status: ["waiting", "ready", "seated", "cancelled", "no_show"],
+    },
   },
 } as const

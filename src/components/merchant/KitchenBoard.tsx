@@ -9,115 +9,194 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Clock, Plus, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Order {
   id: string;
-  orderNumber: string;
-  status: "placed" | "in-prep" | "ready" | "collected" | "no-show";
-  items: string[];
-  placedAt: Date;
-  eta: Date;
-  notes?: string;
+  order_number: string;
+  status: "placed" | "in_prep" | "ready" | "collected" | "no_show";
+  items: any[];
+  created_at: string;
+  eta: string | null;
+  notes?: string | null;
+  customer_name?: string | null;
+  venue_id: string;
 }
 
 export const KitchenBoard = ({ venue }: { venue: string }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [newOrderNumber, setNewOrderNumber] = useState("");
   const [newOrderItems, setNewOrderItems] = useState("");
+  const [venueId, setVenueId] = useState<string>("");
   const { toast } = useToast();
 
-  // Mock orders for demo
+  // Fetch orders and set up real-time subscription
   useEffect(() => {
-    const mockOrders: Order[] = [
-      {
-        id: "1",
-        orderNumber: "A123",
-        status: "placed",
-        items: ["Burger", "Fries", "Coke"],
-        placedAt: new Date(Date.now() - 5 * 60000),
-        eta: new Date(Date.now() + 5 * 60000)
-      },
-      {
-        id: "2", 
-        orderNumber: "B456",
-        status: "in-prep",
-        items: ["Pizza Margherita", "Garlic Bread"],
-        placedAt: new Date(Date.now() - 15 * 60000),
-        eta: new Date(Date.now() - 2 * 60000)
-      },
-      {
-        id: "3",
-        orderNumber: "C789",
-        status: "ready",
-        items: ["Caesar Salad", "Lemonade"],
-        placedAt: new Date(Date.now() - 25 * 60000),
-        eta: new Date(Date.now() - 5 * 60000)
-      }
-    ];
-    setOrders(mockOrders);
-  }, []);
+    const fetchVenueAndOrders = async () => {
+      // First get the venue ID
+      const { data: venues, error: venueError } = await supabase
+        .from("venues")
+        .select("id")
+        .eq("name", venue)
+        .single();
 
-  const updateOrderStatus = (orderId: string, newStatus: Order["status"]) => {
-    setOrders(prev => prev.map(order => 
-      order.id === orderId ? { ...order, status: newStatus } : order
-    ));
+      if (venueError || !venues) {
+        toast({
+          title: "Error",
+          description: "Could not find venue",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setVenueId(venues.id);
+
+      // Fetch orders for this venue
+      const { data: ordersData, error: ordersError } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("venue_id", venues.id)
+        .neq("status", "collected")
+        .order("created_at", { ascending: true });
+
+      if (ordersError) {
+        toast({
+          title: "Error",
+          description: "Could not load orders",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (ordersData) {
+        setOrders(ordersData.map(order => ({
+          ...order,
+          items: Array.isArray(order.items) ? order.items : [order.items]
+        })));
+      }
+    };
+
+    fetchVenueAndOrders();
+
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('kitchen-orders')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'orders'
+      }, (payload) => {
+        console.log('Order change:', payload);
+        // Refresh orders when any order changes
+        fetchVenueAndOrders();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [venue, toast]);
+
+  const updateOrderStatus = async (orderId: string, newStatus: Order["status"]) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ status: newStatus })
+      .eq("id", orderId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not update order status",
+        variant: "destructive"
+      });
+      return;
+    }
+
     toast({
       title: "Order Updated",
       description: `Order status changed to ${newStatus.replace("-", " ")}`,
     });
   };
 
-  const extendETA = (orderId: string, minutes: number, reason?: string) => {
-    setOrders(prev => prev.map(order => 
-      order.id === orderId 
-        ? { 
-            ...order, 
-            eta: new Date(order.eta.getTime() + minutes * 60000),
-            notes: reason ? `Extended: ${reason}` : order.notes
-          } 
-        : order
-    ));
+  const extendETA = async (orderId: string, minutes: number, reason?: string) => {
+    const order = orders.find(o => o.id === orderId);
+    if (!order) return;
+
+    const currentETA = order.eta ? new Date(order.eta) : new Date();
+    const newETA = new Date(currentETA.getTime() + minutes * 60000);
+
+    const { error } = await supabase
+      .from("orders")
+      .update({ 
+        eta: newETA.toISOString(),
+        notes: reason ? `Extended: ${reason}` : order.notes
+      })
+      .eq("id", orderId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not update ETA",
+        variant: "destructive"
+      });
+      return;
+    }
+
     toast({
       title: "ETA Extended",
       description: `Order ETA extended by ${minutes} minutes`,
     });
   };
 
-  const addOrder = () => {
-    if (!newOrderNumber || !newOrderItems) return;
+  const addOrder = async () => {
+    if (!newOrderNumber || !newOrderItems || !venueId) return;
     
-    const newOrder: Order = {
-      id: Date.now().toString(),
-      orderNumber: newOrderNumber.toUpperCase(),
-      status: "placed",
-      items: newOrderItems.split(",").map(item => item.trim()),
-      placedAt: new Date(),
-      eta: new Date(Date.now() + 10 * 60000)
-    };
-    
-    setOrders(prev => [...prev, newOrder]);
+    const items = newOrderItems.split(",").map(item => ({ name: item.trim() }));
+    const eta = new Date(Date.now() + 10 * 60000).toISOString();
+
+    const { error } = await supabase
+      .from("orders")
+      .insert({
+        venue_id: venueId,
+        order_number: newOrderNumber.toUpperCase(),
+        status: "placed",
+        items,
+        eta
+      });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not add order",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setNewOrderNumber("");
     setNewOrderItems("");
     toast({
       title: "Order Added",
-      description: `Order ${newOrder.orderNumber} added to kitchen`,
+      description: `Order ${newOrderNumber.toUpperCase()} added to kitchen`,
     });
   };
 
   const getStatusColor = (status: Order["status"]) => {
     switch (status) {
       case "placed": return "bg-blue-500";
-      case "in-prep": return "bg-yellow-500";
+      case "in_prep": return "bg-yellow-500";
       case "ready": return "bg-green-500";
       case "collected": return "bg-gray-500";
-      case "no-show": return "bg-red-500";
+      case "no_show": return "bg-red-500";
       default: return "bg-gray-500";
     }
   };
 
-  const getTimeStatus = (eta: Date) => {
+  const getTimeStatus = (eta: string | null) => {
+    if (!eta) return "text-muted-foreground";
     const now = new Date();
-    const diff = eta.getTime() - now.getTime();
+    const etaDate = new Date(eta);
+    const diff = etaDate.getTime() - now.getTime();
     const minutes = diff / (1000 * 60);
     
     if (minutes < -7) return "text-red-500";
@@ -125,7 +204,9 @@ export const KitchenBoard = ({ venue }: { venue: string }) => {
     return "text-muted-foreground";
   };
 
-  const formatTime = (date: Date) => {
+  const formatTime = (dateString: string | null) => {
+    if (!dateString) return "No ETA set";
+    const date = new Date(dateString);
     return date.toLocaleTimeString("en-US", { 
       hour: "2-digit", 
       minute: "2-digit",
@@ -133,8 +214,9 @@ export const KitchenBoard = ({ venue }: { venue: string }) => {
     });
   };
 
-  const getMinutesLeft = (eta: Date) => {
-    const diff = eta.getTime() - new Date().getTime();
+  const getMinutesLeft = (eta: string | null) => {
+    if (!eta) return 0;
+    const diff = new Date(eta).getTime() - new Date().getTime();
     const minutes = Math.ceil(diff / (1000 * 60));
     return minutes;
   };
@@ -187,9 +269,9 @@ export const KitchenBoard = ({ venue }: { venue: string }) => {
           <Card key={order.id} className="shadow-card">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">#{order.orderNumber}</CardTitle>
+                <CardTitle className="text-lg">#{order.order_number}</CardTitle>
                 <Badge className={`${getStatusColor(order.status)} text-white`}>
-                  {order.status.replace("-", " ").toUpperCase()}
+                  {order.status.replace("_", " ").toUpperCase()}
                 </Badge>
               </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -206,11 +288,17 @@ export const KitchenBoard = ({ venue }: { venue: string }) => {
               <div>
                 <h4 className="font-medium text-sm mb-2">Items:</h4>
                 <ul className="text-sm text-muted-foreground space-y-1">
-                  {order.items.map((item, index) => (
-                    <li key={index}>• {item}</li>
+                  {order.items.map((item: any, index: number) => (
+                    <li key={index}>• {item.name || item}</li>
                   ))}
                 </ul>
               </div>
+
+              {order.customer_name && (
+                <div className="p-2 bg-muted rounded text-sm">
+                  <strong>Customer:</strong> {order.customer_name}
+                </div>
+              )}
 
               {order.notes && (
                 <div className="p-2 bg-muted rounded text-sm">

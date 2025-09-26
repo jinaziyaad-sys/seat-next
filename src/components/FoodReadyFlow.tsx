@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,22 +6,26 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Clock, CheckCircle, Package, Truck } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
-type OrderStatus = "placed" | "in-prep" | "ready" | "collected";
+type OrderStatus = "placed" | "in_prep" | "ready" | "collected" | "no_show";
 
 interface Order {
   id: string;
+  order_number: string;
   venue: string;
   status: OrderStatus;
-  eta: number; // minutes
+  eta: string | null;
   instructions?: string;
+  items: any[];
 }
 
 const statusConfig = {
   placed: { label: "Order Placed", icon: Package, color: "bg-slate text-white", progress: 25 },
-  "in-prep": { label: "In Preparation", icon: Clock, color: "bg-warning text-white", progress: 60 },
+  "in_prep": { label: "In Preparation", icon: Clock, color: "bg-warning text-white", progress: 60 },
   ready: { label: "Ready for Pickup", icon: CheckCircle, color: "bg-primary text-primary-foreground", progress: 90 },
   collected: { label: "Collected", icon: Truck, color: "bg-success text-white", progress: 100 },
+  no_show: { label: "No Show", icon: Truck, color: "bg-destructive text-white", progress: 100 },
 };
 
 export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
@@ -29,39 +33,112 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
   const [orderNumber, setOrderNumber] = useState("");
   const [selectedVenue, setSelectedVenue] = useState("");
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const [venues, setVenues] = useState<{id: string; name: string}[]>([]);
 
-  const mockVenues = [
-    "Joe's Burger Bar",
-    "Mama's Pizza Kitchen", 
-    "The Coffee Spot",
-    "Sushi Express"
-  ];
+  // Fetch venues on component mount
+  useEffect(() => {
+    const fetchVenues = async () => {
+      const { data, error } = await supabase
+        .from("venues")
+        .select("id, name")
+        .order("name");
+      
+      if (data && !error) {
+        setVenues(data);
+      }
+    };
+
+    fetchVenues();
+  }, []);
 
   const handleQRScan = () => {
-    setSelectedVenue("Joe's Burger Bar");
-    setStep("order-entry");
+    if (venues.length > 0) {
+      setSelectedVenue(venues[0].name);
+      setStep("order-entry");
+    }
   };
 
-  const handleOrderSubmit = () => {
-    if (orderNumber.trim()) {
+  const handleOrderSubmit = async () => {
+    if (!orderNumber.trim() || !selectedVenue) return;
+
+    // Find the venue
+    const venue = venues.find(v => v.name === selectedVenue);
+    if (!venue) return;
+
+    // Check if order exists
+    const { data: existingOrder, error } = await supabase
+      .from("orders")
+      .select("*")
+      .eq("venue_id", venue.id)
+      .eq("order_number", orderNumber.toUpperCase())
+      .single();
+
+    if (error && error.code !== 'PGRST116') {
+      // Error other than "not found"
+      return;
+    }
+
+    if (existingOrder) {
+      // Order found, start tracking
       const order: Order = {
-        id: orderNumber.toUpperCase(),
+        id: existingOrder.id,
+        order_number: existingOrder.order_number,
         venue: selectedVenue,
-        status: "placed",
-        eta: 12,
-        instructions: "Please collect from the main counter"
+        status: existingOrder.status,
+        eta: existingOrder.eta,
+        instructions: "Please collect from the main counter",
+        items: Array.isArray(existingOrder.items) ? existingOrder.items : [existingOrder.items]
       };
       setCurrentOrder(order);
       setStep("tracking");
-      
-      // Simulate status progression
-      setTimeout(() => {
-        setCurrentOrder(prev => prev ? { ...prev, status: "in-prep", eta: 8 } : null);
-      }, 3000);
-      
-      setTimeout(() => {
-        setCurrentOrder(prev => prev ? { ...prev, status: "ready", eta: 0 } : null);
-      }, 8000);
+
+      // Set up real-time subscription for this order
+      const channel = supabase
+        .channel(`order-${existingOrder.id}`)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public', 
+          table: 'orders',
+          filter: `id=eq.${existingOrder.id}`
+        }, (payload) => {
+          if (payload.new) {
+            setCurrentOrder(prev => prev ? {
+              ...prev,
+              status: payload.new.status,
+              eta: payload.new.eta
+            } : null);
+          }
+        })
+        .subscribe();
+
+      return () => supabase.removeChannel(channel);
+    } else {
+      // Order not found - create a new one for demo purposes
+      const { data: newOrder, error: insertError } = await supabase
+        .from("orders")
+        .insert({
+          venue_id: venue.id,
+          order_number: orderNumber.toUpperCase(),
+          status: "placed",
+          items: [{ name: "Sample Item" }],
+          eta: new Date(Date.now() + 12 * 60000).toISOString()
+        })
+        .select()
+        .single();
+
+      if (newOrder && !insertError) {
+        const order: Order = {
+          id: newOrder.id,
+          order_number: newOrder.order_number,
+          venue: selectedVenue,
+          status: newOrder.status,
+          eta: newOrder.eta,
+          instructions: "Please collect from the main counter",
+          items: Array.isArray(newOrder.items) ? newOrder.items : [newOrder.items]
+        };
+        setCurrentOrder(order);
+        setStep("tracking");
+      }
     }
   };
 
@@ -99,17 +176,17 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
             <CardTitle>Or Select Venue Manually</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {mockVenues.map((venue) => (
+            {venues.map((venue) => (
               <Button
-                key={venue}
+                key={venue.id}
                 variant="outline" 
                 className="w-full justify-start h-12"
                 onClick={() => {
-                  setSelectedVenue(venue);
+                  setSelectedVenue(venue.name);
                   setStep("order-entry");
                 }}
               >
-                {venue}
+                {venue.name}
               </Button>
             ))}
           </CardContent>
@@ -182,10 +259,12 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
               <Progress value={config.progress} className="h-2" />
             </div>
 
-            {currentOrder.eta > 0 && (
+            {currentOrder.eta && new Date(currentOrder.eta) > new Date() && (
               <div className="flex items-center justify-center gap-2 text-lg">
                 <Clock size={20} />
-                <span className="font-semibold">{currentOrder.eta} min remaining</span>
+                <span className="font-semibold">
+                  {Math.ceil((new Date(currentOrder.eta).getTime() - new Date().getTime()) / (1000 * 60))} min remaining
+                </span>
               </div>
             )}
 

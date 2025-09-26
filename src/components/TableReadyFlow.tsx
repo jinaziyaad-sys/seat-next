@@ -1,19 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Users, Clock, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 
 interface WaitlistEntry {
   id: string;
   venue: string;
-  partySize: number;
+  party_size: number;
   position: number;
-  eta: number; // minutes
+  eta: string | null;
   preferences?: string[];
-  status: "waiting" | "ready" | "seated";
+  status: "waiting" | "ready" | "seated" | "cancelled" | "no_show";
 }
 
 export function TableReadyFlow({ onBack }: { onBack: () => void }) {
@@ -22,13 +23,29 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
   const [partySize, setPartySize] = useState(2);
   const [preferences, setPreferences] = useState<string[]>([]);
   const [waitlistEntry, setWaitlistEntry] = useState<WaitlistEntry | null>(null);
+  const [venues, setVenues] = useState<{id: string; name: string; waitTime?: string; tables?: number}[]>([]);
 
-  const mockVenues = [
-    { name: "Joe's Burger Bar", waitTime: "15-20 min", tables: 3 },
-    { name: "Mama's Pizza Kitchen", waitTime: "10-15 min", tables: 1 },
-    { name: "The Coffee Spot", waitTime: "5-10 min", tables: 0 },
-    { name: "Sushi Express", waitTime: "20-25 min", tables: 5 }
-  ];
+  // Fetch venues on component mount
+  useEffect(() => {
+    const fetchVenues = async () => {
+      const { data, error } = await supabase
+        .from("venues")
+        .select("id, name")
+        .order("name");
+      
+      if (data && !error) {
+        // Add mock wait times for display
+        const venuesWithWait = data.map(venue => ({
+          ...venue,
+          waitTime: "15-20 min",
+          tables: Math.floor(Math.random() * 5)
+        }));
+        setVenues(venuesWithWait);
+      }
+    };
+
+    fetchVenues();
+  }, []);
 
   const preferenceOptions = [
     "Indoor seating",
@@ -51,32 +68,61 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
     );
   };
 
-  const handleJoinWaitlist = () => {
-    const entry: WaitlistEntry = {
-      id: Math.random().toString(36).substr(2, 9),
-      venue: selectedVenue,
-      partySize,
-      position: 3,
-      eta: 18,
-      preferences,
-      status: "waiting"
-    };
-    setWaitlistEntry(entry);
-    setStep("waiting");
+  const handleJoinWaitlist = async () => {
+    const venue = venues.find(v => v.name === selectedVenue);
+    if (!venue) return;
 
-    // Simulate waitlist progression
-    setTimeout(() => {
-      setWaitlistEntry(prev => prev ? { ...prev, position: 2, eta: 12 } : null);
-    }, 4000);
+    const { data: newEntry, error } = await supabase
+      .from("waitlist_entries")
+      .insert({
+        venue_id: venue.id,
+        customer_name: "Customer", // Could be enhanced to ask for name
+        party_size: partySize,
+        preferences,
+        eta: new Date(Date.now() + 18 * 60000).toISOString(),
+        status: "waiting"
+      })
+      .select()
+      .single();
 
-    setTimeout(() => {
-      setWaitlistEntry(prev => prev ? { ...prev, position: 1, eta: 5 } : null);
-    }, 8000);
+    if (newEntry && !error) {
+      const entry: WaitlistEntry = {
+        id: newEntry.id,
+        venue: selectedVenue,
+        party_size: newEntry.party_size,
+        position: 3, // Could be calculated from actual waitlist
+        eta: newEntry.eta,
+        preferences: newEntry.preferences || [],
+        status: newEntry.status
+      };
+      setWaitlistEntry(entry);
+      setStep("waiting");
 
-    setTimeout(() => {
-      setWaitlistEntry(prev => prev ? { ...prev, status: "ready", eta: 0 } : null);
-      setStep("ready");
-    }, 12000);
+      // Set up real-time subscription for this entry
+      const channel = supabase
+        .channel(`waitlist-${newEntry.id}`)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'waitlist_entries', 
+          filter: `id=eq.${newEntry.id}`
+        }, (payload) => {
+          if (payload.new) {
+            setWaitlistEntry(prev => prev ? {
+              ...prev,
+              status: payload.new.status,
+              eta: payload.new.eta
+            } : null);
+            
+            if (payload.new.status === "ready") {
+              setStep("ready");
+            }
+          }
+        })
+        .subscribe();
+
+      return () => supabase.removeChannel(channel);
+    }
   };
 
   const handleConfirmSeat = () => {
@@ -102,9 +148,9 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
             <p className="text-muted-foreground">Choose where you'd like to dine</p>
           </CardHeader>
           <CardContent className="space-y-3">
-            {mockVenues.map((venue) => (
+            {venues.map((venue) => (
               <Button
-                key={venue.name}
+                key={venue.id}
                 variant="outline"
                 className="w-full justify-between h-16 p-4"
                 onClick={() => handleVenueSelect(venue.name)}
@@ -113,8 +159,8 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
                   <div className="font-semibold">{venue.name}</div>
                   <div className="text-sm text-muted-foreground">Wait: {venue.waitTime}</div>
                 </div>
-                <Badge variant={venue.tables > 0 ? "secondary" : "destructive"}>
-                  {venue.tables} tables ahead
+                <Badge variant={venue.tables && venue.tables > 0 ? "secondary" : "destructive"}>
+                  {venue.tables || 0} tables ahead
                 </Badge>
               </Button>
             ))}
@@ -213,13 +259,15 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
 
             <div className="flex items-center justify-center gap-2 text-lg">
               <Clock size={20} />
-              <span className="font-semibold">~{waitlistEntry.eta} min wait</span>
+              <span className="font-semibold">
+                ~{waitlistEntry.eta ? Math.ceil((new Date(waitlistEntry.eta).getTime() - new Date().getTime()) / (1000 * 60)) : 0} min wait
+              </span>
             </div>
 
             <div className="p-4 bg-muted rounded-xl">
               <div className="text-sm text-muted-foreground space-y-1">
                 <div>📍 {waitlistEntry.venue}</div>
-                <div>👥 Party of {waitlistEntry.partySize}</div>
+                <div>👥 Party of {waitlistEntry.party_size}</div>
                 {waitlistEntry.preferences && waitlistEntry.preferences.length > 0 && (
                   <div>✨ {waitlistEntry.preferences.join(", ")}</div>
                 )}
@@ -274,7 +322,7 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
 
             <div className="p-6 bg-primary/10 rounded-xl border border-primary/20">
               <p className="font-semibold text-primary">Please head to the host stand now</p>
-              <p className="text-sm text-muted-foreground mt-1">Party of {waitlistEntry.partySize}</p>
+              <p className="text-sm text-muted-foreground mt-1">Party of {waitlistEntry.party_size}</p>
             </div>
 
             <div className="space-y-3">

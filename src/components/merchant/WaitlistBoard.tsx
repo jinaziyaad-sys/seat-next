@@ -8,16 +8,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Clock, Users, Plus, MapPin } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface WaitlistEntry {
   id: string;
-  customerName: string;
-  partySize: number;
-  preferences?: string;
-  joinedAt: Date;
-  eta: Date;
-  status: "waiting" | "ready" | "seated" | "no-show";
-  position: number;
+  customer_name: string;
+  party_size: number;
+  preferences?: string[];
+  created_at: string;
+  eta: string | null;
+  status: "waiting" | "ready" | "seated" | "cancelled" | "no_show";
+  position: number | null;
+  venue_id: string;
 }
 
 export const WaitlistBoard = ({ venue }: { venue: string }) => {
@@ -25,107 +27,148 @@ export const WaitlistBoard = ({ venue }: { venue: string }) => {
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newPartySize, setNewPartySize] = useState("2");
   const [newPreferences, setNewPreferences] = useState("");
+  const [venueId, setVenueId] = useState<string>("");
   const { toast } = useToast();
 
-  // Mock waitlist for demo
+  // Fetch waitlist and set up real-time subscription
   useEffect(() => {
-    const mockWaitlist: WaitlistEntry[] = [
-      {
-        id: "1",
-        customerName: "Smith Party",
-        partySize: 4,
-        preferences: "Indoor, Non-smoking",
-        joinedAt: new Date(Date.now() - 15 * 60000),
-        eta: new Date(Date.now() + 5 * 60000),
-        status: "waiting",
-        position: 1
-      },
-      {
-        id: "2",
-        customerName: "Johnson",
-        partySize: 2,
-        preferences: "Outdoor",
-        joinedAt: new Date(Date.now() - 10 * 60000),
-        eta: new Date(Date.now() + 10 * 60000),
-        status: "waiting",
-        position: 2
-      },
-      {
-        id: "3",
-        customerName: "Williams Family",
-        partySize: 6,
-        preferences: "Indoor, High chair needed",
-        joinedAt: new Date(Date.now() - 5 * 60000),
-        eta: new Date(Date.now() + 20 * 60000),
-        status: "ready",
-        position: 3
-      }
-    ];
-    setWaitlist(mockWaitlist);
-  }, []);
+    const fetchVenueAndWaitlist = async () => {
+      // First get the venue ID
+      const { data: venues, error: venueError } = await supabase
+        .from("venues")
+        .select("id")
+        .eq("name", venue)
+        .single();
 
-  const updateEntryStatus = (entryId: string, newStatus: WaitlistEntry["status"]) => {
-    setWaitlist(prev => prev.map(entry => 
-      entry.id === entryId ? { ...entry, status: newStatus } : entry
-    ));
-    
-    // Reorder positions for waiting entries
-    if (newStatus === "seated" || newStatus === "no-show") {
-      setWaitlist(prev => {
-        const updated = prev.map(entry => entry.id === entryId ? { ...entry, status: newStatus } : entry);
-        const waiting = updated.filter(e => e.status === "waiting").sort((a, b) => a.joinedAt.getTime() - b.joinedAt.getTime());
-        return updated.map(entry => {
-          if (entry.status === "waiting") {
-            const index = waiting.findIndex(w => w.id === entry.id);
-            return { ...entry, position: index + 1 };
-          }
-          return entry;
+      if (venueError || !venues) {
+        toast({
+          title: "Error",
+          description: "Could not find venue",
+          variant: "destructive"
         });
+        return;
+      }
+
+      setVenueId(venues.id);
+
+      // Fetch waitlist entries for this venue
+      const { data: waitlistData, error: waitlistError } = await supabase
+        .from("waitlist_entries")
+        .select("*")
+        .eq("venue_id", venues.id)
+        .neq("status", "seated")
+        .neq("status", "cancelled")
+        .order("created_at", { ascending: true });
+
+      if (waitlistError) {
+        toast({
+          title: "Error", 
+          description: "Could not load waitlist",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setWaitlist(waitlistData || []);
+    };
+
+    fetchVenueAndWaitlist();
+
+    // Set up real-time subscription
+    const channel = supabase
+      .channel('waitlist-updates')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'waitlist_entries'
+      }, (payload) => {
+        console.log('Waitlist change:', payload);
+        // Refresh waitlist when any entry changes
+        fetchVenueAndWaitlist();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [venue, toast]);
+
+  const updateEntryStatus = async (entryId: string, newStatus: WaitlistEntry["status"]) => {
+    const { error } = await supabase
+      .from("waitlist_entries")
+      .update({ status: newStatus })
+      .eq("id", entryId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not update waitlist status",
+        variant: "destructive"
       });
+      return;
     }
 
     toast({
       title: "Waitlist Updated",
-      description: `Entry status changed to ${newStatus.replace("-", " ")}`,
+      description: `Entry status changed to ${newStatus.replace("_", " ")}`,
     });
   };
 
-  const setETA = (entryId: string, minutes: number) => {
-    setWaitlist(prev => prev.map(entry => 
-      entry.id === entryId 
-        ? { ...entry, eta: new Date(Date.now() + minutes * 60000) }
-        : entry
-    ));
+  const setETA = async (entryId: string, minutes: number) => {
+    const newETA = new Date(Date.now() + minutes * 60000).toISOString();
+
+    const { error } = await supabase
+      .from("waitlist_entries")
+      .update({ eta: newETA })
+      .eq("id", entryId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not update ETA",
+        variant: "destructive"
+      });
+      return;
+    }
+
     toast({
       title: "ETA Updated",
       description: `Estimated wait time set to ${minutes} minutes`,
     });
   };
 
-  const addToWaitlist = () => {
-    if (!newCustomerName) return;
+  const addToWaitlist = async () => {
+    if (!newCustomerName || !venueId) return;
     
-    const waitingEntries = waitlist.filter(e => e.status === "waiting");
-    const newPosition = waitingEntries.length + 1;
-    
-    const newEntry: WaitlistEntry = {
-      id: Date.now().toString(),
-      customerName: newCustomerName,
-      partySize: parseInt(newPartySize),
-      preferences: newPreferences || undefined,
-      joinedAt: new Date(),
-      eta: new Date(Date.now() + 15 * 60000),
-      status: "waiting",
-      position: newPosition
-    };
-    
-    setWaitlist(prev => [...prev, newEntry]);
+    const preferences = newPreferences ? newPreferences.split(",").map(p => p.trim()) : [];
+    const eta = new Date(Date.now() + 15 * 60000).toISOString();
+
+    const { error } = await supabase
+      .from("waitlist_entries")
+      .insert({
+        venue_id: venueId,
+        customer_name: newCustomerName,
+        party_size: parseInt(newPartySize),
+        preferences,
+        eta,
+        status: "waiting"
+      });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not add to waitlist",
+        variant: "destructive"
+      });
+      return;
+    }
+
     setNewCustomerName("");
     setNewPartySize("2");
     setNewPreferences("");
     toast({
       title: "Added to Waitlist",
-      description: `${newEntry.customerName} added to waitlist`,
+      description: `${newCustomerName} added to waitlist`,
     });
   };
 
@@ -134,12 +177,15 @@ export const WaitlistBoard = ({ venue }: { venue: string }) => {
       case "waiting": return "bg-blue-500";
       case "ready": return "bg-green-500";
       case "seated": return "bg-gray-500";
-      case "no-show": return "bg-red-500";
+      case "no_show": return "bg-red-500";
+      case "cancelled": return "bg-orange-500";
       default: return "bg-gray-500";
     }
   };
 
-  const formatTime = (date: Date) => {
+  const formatTime = (dateString: string | null) => {
+    if (!dateString) return "No ETA set";
+    const date = new Date(dateString);
     return date.toLocaleTimeString("en-US", { 
       hour: "2-digit", 
       minute: "2-digit",
@@ -147,8 +193,8 @@ export const WaitlistBoard = ({ venue }: { venue: string }) => {
     });
   };
 
-  const getWaitTime = (joinedAt: Date) => {
-    const diff = new Date().getTime() - joinedAt.getTime();
+  const getWaitTime = (createdAt: string) => {
+    const diff = new Date().getTime() - new Date(createdAt).getTime();
     const minutes = Math.floor(diff / (1000 * 60));
     return `${minutes}m`;
   };
@@ -156,8 +202,10 @@ export const WaitlistBoard = ({ venue }: { venue: string }) => {
   const sortedWaitlist = [...waitlist].sort((a, b) => {
     if (a.status === "ready" && b.status !== "ready") return -1;
     if (b.status === "ready" && a.status !== "ready") return 1;
-    if (a.status === "waiting" && b.status === "waiting") return a.position - b.position;
-    return a.joinedAt.getTime() - b.joinedAt.getTime();
+    if (a.status === "waiting" && b.status === "waiting") {
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    }
+    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });
 
   return (
@@ -222,28 +270,28 @@ export const WaitlistBoard = ({ venue }: { venue: string }) => {
           <Card key={entry.id} className="shadow-card">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{entry.customerName}</CardTitle>
+                <CardTitle className="text-lg">{entry.customer_name}</CardTitle>
                 <Badge className={`${getStatusColor(entry.status)} text-white`}>
-                  {entry.status === "waiting" ? `#${entry.position}` : entry.status.toUpperCase()}
+                  {entry.status === "waiting" ? `#${entry.position || '?'}` : entry.status.replace("_", " ").toUpperCase()}
                 </Badge>
               </div>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Users size={14} />
-                  {entry.partySize}
+                  {entry.party_size}
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock size={14} />
-                  Waiting {getWaitTime(entry.joinedAt)}
+                  Waiting {getWaitTime(entry.created_at)}
                 </span>
               </div>
             </CardHeader>
             <CardContent className="space-y-4">
-              {entry.preferences && (
+              {entry.preferences && entry.preferences.length > 0 && (
                 <div className="flex items-start gap-2">
                   <MapPin size={14} className="mt-0.5 text-muted-foreground" />
                   <span className="text-sm text-muted-foreground">
-                    {entry.preferences}
+                    {entry.preferences.join(", ")}
                   </span>
                 </div>
               )}
@@ -300,7 +348,8 @@ export const WaitlistBoard = ({ venue }: { venue: string }) => {
                     <SelectItem value="waiting">Waiting</SelectItem>
                     <SelectItem value="ready">Table Ready</SelectItem>
                     <SelectItem value="seated">Seated</SelectItem>
-                    <SelectItem value="no-show">No Show</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                    <SelectItem value="no_show">No Show</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
