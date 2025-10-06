@@ -13,13 +13,6 @@ const Index = () => {
   const [showQRScan, setShowQRScan] = useState(false);
   const navigate = useNavigate();
 
-  const mockNearbyRestaurants = [
-    { name: "Joe's Burger Bar", distance: "150m", wait: "12 min", rating: 4.5 },
-    { name: "Mama's Pizza Kitchen", distance: "250m", wait: "18 min", rating: 4.7 },
-    { name: "The Coffee Spot", distance: "320m", wait: "5 min", rating: 4.3 },
-    { name: "Sushi Express", distance: "450m", wait: "22 min", rating: 4.6 }
-  ];
-
   const handleQRPress = () => {
     setShowQRScan(true);
     setActiveTab("food-ready");
@@ -103,91 +96,6 @@ const Index = () => {
             </CardContent>
           </Card>
         </div>
-
-        {/* Nearby Restaurants */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <MapPin size={24} className="text-primary" />
-              <CardTitle>Nearby Restaurants</CardTitle>
-            </div>
-            <p className="text-sm text-muted-foreground">Within 500m of your location</p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {mockNearbyRestaurants.map((restaurant) => (
-              <div
-                key={restaurant.name}
-                className="flex items-center justify-between rounded-xl border p-4 transition-colors hover:bg-muted"
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold">{restaurant.name}</h4>
-                    <span className="text-sm">⭐ {restaurant.rating}</span>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <MapPin size={14} />
-                      {restaurant.distance}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Clock size={14} />
-                      ~{restaurant.wait}
-                    </span>
-                  </div>
-                </div>
-                <Button size="sm" variant="outline">
-                  Select
-                </Button>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Features Overview */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>How It Works</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div className="flex gap-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
-                  1
-                </div>
-                <div>
-                  <h4 className="font-semibold">Scan or Select</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Scan QR code at your table or select a restaurant manually
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex gap-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
-                  2
-                </div>
-                <div>
-                  <h4 className="font-semibold">Enter Details</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Enter your order number or join the table waitlist
-                  </p>
-                </div>
-              </div>
-              
-              <div className="flex gap-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-bold">
-                  3
-                </div>
-                <div>
-                  <h4 className="font-semibold">Get Notified</h4>
-                  <p className="text-sm text-muted-foreground">
-                    Receive real-time updates when your order or table is ready
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
 
         {/* Merchant Access */}
         <Card className="shadow-card border-2 border-dashed border-muted-foreground/20">

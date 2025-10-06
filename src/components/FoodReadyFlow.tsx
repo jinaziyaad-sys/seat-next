@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, Clock, CheckCircle, Package, Truck } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Clock, CheckCircle, Package, Truck, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -33,23 +34,31 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
   const [orderNumber, setOrderNumber] = useState("");
   const [selectedVenue, setSelectedVenue] = useState("");
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
-  const [venues, setVenues] = useState<{id: string; name: string}[]>([]);
+  const [venues, setVenues] = useState<{id: string; name: string; address?: string; phone?: string}[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   // Fetch venues on component mount
   useEffect(() => {
     const fetchVenues = async () => {
+      setIsLoading(true);
       const { data, error } = await supabase
         .from("venues")
-        .select("id, name")
+        .select("id, name, address, phone")
         .order("name");
       
       if (data && !error) {
         setVenues(data);
       }
+      setIsLoading(false);
     };
 
     fetchVenues();
   }, []);
+
+  const filteredVenues = venues.filter(venue => 
+    venue.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   const handleQRScan = () => {
     if (venues.length > 0) {
@@ -174,21 +183,47 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
         <Card className="shadow-card">
           <CardHeader>
             <CardTitle>Or Select Venue Manually</CardTitle>
+            <p className="text-sm text-muted-foreground">Search and select your restaurant</p>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {venues.map((venue) => (
-              <Button
-                key={venue.id}
-                variant="outline" 
-                className="w-full justify-start h-12"
-                onClick={() => {
-                  setSelectedVenue(venue.name);
-                  setStep("order-entry");
-                }}
-              >
-                {venue.name}
-              </Button>
-            ))}
+          <CardContent className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+              <Input
+                placeholder="Search restaurants..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading venues...</div>
+            ) : filteredVenues.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {searchQuery ? "No venues found matching your search" : "No venues available"}
+              </div>
+            ) : (
+              <Select onValueChange={(value) => {
+                setSelectedVenue(value);
+                setStep("order-entry");
+              }}>
+                <SelectTrigger className="w-full h-12">
+                  <SelectValue placeholder="Select a restaurant" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredVenues.map((venue) => (
+                    <SelectItem key={venue.id} value={venue.name}>
+                      <div className="flex flex-col items-start">
+                        <span className="font-medium">{venue.name}</span>
+                        {venue.address && (
+                          <span className="text-xs text-muted-foreground">{venue.address}</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </CardContent>
         </Card>
       </div>

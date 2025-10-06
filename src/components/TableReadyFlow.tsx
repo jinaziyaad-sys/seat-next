@@ -3,7 +3,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, Clock, CheckCircle } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, Users, Clock, CheckCircle, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -23,14 +24,17 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
   const [partySize, setPartySize] = useState(2);
   const [preferences, setPreferences] = useState<string[]>([]);
   const [waitlistEntry, setWaitlistEntry] = useState<WaitlistEntry | null>(null);
-  const [venues, setVenues] = useState<{id: string; name: string; waitTime?: string; tables?: number}[]>([]);
+  const [venues, setVenues] = useState<{id: string; name: string; address?: string; waitTime?: string; tables?: number}[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
 
   // Fetch venues on component mount
   useEffect(() => {
     const fetchVenues = async () => {
+      setIsLoading(true);
       const { data, error } = await supabase
         .from("venues")
-        .select("id, name")
+        .select("id, name, address")
         .order("name");
       
       if (data && !error) {
@@ -42,10 +46,16 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
         }));
         setVenues(venuesWithWait);
       }
+      setIsLoading(false);
     };
 
     fetchVenues();
   }, []);
+
+  const filteredVenues = venues.filter(venue => 
+    venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (venue.address && venue.address.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   const preferenceOptions = [
     "Indoor seating",
@@ -145,25 +155,50 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
         <Card className="shadow-card">
           <CardHeader>
             <CardTitle>Select Restaurant</CardTitle>
-            <p className="text-muted-foreground">Choose where you'd like to dine</p>
+            <p className="text-muted-foreground">Search and choose where you'd like to dine</p>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {venues.map((venue) => (
-              <Button
-                key={venue.id}
-                variant="outline"
-                className="w-full justify-between h-16 p-4"
-                onClick={() => handleVenueSelect(venue.name)}
-              >
-                <div className="text-left">
-                  <div className="font-semibold">{venue.name}</div>
-                  <div className="text-sm text-muted-foreground">Wait: {venue.waitTime}</div>
-                </div>
-                <Badge variant={venue.tables && venue.tables > 0 ? "secondary" : "destructive"}>
-                  {venue.tables || 0} tables ahead
-                </Badge>
-              </Button>
-            ))}
+          <CardContent className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+              <Input
+                placeholder="Search restaurants..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading venues...</div>
+            ) : filteredVenues.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {searchQuery ? "No venues found matching your search" : "No venues available"}
+              </div>
+            ) : (
+              <Select onValueChange={handleVenueSelect}>
+                <SelectTrigger className="w-full h-12">
+                  <SelectValue placeholder="Select a restaurant" />
+                </SelectTrigger>
+                <SelectContent>
+                  {filteredVenues.map((venue) => (
+                    <SelectItem key={venue.id} value={venue.name}>
+                      <div className="flex justify-between items-center w-full gap-4">
+                        <div className="flex flex-col items-start flex-1">
+                          <span className="font-medium">{venue.name}</span>
+                          {venue.address && (
+                            <span className="text-xs text-muted-foreground">{venue.address}</span>
+                          )}
+                          <span className="text-xs text-muted-foreground">Wait: {venue.waitTime}</span>
+                        </div>
+                        <Badge variant={venue.tables && venue.tables > 0 ? "secondary" : "default"} className="shrink-0">
+                          {venue.tables || 0} ahead
+                        </Badge>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
           </CardContent>
         </Card>
       </div>
