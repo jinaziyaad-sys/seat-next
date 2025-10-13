@@ -8,6 +8,7 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import MerchantAuth from "./pages/MerchantAuth";
 import MerchantDashboard from "./pages/MerchantDashboard";
+import AdminCreateMerchant from "./pages/AdminCreateMerchant";
 import WaitlistJoin from "./pages/WaitlistJoin";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/waitlist/:venueId" element={<WaitlistJoin />} />
+          <Route path="/admin/create-merchant" element={<AdminCreateMerchant />} />
           <Route path="/merchant/auth" element={<MerchantAuth />} />
           <Route path="/merchant/dashboard" element={<MerchantDashboard />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
