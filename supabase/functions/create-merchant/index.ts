@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email, password, venueId } = await req.json();
+    const { email, password, venueId, role = 'admin' } = await req.json();
 
     // Validate inputs
     if (!email || !password || !venueId) {
@@ -70,13 +70,13 @@ Deno.serve(async (req) => {
 
     console.log('User created successfully:', authData.user.id);
 
-    // Insert user role with admin privileges using service role
+    // Insert user role with specified role (admin or moderator) using service role
     const { error: roleError } = await supabaseAdmin
       .from('user_roles')
       .insert({
         user_id: authData.user.id,
         venue_id: venueId,
-        role: 'admin',
+        role: role, // Use the role from request (defaults to 'admin')
       });
 
     if (roleError) {

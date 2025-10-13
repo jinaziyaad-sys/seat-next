@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { KitchenBoard } from "@/components/merchant/KitchenBoard";
 import { WaitlistBoard } from "@/components/merchant/WaitlistBoard";
 import { MerchantSettings } from "@/components/merchant/MerchantSettings";
+import { StaffManagement } from "@/components/merchant/StaffManagement";
 import { MerchantReports } from "@/components/merchant/MerchantReports";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -64,7 +65,7 @@ const MerchantDashboard = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto p-6">
         <Tabs defaultValue="kitchen" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="kitchen" className="flex items-center gap-2">
               <ChefHat size={16} />
               Kitchen Orders
@@ -75,6 +76,10 @@ const MerchantDashboard = () => {
             </TabsTrigger>
             {role === "admin" && (
               <>
+                <TabsTrigger value="staff" className="flex items-center gap-2">
+                  <Users size={16} />
+                  Staff
+                </TabsTrigger>
                 <TabsTrigger value="settings" className="flex items-center gap-2">
                   <Settings size={16} />
                   Settings
@@ -97,6 +102,10 @@ const MerchantDashboard = () => {
 
           {role === "admin" && (
             <>
+              <TabsContent value="staff">
+                <StaffManagement venueId={venueId} />
+              </TabsContent>
+
               <TabsContent value="settings">
                 <MerchantSettings venue={venueName} venueId={venueId} />
               </TabsContent>
