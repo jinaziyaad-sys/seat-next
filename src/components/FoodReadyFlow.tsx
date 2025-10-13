@@ -57,7 +57,8 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
   }, []);
 
   const filteredVenues = venues.filter(venue => 
-    venue.name.toLowerCase().includes(searchQuery.toLowerCase())
+    venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (venue.address && venue.address.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const handleQRScan = () => {
@@ -276,7 +277,7 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="text-2xl font-bold">Order #{currentOrder.id}</h1>
+          <h1 className="text-2xl font-bold">Order #{currentOrder.order_number}</h1>
         </div>
 
         <Card className="shadow-card">

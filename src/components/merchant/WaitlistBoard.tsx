@@ -220,7 +220,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-background z-50">
                     {[1,2,3,4,5,6,7,8].map(size => (
                       <SelectItem key={size} value={size.toString()}>
                         {size} {size === 1 ? "person" : "people"}
@@ -325,7 +325,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-background z-50">
                     <SelectItem value="waiting">Waiting</SelectItem>
                     <SelectItem value="ready">Table Ready</SelectItem>
                     <SelectItem value="seated">Seated</SelectItem>
