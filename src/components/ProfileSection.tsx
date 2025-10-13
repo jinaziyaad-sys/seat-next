@@ -1,52 +1,127 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, User, Bell, Accessibility, Shield } from "lucide-react";
+import { ArrowLeft, User, Bell, Accessibility, Shield, LogOut } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface UserProfile {
-  name: string;
+  full_name: string;
   email: string;
   phone: string;
-  marketingConsent: boolean;
-  serviceConsent: boolean;
-  largeText: boolean;
-  vibrationEnabled: boolean;
-  torchFlash: boolean;
 }
 
 export function ProfileSection({ onBack }: { onBack: () => void }) {
   const [profile, setProfile] = useState<UserProfile>({
-    name: "",
+    full_name: "",
     email: "",
     phone: "",
-    marketingConsent: false,
-    serviceConsent: true,
-    largeText: false,
-    vibrationEnabled: true,
-    torchFlash: false,
   });
-
   const [isEditing, setIsEditing] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<any>(null);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const updateProfile = (field: keyof UserProfile, value: string | boolean) => {
+  useEffect(() => {
+    fetchProfile();
+  }, []);
+
+  const fetchProfile = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setUser(user);
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (data) {
+        setProfile({
+          full_name: data.full_name || '',
+          email: data.email || user.email || '',
+          phone: data.phone || '',
+        });
+      }
+    }
+    setLoading(false);
+  };
+
+  const updateProfile = (field: keyof UserProfile, value: string) => {
     setProfile(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
-    setIsEditing(false);
-    // Here you would typically save to your backend
+  const handleSave = async () => {
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        full_name: profile.full_name,
+        phone: profile.phone,
+      })
+      .eq('id', user.id);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      toast({
+        title: "Success",
+        description: "Profile updated successfully",
+      });
+      setIsEditing(false);
+    }
   };
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/");
+  };
+
+  if (loading) {
+    return <div className="p-6">Loading...</div>;
+  }
+
+  if (!user) {
+    return (
+      <div className="p-6 pb-24 space-y-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Profile</h1>
+        </div>
+        <Card className="shadow-card">
+          <CardContent className="p-6 text-center">
+            <p className="mb-4">Please sign in to view your profile</p>
+            <Button onClick={() => navigate("/auth")}>Sign In</Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 p-6 pb-24">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          <ArrowLeft size={20} />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Profile</h1>
+        </div>
+        <Button variant="ghost" size="sm" onClick={handleSignOut}>
+          <LogOut size={20} />
         </Button>
-        <h1 className="text-2xl font-bold">Profile</h1>
       </div>
 
       {/* Personal Information */}
@@ -65,17 +140,17 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
               {isEditing ? "Cancel" : "Edit"}
             </Button>
           </div>
-          <p className="text-sm text-muted-foreground">Optional - helps personalize your experience</p>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">Full Name *</Label>
             <Input
               id="name"
               placeholder="Your name"
-              value={profile.name}
-              onChange={(e) => updateProfile("name", e.target.value)}
+              value={profile.full_name}
+              onChange={(e) => updateProfile("full_name", e.target.value)}
               disabled={!isEditing}
+              required
             />
           </div>
           
@@ -86,13 +161,13 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
               type="email"
               placeholder="your.email@example.com"
               value={profile.email}
-              onChange={(e) => updateProfile("email", e.target.value)}
-              disabled={!isEditing}
+              disabled
             />
+            <p className="text-xs text-muted-foreground">Email cannot be changed</p>
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone</Label>
+            <Label htmlFor="phone">Phone Number</Label>
             <Input
               id="phone"
               type="tel"
@@ -111,123 +186,6 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
         </CardContent>
       </Card>
 
-      {/* Privacy & Consent */}
-      <Card className="shadow-card">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <Shield size={24} />
-            <CardTitle>Privacy & Consent</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label>Service Communications</Label>
-              <p className="text-sm text-muted-foreground">
-                Order updates, table notifications, and service-related messages
-              </p>
-            </div>
-            <Switch
-              checked={profile.serviceConsent}
-              onCheckedChange={(checked) => updateProfile("serviceConsent", checked)}
-            />
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label>Marketing Communications</Label>
-              <p className="text-sm text-muted-foreground">
-                Promotions, special offers, and restaurant news
-              </p>
-            </div>
-            <Switch
-              checked={profile.marketingConsent}
-              onCheckedChange={(checked) => updateProfile("marketingConsent", checked)}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Accessibility Settings */}
-      <Card className="shadow-card">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <Accessibility size={24} />
-            <CardTitle>Accessibility Settings</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label>Large Text</Label>
-              <p className="text-sm text-muted-foreground">
-                Increase text size throughout the app for better readability
-              </p>
-            </div>
-            <Switch
-              checked={profile.largeText}
-              onCheckedChange={(checked) => updateProfile("largeText", checked)}
-            />
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label>Vibration Alerts</Label>
-              <p className="text-sm text-muted-foreground">
-                Vibrate device when your order or table is ready
-              </p>
-            </div>
-            <Switch
-              checked={profile.vibrationEnabled}
-              onCheckedChange={(checked) => updateProfile("vibrationEnabled", checked)}
-            />
-          </div>
-          
-          <div className="flex items-center justify-between">
-            <div className="space-y-1">
-              <Label>Torch Flash Alerts</Label>
-              <p className="text-sm text-muted-foreground">
-                Flash the camera light when ready (if vibration is off)
-              </p>
-            </div>
-            <Switch
-              checked={profile.torchFlash}
-              onCheckedChange={(checked) => updateProfile("torchFlash", checked)}
-              disabled={profile.vibrationEnabled}
-            />
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Notification Settings */}
-      <Card className="shadow-card">
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <Bell size={24} />
-            <CardTitle>Notification Preferences</CardTitle>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-primary"></div>
-              <span>Order status updates</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-primary"></div>
-              <span>Table ready notifications</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-primary"></div>
-              <span>Queue position updates</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <div className="w-2 h-2 rounded-full bg-coral"></div>
-              <span>ETA extensions and delays</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

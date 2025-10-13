@@ -26,6 +26,7 @@ export type Database = {
           order_number: string
           status: Database["public"]["Enums"]["order_status"]
           updated_at: string
+          user_id: string | null
           venue_id: string
         }
         Insert: {
@@ -39,6 +40,7 @@ export type Database = {
           order_number: string
           status?: Database["public"]["Enums"]["order_status"]
           updated_at?: string
+          user_id?: string | null
           venue_id: string
         }
         Update: {
@@ -52,11 +54,78 @@ export type Database = {
           order_number?: string
           status?: Database["public"]["Enums"]["order_status"]
           updated_at?: string
+          user_id?: string | null
           venue_id?: string
         }
         Relationships: [
           {
+            foreignKeyName: "orders_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "orders_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_roles_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
@@ -106,6 +175,7 @@ export type Database = {
           preferences: string[] | null
           status: Database["public"]["Enums"]["waitlist_status"]
           updated_at: string
+          user_id: string | null
           venue_id: string
         }
         Insert: {
@@ -119,6 +189,7 @@ export type Database = {
           preferences?: string[] | null
           status?: Database["public"]["Enums"]["waitlist_status"]
           updated_at?: string
+          user_id?: string | null
           venue_id: string
         }
         Update: {
@@ -132,9 +203,17 @@ export type Database = {
           preferences?: string[] | null
           status?: Database["public"]["Enums"]["waitlist_status"]
           updated_at?: string
+          user_id?: string | null
           venue_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "waitlist_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "waitlist_entries_venue_id_fkey"
             columns: ["venue_id"]
@@ -149,9 +228,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
+      app_role: "admin" | "staff"
       order_status: "placed" | "in_prep" | "ready" | "collected" | "no_show"
       waitlist_status: "waiting" | "ready" | "seated" | "cancelled" | "no_show"
     }
@@ -281,6 +367,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
+      app_role: ["admin", "staff"],
       order_status: ["placed", "in_prep", "ready", "collected", "no_show"],
       waitlist_status: ["waiting", "ready", "seated", "cancelled", "no_show"],
     },
