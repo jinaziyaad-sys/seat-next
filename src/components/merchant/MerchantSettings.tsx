@@ -8,8 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { VenueQRCode } from "./VenueQRCode";
 
-export const MerchantSettings = ({ venue }: { venue: string }) => {
+export const MerchantSettings = ({ venue, venueId }: { venue: string; venueId: string }) => {
   const [settings, setSettings] = useState({
     venueCapacity: "40",
     tablesPerInterval: "4",
@@ -38,6 +39,11 @@ export const MerchantSettings = ({ venue }: { venue: string }) => {
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Venue Settings</h2>
+
+      {/* QR Code Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <VenueQRCode venueId={venueId} venueName={venue} />
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Capacity Settings */}

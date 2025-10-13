@@ -98,7 +98,7 @@ const MerchantDashboard = () => {
           {role === "admin" && (
             <>
               <TabsContent value="settings">
-                <MerchantSettings venue={venueName} />
+                <MerchantSettings venue={venueName} venueId={venueId} />
               </TabsContent>
 
               <TabsContent value="reports">

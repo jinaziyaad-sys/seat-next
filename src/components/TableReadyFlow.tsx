@@ -4,9 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Users, Clock, CheckCircle, Search } from "lucide-react";
+import { ArrowLeft, Users, Clock, CheckCircle, Search, QrCode } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { QRCodeSVG } from "qrcode.react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface WaitlistEntry {
   id: string;
@@ -56,6 +58,12 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
     venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (venue.address && venue.address.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
+  const handleQRScan = () => {
+    if (filteredVenues.length > 0) {
+      handleVenueSelect(filteredVenues[0].name);
+    }
+  };
 
   const preferenceOptions = [
     "Indoor seating",
@@ -153,9 +161,33 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
         </div>
 
         <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Select Restaurant</CardTitle>
-            <p className="text-muted-foreground">Search and choose where you'd like to dine</p>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle>Select Restaurant</CardTitle>
+              <p className="text-muted-foreground">Search and choose where you'd like to dine</p>
+            </div>
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <QrCode className="mr-2" size={16} />
+                  Scan QR
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="bg-background">
+                <DialogHeader>
+                  <DialogTitle>Scan Restaurant QR Code</DialogTitle>
+                </DialogHeader>
+                <div className="flex flex-col items-center gap-4 p-6">
+                  <div className="text-6xl">📱</div>
+                  <p className="text-muted-foreground text-center">
+                    Point your camera at the restaurant's QR code to join their waitlist
+                  </p>
+                  <Button onClick={handleQRScan} className="w-full">
+                    Simulate QR Scan
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="relative">
@@ -179,7 +211,7 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
                 <SelectTrigger className="w-full h-12">
                   <SelectValue placeholder="Select a restaurant" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background z-50">
                   {filteredVenues.map((venue) => (
                     <SelectItem key={venue.id} value={venue.name}>
                       <div className="flex justify-between items-center w-full gap-4">

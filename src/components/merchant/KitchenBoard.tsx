@@ -295,12 +295,12 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-background z-50">
                     <SelectItem value="placed">Placed</SelectItem>
-                    <SelectItem value="in-prep">In Prep</SelectItem>
+                    <SelectItem value="in_prep">In Prep</SelectItem>
                     <SelectItem value="ready">Ready</SelectItem>
                     <SelectItem value="collected">Collected</SelectItem>
-                    <SelectItem value="no-show">No Show</SelectItem>
+                    <SelectItem value="no_show">No Show</SelectItem>
                   </SelectContent>
                 </Select>
 

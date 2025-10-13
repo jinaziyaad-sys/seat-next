@@ -210,7 +210,7 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
                 <SelectTrigger className="w-full h-12">
                   <SelectValue placeholder="Select a restaurant" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-background z-50">
                   {filteredVenues.map((venue) => (
                     <SelectItem key={venue.id} value={venue.name}>
                       <div className="flex flex-col items-start">
