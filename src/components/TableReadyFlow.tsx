@@ -3,11 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, Clock, CheckCircle, Search, QrCode, MapPin } from "lucide-react";
+import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
-import { QRCodeSVG } from "qrcode.react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 interface WaitlistEntry {
   id: string;
@@ -160,33 +158,9 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
         </div>
 
         <Card className="shadow-card">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle>Select Restaurant</CardTitle>
-              <p className="text-muted-foreground">Search and choose where you'd like to dine</p>
-            </div>
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <QrCode className="mr-2" size={16} />
-                  Scan QR
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="bg-background">
-                <DialogHeader>
-                  <DialogTitle>Scan Restaurant QR Code</DialogTitle>
-                </DialogHeader>
-                <div className="flex flex-col items-center gap-4 p-6">
-                  <div className="text-6xl">📱</div>
-                  <p className="text-muted-foreground text-center">
-                    Point your camera at the restaurant's QR code to join their waitlist
-                  </p>
-                  <Button onClick={handleQRScan} className="w-full">
-                    Simulate QR Scan
-                  </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+          <CardHeader>
+            <CardTitle>Select Restaurant</CardTitle>
+            <p className="text-muted-foreground">Search and choose where you'd like to dine</p>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="relative">
@@ -210,7 +184,7 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
                 <div className="text-sm text-muted-foreground">
                   {filteredVenues.length} {filteredVenues.length === 1 ? 'restaurant' : 'restaurants'} found
                 </div>
-                <div className="max-h-96 overflow-y-auto space-y-2">
+                <div className="max-h-[400px] overflow-y-auto space-y-2">
                   {filteredVenues.map((venue) => (
                     <Card 
                       key={venue.id}

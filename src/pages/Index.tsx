@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { TabNavigation, QRSimulateButton } from "@/components/TabNavigation";
+import { TabNavigation } from "@/components/TabNavigation";
 import { FoodReadyFlow } from "@/components/FoodReadyFlow";
 import { TableReadyFlow } from "@/components/TableReadyFlow";
 import { ProfileSection } from "@/components/ProfileSection";
@@ -13,7 +13,6 @@ import type { User, Session } from "@supabase/supabase-js";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
-  const [showQRScan, setShowQRScan] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
@@ -86,18 +85,10 @@ const Index = () => {
     setActiveWaitlist(waitlist || []);
   };
 
-  const handleQRPress = () => {
-    setShowQRScan(true);
-    setActiveTab("food-ready");
-  };
-
-  if (showQRScan || activeTab === "food-ready") {
+  if (activeTab === "food-ready") {
     return (
       <div className="min-h-screen bg-background">
-        <FoodReadyFlow onBack={() => {
-          setShowQRScan(false);
-          setActiveTab("home");
-        }} />
+        <FoodReadyFlow onBack={() => setActiveTab("home")} />
         <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
     );
@@ -123,8 +114,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <QRSimulateButton onPress={handleQRPress} />
-      
       {/* Hero Section */}
       <div className="relative overflow-hidden bg-gradient-hero px-6 py-12 text-center text-white">
         <div className="relative z-10">

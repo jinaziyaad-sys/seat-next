@@ -207,7 +207,7 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
                 <div className="text-sm text-muted-foreground">
                   {filteredVenues.length} {filteredVenues.length === 1 ? 'restaurant' : 'restaurants'} found
                 </div>
-                <div className="max-h-96 overflow-y-auto space-y-2">
+                <div className="max-h-[400px] overflow-y-auto space-y-2">
                   {filteredVenues.map((venue) => (
                     <Card 
                       key={venue.id}

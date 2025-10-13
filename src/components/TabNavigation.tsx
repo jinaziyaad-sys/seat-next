@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { UtensilsCrossed, Users, User, QrCode } from "lucide-react";
+import { UtensilsCrossed, Users, User } from "lucide-react";
 
 interface TabNavigationProps {
   activeTab: string;
@@ -47,16 +47,5 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
         })}
       </nav>
     </Card>
-  );
-}
-
-export function QRSimulateButton({ onPress }: { onPress: () => void }) {
-  return (
-    <button
-      onClick={onPress}
-      className="fixed top-6 right-6 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-button transition-all duration-300 hover:scale-105 active:scale-95"
-    >
-      <QrCode size={24} />
-    </button>
   );
 }
