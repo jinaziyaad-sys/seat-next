@@ -1,1 +1,4 @@
 project_id = "cuoqjgahpfymxqrdlzlf"
+
+[functions.create-merchant]
+verify_jwt = false

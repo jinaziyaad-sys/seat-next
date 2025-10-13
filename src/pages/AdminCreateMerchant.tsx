@@ -48,29 +48,22 @@ export default function AdminCreateMerchant() {
     setLoading(true);
 
     try {
-      // Create the auth user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/merchant/auth`,
+      // Call the edge function to create merchant account
+      const { data, error } = await supabase.functions.invoke('create-merchant', {
+        body: {
+          email,
+          password,
+          venueId,
         },
       });
 
-      if (authError) throw authError;
+      if (error) throw error;
 
-      if (authData.user) {
-        // Create the user role entry
-        const { error: roleError } = await supabase
-          .from("user_roles")
-          .insert({
-            user_id: authData.user.id,
-            venue_id: venueId,
-            role: "admin",
-          });
+      if (data?.error) {
+        throw new Error(data.error);
+      }
 
-        if (roleError) throw roleError;
-
+      if (data?.success) {
         toast({
           title: "Success!",
           description: `Merchant account created for ${email}`,
@@ -82,6 +75,7 @@ export default function AdminCreateMerchant() {
         setVenueId("");
       }
     } catch (error: any) {
+      console.error('Error creating merchant:', error);
       toast({
         title: "Error",
         description: error.message || "Failed to create merchant account",
