@@ -60,12 +60,6 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
     (venue.address && venue.address.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const handleQRScan = () => {
-    if (venues.length > 0) {
-      setSelectedVenue(venues[0].name);
-      setStep("order-entry");
-    }
-  };
 
   const handleOrderSubmit = async () => {
     if (!orderNumber.trim() || !selectedVenue) return;
@@ -165,24 +159,10 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
           <h1 className="text-2xl font-bold">Food Ready</h1>
         </div>
 
-        <Card className="shadow-card">
-          <CardContent className="p-8 text-center space-y-6">
-            <div className="text-6xl">📱</div>
-            <h2 className="text-xl font-semibold">Scan QR Code</h2>
-            <p className="text-muted-foreground">Scan the QR code on your table or receipt to track your order</p>
-            
-            <Button 
-              onClick={handleQRScan}
-              className="w-full h-12 text-lg"
-            >
-              Simulate QR Scan
-            </Button>
-          </CardContent>
-        </Card>
 
         <Card className="shadow-card">
           <CardHeader>
-            <CardTitle>Or Select Venue Manually</CardTitle>
+            <CardTitle>Select Restaurant</CardTitle>
             <p className="text-sm text-muted-foreground">Search and select your restaurant</p>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -203,11 +183,12 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
                 {searchQuery ? "No venues found matching your search" : "No venues available"}
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2 mt-4">
                 <div className="text-sm text-muted-foreground">
                   {filteredVenues.length} {filteredVenues.length === 1 ? 'restaurant' : 'restaurants'} found
                 </div>
-                <div className="max-h-[400px] overflow-y-auto space-y-2">
+                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2"
+                     style={{ scrollbarGutter: 'stable' }}>
                   {filteredVenues.map((venue) => (
                     <Card 
                       key={venue.id}

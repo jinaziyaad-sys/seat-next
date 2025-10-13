@@ -56,11 +56,6 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
     (venue.address && venue.address.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const handleQRScan = () => {
-    if (filteredVenues.length > 0) {
-      handleVenueSelect(filteredVenues[0].name);
-    }
-  };
 
   const preferenceOptions = [
     "Indoor seating",
@@ -180,11 +175,12 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
                 {searchQuery ? "No venues found matching your search" : "No venues available"}
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2 mt-4">
                 <div className="text-sm text-muted-foreground">
                   {filteredVenues.length} {filteredVenues.length === 1 ? 'restaurant' : 'restaurants'} found
                 </div>
-                <div className="max-h-[400px] overflow-y-auto space-y-2">
+                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2"
+                     style={{ scrollbarGutter: 'stable' }}>
                   {filteredVenues.map((venue) => (
                     <Card 
                       key={venue.id}
