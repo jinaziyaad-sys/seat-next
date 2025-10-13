@@ -3,8 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Users, Clock, CheckCircle, Search, QrCode } from "lucide-react";
+import { ArrowLeft, Users, Clock, CheckCircle, Search, QrCode, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { QRCodeSVG } from "qrcode.react";
@@ -207,29 +206,41 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
                 {searchQuery ? "No venues found matching your search" : "No venues available"}
               </div>
             ) : (
-              <Select onValueChange={handleVenueSelect}>
-                <SelectTrigger className="w-full h-12">
-                  <SelectValue placeholder="Select a restaurant" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">
+                  {filteredVenues.length} {filteredVenues.length === 1 ? 'restaurant' : 'restaurants'} found
+                </div>
+                <div className="max-h-96 overflow-y-auto space-y-2">
                   {filteredVenues.map((venue) => (
-                    <SelectItem key={venue.id} value={venue.name}>
-                      <div className="flex justify-between items-center w-full gap-4">
-                        <div className="flex flex-col items-start flex-1">
-                          <span className="font-medium">{venue.name}</span>
-                          {venue.address && (
-                            <span className="text-xs text-muted-foreground">{venue.address}</span>
-                          )}
-                          <span className="text-xs text-muted-foreground">Wait: {venue.waitTime}</span>
+                    <Card 
+                      key={venue.id}
+                      className="cursor-pointer hover:bg-accent transition-colors"
+                      onClick={() => handleVenueSelect(venue.name)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-center gap-4">
+                          <div className="flex flex-col gap-1 flex-1">
+                            <span className="font-medium">{venue.name}</span>
+                            {venue.address && (
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <MapPin size={14} />
+                                <span>{venue.address}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Clock size={14} />
+                              <span>Wait: {venue.waitTime}</span>
+                            </div>
+                          </div>
+                          <Badge variant={venue.tables && venue.tables > 0 ? "secondary" : "default"} className="shrink-0">
+                            {venue.tables || 0} ahead
+                          </Badge>
                         </div>
-                        <Badge variant={venue.tables && venue.tables > 0 ? "secondary" : "default"} className="shrink-0">
-                          {venue.tables || 0} ahead
-                        </Badge>
-                      </div>
-                    </SelectItem>
+                      </CardContent>
+                    </Card>
                   ))}
-                </SelectContent>
-              </Select>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

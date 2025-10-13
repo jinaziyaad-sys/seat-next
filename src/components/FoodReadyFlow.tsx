@@ -4,8 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Clock, CheckCircle, Package, Truck, Search } from "lucide-react";
+import { ArrowLeft, Clock, CheckCircle, Package, Truck, Search, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -204,26 +203,35 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
                 {searchQuery ? "No venues found matching your search" : "No venues available"}
               </div>
             ) : (
-              <Select onValueChange={(value) => {
-                setSelectedVenue(value);
-                setStep("order-entry");
-              }}>
-                <SelectTrigger className="w-full h-12">
-                  <SelectValue placeholder="Select a restaurant" />
-                </SelectTrigger>
-                <SelectContent className="bg-background z-50">
+              <div className="space-y-2">
+                <div className="text-sm text-muted-foreground">
+                  {filteredVenues.length} {filteredVenues.length === 1 ? 'restaurant' : 'restaurants'} found
+                </div>
+                <div className="max-h-96 overflow-y-auto space-y-2">
                   {filteredVenues.map((venue) => (
-                    <SelectItem key={venue.id} value={venue.name}>
-                      <div className="flex flex-col items-start">
-                        <span className="font-medium">{venue.name}</span>
-                        {venue.address && (
-                          <span className="text-xs text-muted-foreground">{venue.address}</span>
-                        )}
-                      </div>
-                    </SelectItem>
+                    <Card 
+                      key={venue.id}
+                      className="cursor-pointer hover:bg-accent transition-colors"
+                      onClick={() => {
+                        setSelectedVenue(venue.name);
+                        setStep("order-entry");
+                      }}
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex flex-col gap-1">
+                          <span className="font-medium">{venue.name}</span>
+                          {venue.address && (
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <MapPin size={14} />
+                              <span>{venue.address}</span>
+                            </div>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
                   ))}
-                </SelectContent>
-              </Select>
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>
