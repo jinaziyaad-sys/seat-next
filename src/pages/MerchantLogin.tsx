@@ -1,27 +1,54 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ChefHat, Users } from "lucide-react";
+import { ChefHat, Users, Search } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+
+interface Venue {
+  id: string;
+  name: string;
+  address: string | null;
+  phone: string | null;
+}
 
 const MerchantLogin = () => {
-  const [venue, setVenue] = useState("");
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
   const [role, setRole] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
 
-  const mockVenues = [
-    "Joe's Burger Bar",
-    "Mama's Pizza Kitchen", 
-    "The Coffee Spot",
-    "Sushi Express"
-  ];
+  useEffect(() => {
+    const fetchVenues = async () => {
+      setIsLoading(true);
+      const { data, error } = await supabase
+        .from("venues")
+        .select("*")
+        .order("name");
+
+      if (!error && data) {
+        setVenues(data);
+      }
+      setIsLoading(false);
+    };
+
+    fetchVenues();
+  }, []);
+
+  const filteredVenues = venues.filter(venue =>
+    venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (venue.address && venue.address.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
 
   const handleLogin = () => {
-    if (venue && role) {
-      localStorage.setItem("merchantVenue", venue);
+    if (selectedVenue && role) {
+      localStorage.setItem("merchantVenueId", selectedVenue.id);
+      localStorage.setItem("merchantVenueName", selectedVenue.name);
       localStorage.setItem("merchantRole", role);
       navigate("/merchant/dashboard");
     }
@@ -41,16 +68,52 @@ const MerchantLogin = () => {
         <CardContent className="space-y-6">
           <div className="space-y-2">
             <Label htmlFor="venue">Select Venue</Label>
-            <Select value={venue} onValueChange={setVenue}>
-              <SelectTrigger>
-                <SelectValue placeholder="Choose your venue" />
-              </SelectTrigger>
-              <SelectContent>
-                {mockVenues.map((v) => (
-                  <SelectItem key={v} value={v}>{v}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="relative">
+              <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search restaurants..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            {isLoading ? (
+              <div className="p-4 text-center text-sm text-muted-foreground">
+                Loading venues...
+              </div>
+            ) : (
+              <Select 
+                value={selectedVenue?.id || ""} 
+                onValueChange={(value) => {
+                  const venue = venues.find(v => v.id === value);
+                  setSelectedVenue(venue || null);
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose your venue" />
+                </SelectTrigger>
+                <SelectContent className="bg-background">
+                  {filteredVenues.length === 0 ? (
+                    <div className="p-2 text-center text-sm text-muted-foreground">
+                      No venues found
+                    </div>
+                  ) : (
+                    filteredVenues.map((venue) => (
+                      <SelectItem key={venue.id} value={venue.id}>
+                        <div className="flex flex-col items-start">
+                          <span className="font-medium">{venue.name}</span>
+                          {venue.address && (
+                            <span className="text-xs text-muted-foreground">
+                              {venue.address}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -69,7 +132,7 @@ const MerchantLogin = () => {
           <Button 
             onClick={handleLogin} 
             className="w-full" 
-            disabled={!venue || !role}
+            disabled={!selectedVenue || !role}
           >
             Login to Dashboard
           </Button>

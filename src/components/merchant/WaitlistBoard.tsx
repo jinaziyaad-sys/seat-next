@@ -22,40 +22,21 @@ interface WaitlistEntry {
   venue_id: string;
 }
 
-export const WaitlistBoard = ({ venue }: { venue: string }) => {
+export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newPartySize, setNewPartySize] = useState("2");
   const [newPreferences, setNewPreferences] = useState("");
-  const [venueId, setVenueId] = useState<string>("");
   const { toast } = useToast();
 
   // Fetch waitlist and set up real-time subscription
   useEffect(() => {
-    const fetchVenueAndWaitlist = async () => {
-      // First get the venue ID
-      const { data: venues, error: venueError } = await supabase
-        .from("venues")
-        .select("id")
-        .eq("name", venue)
-        .single();
-
-      if (venueError || !venues) {
-        toast({
-          title: "Error",
-          description: "Could not find venue",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      setVenueId(venues.id);
-
+    const fetchWaitlist = async () => {
       // Fetch waitlist entries for this venue
       const { data: waitlistData, error: waitlistError } = await supabase
         .from("waitlist_entries")
         .select("*")
-        .eq("venue_id", venues.id)
+        .eq("venue_id", venueId)
         .neq("status", "seated")
         .neq("status", "cancelled")
         .order("created_at", { ascending: true });
@@ -72,7 +53,7 @@ export const WaitlistBoard = ({ venue }: { venue: string }) => {
       setWaitlist(waitlistData || []);
     };
 
-    fetchVenueAndWaitlist();
+    fetchWaitlist();
 
     // Set up real-time subscription
     const channel = supabase
@@ -84,14 +65,14 @@ export const WaitlistBoard = ({ venue }: { venue: string }) => {
       }, (payload) => {
         console.log('Waitlist change:', payload);
         // Refresh waitlist when any entry changes
-        fetchVenueAndWaitlist();
+        fetchWaitlist();
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [venue, toast]);
+  }, [venueId, toast]);
 
   const updateEntryStatus = async (entryId: string, newStatus: WaitlistEntry["status"]) => {
     const { error } = await supabase

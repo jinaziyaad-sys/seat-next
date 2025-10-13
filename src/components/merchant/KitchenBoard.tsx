@@ -23,39 +23,20 @@ interface Order {
   venue_id: string;
 }
 
-export const KitchenBoard = ({ venue }: { venue: string }) => {
+export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [newOrderNumber, setNewOrderNumber] = useState("");
   const [newOrderItems, setNewOrderItems] = useState("");
-  const [venueId, setVenueId] = useState<string>("");
   const { toast } = useToast();
 
   // Fetch orders and set up real-time subscription
   useEffect(() => {
-    const fetchVenueAndOrders = async () => {
-      // First get the venue ID
-      const { data: venues, error: venueError } = await supabase
-        .from("venues")
-        .select("id")
-        .eq("name", venue)
-        .single();
-
-      if (venueError || !venues) {
-        toast({
-          title: "Error",
-          description: "Could not find venue",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      setVenueId(venues.id);
-
+    const fetchOrders = async () => {
       // Fetch orders for this venue
       const { data: ordersData, error: ordersError } = await supabase
         .from("orders")
         .select("*")
-        .eq("venue_id", venues.id)
+        .eq("venue_id", venueId)
         .neq("status", "collected")
         .order("created_at", { ascending: true });
 
@@ -76,7 +57,7 @@ export const KitchenBoard = ({ venue }: { venue: string }) => {
       }
     };
 
-    fetchVenueAndOrders();
+    fetchOrders();
 
     // Set up real-time subscription
     const channel = supabase
@@ -88,14 +69,14 @@ export const KitchenBoard = ({ venue }: { venue: string }) => {
       }, (payload) => {
         console.log('Order change:', payload);
         // Refresh orders when any order changes
-        fetchVenueAndOrders();
+        fetchOrders();
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [venue, toast]);
+  }, [venueId, toast]);
 
   const updateOrderStatus = async (orderId: string, newStatus: Order["status"]) => {
     const { error } = await supabase
