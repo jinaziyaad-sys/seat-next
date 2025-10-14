@@ -150,13 +150,23 @@ const MerchantLogin = () => {
             </div>
           </div>
 
-          <Button 
-            variant="outline" 
-            onClick={() => navigate("/")}
-            className="w-full"
-          >
-            Back to Patron App
-          </Button>
+          <div className="space-y-2">
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/merchant/auth")}
+              className="w-full"
+            >
+              Staff Login (Secure)
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              onClick={() => navigate("/")}
+              className="w-full"
+            >
+              Back to Patron App
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
