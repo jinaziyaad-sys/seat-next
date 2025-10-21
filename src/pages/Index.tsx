@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon } from "lucide-react";
+import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Zap } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
@@ -127,17 +127,19 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-hero px-6 py-12 text-white">
+      <div className="relative overflow-hidden bg-gradient-to-br from-electric-lime via-primary to-coral px-6 py-16 text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
+        
         <div className="absolute top-4 right-4 z-20">
           {user ? (
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full bg-white/10 hover:bg-white/20 text-white"
+              className="rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm transition-all"
               onClick={() => setActiveTab("profile")}
             >
-              <Avatar className="h-8 w-8">
-                <AvatarFallback className="bg-primary text-primary-foreground">
+              <Avatar className="h-9 w-9">
+                <AvatarFallback className="bg-white/20 text-white font-semibold">
                   {user.email?.charAt(0).toUpperCase() || <UserIcon size={18} />}
                 </AvatarFallback>
               </Avatar>
@@ -146,20 +148,33 @@ const Index = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full bg-white/10 hover:bg-white/20 text-white"
+              className="rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm transition-all"
               onClick={() => navigate("/auth")}
             >
-              <LogIn size={20} />
+              <LogIn size={22} />
             </Button>
           )}
         </div>
-        <div className="relative z-10">
-          <h1 className="mb-4 text-4xl font-bold">ReadyUp</h1>
-          <p className="text-lg opacity-90">
+        
+        <div className="relative z-10 flex flex-col items-center text-center">
+          {/* Logo Icon */}
+          <div className="mb-6 relative">
+            <div className="absolute inset-0 bg-white/20 rounded-full blur-2xl animate-pulse" />
+            <div className="relative bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-md rounded-full p-6 shadow-glow">
+              <Zap size={48} className="text-white" strokeWidth={2.5} />
+            </div>
+          </div>
+          
+          {/* Title */}
+          <h1 className="mb-3 text-5xl font-bold tracking-tight">
+            ReadyUp
+          </h1>
+          
+          {/* Subtitle */}
+          <p className="text-lg opacity-95 max-w-md font-light">
             Track your food orders and table reservations in real-time
           </p>
         </div>
-        <div className="absolute inset-0 bg-charcoal/20"></div>
       </div>
 
       {/* Active Tracking Section */}

@@ -83,8 +83,8 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
   };
 
   const handleSignOut = async () => {
+    onBack(); // Return to home view first
     await supabase.auth.signOut();
-    navigate("/");
   };
 
   if (loading) {
