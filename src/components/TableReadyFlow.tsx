@@ -194,11 +194,36 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     }
   };
 
-  const handleConfirmSeat = () => {
-    setWaitlistEntry(prev => prev ? { ...prev, status: "seated" } : null);
-    setTimeout(() => {
-      onBack();
-    }, 2000);
+  const handleCancelBooking = async () => {
+    if (!waitlistEntry) return;
+
+    const { error } = await supabase
+      .from("waitlist_entries")
+      .update({ status: "cancelled" })
+      .eq("id", waitlistEntry.id);
+
+    if (!error) {
+      setWaitlistEntry(prev => prev ? { ...prev, status: "cancelled" } : null);
+      setTimeout(() => {
+        onBack();
+      }, 1500);
+    }
+  };
+
+  const handleConfirmSeat = async () => {
+    if (!waitlistEntry) return;
+
+    const { error } = await supabase
+      .from("waitlist_entries")
+      .update({ status: "seated" })
+      .eq("id", waitlistEntry.id);
+
+    if (!error) {
+      setWaitlistEntry(prev => prev ? { ...prev, status: "seated" } : null);
+      setTimeout(() => {
+        onBack();
+      }, 2000);
+    }
   };
 
   if (step === "venue-select") {
@@ -458,6 +483,18 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 Need 5 More Minutes
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-card">
+          <CardContent className="p-4">
+            <Button 
+              variant="outline" 
+              className="w-full h-12 text-destructive hover:bg-destructive/10"
+              onClick={handleCancelBooking}
+            >
+              Cancel Booking
+            </Button>
           </CardContent>
         </Card>
       </div>
