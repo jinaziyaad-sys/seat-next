@@ -6,9 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Building2 } from "lucide-react";
+import { Code2 } from "lucide-react";
 
-export default function MerchantAuth() {
+export default function DevAuth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -21,42 +21,22 @@ export default function MerchantAuth() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
-        // Check user role
+        // Check if user has super_admin role
         const { data: roles } = await supabase
           .from("user_roles")
-          .select("role, venue_id")
+          .select("role")
           .eq("user_id", session.user.id)
+          .eq("role", "super_admin")
           .maybeSingle();
 
-        if (!roles) {
-          // User is a patron - deny access
-          toast({
-            title: "Access Denied",
-            description: "You don't have merchant access. This is for restaurant staff only.",
-            variant: "destructive",
-          });
-          await supabase.auth.signOut();
-          return;
-        }
-
-        // Redirect based on role
-        if (roles.role === "super_admin") {
+        if (roles) {
           navigate("/dev/dashboard");
-        } else if (roles.role === "staff" || roles.role === "admin") {
-          navigate("/merchant/dashboard");
-        } else {
-          toast({
-            title: "Access Denied",
-            description: "Invalid role. Please contact an administrator.",
-            variant: "destructive",
-          });
-          await supabase.auth.signOut();
         }
       }
     };
 
     checkAuth();
-  }, [navigate, toast]);
+  }, [navigate]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,17 +58,18 @@ export default function MerchantAuth() {
     }
 
     if (data.session) {
-      // Check user role
+      // Check if user has super_admin role
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", data.session.user.id)
+        .eq("role", "super_admin")
         .maybeSingle();
 
       if (!roles) {
         toast({
           title: "Access Denied",
-          description: "You don't have merchant access. This is for restaurant staff only.",
+          description: "Only platform administrators can access this area.",
           variant: "destructive",
         });
         await supabase.auth.signOut();
@@ -96,20 +77,7 @@ export default function MerchantAuth() {
         return;
       }
 
-      // Redirect based on role
-      if (roles.role === "super_admin") {
-        navigate("/dev/dashboard");
-      } else if (roles.role === "staff" || roles.role === "admin") {
-        navigate("/merchant/dashboard");
-      } else {
-        toast({
-          title: "Access Denied",
-          description: "Invalid role. Please contact an administrator.",
-          variant: "destructive",
-        });
-        await supabase.auth.signOut();
-        setLoading(false);
-      }
+      navigate("/dev/dashboard");
     }
   };
 
@@ -118,10 +86,10 @@ export default function MerchantAuth() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="mx-auto w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-4">
-            <Building2 className="w-6 h-6 text-primary-foreground" />
+            <Code2 className="w-6 h-6 text-primary-foreground" />
           </div>
-          <CardTitle>Merchant Portal</CardTitle>
-          <CardDescription>Sign in to manage your venue</CardDescription>
+          <CardTitle>Developer Portal</CardTitle>
+          <CardDescription>Platform administrator access</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSignIn} className="space-y-4">
@@ -149,7 +117,7 @@ export default function MerchantAuth() {
               {loading ? "Signing in..." : "Sign In"}
             </Button>
             <p className="text-sm text-muted-foreground text-center mt-4">
-              Need access? Contact your venue administrator.
+              Restricted to platform administrators only
             </p>
           </form>
         </CardContent>

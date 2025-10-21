@@ -1,45 +1,30 @@
-import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { useMerchantAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
 import { KitchenBoard } from "@/components/merchant/KitchenBoard";
 import { WaitlistBoard } from "@/components/merchant/WaitlistBoard";
 import { MerchantSettings } from "@/components/merchant/MerchantSettings";
 import { StaffManagement } from "@/components/merchant/StaffManagement";
 import { MerchantReports } from "@/components/merchant/MerchantReports";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChefHat, Users, Settings, BarChart3, LogOut } from "lucide-react";
 
 const MerchantDashboard = () => {
-  const [venueId, setVenueId] = useState("");
-  const [venueName, setVenueName] = useState("");
-  const [role, setRole] = useState("");
+  const { userRole, loading } = useMerchantAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    const storedVenueId = localStorage.getItem("merchantVenueId");
-    const storedVenueName = localStorage.getItem("merchantVenueName");
-    const storedRole = localStorage.getItem("merchantRole");
-    
-    if (!storedVenueId || !storedVenueName || !storedRole) {
-      navigate("/merchant");
-      return;
-    }
-    
-    setVenueId(storedVenueId);
-    setVenueName(storedVenueName);
-    setRole(storedRole);
-  }, [navigate]);
-
-  const handleLogout = () => {
-    localStorage.removeItem("merchantVenueId");
-    localStorage.removeItem("merchantVenueName");
-    localStorage.removeItem("merchantRole");
-    navigate("/merchant");
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/merchant/auth");
   };
 
-  if (!venueId || !venueName || !role) {
-    return null;
+  if (loading || !userRole) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
   }
 
   return (
@@ -49,9 +34,9 @@ const MerchantDashboard = () => {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-primary">{venueName}</h1>
+              <h1 className="text-2xl font-bold text-primary">{userRole.venue_name}</h1>
               <p className="text-sm text-muted-foreground capitalize">
-                {role} Dashboard
+                {userRole.role} Dashboard
               </p>
             </div>
             <Button variant="outline" onClick={handleLogout}>
@@ -65,7 +50,7 @@ const MerchantDashboard = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto p-6">
         <Tabs defaultValue="kitchen" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-5">
+          <TabsList className={userRole.role === "admin" ? "grid w-full grid-cols-5" : "grid w-full grid-cols-2"}>
             <TabsTrigger value="kitchen" className="flex items-center gap-2">
               <ChefHat size={16} />
               Kitchen Orders
@@ -74,7 +59,7 @@ const MerchantDashboard = () => {
               <Users size={16} />
               Waitlist
             </TabsTrigger>
-            {role === "admin" && (
+            {userRole.role === "admin" && (
               <>
                 <TabsTrigger value="staff" className="flex items-center gap-2">
                   <Users size={16} />
@@ -93,25 +78,25 @@ const MerchantDashboard = () => {
           </TabsList>
 
           <TabsContent value="kitchen">
-            <KitchenBoard venueId={venueId} />
+            <KitchenBoard venueId={userRole.venue_id!} />
           </TabsContent>
 
           <TabsContent value="waitlist">
-            <WaitlistBoard venueId={venueId} />
+            <WaitlistBoard venueId={userRole.venue_id!} />
           </TabsContent>
 
-          {role === "admin" && (
+          {userRole.role === "admin" && (
             <>
               <TabsContent value="staff">
-                <StaffManagement venueId={venueId} />
+                <StaffManagement venueId={userRole.venue_id!} />
               </TabsContent>
 
               <TabsContent value="settings">
-                <MerchantSettings venue={venueName} venueId={venueId} />
+                <MerchantSettings venue={userRole.venue_name!} venueId={userRole.venue_id!} />
               </TabsContent>
 
               <TabsContent value="reports">
-                <MerchantReports venue={venueName} />
+                <MerchantReports venue={userRole.venue_name!} />
               </TabsContent>
             </>
           )}

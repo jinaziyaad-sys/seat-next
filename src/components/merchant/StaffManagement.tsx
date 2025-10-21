@@ -31,7 +31,7 @@ interface StaffMember {
 export const StaffManagement = ({ venueId }: { venueId: string }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [role, setRole] = useState<"admin" | "moderator">("moderator");
+  const [role, setRole] = useState<"admin" | "staff">("staff");
   const [loading, setLoading] = useState(false);
   const [staffMembers, setStaffMembers] = useState<StaffMember[]>([]);
   const [fetchingStaff, setFetchingStaff] = useState(true);
@@ -115,7 +115,7 @@ export const StaffManagement = ({ venueId }: { venueId: string }) => {
         // Reset form
         setEmail("");
         setPassword("");
-        setRole("moderator");
+        setRole("staff");
         
         // Refresh staff list
         fetchStaffMembers();
@@ -160,7 +160,7 @@ export const StaffManagement = ({ venueId }: { venueId: string }) => {
     switch (role) {
       case "admin":
         return "default";
-      case "moderator":
+      case "staff":
         return "secondary";
       default:
         return "outline";
@@ -215,13 +215,13 @@ export const StaffManagement = ({ venueId }: { venueId: string }) => {
 
               <div className="space-y-2">
                 <Label htmlFor="role">Role</Label>
-                <Select value={role} onValueChange={(value: "admin" | "moderator") => setRole(value)}>
+                <Select value={role} onValueChange={(value: "admin" | "staff") => setRole(value)}>
                   <SelectTrigger id="role">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="bg-background">
                     <SelectItem value="admin">Admin - Full access</SelectItem>
-                    <SelectItem value="moderator">Staff - Limited access</SelectItem>
+                    <SelectItem value="staff">Staff - Limited access</SelectItem>
                   </SelectContent>
                 </Select>
                 <p className="text-xs text-muted-foreground">

@@ -7,8 +7,9 @@ import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import MerchantAuth from "./pages/MerchantAuth";
-import MerchantLogin from "./pages/MerchantLogin";
 import MerchantDashboard from "./pages/MerchantDashboard";
+import DevAuth from "./pages/DevAuth";
+import DevDashboard from "./pages/DevDashboard";
 import AdminCreateMerchant from "./pages/AdminCreateMerchant";
 import WaitlistJoin from "./pages/WaitlistJoin";
 
@@ -21,13 +22,22 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
+          {/* Patron App Routes */}
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/waitlist/:venueId" element={<WaitlistJoin />} />
-          <Route path="/admin/create-merchant" element={<AdminCreateMerchant />} />
-          <Route path="/merchant" element={<MerchantLogin />} />
+          
+          {/* Merchant App Routes */}
           <Route path="/merchant/auth" element={<MerchantAuth />} />
           <Route path="/merchant/dashboard" element={<MerchantDashboard />} />
+          
+          {/* Developer App Routes */}
+          <Route path="/dev/auth" element={<DevAuth />} />
+          <Route path="/dev/dashboard" element={<DevDashboard />} />
+          
+          {/* Legacy route - redirect to dev dashboard */}
+          <Route path="/admin/create-merchant" element={<AdminCreateMerchant />} />
+          
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

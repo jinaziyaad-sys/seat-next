@@ -107,21 +107,21 @@ export type Database = {
           id: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
-          venue_id: string
+          venue_id: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           role: Database["public"]["Enums"]["app_role"]
           user_id: string
-          venue_id: string
+          venue_id?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
           user_id?: string
-          venue_id?: string
+          venue_id?: string | null
         }
         Relationships: [
           {
@@ -228,6 +228,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      get_user_venue: {
+        Args: { _user_id: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -241,7 +249,7 @@ export type Database = {
       }
     }
     Enums: {
-      app_role: "admin" | "staff" | "super_admin"
+      app_role: "admin" | "staff" | "super_admin" | "patron"
       order_status: "placed" | "in_prep" | "ready" | "collected" | "no_show"
       waitlist_status: "waiting" | "ready" | "seated" | "cancelled" | "no_show"
     }
@@ -371,7 +379,7 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "staff", "super_admin"],
+      app_role: ["admin", "staff", "super_admin", "patron"],
       order_status: ["placed", "in_prep", "ready", "collected", "no_show"],
       waitlist_status: ["waiting", "ready", "seated", "cancelled", "no_show"],
     },
