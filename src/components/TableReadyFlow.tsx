@@ -18,14 +18,26 @@ interface WaitlistEntry {
 }
 
 export function TableReadyFlow({ onBack }: { onBack: () => void }) {
-  const [step, setStep] = useState<"venue-select" | "party-details" | "waiting" | "ready">("venue-select");
+  const [step, setStep] = useState<"action-select" | "venue-select" | "party-name-entry" | "party-details" | "waiting" | "ready">("action-select");
   const [selectedVenue, setSelectedVenue] = useState("");
+  const [partyName, setPartyName] = useState("");
   const [partySize, setPartySize] = useState(2);
   const [preferences, setPreferences] = useState<string[]>([]);
   const [waitlistEntry, setWaitlistEntry] = useState<WaitlistEntry | null>(null);
   const [venues, setVenues] = useState<{id: string; name: string; address?: string; waitTime?: string; tables?: number}[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isTracking, setIsTracking] = useState(false);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Get authenticated user
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id || null);
+    };
+    getUser();
+  }, []);
 
   // Fetch venues on component mount
   useEffect(() => {
@@ -67,7 +79,80 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
 
   const handleVenueSelect = (venue: string) => {
     setSelectedVenue(venue);
-    setStep("party-details");
+    if (isTracking) {
+      setStep("party-name-entry");
+    } else {
+      setStep("party-details");
+    }
+  };
+
+  const handlePartyNameSubmit = async () => {
+    if (!partyName.trim() || !selectedVenue) return;
+
+    const venue = venues.find(v => v.name === selectedVenue);
+    if (!venue) return;
+
+    // Check if party exists in waitlist
+    const { data: existingEntry, error } = await supabase
+      .from("waitlist_entries")
+      .select("*")
+      .eq("venue_id", venue.id)
+      .ilike("customer_name", partyName.trim())
+      .in("status", ["waiting", "ready"])
+      .maybeSingle();
+
+    if (error && error.code !== 'PGRST116') {
+      return;
+    }
+
+    if (existingEntry) {
+      // Party found, update with user_id if logged in and not already set
+      if (userId && !existingEntry.user_id) {
+        await supabase
+          .from("waitlist_entries")
+          .update({ user_id: userId })
+          .eq("id", existingEntry.id);
+      }
+
+      // Start tracking
+      const entry: WaitlistEntry = {
+        id: existingEntry.id,
+        venue: selectedVenue,
+        party_size: existingEntry.party_size,
+        position: existingEntry.position || 3,
+        eta: existingEntry.eta,
+        preferences: existingEntry.preferences || [],
+        status: existingEntry.status
+      };
+      setWaitlistEntry(entry);
+      setStep(existingEntry.status === "ready" ? "ready" : "waiting");
+
+      // Set up real-time subscription
+      const channel = supabase
+        .channel(`waitlist-${existingEntry.id}`)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'waitlist_entries',
+          filter: `id=eq.${existingEntry.id}`
+        }, (payload) => {
+          if (payload.new) {
+            setWaitlistEntry(prev => prev ? {
+              ...prev,
+              status: payload.new.status,
+              eta: payload.new.eta,
+              position: payload.new.position
+            } : null);
+            
+            if (payload.new.status === "ready") {
+              setStep("ready");
+            }
+          }
+        })
+        .subscribe();
+
+      return () => supabase.removeChannel(channel);
+    }
   };
 
   const togglePreference = (pref: string) => {
@@ -79,6 +164,8 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
   };
 
   const handleJoinWaitlist = async () => {
+    if (!partyName.trim()) return;
+    
     const venue = venues.find(v => v.name === selectedVenue);
     if (!venue) return;
 
@@ -86,11 +173,12 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
       .from("waitlist_entries")
       .insert({
         venue_id: venue.id,
-        customer_name: "Customer", // Could be enhanced to ask for name
+        customer_name: partyName.trim(),
         party_size: partySize,
         preferences,
         eta: new Date(Date.now() + 18 * 60000).toISOString(),
-        status: "waiting"
+        status: "waiting",
+        user_id: userId
       })
       .select()
       .single();
@@ -142,7 +230,7 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
     }, 2000);
   };
 
-  if (step === "venue-select") {
+  if (step === "action-select") {
     return (
       <div className="space-y-6 p-6">
         <div className="flex items-center gap-4">
@@ -150,6 +238,57 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
             <ArrowLeft size={20} />
           </Button>
           <h1 className="text-2xl font-bold">Table Ready</h1>
+        </div>
+
+        <div className="grid grid-cols-1 gap-4">
+          <Card 
+            className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
+            onClick={() => {
+              setIsTracking(true);
+              setStep("venue-select");
+            }}
+          >
+            <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Search size={28} />
+              </div>
+              <div>
+                <h3 className="font-semibold">Track My Party</h3>
+                <p className="text-sm text-muted-foreground">Check your waitlist status</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card 
+            className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
+            onClick={() => {
+              setIsTracking(false);
+              setStep("venue-select");
+            }}
+          >
+            <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                <Users size={28} />
+              </div>
+              <div>
+                <h3 className="font-semibold">Join Waitlist</h3>
+                <p className="text-sm text-muted-foreground">Add your party to the queue</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "venue-select") {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => setStep("action-select")}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">{isTracking ? "Track My Party" : "Join Waitlist"}</h1>
         </div>
 
         <Card className="shadow-card">
@@ -218,6 +357,42 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
     );
   }
 
+  if (step === "party-name-entry") {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => setStep("venue-select")}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Enter Party Name</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>{selectedVenue}</CardTitle>
+            <p className="text-muted-foreground">Enter the name you used when joining the waitlist</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input
+              placeholder="e.g. Smith, John, Party of 4..."
+              value={partyName}
+              onChange={(e) => setPartyName(e.target.value)}
+              className="text-center text-lg h-12"
+              maxLength={50}
+            />
+            <Button 
+              onClick={handlePartyNameSubmit}
+              disabled={!partyName.trim()}
+              className="w-full h-12"
+            >
+              Track My Party
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (step === "party-details") {
     return (
       <div className="space-y-6 p-6">
@@ -234,6 +409,20 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
             <p className="text-muted-foreground">Tell us about your party</p>
           </CardHeader>
           <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Party Name</label>
+              <Input
+                placeholder="e.g. Smith, John, Party of 4..."
+                value={partyName}
+                onChange={(e) => setPartyName(e.target.value)}
+                className="h-12"
+                maxLength={50}
+              />
+              <p className="text-xs text-muted-foreground">
+                We'll use this name to call your party when your table is ready
+              </p>
+            </div>
+
             <div className="space-y-3">
               <label className="text-sm font-medium">Party Size</label>
               <div className="flex items-center gap-4">
@@ -277,7 +466,11 @@ export function TableReadyFlow({ onBack }: { onBack: () => void }) {
               </div>
             </div>
 
-            <Button onClick={handleJoinWaitlist} className="w-full h-12">
+            <Button 
+              onClick={handleJoinWaitlist} 
+              disabled={!partyName.trim()}
+              className="w-full h-12"
+            >
               Join Waitlist
             </Button>
           </CardContent>
