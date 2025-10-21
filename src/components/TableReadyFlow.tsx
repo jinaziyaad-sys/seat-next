@@ -454,6 +454,18 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             </div>
           </CardContent>
         </Card>
+
+        <Card className="shadow-card">
+          <CardContent className="p-4">
+            <Button 
+              variant="outline" 
+              className="w-full h-12 text-destructive hover:bg-destructive/10"
+              onClick={handleCancelBooking}
+            >
+              Cancel Booking
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -483,18 +495,6 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 Need 5 More Minutes
               </Button>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="shadow-card">
-          <CardContent className="p-4">
-            <Button 
-              variant="outline" 
-              className="w-full h-12 text-destructive hover:bg-destructive/10"
-              onClick={handleCancelBooking}
-            >
-              Cancel Booking
-            </Button>
           </CardContent>
         </Card>
       </div>
