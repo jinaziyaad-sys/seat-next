@@ -105,10 +105,14 @@ const Index = () => {
   if (activeTab === "table-ready") {
     return (
       <div className="min-h-screen bg-background">
-        <TableReadyFlow onBack={() => {
-          setActiveTab("home");
-          fetchActiveTracking(); // Refresh waitlist when returning home
-        }} />
+        <TableReadyFlow 
+          onBack={() => {
+            setActiveTab("home");
+            setSelectedOrder(null);
+            fetchActiveTracking(); // Refresh waitlist when returning home
+          }} 
+          initialEntry={selectedOrder}
+        />
         <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
     );
@@ -178,7 +182,14 @@ const Index = () => {
           ))}
 
           {activeWaitlist.map((entry) => (
-            <Card key={entry.id} className="shadow-card cursor-pointer" onClick={() => setActiveTab("table-ready")}>
+            <Card 
+              key={entry.id} 
+              className="shadow-card cursor-pointer hover:shadow-floating transition-shadow" 
+              onClick={() => {
+                setSelectedOrder(entry);
+                setActiveTab("table-ready");
+              }}
+            >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -190,6 +201,14 @@ const Index = () => {
                       <p className="text-sm text-muted-foreground">
                         Party of {entry.party_size} • Position {entry.position || '—'}
                       </p>
+                      {entry.eta && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                          <Clock size={12} />
+                          <span>
+                            {Math.ceil((new Date(entry.eta).getTime() - new Date().getTime()) / (1000 * 60))} min
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <Badge>Waiting</Badge>
