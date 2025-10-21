@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
-import { TabNavigation } from "@/components/TabNavigation";
 import { FoodReadyFlow } from "@/components/FoodReadyFlow";
 import { TableReadyFlow } from "@/components/TableReadyFlow";
 import { ProfileSection } from "@/components/ProfileSection";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
@@ -97,7 +97,6 @@ const Index = () => {
           }} 
           initialOrder={selectedOrder}
         />
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
     );
   }
@@ -113,7 +112,6 @@ const Index = () => {
           }} 
           initialEntry={selectedOrder}
         />
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
     );
   }
@@ -122,7 +120,6 @@ const Index = () => {
     return (
       <div className="min-h-screen bg-background">
         <ProfileSection onBack={() => setActiveTab("home")} />
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
     );
   }
@@ -130,9 +127,34 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-hero px-6 py-12 text-center text-white">
+      <div className="relative overflow-hidden bg-gradient-hero px-6 py-12 text-white">
+        <div className="absolute top-4 right-4 z-20">
+          {user ? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full bg-white/10 hover:bg-white/20 text-white"
+              onClick={() => setActiveTab("profile")}
+            >
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-primary text-primary-foreground">
+                  {user.email?.charAt(0).toUpperCase() || <UserIcon size={18} />}
+                </AvatarFallback>
+              </Avatar>
+            </Button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="rounded-full bg-white/10 hover:bg-white/20 text-white"
+              onClick={() => navigate("/auth")}
+            >
+              <LogIn size={20} />
+            </Button>
+          )}
+        </div>
         <div className="relative z-10">
-          <h1 className="mb-4 text-4xl font-bold">Patron App</h1>
+          <h1 className="mb-4 text-4xl font-bold">ReadyUp</h1>
           <p className="text-lg opacity-90">
             Track your food orders and table reservations in real-time
           </p>
@@ -220,7 +242,7 @@ const Index = () => {
       )}
 
       {/* Quick Actions */}
-      <div className="space-y-6 p-6 pb-24">
+      <div className="space-y-6 p-6">
         {!user && (
           <Card className="shadow-card border-2 border-primary/20">
             <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
@@ -273,8 +295,6 @@ const Index = () => {
         </div>
 
       </div>
-
-      <TabNavigation activeTab="home" onTabChange={setActiveTab} />
     </div>
   );
 };
