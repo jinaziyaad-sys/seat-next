@@ -8,53 +8,53 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Patron App Design System - Modern Restaurant Experience */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 12%;
+    /* ReadyUp Design System - Honey Pot Minimalistic Palette */
+    --background: 0 0% 93%; /* #ededed */
+    --foreground: 197 55% 14%; /* #102937 */
     
-    /* Core Brand Colors */
-    --charcoal: 0 0% 12%;
-    --electric-lime: 76 100% 64%;
-    --coral: 0 79% 70%;
-    --slate: 215 16% 47%;
-    --pure-white: 0 0% 100%;
+    /* Core Brand Colors - Honey Pot Palette */
+    --charcoal: 197 55% 14%; /* #102937 */
+    --electric-lime: 186 65% 20%; /* #124d54 - Teal */
+    --coral: 14 93% 64%; /* #f9744b - Coral Orange */
+    --slate: 184 77% 15%; /* #094044 - Dark Teal */
+    --pure-white: 0 0% 93%; /* #ededed */
     
     /* Semantic Tokens */
-    --primary: 76 100% 64%; /* Electric Lime */
-    --primary-foreground: 0 0% 12%; /* Charcoal */
-    --primary-muted: 76 50% 85%;
+    --primary: 186 65% 20%; /* Teal #124d54 */
+    --primary-foreground: 0 0% 93%; /* Light */
+    --primary-muted: 186 30% 40%;
     
-    --secondary: 0 0% 95%;
-    --secondary-foreground: 0 0% 12%;
+    --secondary: 33 26% 85%; /* Beige #e1d9cf */
+    --secondary-foreground: 197 55% 14%; /* Dark Teal */
     
-    --accent: 0 79% 70%; /* Coral */
+    --accent: 14 93% 64%; /* Coral #f9744b */
     --accent-foreground: 0 0% 100%;
     
-    --muted: 215 16% 95%;
-    --muted-foreground: 215 16% 47%; /* Slate */
+    --muted: 33 26% 85%; /* Beige */
+    --muted-foreground: 197 55% 14%; /* Dark Teal */
     
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 12%;
+    --card-foreground: 197 55% 14%;
     
-    --border: 215 16% 90%;
-    --input: 215 16% 95%;
-    --ring: 76 100% 64%;
+    --border: 33 26% 80%;
+    --input: 33 26% 90%;
+    --ring: 186 65% 20%;
     
-    --destructive: 0 79% 70%; /* Coral for warnings */
+    --destructive: 13 72% 51%; /* Darker Coral #d84f2a */
     --destructive-foreground: 0 0% 100%;
     
     --success: 142 71% 45%;
-    --warning: 38 92% 50%;
+    --warning: 14 93% 64%;
     
-    /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(var(--electric-lime)), hsl(76 80% 75%));
-    --gradient-hero: linear-gradient(135deg, hsl(var(--charcoal)), hsl(0 0% 20%));
-    --gradient-card: linear-gradient(180deg, hsl(var(--pure-white)), hsl(215 16% 98%));
+    /* Gradients - Honey Pot Inspired */
+    --gradient-primary: linear-gradient(135deg, hsl(186 65% 20%), hsl(14 93% 64%));
+    --gradient-hero: linear-gradient(135deg, hsl(197 55% 14%), hsl(186 65% 20%), hsl(14 93% 64%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(33 26% 95%));
     
-    /* Shadows */
-    --shadow-card: 0 4px 20px -8px hsl(var(--charcoal) / 0.15);
-    --shadow-button: 0 2px 8px -2px hsl(var(--electric-lime) / 0.4);
-    --shadow-floating: 0 8px 32px -8px hsl(var(--charcoal) / 0.2);
+    /* Shadows - Teal and Coral */
+    --shadow-card: 0 4px 20px -8px hsl(197 55% 14% / 0.2);
+    --shadow-button: 0 2px 8px -2px hsl(14 93% 64% / 0.5);
+    --shadow-floating: 0 8px 32px -8px hsl(197 55% 14% / 0.25);
     
     /* Animation */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -80,41 +80,41 @@ All colors MUST be HSL.
   }
 
   .dark {
-    /* Dark Mode - Restaurant App */
-    --background: 0 0% 12%;
-    --foreground: 0 0% 98%;
+    /* Dark Mode - Honey Pot Dark */
+    --background: 199 62% 9%; /* #091d26 - Very Dark Teal */
+    --foreground: 0 0% 93%;
     
-    --charcoal: 0 0% 8%;
-    --electric-lime: 76 100% 64%;
-    --coral: 0 79% 70%;
-    --slate: 215 16% 65%;
-    --pure-white: 0 0% 100%;
+    --charcoal: 199 62% 9%;
+    --electric-lime: 186 65% 25%; /* Lighter teal for dark mode */
+    --coral: 14 93% 64%;
+    --slate: 184 77% 15%;
+    --pure-white: 0 0% 93%;
     
-    --primary: 76 100% 64%;
-    --primary-foreground: 0 0% 12%;
-    --primary-muted: 76 30% 25%;
+    --primary: 186 65% 25%; /* Lighter Teal */
+    --primary-foreground: 0 0% 93%;
+    --primary-muted: 186 30% 15%;
     
-    --secondary: 0 0% 20%;
-    --secondary-foreground: 0 0% 98%;
+    --secondary: 197 55% 14%; /* Dark Teal */
+    --secondary-foreground: 0 0% 93%;
     
-    --accent: 0 79% 70%;
+    --accent: 14 93% 64%; /* Coral */
     --accent-foreground: 0 0% 100%;
     
-    --muted: 0 0% 18%;
-    --muted-foreground: 215 16% 65%;
+    --muted: 197 55% 14%;
+    --muted-foreground: 32 31% 76%; /* Darker Beige */
     
-    --card: 0 0% 15%;
-    --card-foreground: 0 0% 98%;
+    --card: 197 55% 14%;
+    --card-foreground: 0 0% 93%;
     
-    --border: 0 0% 20%;
-    --input: 0 0% 18%;
-    --ring: 76 100% 64%;
+    --border: 186 65% 20%;
+    --input: 197 55% 14%;
+    --ring: 186 65% 25%;
     
-    --destructive: 0 79% 70%;
+    --destructive: 13 72% 51%;
     --destructive-foreground: 0 0% 100%;
     
     --success: 142 71% 45%;
-    --warning: 38 92% 50%;
+    --warning: 14 93% 64%;
   }
 }
 

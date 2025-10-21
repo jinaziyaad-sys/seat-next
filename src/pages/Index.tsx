@@ -126,20 +126,21 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-electric-lime via-primary to-coral px-6 py-16 text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,255,255,0.1),transparent_50%)]" />
+      {/* Hero Section - Honey Pot Minimalistic Design */}
+      <div className="relative overflow-hidden bg-gradient-hero px-6 py-20 text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(249,116,75,0.15),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,rgba(18,77,84,0.2),transparent_60%)]" />
         
         <div className="absolute top-4 right-4 z-20">
           {user ? (
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm transition-all"
+              className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm transition-all"
               onClick={() => setActiveTab("profile")}
             >
               <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-white/20 text-white font-semibold">
+                <AvatarFallback className="bg-coral/20 text-white font-semibold">
                   {user.email?.charAt(0).toUpperCase() || <UserIcon size={18} />}
                 </AvatarFallback>
               </Avatar>
@@ -148,7 +149,7 @@ const Index = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm transition-all"
+              className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm transition-all"
               onClick={() => navigate("/auth")}
             >
               <LogIn size={22} />
@@ -158,20 +159,20 @@ const Index = () => {
         
         <div className="relative z-10 flex flex-col items-center text-center">
           {/* Logo Icon */}
-          <div className="mb-6 relative">
-            <div className="absolute inset-0 bg-white/20 rounded-full blur-2xl animate-pulse" />
-            <div className="relative bg-gradient-to-br from-white/30 to-white/10 backdrop-blur-md rounded-full p-6 shadow-glow">
-              <Zap size={48} className="text-white" strokeWidth={2.5} />
+          <div className="mb-8 relative">
+            <div className="absolute inset-0 bg-coral/30 rounded-full blur-3xl animate-pulse" />
+            <div className="relative bg-gradient-to-br from-coral/30 to-primary/30 backdrop-blur-xl rounded-full p-8 border border-white/20 shadow-floating">
+              <Zap size={56} className="text-white drop-shadow-lg" strokeWidth={2.5} />
             </div>
           </div>
           
           {/* Title */}
-          <h1 className="mb-3 text-5xl font-bold tracking-tight">
+          <h1 className="mb-4 text-6xl font-bold tracking-tight drop-shadow-lg">
             ReadyUp
           </h1>
           
           {/* Subtitle */}
-          <p className="text-lg opacity-95 max-w-md font-light">
+          <p className="text-lg opacity-90 max-w-md font-light text-white/90">
             Track your food orders and table reservations in real-time
           </p>
         </div>
