@@ -28,7 +28,7 @@ const statusConfig = {
   no_show: { label: "No Show", icon: Truck, color: "bg-destructive text-white", progress: 100 },
 };
 
-export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
+export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; initialOrder?: any }) {
   const [step, setStep] = useState<"scan" | "order-entry" | "tracking" | "feedback">("scan");
   const [orderNumber, setOrderNumber] = useState("");
   const [selectedVenue, setSelectedVenue] = useState("");
@@ -46,6 +46,46 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
     };
     getUser();
   }, []);
+
+  // Handle initial order from home page
+  useEffect(() => {
+    if (initialOrder) {
+      const order: Order = {
+        id: initialOrder.id,
+        order_number: initialOrder.order_number,
+        venue: initialOrder.venues?.name || "",
+        status: initialOrder.status,
+        eta: initialOrder.eta,
+        instructions: "Please collect from the main counter",
+        items: Array.isArray(initialOrder.items) ? initialOrder.items : [initialOrder.items]
+      };
+      setCurrentOrder(order);
+      setStep("tracking");
+
+      // Set up real-time subscription
+      const channel = supabase
+        .channel(`order-${initialOrder.id}`)
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `id=eq.${initialOrder.id}`
+        }, (payload) => {
+          if (payload.new) {
+            setCurrentOrder(prev => prev ? {
+              ...prev,
+              status: payload.new.status,
+              eta: payload.new.eta
+            } : null);
+          }
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [initialOrder]);
 
   // Fetch venues on component mount
   useEffect(() => {

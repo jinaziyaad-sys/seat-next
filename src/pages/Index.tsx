@@ -17,6 +17,7 @@ const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [activeWaitlist, setActiveWaitlist] = useState<any[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -88,7 +89,13 @@ const Index = () => {
   if (activeTab === "food-ready") {
     return (
       <div className="min-h-screen bg-background">
-        <FoodReadyFlow onBack={() => setActiveTab("home")} />
+        <FoodReadyFlow 
+          onBack={() => {
+            setActiveTab("home");
+            setSelectedOrder(null);
+          }} 
+          initialOrder={selectedOrder}
+        />
         <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
     );
@@ -131,7 +138,14 @@ const Index = () => {
           <h2 className="text-xl font-bold">Active Tracking</h2>
           
           {activeOrders.map((order) => (
-            <Card key={order.id} className="shadow-card cursor-pointer" onClick={() => setActiveTab("food-ready")}>
+            <Card 
+              key={order.id} 
+              className="shadow-card cursor-pointer hover:shadow-floating transition-shadow" 
+              onClick={() => {
+                setSelectedOrder(order);
+                setActiveTab("food-ready");
+              }}
+            >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -141,6 +155,14 @@ const Index = () => {
                     <div>
                       <h3 className="font-semibold">{order.venues?.name}</h3>
                       <p className="text-sm text-muted-foreground">Order #{order.order_number}</p>
+                      {order.eta && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                          <Clock size={12} />
+                          <span>
+                            {Math.ceil((new Date(order.eta).getTime() - new Date().getTime()) / (1000 * 60))} min
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <Badge variant={order.status === 'in_prep' ? 'default' : 'secondary'}>
