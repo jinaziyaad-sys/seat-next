@@ -36,6 +36,16 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
   const [venues, setVenues] = useState<{id: string; name: string; address?: string; phone?: string}[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  // Get authenticated user
+  useEffect(() => {
+    const getUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setUserId(user?.id || null);
+    };
+    getUser();
+  }, []);
 
   // Fetch venues on component mount
   useEffect(() => {
@@ -82,7 +92,15 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
     }
 
     if (existingOrder) {
-      // Order found, start tracking
+      // Order found, update with user_id if logged in and not already set
+      if (userId && !existingOrder.user_id) {
+        await supabase
+          .from("orders")
+          .update({ user_id: userId })
+          .eq("id", existingOrder.id);
+      }
+
+      // Start tracking
       const order: Order = {
         id: existingOrder.id,
         order_number: existingOrder.order_number,
@@ -124,7 +142,8 @@ export function FoodReadyFlow({ onBack }: { onBack: () => void }) {
           order_number: orderNumber.toUpperCase(),
           status: "placed",
           items: [{ name: "Sample Item" }],
-          eta: new Date(Date.now() + 12 * 60000).toISOString()
+          eta: new Date(Date.now() + 12 * 60000).toISOString(),
+          user_id: userId
         })
         .select()
         .single();
