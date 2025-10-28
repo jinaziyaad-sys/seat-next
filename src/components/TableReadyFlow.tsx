@@ -168,17 +168,23 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     setIsSubmitting(true);
 
     try {
+      const insertData: any = {
+        venue_id: venue.id,
+        customer_name: partyName.trim(),
+        party_size: partySize,
+        preferences,
+        eta: new Date(Date.now() + 18 * 60000).toISOString(),
+        status: "waiting",
+      };
+
+      // Only include user_id if user is authenticated
+      if (userId) {
+        insertData.user_id = userId;
+      }
+
       const { data: newEntry, error } = await supabase
         .from("waitlist_entries")
-        .insert({
-          venue_id: venue.id,
-          customer_name: partyName.trim(),
-          party_size: partySize,
-          preferences,
-          eta: new Date(Date.now() + 18 * 60000).toISOString(),
-          status: "waiting",
-          user_id: userId
-        })
+        .insert(insertData)
         .select()
         .single();
 
