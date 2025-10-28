@@ -3,9 +3,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin } from "lucide-react";
+import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { z } from "zod";
 
 interface WaitlistEntry {
   id: string;
@@ -17,7 +19,13 @@ interface WaitlistEntry {
   status: "waiting" | "ready" | "seated" | "cancelled" | "no_show";
 }
 
+const partyDetailsSchema = z.object({
+  partyName: z.string().trim().min(1, "Party name is required").max(50, "Party name must be less than 50 characters"),
+  partySize: z.number().int().min(1, "Party size must be at least 1").max(12, "Party size cannot exceed 12"),
+});
+
 export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; initialEntry?: any }) {
+  const { toast } = useToast();
   const [step, setStep] = useState<"venue-select" | "party-details" | "waiting" | "ready">("venue-select");
   const [selectedVenue, setSelectedVenue] = useState("");
   const [partyName, setPartyName] = useState("");
@@ -28,6 +36,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get authenticated user
   useEffect(() => {
@@ -135,62 +144,107 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   };
 
   const handleJoinWaitlist = async () => {
-    if (!partyName.trim()) return;
+    // Validate inputs
+    const validation = partyDetailsSchema.safeParse({ partyName, partySize });
+    if (!validation.success) {
+      toast({
+        title: "Validation Error",
+        description: validation.error.errors[0].message,
+        variant: "destructive"
+      });
+      return;
+    }
     
     const venue = venues.find(v => v.name === selectedVenue);
-    if (!venue) return;
+    if (!venue) {
+      toast({
+        title: "Error",
+        description: "Selected venue not found. Please try again.",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    const { data: newEntry, error } = await supabase
-      .from("waitlist_entries")
-      .insert({
-        venue_id: venue.id,
-        customer_name: partyName.trim(),
-        party_size: partySize,
-        preferences,
-        eta: new Date(Date.now() + 18 * 60000).toISOString(),
-        status: "waiting",
-        user_id: userId
-      })
-      .select()
-      .single();
+    setIsSubmitting(true);
 
-    if (newEntry && !error) {
-      const entry: WaitlistEntry = {
-        id: newEntry.id,
-        venue: selectedVenue,
-        party_size: newEntry.party_size,
-        position: 3, // Could be calculated from actual waitlist
-        eta: newEntry.eta,
-        preferences: newEntry.preferences || [],
-        status: newEntry.status
-      };
-      setWaitlistEntry(entry);
-      setStep("waiting");
-
-      // Set up real-time subscription for this entry
-      const channel = supabase
-        .channel(`waitlist-${newEntry.id}`)
-        .on('postgres_changes', {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'waitlist_entries', 
-          filter: `id=eq.${newEntry.id}`
-        }, (payload) => {
-          if (payload.new) {
-            setWaitlistEntry(prev => prev ? {
-              ...prev,
-              status: payload.new.status,
-              eta: payload.new.eta
-            } : null);
-            
-            if (payload.new.status === "ready") {
-              setStep("ready");
-            }
-          }
+    try {
+      const { data: newEntry, error } = await supabase
+        .from("waitlist_entries")
+        .insert({
+          venue_id: venue.id,
+          customer_name: partyName.trim(),
+          party_size: partySize,
+          preferences,
+          eta: new Date(Date.now() + 18 * 60000).toISOString(),
+          status: "waiting",
+          user_id: userId
         })
-        .subscribe();
+        .select()
+        .single();
 
-      return () => supabase.removeChannel(channel);
+      if (error) {
+        console.error("Error joining waitlist:", error);
+        toast({
+          title: "Failed to Join Waitlist",
+          description: error.message || "Unable to add you to the waitlist. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (newEntry) {
+        const entry: WaitlistEntry = {
+          id: newEntry.id,
+          venue: selectedVenue,
+          party_size: newEntry.party_size,
+          position: 3, // Could be calculated from actual waitlist
+          eta: newEntry.eta,
+          preferences: newEntry.preferences || [],
+          status: newEntry.status
+        };
+        setWaitlistEntry(entry);
+        
+        toast({
+          title: "Added to Waitlist!",
+          description: `You've been added to the waitlist at ${selectedVenue}.`
+        });
+        
+        setStep("waiting");
+
+        // Set up real-time subscription for this entry
+        const channel = supabase
+          .channel(`waitlist-${newEntry.id}`)
+          .on('postgres_changes', {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'waitlist_entries', 
+            filter: `id=eq.${newEntry.id}`
+          }, (payload) => {
+            if (payload.new) {
+              setWaitlistEntry(prev => prev ? {
+                ...prev,
+                status: payload.new.status,
+                eta: payload.new.eta
+              } : null);
+              
+              if (payload.new.status === "ready") {
+                setStep("ready");
+              }
+            }
+          })
+          .subscribe();
+
+        return () => supabase.removeChannel(channel);
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -377,11 +431,23 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
             <Button 
               onClick={handleJoinWaitlist} 
-              disabled={!partyName.trim()}
+              disabled={!partyName.trim() || isSubmitting}
               className="w-full h-12"
             >
-              Join Waitlist
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Joining...
+                </>
+              ) : (
+                "Join Waitlist"
+              )}
             </Button>
+            {!partyName.trim() && (
+              <p className="text-xs text-muted-foreground text-center">
+                Please enter your party name to continue
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
