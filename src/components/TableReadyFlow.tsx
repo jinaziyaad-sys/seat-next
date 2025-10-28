@@ -144,6 +144,25 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   };
 
   const handleJoinWaitlist = async () => {
+    // Check if user is authenticated
+    if (!userId) {
+      toast({
+        title: "Registration Required",
+        description: "Please create an account to join the waitlist and track your position.",
+        variant: "default",
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => window.location.href = '/auth'}
+          >
+            Sign Up
+          </Button>
+        ),
+      });
+      return;
+    }
+
     // Validate inputs
     const validation = partyDetailsSchema.safeParse({ partyName, partySize });
     if (!validation.success) {
@@ -168,23 +187,17 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     setIsSubmitting(true);
 
     try {
-      const insertData: any = {
-        venue_id: venue.id,
-        customer_name: partyName.trim(),
-        party_size: partySize,
-        preferences,
-        eta: new Date(Date.now() + 18 * 60000).toISOString(),
-        status: "waiting",
-      };
-
-      // Only include user_id if user is authenticated
-      if (userId) {
-        insertData.user_id = userId;
-      }
-
       const { data: newEntry, error } = await supabase
         .from("waitlist_entries")
-        .insert(insertData)
+        .insert({
+          venue_id: venue.id,
+          customer_name: partyName.trim(),
+          party_size: partySize,
+          preferences,
+          eta: new Date(Date.now() + 18 * 60000).toISOString(),
+          status: "waiting",
+          user_id: userId
+        })
         .select()
         .single();
 
