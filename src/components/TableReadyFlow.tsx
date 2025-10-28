@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -31,6 +32,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [partyName, setPartyName] = useState("");
   const [partySize, setPartySize] = useState(2);
   const [preferences, setPreferences] = useState<string[]>([]);
+  const [seatingPreference, setSeatingPreference] = useState<"indoor" | "outdoor" | "no-preference">("no-preference");
   const [waitlistEntry, setWaitlistEntry] = useState<WaitlistEntry | null>(null);
   const [venues, setVenues] = useState<{id: string; name: string; address?: string; waitTime?: string; tables?: number}[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
@@ -123,8 +125,6 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
 
   const preferenceOptions = [
-    "Indoor seating",
-    "Outdoor seating", 
     "Smoking section",
     "High chair needed",
     "Wheelchair accessible"
@@ -186,6 +186,14 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
     setIsSubmitting(true);
 
+    // Build preferences array with seating preference
+    const finalPreferences = [...preferences];
+    if (seatingPreference === "indoor") {
+      finalPreferences.push("Indoor seating");
+    } else if (seatingPreference === "outdoor") {
+      finalPreferences.push("Outdoor seating");
+    }
+
     try {
       const { data: newEntry, error } = await supabase
         .from("waitlist_entries")
@@ -193,7 +201,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           venue_id: venue.id,
           customer_name: partyName.trim(),
           party_size: partySize,
-          preferences,
+          preferences: finalPreferences,
           eta: new Date(Date.now() + 18 * 60000).toISOString(),
           status: "waiting",
           user_id: userId
@@ -432,7 +440,27 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             </div>
 
             <div className="space-y-3">
-              <label className="text-sm font-medium">Seating Preferences (Optional)</label>
+              <label className="text-sm font-medium">Seating Preference</label>
+              <ToggleGroup 
+                type="single" 
+                value={seatingPreference} 
+                onValueChange={(value) => value && setSeatingPreference(value as "indoor" | "outdoor" | "no-preference")}
+                className="grid grid-cols-3 gap-2 w-full"
+              >
+                <ToggleGroupItem value="indoor" className="w-full">
+                  Indoor
+                </ToggleGroupItem>
+                <ToggleGroupItem value="no-preference" className="w-full">
+                  No Preference
+                </ToggleGroupItem>
+                <ToggleGroupItem value="outdoor" className="w-full">
+                  Outdoor
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Additional Preferences (Optional)</label>
               <div className="grid grid-cols-1 gap-2">
                 {preferenceOptions.map((pref) => (
                   <Button
