@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, Clock, CheckCircle, Package, Truck, Search, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
 type OrderStatus = "placed" | "in_prep" | "ready" | "collected" | "no_show";
 
@@ -37,6 +38,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const { toast } = useToast();
 
   // Get authenticated user
   useEffect(() => {
@@ -113,6 +115,25 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
 
   const handleOrderSubmit = async () => {
     if (!orderNumber.trim() || !selectedVenue) return;
+
+    // Check if user is authenticated
+    if (!userId) {
+      toast({
+        title: "Registration Required",
+        description: "Please create an account to track your food orders in real-time.",
+        variant: "default",
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => window.location.href = '/auth'}
+          >
+            Sign Up
+          </Button>
+        ),
+      });
+      return;
+    }
 
     // Find the venue
     const venue = venues.find(v => v.name === selectedVenue);
