@@ -2,3 +2,9 @@ project_id = "cuoqjgahpfymxqrdlzlf"
 
 [functions.create-merchant]
 verify_jwt = false
+
+[functions.send-sms-otp]
+verify_jwt = false
+
+[functions.verify-sms-otp]
+verify_jwt = false

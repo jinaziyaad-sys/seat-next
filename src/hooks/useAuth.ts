@@ -16,25 +16,56 @@ export const useAuth = () => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [phoneVerified, setPhoneVerified] = useState(false);
 
   useEffect(() => {
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      
+      // Fetch phone verification status when user changes
+      if (session?.user) {
+        setTimeout(() => {
+          supabase
+            .from('profiles')
+            .select('phone_verified')
+            .eq('id', session.user.id)
+            .single()
+            .then(({ data }) => {
+              setPhoneVerified(data?.phone_verified ?? false);
+            });
+        }, 0);
+      } else {
+        setPhoneVerified(false);
+      }
     });
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      setLoading(false);
+      
+      // Fetch phone verification status for existing session
+      if (session?.user) {
+        supabase
+          .from('profiles')
+          .select('phone_verified')
+          .eq('id', session.user.id)
+          .single()
+          .then(({ data }) => {
+            setPhoneVerified(data?.phone_verified ?? false);
+            setLoading(false);
+          });
+      } else {
+        setLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  return { user, session, loading };
+  return { user, session, loading, phoneVerified };
 };
 
 export const useMerchantAuth = () => {

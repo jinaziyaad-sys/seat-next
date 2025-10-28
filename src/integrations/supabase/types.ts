@@ -80,24 +80,39 @@ export type Database = {
           email: string | null
           full_name: string
           id: string
+          last_verification_sent_at: string | null
           phone: string | null
+          phone_verified: boolean | null
           updated_at: string
+          verification_attempts: number | null
+          verification_code: string | null
+          verification_code_expires_at: string | null
         }
         Insert: {
           created_at?: string
           email?: string | null
           full_name: string
           id: string
+          last_verification_sent_at?: string | null
           phone?: string | null
+          phone_verified?: boolean | null
           updated_at?: string
+          verification_attempts?: number | null
+          verification_code?: string | null
+          verification_code_expires_at?: string | null
         }
         Update: {
           created_at?: string
           email?: string | null
           full_name?: string
           id?: string
+          last_verification_sent_at?: string | null
           phone?: string | null
+          phone_verified?: boolean | null
           updated_at?: string
+          verification_attempts?: number | null
+          verification_code?: string | null
+          verification_code_expires_at?: string | null
         }
         Relationships: []
       }
@@ -228,6 +243,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_expired_otps: { Args: never; Returns: undefined }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

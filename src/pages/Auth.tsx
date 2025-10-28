@@ -15,6 +15,10 @@ export default function Auth() {
   const [fullName, setFullName] = useState("");
   const [phone, setPhone] = useState("");
   const [loading, setLoading] = useState(false);
+  const [verificationStep, setVerificationStep] = useState<"signup" | "phone-verify">("signup");
+  const [otpCode, setOtpCode] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
+  const [resendCooldown, setResendCooldown] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -36,9 +40,30 @@ export default function Auth() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!phone) {
+      toast({
+        title: "Phone Required",
+        description: "Please enter your phone number for verification.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Validate phone format (basic E.164 format check)
+    const phoneRegex = /^\+?[1-9]\d{1,14}$/;
+    if (!phoneRegex.test(phone.replace(/[\s-]/g, ''))) {
+      toast({
+        title: "Invalid Phone",
+        description: "Please enter a valid phone number with country code (e.g., +1234567890)",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -56,13 +81,120 @@ export default function Auth() {
         description: error.message,
         variant: "destructive",
       });
-    } else {
-      toast({
-        title: "Success!",
-        description: "Please check your email to confirm your account.",
-      });
+      setLoading(false);
+      return;
     }
+
+    if (data.user) {
+      setUserId(data.user.id);
+      toast({
+        title: "Email Sent!",
+        description: "Please check your email to confirm your account. Then verify your phone number below.",
+      });
+      
+      // Automatically send SMS OTP
+      await handleSendOTP(data.user.id, phone);
+      setVerificationStep("phone-verify");
+    }
+    
     setLoading(false);
+  };
+
+  const handleSendOTP = async (uid: string, phoneNumber: string) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.functions.invoke('send-sms-otp', {
+        body: { phone: phoneNumber, userId: uid }
+      });
+
+      if (error) throw error;
+
+      if (data.success) {
+        toast({
+          title: "Code Sent!",
+          description: "Verification code sent to your phone.",
+        });
+        
+        // Start resend cooldown (60 seconds)
+        setResendCooldown(60);
+        const interval = setInterval(() => {
+          setResendCooldown((prev) => {
+            if (prev <= 1) {
+              clearInterval(interval);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+      } else {
+        throw new Error(data.message || 'Failed to send code');
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send verification code",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!otpCode || otpCode.length !== 6) {
+      toast({
+        title: "Invalid Code",
+        description: "Please enter a 6-digit verification code",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!userId) {
+      toast({
+        title: "Error",
+        description: "User ID not found. Please sign up again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const { data, error } = await supabase.functions.invoke('verify-sms-otp', {
+        body: { code: otpCode, userId }
+      });
+
+      if (error) throw error;
+
+      if (data.verified) {
+        toast({
+          title: "Phone Verified!",
+          description: "Your phone number has been verified successfully.",
+        });
+        navigate("/");
+      } else {
+        toast({
+          title: "Verification Failed",
+          description: data.message || "Invalid verification code",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to verify code",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOTP = () => {
+    if (userId && phone) {
+      handleSendOTP(userId, phone);
+    }
   };
 
   const handleSignIn = async (e: React.FormEvent) => {
@@ -129,50 +261,112 @@ export default function Auth() {
             </TabsContent>
 
             <TabsContent value="signup">
-              <form onSubmit={handleSignUp} className="space-y-4">
-                <div>
-                  <Label htmlFor="fullName">Full Name *</Label>
-                  <Input
-                    id="fullName"
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    required
-                  />
+              {verificationStep === "signup" ? (
+                <form onSubmit={handleSignUp} className="space-y-4">
+                  <div>
+                    <Label htmlFor="fullName">Full Name *</Label>
+                    <Input
+                      id="fullName"
+                      type="text"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="phone">Phone Number (with country code) *</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+1234567890"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      required
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Include country code (e.g., +1 for US, +44 for UK)
+                    </p>
+                  </div>
+                  <div>
+                    <Label htmlFor="signup-email">Email *</Label>
+                    <Input
+                      id="signup-email"
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="signup-password">Password *</Label>
+                    <Input
+                      id="signup-password"
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={loading}>
+                    {loading ? "Creating account..." : "Sign Up"}
+                  </Button>
+                </form>
+              ) : (
+                <div className="space-y-4 py-4">
+                  <div className="text-center space-y-2">
+                    <h3 className="font-semibold text-lg">Verify Your Phone</h3>
+                    <p className="text-sm text-muted-foreground">
+                      We sent a 6-digit code to {phone}
+                    </p>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="otp">Verification Code</Label>
+                    <Input
+                      id="otp"
+                      type="text"
+                      maxLength={6}
+                      placeholder="000000"
+                      value={otpCode}
+                      onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ''))}
+                      className="text-center text-2xl tracking-widest"
+                    />
+                  </div>
+
+                  <Button 
+                    onClick={handleVerifyOTP} 
+                    className="w-full" 
+                    disabled={loading || otpCode.length !== 6}
+                  >
+                    {loading ? "Verifying..." : "Verify Phone"}
+                  </Button>
+
+                  <Button 
+                    variant="ghost" 
+                    onClick={handleResendOTP} 
+                    className="w-full"
+                    disabled={loading || resendCooldown > 0}
+                  >
+                    {resendCooldown > 0 
+                      ? `Resend Code (${resendCooldown}s)` 
+                      : "Resend Code"
+                    }
+                  </Button>
+
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setVerificationStep("signup");
+                      setOtpCode("");
+                      setUserId(null);
+                    }} 
+                    className="w-full"
+                    disabled={loading}
+                  >
+                    Back to Sign Up
+                  </Button>
                 </div>
-                <div>
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="signup-email">Email *</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="signup-password">Password *</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                  />
-                </div>
-                <Button type="submit" className="w-full" disabled={loading}>
-                  {loading ? "Creating account..." : "Sign Up"}
-                </Button>
-              </form>
+              )}
             </TabsContent>
           </Tabs>
         </CardContent>
