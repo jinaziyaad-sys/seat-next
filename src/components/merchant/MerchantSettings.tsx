@@ -18,7 +18,17 @@ interface WaitlistPreference {
   custom?: boolean;
 }
 
-export const MerchantSettings = ({ venue, venueId }: { venue: string; venueId: string }) => {
+export const MerchantSettings = ({ 
+  venue, 
+  venueId, 
+  serviceTypes = ["food_ready", "table_ready"] 
+}: { 
+  venue: string; 
+  venueId: string;
+  serviceTypes?: string[];
+}) => {
+  const hasFoodReady = serviceTypes.includes("food_ready");
+  const hasTableReady = serviceTypes.includes("table_ready");
   const [settings, setSettings] = useState({
     venueCapacity: "40",
     tablesPerInterval: "4",
@@ -137,42 +147,45 @@ export const MerchantSettings = ({ venue, venueId }: { venue: string; venueId: s
       <h2 className="text-2xl font-bold">Venue Settings</h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Capacity Settings */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Capacity & Pacing</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="capacity">Total Venue Capacity</Label>
-              <Input
-                id="capacity"
-                type="number"
-                value={settings.venueCapacity}
-                onChange={(e) => handleInputChange("venueCapacity", e.target.value)}
-              />
-              <p className="text-sm text-muted-foreground mt-1">
-                Maximum number of guests the venue can accommodate
-              </p>
-            </div>
+        {/* Capacity Settings - Only for table_ready */}
+        {hasTableReady && (
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle>Capacity & Pacing</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <Label htmlFor="capacity">Total Venue Capacity</Label>
+                <Input
+                  id="capacity"
+                  type="number"
+                  value={settings.venueCapacity}
+                  onChange={(e) => handleInputChange("venueCapacity", e.target.value)}
+                />
+                <p className="text-sm text-muted-foreground mt-1">
+                  Maximum number of guests the venue can accommodate
+                </p>
+              </div>
 
-            <div>
-              <Label htmlFor="pacing">Tables per 15-minute Interval</Label>
-              <Input
-                id="pacing"
-                type="number"
-                value={settings.tablesPerInterval}
-                onChange={(e) => handleInputChange("tablesPerInterval", e.target.value)}
-              />
-              <p className="text-sm text-muted-foreground mt-1">
-                How many tables can be seated every 15 minutes
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+              <div>
+                <Label htmlFor="pacing">Tables per 15-minute Interval</Label>
+                <Input
+                  id="pacing"
+                  type="number"
+                  value={settings.tablesPerInterval}
+                  onChange={(e) => handleInputChange("tablesPerInterval", e.target.value)}
+                />
+                <p className="text-sm text-muted-foreground mt-1">
+                  How many tables can be seated every 15 minutes
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Kitchen Settings */}
-        <Card className="shadow-card">
+        {/* Kitchen Settings - Only for food_ready */}
+        {hasFoodReady && (
+          <Card className="shadow-card">
           <CardHeader>
             <CardTitle>Kitchen Settings</CardTitle>
           </CardHeader>
@@ -204,9 +217,11 @@ export const MerchantSettings = ({ venue, venueId }: { venue: string; venueId: s
             </div>
           </CardContent>
         </Card>
+        )}
 
-        {/* Waitlist Preferences */}
-        <Card className="shadow-card">
+        {/* Waitlist Preferences - Only for table_ready */}
+        {hasTableReady && (
+          <Card className="shadow-card">
           <CardHeader>
             <CardTitle>Waitlist Preferences</CardTitle>
           </CardHeader>
@@ -261,9 +276,11 @@ export const MerchantSettings = ({ venue, venueId }: { venue: string; venueId: s
             </div>
           </CardContent>
         </Card>
+        )}
 
-        {/* Pickup Instructions */}
-        <Card className="shadow-card">
+        {/* Pickup Instructions - Only for food_ready */}
+        {hasFoodReady && (
+          <Card className="shadow-card">
           <CardHeader>
             <CardTitle>Pickup Instructions</CardTitle>
           </CardHeader>
@@ -283,6 +300,7 @@ export const MerchantSettings = ({ venue, venueId }: { venue: string; venueId: s
             </div>
           </CardContent>
         </Card>
+        )}
 
         {/* Auto No-Show Settings */}
         <Card className="shadow-card lg:col-span-2">
@@ -291,24 +309,28 @@ export const MerchantSettings = ({ venue, venueId }: { venue: string; venueId: s
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="waitlistNoShow">Waitlist No-Show (minutes)</Label>
-                <Input
-                  id="waitlistNoShow"
-                  type="number"
-                  value={settings.autoNoShowTime}
-                  onChange={(e) => handleInputChange("autoNoShowTime", e.target.value)}
-                />
-                <p className="text-sm text-muted-foreground mt-1">
-                  Automatically mark as no-show after table is ready
-                </p>
-              </div>
-              <div>
-                <Label>Food Orders No-Show</Label>
-                <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
-                  Food orders are automatically marked as no-show at end of day if not collected
+              {hasTableReady && (
+                <div>
+                  <Label htmlFor="waitlistNoShow">Waitlist No-Show (minutes)</Label>
+                  <Input
+                    id="waitlistNoShow"
+                    type="number"
+                    value={settings.autoNoShowTime}
+                    onChange={(e) => handleInputChange("autoNoShowTime", e.target.value)}
+                  />
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Automatically mark as no-show after table is ready
+                  </p>
                 </div>
-              </div>
+              )}
+              {hasFoodReady && (
+                <div>
+                  <Label>Food Orders No-Show</Label>
+                  <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
+                    Food orders are automatically marked as no-show at end of day if not collected
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

@@ -146,7 +146,11 @@ const MerchantDashboard = () => {
               </TabsContent>
 
               <TabsContent value="settings">
-                <MerchantSettings venue={userRole.venue_name!} venueId={userRole.venue_id!} />
+                <MerchantSettings 
+                  venue={userRole.venue_name!} 
+                  venueId={userRole.venue_id!}
+                  serviceTypes={venueServiceTypes}
+                />
               </TabsContent>
 
               <TabsContent value="reports">
