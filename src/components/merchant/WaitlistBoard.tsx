@@ -114,18 +114,22 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   };
 
   const setETA = async (entryId: string, minutes: number) => {
-    const newETA = new Date(Date.now() + minutes * 60000).toISOString();
+    const entry = waitlist.find(e => e.id === entryId);
+    if (!entry) return;
+
+    const currentETA = entry.eta ? new Date(entry.eta) : new Date();
+    const newETA = new Date(currentETA.getTime() + minutes * 60000);
 
     // Optimistic update
     setWaitlist(prevWaitlist => 
-      prevWaitlist.map(entry => 
-        entry.id === entryId ? { ...entry, eta: newETA } : entry
+      prevWaitlist.map(e => 
+        e.id === entryId ? { ...e, eta: newETA.toISOString() } : e
       )
     );
 
     const { error } = await supabase
       .from("waitlist_entries")
-      .update({ eta: newETA })
+      .update({ eta: newETA.toISOString() })
       .eq("id", entryId);
 
     if (error) {
@@ -149,8 +153,8 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     }
 
     toast({
-      title: "ETA Updated",
-      description: `Estimated wait time set to ${minutes} minutes`,
+      title: "ETA Extended",
+      description: `Wait time extended by ${minutes} minutes`,
     });
   };
 
@@ -208,6 +212,13 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       minute: "2-digit",
       hour12: false 
     });
+  };
+
+  const getMinutesLeft = (eta: string | null) => {
+    if (!eta) return 0;
+    const diff = new Date(eta).getTime() - new Date().getTime();
+    const minutes = Math.ceil(diff / (1000 * 60));
+    return minutes;
   };
 
   const getWaitTime = (createdAt: string) => {
@@ -299,7 +310,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock size={14} />
-                  Waiting {getWaitTime(entry.created_at)}
+                  ETA: {formatTime(entry.eta)} ({getMinutesLeft(entry.eta)}m)
                 </span>
               </div>
             </CardHeader>
@@ -313,11 +324,6 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                 </div>
               )}
 
-              <div className="text-sm">
-                <span className="font-medium">ETA: </span>
-                <span>{formatTime(entry.eta)}</span>
-              </div>
-
               <div className="space-y-2">
                 <div className="flex gap-2">
                   <Button
@@ -326,7 +332,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                     onClick={() => setETA(entry.id, 5)}
                     className="flex-1"
                   >
-                    5m
+                    +5m
                   </Button>
                   <Button
                     size="sm"
@@ -334,23 +340,15 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                     onClick={() => setETA(entry.id, 10)}
                     className="flex-1"
                   >
-                    10m
+                    +10m
                   </Button>
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => setETA(entry.id, 20)}
+                    onClick={() => setETA(entry.id, 15)}
                     className="flex-1"
                   >
-                    20m
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setETA(entry.id, 30)}
-                    className="flex-1"
-                  >
-                    30m
+                    +15m
                   </Button>
                 </div>
 
