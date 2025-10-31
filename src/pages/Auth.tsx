@@ -21,6 +21,7 @@ export default function Auth() {
   const [userId, setUserId] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [verificationMethod, setVerificationMethod] = useState<"email" | "phone">("email");
+  const [smsFailureCount, setSmsFailureCount] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -129,6 +130,7 @@ export default function Auth() {
           title: "Code Sent!",
           description: "Verification code sent to your phone.",
         });
+        setSmsFailureCount(0);
         
         // Start resend cooldown (60 seconds)
         setResendCooldown(60);
@@ -145,9 +147,12 @@ export default function Auth() {
         throw new Error(data.message || 'Failed to send code');
       }
     } catch (error: any) {
+      setSmsFailureCount(prev => prev + 1);
       toast({
-        title: "Error",
-        description: error.message || "Failed to send verification code",
+        title: "SMS Failed",
+        description: smsFailureCount >= 1 
+          ? "Having trouble with SMS? Try email verification instead."
+          : "Failed to send verification code. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -209,6 +214,36 @@ export default function Auth() {
   const handleResendOTP = () => {
     if (userId && phone) {
       handleSendOTP(userId, phone);
+    }
+  };
+
+  const handleSwitchToEmail = async () => {
+    if (!userId) return;
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Check Your Email! 📧",
+        description: "We sent a confirmation link to " + email,
+      });
+      
+      setVerificationStep("signup");
+      setSmsFailureCount(0);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to send email verification",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -402,12 +437,24 @@ export default function Auth() {
                     }
                   </Button>
 
+                  {smsFailureCount >= 2 && (
+                    <Button 
+                      variant="default" 
+                      onClick={handleSwitchToEmail}
+                      className="w-full"
+                      disabled={loading}
+                    >
+                      📧 Switch to Email Verification
+                    </Button>
+                  )}
+
                   <Button 
                     variant="outline" 
                     onClick={() => {
                       setVerificationStep("signup");
                       setOtpCode("");
                       setUserId(null);
+                      setSmsFailureCount(0);
                     }} 
                     className="w-full"
                     disabled={loading}
