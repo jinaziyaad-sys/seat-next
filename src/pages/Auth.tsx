@@ -48,9 +48,19 @@ export default function Auth() {
     const errorDescription = hashParams.get('error_description');
     
     if (error) {
-      const friendlyMessage = error === 'access_denied' && errorDescription?.includes('expired')
-        ? "This verification link has expired. Please request a new one below."
-        : errorDescription || 'Authentication failed. Please try again.';
+      let friendlyMessage = errorDescription || 'Authentication failed. Please try again.';
+      
+      // Enhanced detection for token-related errors
+      if (
+        error === 'access_denied' || 
+        errorDescription?.toLowerCase().includes('expired') ||
+        errorDescription?.toLowerCase().includes('token not found') ||
+        errorDescription?.toLowerCase().includes('invalid') ||
+        errorDescription?.toLowerCase().includes('already been used')
+      ) {
+        friendlyMessage = "⚠️ This verification link has been used or expired. Please request a fresh one below.";
+        setEmailVerificationSent(true); // Show the request fresh link button
+      }
       
       setAuthError(friendlyMessage);
       toast({
@@ -106,11 +116,29 @@ export default function Auth() {
     });
 
     if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      // Enhanced detection for user already exists
+      if (
+        error.message.toLowerCase().includes('already registered') ||
+        error.message.toLowerCase().includes('already exists') ||
+        error.message.toLowerCase().includes('user already')
+      ) {
+        setAuthError("You've already signed up! Check your email for the verification link, or request a fresh one below.");
+        setEmailVerificationSent(true);
+        if (data?.user?.id) {
+          setUserId(data.user.id);
+        }
+        toast({
+          title: "Account Already Exists",
+          description: "Check your email for the verification link or request a new one.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
       setLoading(false);
       return;
     }
@@ -368,17 +396,28 @@ export default function Auth() {
             <TabsContent value="signup">
               {emailVerificationSent ? (
                 <div className="space-y-4 py-4">
-                  <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950/30">
-                    <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <AlertTitle>Check Your Email!</AlertTitle>
-                    <AlertDescription className="space-y-2">
-                      <p>We sent a verification link to <strong>{email}</strong></p>
-                      <div className="text-sm space-y-1 mt-2 pt-2 border-t border-blue-200 dark:border-blue-800">
-                        <p className="font-semibold text-blue-900 dark:text-blue-100">⚠️ Important:</p>
-                        <ul className="list-disc list-inside space-y-1 text-blue-800 dark:text-blue-200">
-                          <li>Each link can only be used <strong>once</strong></li>
-                          <li>Links expire after a short time</li>
-                          <li>If you clicked an old link, request a new one below</li>
+                  <Alert className="border-amber-500 bg-amber-50 dark:bg-amber-950/30">
+                    <Mail className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                    <AlertTitle className="text-lg">📬 Check Your Email!</AlertTitle>
+                    <AlertDescription className="space-y-3">
+                      <p className="text-base">We sent a verification link to <strong className="text-amber-900 dark:text-amber-100">{email}</strong></p>
+                      <div className="text-sm space-y-2 mt-3 pt-3 border-t-2 border-amber-300 dark:border-amber-700 bg-amber-100/50 dark:bg-amber-900/20 p-3 rounded-md">
+                        <p className="font-bold text-amber-900 dark:text-amber-100 text-base flex items-center gap-2">
+                          <span className="text-xl">⚠️</span> CRITICAL: Read This!
+                        </p>
+                        <ul className="list-none space-y-2 text-amber-900 dark:text-amber-100">
+                          <li className="flex items-start gap-2">
+                            <span className="font-bold min-w-[20px]">1.</span>
+                            <span>Each link works <strong className="underline">ONLY ONCE</strong></span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="font-bold min-w-[20px]">2.</span>
+                            <span>Use the <strong className="underline">NEWEST</strong> email (ignore older ones)</span>
+                          </li>
+                          <li className="flex items-start gap-2">
+                            <span className="font-bold min-w-[20px]">3.</span>
+                            <span>If you clicked an old link → it's expired → request fresh one below</span>
+                          </li>
                         </ul>
                       </div>
                     </AlertDescription>
