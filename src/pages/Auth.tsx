@@ -5,9 +5,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Mail, AlertCircle } from "lucide-react";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -22,6 +24,8 @@ export default function Auth() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [verificationMethod, setVerificationMethod] = useState<"email" | "phone">("email");
   const [smsFailureCount, setSmsFailureCount] = useState(0);
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [emailVerificationSent, setEmailVerificationSent] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -38,8 +42,29 @@ export default function Auth() {
       }
     });
 
+    // Check for auth errors in URL hash (from email verification failures)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const error = hashParams.get('error');
+    const errorDescription = hashParams.get('error_description');
+    
+    if (error) {
+      const friendlyMessage = error === 'access_denied' && errorDescription?.includes('expired')
+        ? "This verification link has expired. Please request a new one below."
+        : errorDescription || 'Authentication failed. Please try again.';
+      
+      setAuthError(friendlyMessage);
+      toast({
+        title: "Verification Failed",
+        description: friendlyMessage,
+        variant: "destructive",
+      });
+      
+      // Clear the hash to prevent showing error again on refresh
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
     return () => subscription.unsubscribe();
-  }, [navigate]);
+  }, [navigate, toast]);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -95,6 +120,7 @@ export default function Auth() {
       
       // Different flow based on verification method
       if (verificationMethod === "email") {
+        setEmailVerificationSent(true);
         toast({
           title: "Check Your Email! 📧",
           description: "We sent a confirmation link to " + email,
@@ -229,9 +255,10 @@ export default function Auth() {
 
       if (error) throw error;
 
+      setEmailVerificationSent(true);
       toast({
         title: "Check Your Email! 📧",
-        description: "We sent a confirmation link to " + email,
+        description: "We sent a fresh confirmation link to " + email,
       });
       
       setVerificationStep("signup");
@@ -240,6 +267,34 @@ export default function Auth() {
       toast({
         title: "Error",
         description: error.message || "Failed to send email verification",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendEmailVerification = async () => {
+    if (!email) return;
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+      });
+
+      if (error) throw error;
+
+      setAuthError(null);
+      toast({
+        title: "New Link Sent! ✅",
+        description: "Check your email for a fresh verification link.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to resend verification email",
         variant: "destructive",
       });
     } finally {
@@ -311,7 +366,54 @@ export default function Auth() {
             </TabsContent>
 
             <TabsContent value="signup">
-              {verificationStep === "signup" ? (
+              {emailVerificationSent ? (
+                <div className="space-y-4 py-4">
+                  <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950/30">
+                    <Mail className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                    <AlertTitle>Check Your Email!</AlertTitle>
+                    <AlertDescription className="space-y-2">
+                      <p>We sent a verification link to <strong>{email}</strong></p>
+                      <div className="text-sm space-y-1 mt-2 pt-2 border-t border-blue-200 dark:border-blue-800">
+                        <p className="font-semibold text-blue-900 dark:text-blue-100">⚠️ Important:</p>
+                        <ul className="list-disc list-inside space-y-1 text-blue-800 dark:text-blue-200">
+                          <li>Each link can only be used <strong>once</strong></li>
+                          <li>Links expire after a short time</li>
+                          <li>If you clicked an old link, request a new one below</li>
+                        </ul>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+
+                  {authError && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle>Verification Issue</AlertTitle>
+                      <AlertDescription>{authError}</AlertDescription>
+                    </Alert>
+                  )}
+
+                  <Button 
+                    onClick={handleResendEmailVerification}
+                    className="w-full"
+                    disabled={loading}
+                    variant="default"
+                  >
+                    {loading ? "Sending..." : "📧 Request Fresh Verification Link"}
+                  </Button>
+
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setEmailVerificationSent(false);
+                      setAuthError(null);
+                      setVerificationStep("signup");
+                    }} 
+                    className="w-full"
+                  >
+                    Back to Sign Up
+                  </Button>
+                </div>
+              ) : verificationStep === "signup" ? (
                 <form onSubmit={handleSignUp} className="space-y-4">
                   <div>
                     <Label htmlFor="fullName">Full Name *</Label>
