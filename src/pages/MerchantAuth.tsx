@@ -5,13 +5,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Building2 } from "lucide-react";
+import { Building2, Mail } from "lucide-react";
 
 export default function MerchantAuth() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [emailVerificationSent, setEmailVerificationSent] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -58,6 +60,40 @@ export default function MerchantAuth() {
     checkAuth();
   }, [navigate, toast]);
 
+  const handleResendConfirmation = async () => {
+    if (!email) {
+      toast({
+        title: "Email Required",
+        description: "Please enter your email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
+      email: email,
+    });
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      setEmailVerificationSent(true);
+      toast({
+        title: "Email Sent!",
+        description: "Check your inbox for the confirmation link.",
+      });
+    }
+    
+    setLoading(false);
+  };
+
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -68,11 +104,21 @@ export default function MerchantAuth() {
     });
 
     if (error) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      // Special handling for unverified email
+      if (error.message.includes("Email not confirmed") || error.message.includes("email_not_confirmed")) {
+        toast({
+          title: "Email Not Verified",
+          description: "Please check your inbox and click the confirmation link.",
+          variant: "destructive",
+        });
+        setEmailVerificationSent(false); // Allow resend
+      } else {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
       setLoading(false);
       return;
     }
@@ -124,6 +170,16 @@ export default function MerchantAuth() {
           <CardDescription>Sign in to manage your venue</CardDescription>
         </CardHeader>
         <CardContent>
+          {emailVerificationSent && (
+            <Alert className="mb-4">
+              <Mail className="h-4 w-4" />
+              <AlertTitle>Verification Email Sent</AlertTitle>
+              <AlertDescription>
+                Please check your inbox and click the confirmation link to complete setup.
+              </AlertDescription>
+            </Alert>
+          )}
+          
           <form onSubmit={handleSignIn} className="space-y-4">
             <div>
               <Label htmlFor="email">Email</Label>
@@ -148,6 +204,17 @@ export default function MerchantAuth() {
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in..." : "Sign In"}
             </Button>
+            
+            <Button 
+              type="button"
+              variant="ghost" 
+              onClick={handleResendConfirmation}
+              className="w-full"
+              disabled={loading}
+            >
+              Resend Confirmation Email
+            </Button>
+            
             <p className="text-sm text-muted-foreground text-center mt-4">
               Need access? Contact your venue administrator.
             </p>

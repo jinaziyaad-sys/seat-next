@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -19,6 +20,7 @@ export default function Auth() {
   const [otpCode, setOtpCode] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
+  const [verificationMethod, setVerificationMethod] = useState<"email" | "phone">("email");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -41,21 +43,22 @@ export default function Auth() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Both email and phone are now always required
     if (!phone) {
       toast({
         title: "Phone Required",
-        description: "Please enter your phone number for verification.",
+        description: "Please enter your phone number.",
         variant: "destructive",
       });
       return;
     }
 
-    // Validate phone format (basic E.164 format check)
+    // Validate phone format
     const phoneRegex = /^\+?[1-9]\d{1,14}$/;
     if (!phoneRegex.test(phone.replace(/[\s-]/g, ''))) {
       toast({
         title: "Invalid Phone",
-        description: "Please enter a valid phone number with country code (e.g., +1234567890)",
+        description: "Please enter a valid phone number with country code (e.g., +27823077786).",
         variant: "destructive",
       });
       return;
@@ -71,6 +74,7 @@ export default function Auth() {
         data: {
           full_name: fullName,
           phone: phone,
+          verification_method: verificationMethod,
         },
       },
     });
@@ -87,14 +91,25 @@ export default function Auth() {
 
     if (data.user) {
       setUserId(data.user.id);
-      toast({
-        title: "Email Sent!",
-        description: "Please check your email to confirm your account. Then verify your phone number below.",
-      });
       
-      // Automatically send SMS OTP
-      await handleSendOTP(data.user.id, phone);
-      setVerificationStep("phone-verify");
+      // Different flow based on verification method
+      if (verificationMethod === "email") {
+        toast({
+          title: "Check Your Email! 📧",
+          description: "We sent a confirmation link to " + email,
+        });
+        // User will click email link and be logged in automatically
+      } else {
+        // Phone verification flow
+        toast({
+          title: "Email Sent!",
+          description: "Now let's verify your phone number.",
+        });
+        
+        // Automatically send SMS OTP
+        await handleSendOTP(data.user.id, phone);
+        setVerificationStep("phone-verify");
+      }
     }
     
     setLoading(false);
@@ -307,6 +322,40 @@ export default function Auth() {
                       required
                     />
                   </div>
+
+                  <div className="space-y-3">
+                    <Label>Verification Method *</Label>
+                    <RadioGroup value={verificationMethod} onValueChange={(value) => setVerificationMethod(value as "email" | "phone")}>
+                      <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer">
+                        <RadioGroupItem value="email" id="email-verify" />
+                        <Label htmlFor="email-verify" className="font-normal cursor-pointer flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">📧</span>
+                            <div>
+                              <div className="font-medium">Email verification</div>
+                              <div className="text-xs text-muted-foreground">Traditional, free</div>
+                            </div>
+                          </div>
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2 p-3 border rounded-lg hover:bg-accent/50 transition-colors cursor-pointer">
+                        <RadioGroupItem value="phone" id="phone-verify" />
+                        <Label htmlFor="phone-verify" className="font-normal cursor-pointer flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-lg">📱</span>
+                            <div>
+                              <div className="font-medium">Phone (SMS) verification</div>
+                              <div className="text-xs text-muted-foreground">Faster access</div>
+                            </div>
+                          </div>
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                    <p className="text-xs text-muted-foreground">
+                      Choose how you'd like to verify your account
+                    </p>
+                  </div>
+
                   <Button type="submit" className="w-full" disabled={loading}>
                     {loading ? "Creating account..." : "Sign Up"}
                   </Button>

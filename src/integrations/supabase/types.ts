@@ -78,6 +78,7 @@ export type Database = {
         Row: {
           created_at: string
           email: string | null
+          email_verified: boolean | null
           fcm_token: string | null
           full_name: string
           id: string
@@ -88,10 +89,12 @@ export type Database = {
           verification_attempts: number | null
           verification_code: string | null
           verification_code_expires_at: string | null
+          verification_method: string | null
         }
         Insert: {
           created_at?: string
           email?: string | null
+          email_verified?: boolean | null
           fcm_token?: string | null
           full_name: string
           id: string
@@ -102,10 +105,12 @@ export type Database = {
           verification_attempts?: number | null
           verification_code?: string | null
           verification_code_expires_at?: string | null
+          verification_method?: string | null
         }
         Update: {
           created_at?: string
           email?: string | null
+          email_verified?: boolean | null
           fcm_token?: string | null
           full_name?: string
           id?: string
@@ -116,6 +121,7 @@ export type Database = {
           verification_attempts?: number | null
           verification_code?: string | null
           verification_code_expires_at?: string | null
+          verification_method?: string | null
         }
         Relationships: []
       }

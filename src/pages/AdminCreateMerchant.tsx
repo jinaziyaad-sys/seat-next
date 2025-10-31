@@ -8,7 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ArrowLeft, UserPlus, Store, AlertTriangle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { ArrowLeft, UserPlus, Store, AlertTriangle, Info } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 export default function AdminCreateMerchant() {
@@ -166,9 +167,13 @@ export default function AdminCreateMerchant() {
       }
 
       if (data?.success) {
+        const message = data.isNewUser 
+          ? `Account created! ${email} will receive a verification email.`
+          : `User ${email} assigned to venue successfully.`;
+        
         toast({
           title: "Success!",
-          description: `Merchant admin account created for ${email}`,
+          description: message,
         });
 
         // Reset form
@@ -338,11 +343,18 @@ export default function AdminCreateMerchant() {
               </p>
             </div>
 
+            <Alert>
+              <Info className="h-4 w-4" />
+              <AlertDescription>
+                New accounts must verify their email before logging in.
+              </AlertDescription>
+            </Alert>
+
             <div className="bg-muted p-4 rounded-lg space-y-2">
               <h4 className="font-semibold text-sm">What happens after creation:</h4>
               <ul className="text-sm text-muted-foreground space-y-1 list-disc list-inside">
-                <li>Merchant receives a confirmation email</li>
-                <li>They can login at /merchant/auth</li>
+                <li>Merchant receives email verification link</li>
+                <li>After verification, they can login at /merchant/auth</li>
                 <li>Full admin access to their venue dashboard</li>
                 <li>Can manage orders, waitlist, and settings</li>
               </ul>
