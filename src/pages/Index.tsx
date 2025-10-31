@@ -201,19 +201,25 @@ const Index = () => {
                     <div>
                       <h3 className="font-semibold">{order.venues?.name}</h3>
                       <p className="text-sm text-muted-foreground">Order #{order.order_number}</p>
-                      {order.eta && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                          <Clock size={12} />
-                          <span>
-                            {Math.ceil((new Date(order.eta).getTime() - new Date().getTime()) / (1000 * 60))} min
-                          </span>
-                        </div>
-                      )}
+                    {order.eta && (order.status === 'placed' || order.status === 'in_prep') && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                        <Clock size={12} />
+                        <span>
+                          {Math.ceil((new Date(order.eta).getTime() - new Date().getTime()) / (1000 * 60))} min
+                        </span>
+                      </div>
+                    )}
                     </div>
                   </div>
-                  <Badge variant={order.status === 'in_prep' ? 'default' : 'secondary'}>
-                    {order.status === 'in_prep' ? 'Preparing' : 'Placed'}
-                  </Badge>
+                    <Badge variant={
+                      order.status === 'ready' ? 'default' : 
+                      order.status === 'in_prep' ? 'default' : 
+                      'secondary'
+                    }>
+                      {order.status === 'ready' ? 'Ready' : 
+                       order.status === 'in_prep' ? 'Preparing' : 
+                       'Placed'}
+                    </Badge>
                 </div>
               </CardContent>
             </Card>
