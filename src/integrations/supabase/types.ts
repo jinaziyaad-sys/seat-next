@@ -167,6 +167,7 @@ export type Database = {
           service_types: string[] | null
           settings: Json | null
           updated_at: string
+          waitlist_preferences: Json | null
         }
         Insert: {
           address?: string | null
@@ -177,6 +178,7 @@ export type Database = {
           service_types?: string[] | null
           settings?: Json | null
           updated_at?: string
+          waitlist_preferences?: Json | null
         }
         Update: {
           address?: string | null
@@ -187,6 +189,7 @@ export type Database = {
           service_types?: string[] | null
           settings?: Json | null
           updated_at?: string
+          waitlist_preferences?: Json | null
         }
         Relationships: []
       }

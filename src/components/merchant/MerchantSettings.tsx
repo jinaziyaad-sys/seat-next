@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,6 +8,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
+import { Plus, X } from "lucide-react";
+
+interface WaitlistPreference {
+  id: string;
+  label: string;
+  enabled: boolean;
+  custom?: boolean;
+}
 
 export const MerchantSettings = ({ venue, venueId }: { venue: string; venueId: string }) => {
   const [settings, setSettings] = useState({
@@ -15,16 +24,51 @@ export const MerchantSettings = ({ venue, venueId }: { venue: string; venueId: s
     tablesPerInterval: "4",
     defaultPrepTime: "10",
     maxExtensionTime: "45",
-    enableIndoor: true,
-    enableOutdoor: true,
-    enableSmoking: false,
     pickupInstructions: "Please collect your order from the main counter. Show your order number to staff.",
     autoNoShowTime: "15"
   });
 
+  const [waitlistPreferences, setWaitlistPreferences] = useState<WaitlistPreference[]>([]);
+  const [newPreferenceLabel, setNewPreferenceLabel] = useState("");
+
   const { toast } = useToast();
 
-  const handleSave = () => {
+  useEffect(() => {
+    const fetchVenueSettings = async () => {
+      const { data, error } = await supabase
+        .from("venues")
+        .select("waitlist_preferences")
+        .eq("id", venueId)
+        .single();
+
+      if (!error && data?.waitlist_preferences) {
+        const prefs = data.waitlist_preferences as { options?: WaitlistPreference[] };
+        if (prefs.options) {
+          setWaitlistPreferences(prefs.options);
+        }
+      }
+    };
+
+    fetchVenueSettings();
+  }, [venueId]);
+
+  const handleSave = async () => {
+    const { error } = await supabase
+      .from("venues")
+      .update({
+        waitlist_preferences: { options: waitlistPreferences } as any
+      })
+      .eq("id", venueId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not save settings",
+        variant: "destructive"
+      });
+      return;
+    }
+
     toast({
       title: "Settings Saved",
       description: "Venue settings have been updated successfully.",
@@ -33,6 +77,32 @@ export const MerchantSettings = ({ venue, venueId }: { venue: string; venueId: s
 
   const handleInputChange = (key: string, value: string | boolean) => {
     setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  const togglePreference = (id: string) => {
+    setWaitlistPreferences(prev =>
+      prev.map(pref =>
+        pref.id === id ? { ...pref, enabled: !pref.enabled } : pref
+      )
+    );
+  };
+
+  const addCustomPreference = () => {
+    if (!newPreferenceLabel.trim()) return;
+
+    const newPref: WaitlistPreference = {
+      id: newPreferenceLabel.toLowerCase().replace(/\s+/g, '_'),
+      label: newPreferenceLabel.trim(),
+      enabled: true,
+      custom: true
+    };
+
+    setWaitlistPreferences(prev => [...prev, newPref]);
+    setNewPreferenceLabel("");
+  };
+
+  const removeCustomPreference = (id: string) => {
+    setWaitlistPreferences(prev => prev.filter(pref => pref.id !== id));
   };
 
   return (
@@ -108,52 +178,59 @@ export const MerchantSettings = ({ venue, venueId }: { venue: string; venueId: s
           </CardContent>
         </Card>
 
-        {/* Seating Preferences */}
+        {/* Waitlist Preferences */}
         <Card className="shadow-card">
           <CardHeader>
-            <CardTitle>Seating Preferences</CardTitle>
+            <CardTitle>Waitlist Preferences</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="indoor">Indoor Seating</Label>
-                <p className="text-sm text-muted-foreground">
-                  Allow customers to request indoor seating
-                </p>
+            <p className="text-sm text-muted-foreground mb-4">
+              Choose which seating preferences to display to customers when they join the waitlist
+            </p>
+            
+            {waitlistPreferences.map((pref) => (
+              <div key={pref.id} className="flex items-center justify-between">
+                <div className="flex-1">
+                  <Label htmlFor={pref.id}>{pref.label}</Label>
+                  {pref.custom && (
+                    <p className="text-xs text-muted-foreground">Custom option</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id={pref.id}
+                    checked={pref.enabled}
+                    onCheckedChange={() => togglePreference(pref.id)}
+                  />
+                  {pref.custom && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeCustomPreference(pref.id)}
+                    >
+                      <X size={16} />
+                    </Button>
+                  )}
+                </div>
               </div>
-              <Switch
-                id="indoor"
-                checked={settings.enableIndoor}
-                onCheckedChange={(checked) => handleInputChange("enableIndoor", checked)}
-              />
-            </div>
+            ))}
 
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="outdoor">Outdoor Seating</Label>
-                <p className="text-sm text-muted-foreground">
-                  Allow customers to request outdoor seating
-                </p>
-              </div>
-              <Switch
-                id="outdoor"
-                checked={settings.enableOutdoor}
-                onCheckedChange={(checked) => handleInputChange("enableOutdoor", checked)}
-              />
-            </div>
+            <Separator className="my-4" />
 
-            <div className="flex items-center justify-between">
-              <div>
-                <Label htmlFor="smoking">Smoking Section</Label>
-                <p className="text-sm text-muted-foreground">
-                  Allow customers to request smoking section
-                </p>
+            <div className="space-y-2">
+              <Label htmlFor="newPreference">Add Custom Preference</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="newPreference"
+                  placeholder="e.g., Kids Area, Window Seat"
+                  value={newPreferenceLabel}
+                  onChange={(e) => setNewPreferenceLabel(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && addCustomPreference()}
+                />
+                <Button onClick={addCustomPreference} size="sm">
+                  <Plus size={16} />
+                </Button>
               </div>
-              <Switch
-                id="smoking"
-                checked={settings.enableSmoking}
-                onCheckedChange={(checked) => handleInputChange("enableSmoking", checked)}
-              />
             </div>
           </CardContent>
         </Card>

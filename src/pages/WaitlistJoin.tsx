@@ -4,9 +4,16 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Users, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+
+interface WaitlistPreference {
+  id: string;
+  label: string;
+  enabled: boolean;
+}
 
 export default function WaitlistJoin() {
   const { venueId } = useParams();
@@ -18,6 +25,8 @@ export default function WaitlistJoin() {
   const [partySize, setPartySize] = useState(2);
   const [customerName, setCustomerName] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
+  const [availablePreferences, setAvailablePreferences] = useState<WaitlistPreference[]>([]);
+  const [selectedPreferences, setSelectedPreferences] = useState<string[]>([]);
 
   useEffect(() => {
     const fetchVenue = async () => {
@@ -28,7 +37,7 @@ export default function WaitlistJoin() {
 
       const { data, error } = await supabase
         .from("venues")
-        .select("name, address")
+        .select("name, address, waitlist_preferences")
         .eq("id", venueId)
         .single();
 
@@ -43,11 +52,29 @@ export default function WaitlistJoin() {
       }
 
       setVenue(data);
+      
+      // Set available preferences from venue settings
+      if (data.waitlist_preferences) {
+        const prefs = data.waitlist_preferences as { options?: WaitlistPreference[] };
+        if (prefs.options) {
+          const enabledPrefs = prefs.options.filter((pref) => pref.enabled);
+          setAvailablePreferences(enabledPrefs);
+        }
+      }
+      
       setIsLoading(false);
     };
 
     fetchVenue();
   }, [venueId, navigate, toast]);
+
+  const togglePreference = (prefId: string) => {
+    setSelectedPreferences(prev =>
+      prev.includes(prefId)
+        ? prev.filter(id => id !== prefId)
+        : [...prev, prefId]
+    );
+  };
 
   const handleJoinWaitlist = async () => {
     if (!customerName.trim()) {
@@ -68,6 +95,7 @@ export default function WaitlistJoin() {
         customer_name: customerName.trim(),
         customer_phone: customerPhone.trim() || null,
         party_size: partySize,
+        preferences: selectedPreferences.length > 0 ? selectedPreferences : null,
         status: "waiting",
         eta: new Date(Date.now() + 20 * 60000).toISOString(),
       })
@@ -162,6 +190,29 @@ export default function WaitlistJoin() {
               </Button>
             </div>
           </div>
+
+          {availablePreferences.length > 0 && (
+            <div className="space-y-3">
+              <Label>Seating Preferences (Optional)</Label>
+              <div className="space-y-2">
+                {availablePreferences.map((pref) => (
+                  <div key={pref.id} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={pref.id}
+                      checked={selectedPreferences.includes(pref.id)}
+                      onCheckedChange={() => togglePreference(pref.id)}
+                    />
+                    <Label
+                      htmlFor={pref.id}
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      {pref.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           <Button
             onClick={handleJoinWaitlist}
