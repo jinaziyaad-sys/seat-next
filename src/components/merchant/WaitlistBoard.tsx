@@ -75,6 +75,13 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   }, [venueId, toast]);
 
   const updateEntryStatus = async (entryId: string, newStatus: WaitlistEntry["status"]) => {
+    // Optimistic update
+    setWaitlist(prevWaitlist => 
+      prevWaitlist.map(entry => 
+        entry.id === entryId ? { ...entry, status: newStatus } : entry
+      )
+    );
+
     const { error } = await supabase
       .from("waitlist_entries")
       .update({ status: newStatus })
@@ -86,6 +93,17 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
         description: "Could not update waitlist status",
         variant: "destructive"
       });
+      // Revert optimistic update on error by refetching
+      const { data } = await supabase
+        .from("waitlist_entries")
+        .select("*")
+        .eq("venue_id", venueId)
+        .neq("status", "seated")
+        .neq("status", "cancelled")
+        .order("created_at", { ascending: true });
+      if (data) {
+        setWaitlist(data);
+      }
       return;
     }
 

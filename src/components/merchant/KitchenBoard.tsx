@@ -79,6 +79,13 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   }, [venueId, toast]);
 
   const updateOrderStatus = async (orderId: string, newStatus: Order["status"]) => {
+    // Optimistic update
+    setOrders(prevOrders => 
+      prevOrders.map(order => 
+        order.id === orderId ? { ...order, status: newStatus } : order
+      )
+    );
+
     const { error } = await supabase
       .from("orders")
       .update({ status: newStatus })
@@ -90,12 +97,25 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
         description: "Could not update order status",
         variant: "destructive"
       });
+      // Revert optimistic update on error by refetching
+      const { data } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("venue_id", venueId)
+        .neq("status", "collected")
+        .order("created_at", { ascending: true });
+      if (data) {
+        setOrders(data.map(order => ({
+          ...order,
+          items: Array.isArray(order.items) ? order.items : [order.items]
+        })));
+      }
       return;
     }
 
     toast({
       title: "Order Updated",
-      description: `Order status changed to ${newStatus.replace("-", " ")}`,
+      description: `Order status changed to ${newStatus.replace("_", " ")}`,
     });
   };
 
