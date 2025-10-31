@@ -164,6 +164,7 @@ export type Database = {
           id: string
           name: string
           phone: string | null
+          service_types: string[] | null
           settings: Json | null
           updated_at: string
         }
@@ -173,6 +174,7 @@ export type Database = {
           id?: string
           name: string
           phone?: string | null
+          service_types?: string[] | null
           settings?: Json | null
           updated_at?: string
         }
@@ -182,6 +184,7 @@ export type Database = {
           id?: string
           name?: string
           phone?: string | null
+          service_types?: string[] | null
           settings?: Json | null
           updated_at?: string
         }

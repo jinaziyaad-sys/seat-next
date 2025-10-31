@@ -4,13 +4,15 @@ import { useDevAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2 } from "lucide-react";
+import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import {
   AlertDialog,
@@ -29,6 +31,7 @@ interface Venue {
   name: string;
   address: string | null;
   phone: string | null;
+  service_types?: string[];
   orders_count?: number;
   waitlist_count?: number;
   staff_count?: number;
@@ -51,6 +54,7 @@ export default function DevDashboard() {
   const [venueName, setVenueName] = useState("");
   const [venueAddress, setVenueAddress] = useState("");
   const [venuePhone, setVenuePhone] = useState("");
+  const [serviceTypes, setServiceTypes] = useState<string[]>(["food_ready", "table_ready"]);
   const [merchantEmail, setMerchantEmail] = useState("");
   const [merchantPassword, setMerchantPassword] = useState("");
   const [selectedVenueId, setSelectedVenueId] = useState("");
@@ -96,6 +100,16 @@ export default function DevDashboard() {
 
   const handleCreateVenue = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (serviceTypes.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one service type",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -105,6 +119,7 @@ export default function DevDashboard() {
           name: venueName,
           address: venueAddress || null,
           phone: venuePhone || null,
+          service_types: serviceTypes,
         });
 
       if (error) throw error;
@@ -117,6 +132,7 @@ export default function DevDashboard() {
       setVenueName("");
       setVenueAddress("");
       setVenuePhone("");
+      setServiceTypes(["food_ready", "table_ready"]);
       fetchVenues();
     } catch (error: any) {
       toast({
@@ -381,6 +397,46 @@ export default function DevDashboard() {
                       rows={2}
                     />
                   </div>
+                  <div className="space-y-3">
+                    <Label>Service Types *</Label>
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="food-ready"
+                          checked={serviceTypes.includes("food_ready")}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setServiceTypes([...serviceTypes, "food_ready"]);
+                            } else {
+                              setServiceTypes(serviceTypes.filter(t => t !== "food_ready"));
+                            }
+                          }}
+                        />
+                        <label htmlFor="food-ready" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+                          🍔 Food Ready (Pickup/Takeout Orders)
+                        </label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <Checkbox
+                          id="table-ready"
+                          checked={serviceTypes.includes("table_ready")}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
+                              setServiceTypes([...serviceTypes, "table_ready"]);
+                            } else {
+                              setServiceTypes(serviceTypes.filter(t => t !== "table_ready"));
+                            }
+                          }}
+                        />
+                        <label htmlFor="table-ready" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer">
+                          🍽️ Table Ready (Dine-in Waitlist)
+                        </label>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Select which services this venue will offer to patrons
+                    </p>
+                  </div>
                   <Button type="submit" disabled={loading}>
                     <Store className="w-4 h-4 mr-2" />
                     {loading ? "Creating..." : "Create Venue"}
@@ -397,10 +453,20 @@ export default function DevDashboard() {
               <CardContent>
                 <div className="space-y-4">
                   {venues.map((venue) => (
-                    <div key={venue.id} className="border rounded-lg p-4">
+                      <div key={venue.id} className="border rounded-lg p-4">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h3 className="font-semibold text-lg">{venue.name}</h3>
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="font-semibold text-lg">{venue.name}</h3>
+                            <div className="flex gap-1">
+                              {venue.service_types?.includes("food_ready") && (
+                                <Badge variant="secondary" className="text-xs">🍔 Pickup</Badge>
+                              )}
+                              {venue.service_types?.includes("table_ready") && (
+                                <Badge variant="secondary" className="text-xs">🍽️ Dine-in</Badge>
+                              )}
+                            </div>
+                          </div>
                           {venue.address && (
                             <p className="text-sm text-muted-foreground">{venue.address}</p>
                           )}

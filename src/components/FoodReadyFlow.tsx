@@ -106,13 +106,14 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
     }
   }, [initialOrder]);
 
-  // Fetch venues on component mount
+  // Fetch venues on component mount - only show food_ready venues
   useEffect(() => {
     const fetchVenues = async () => {
       setIsLoading(true);
       const { data, error } = await supabase
         .from("venues")
-        .select("id, name, address, phone")
+        .select("id, name, address, phone, service_types")
+        .contains("service_types", ["food_ready"])
         .order("name");
       
       if (data && !error) {

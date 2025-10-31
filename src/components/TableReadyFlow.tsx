@@ -109,13 +109,14 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     }
   }, [initialEntry]);
 
-  // Fetch venues on component mount
+  // Fetch venues on component mount - only show table_ready venues
   useEffect(() => {
     const fetchVenues = async () => {
       setIsLoading(true);
       const { data, error } = await supabase
         .from("venues")
-        .select("id, name, address")
+        .select("id, name, address, service_types")
+        .contains("service_types", ["table_ready"])
         .order("name");
       
       if (data && !error) {

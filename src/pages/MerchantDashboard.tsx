@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMerchantAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,13 +16,41 @@ import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 const MerchantDashboard = () => {
   const { userRole, loading } = useMerchantAuth();
   const navigate = useNavigate();
+  const [venueServiceTypes, setVenueServiceTypes] = useState<string[]>([]);
+  const [loadingVenue, setLoadingVenue] = useState(true);
+
+  // Fetch venue service types
+  useEffect(() => {
+    const fetchVenueServiceTypes = async () => {
+      if (!userRole?.venue_id) return;
+      
+      setLoadingVenue(true);
+      const { data, error } = await supabase
+        .from("venues")
+        .select("service_types")
+        .eq("id", userRole.venue_id)
+        .single();
+      
+      if (data && !error) {
+        setVenueServiceTypes(data.service_types || ["food_ready", "table_ready"]);
+      }
+      setLoadingVenue(false);
+    };
+
+    if (userRole?.venue_id) {
+      fetchVenueServiceTypes();
+    }
+  }, [userRole?.venue_id]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/merchant/auth");
   };
 
-  if (loading || !userRole) {
+  const hasFoodReady = venueServiceTypes.includes("food_ready");
+  const hasTableReady = venueServiceTypes.includes("table_ready");
+
+  if (loading || !userRole || loadingVenue) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
@@ -59,16 +88,24 @@ const MerchantDashboard = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto p-6">
-        <Tabs defaultValue="kitchen" className="space-y-6">
-          <TabsList className={userRole.role === "admin" ? "grid w-full grid-cols-5" : "grid w-full grid-cols-2"}>
-            <TabsTrigger value="kitchen" className="flex items-center gap-2">
-              <ChefHat size={16} />
-              Kitchen Orders
-            </TabsTrigger>
-            <TabsTrigger value="waitlist" className="flex items-center gap-2">
-              <Users size={16} />
-              Waitlist
-            </TabsTrigger>
+        <Tabs defaultValue={hasFoodReady ? "kitchen" : "waitlist"} className="space-y-6">
+          <TabsList className={
+            userRole.role === "admin" 
+              ? `grid w-full grid-cols-${3 + (hasFoodReady ? 1 : 0) + (hasTableReady ? 1 : 0)}`
+              : `grid w-full grid-cols-${(hasFoodReady ? 1 : 0) + (hasTableReady ? 1 : 0)}`
+          }>
+            {hasFoodReady && (
+              <TabsTrigger value="kitchen" className="flex items-center gap-2">
+                <ChefHat size={16} />
+                Kitchen Orders
+              </TabsTrigger>
+            )}
+            {hasTableReady && (
+              <TabsTrigger value="waitlist" className="flex items-center gap-2">
+                <Users size={16} />
+                Waitlist
+              </TabsTrigger>
+            )}
             {userRole.role === "admin" && (
               <>
                 <TabsTrigger value="staff" className="flex items-center gap-2">
@@ -87,13 +124,17 @@ const MerchantDashboard = () => {
             )}
           </TabsList>
 
-          <TabsContent value="kitchen">
-            <KitchenBoard venueId={userRole.venue_id!} />
-          </TabsContent>
+          {hasFoodReady && (
+            <TabsContent value="kitchen">
+              <KitchenBoard venueId={userRole.venue_id!} />
+            </TabsContent>
+          )}
 
-          <TabsContent value="waitlist">
-            <WaitlistBoard venueId={userRole.venue_id!} />
-          </TabsContent>
+          {hasTableReady && (
+            <TabsContent value="waitlist">
+              <WaitlistBoard venueId={userRole.venue_id!} />
+            </TabsContent>
+          )}
 
           {userRole.role === "admin" ? (
             <>
