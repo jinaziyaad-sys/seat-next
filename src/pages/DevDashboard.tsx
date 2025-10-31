@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed } from "lucide-react";
+import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import {
   AlertDialog,
@@ -55,6 +55,8 @@ export default function DevDashboard() {
   const [venueAddress, setVenueAddress] = useState("");
   const [venuePhone, setVenuePhone] = useState("");
   const [serviceTypes, setServiceTypes] = useState<string[]>(["food_ready", "table_ready"]);
+  const [editingVenueId, setEditingVenueId] = useState<string | null>(null);
+  const [editingServiceTypes, setEditingServiceTypes] = useState<string[]>([]);
   const [merchantEmail, setMerchantEmail] = useState("");
   const [merchantPassword, setMerchantPassword] = useState("");
   const [selectedVenueId, setSelectedVenueId] = useState("");
@@ -249,6 +251,53 @@ export default function DevDashboard() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleEditServiceTypes = (venueId: string, currentServiceTypes: string[]) => {
+    setEditingVenueId(venueId);
+    setEditingServiceTypes(currentServiceTypes || ["food_ready", "table_ready"]);
+  };
+
+  const handleSaveServiceTypes = async (venueId: string, venueName: string) => {
+    if (editingServiceTypes.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one service type",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("venues")
+        .update({ service_types: editingServiceTypes })
+        .eq("id", venueId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success!",
+        description: `Service types updated for "${venueName}"`,
+      });
+
+      setEditingVenueId(null);
+      fetchVenues();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update service types",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingVenueId(null);
+    setEditingServiceTypes([]);
   };
 
   const handleDeleteMerchant = async (userId: string, venueId: string, email: string) => {
@@ -453,19 +502,21 @@ export default function DevDashboard() {
               <CardContent>
                 <div className="space-y-4">
                   {venues.map((venue) => (
-                      <div key={venue.id} className="border rounded-lg p-4">
-                      <div className="flex items-start justify-between">
+                    <div key={venue.id} className="border rounded-lg p-4">
+                      <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-2">
                             <h3 className="font-semibold text-lg">{venue.name}</h3>
-                            <div className="flex gap-1">
-                              {venue.service_types?.includes("food_ready") && (
-                                <Badge variant="secondary" className="text-xs">🍔 Pickup</Badge>
-                              )}
-                              {venue.service_types?.includes("table_ready") && (
-                                <Badge variant="secondary" className="text-xs">🍽️ Dine-in</Badge>
-                              )}
-                            </div>
+                            {editingVenueId !== venue.id && (
+                              <div className="flex gap-1">
+                                {venue.service_types?.includes("food_ready") && (
+                                  <Badge variant="secondary" className="text-xs">🍔 Pickup</Badge>
+                                )}
+                                {venue.service_types?.includes("table_ready") && (
+                                  <Badge variant="secondary" className="text-xs">🍽️ Dine-in</Badge>
+                                )}
+                              </div>
+                            )}
                           </div>
                           {venue.address && (
                             <p className="text-sm text-muted-foreground">{venue.address}</p>
@@ -476,31 +527,104 @@ export default function DevDashboard() {
                           <div className="text-sm text-muted-foreground mt-2">
                             {venue.staff_count} staff • {venue.orders_count} orders • {venue.waitlist_count} waitlist
                           </div>
+
+                          {editingVenueId === venue.id && (
+                            <div className="mt-3 p-3 bg-muted rounded-md space-y-2">
+                              <p className="text-sm font-medium">Edit Service Types:</p>
+                              <div className="space-y-2">
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`edit-food-${venue.id}`}
+                                    checked={editingServiceTypes.includes("food_ready")}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setEditingServiceTypes([...editingServiceTypes, "food_ready"]);
+                                      } else {
+                                        setEditingServiceTypes(editingServiceTypes.filter(t => t !== "food_ready"));
+                                      }
+                                    }}
+                                  />
+                                  <label htmlFor={`edit-food-${venue.id}`} className="text-sm cursor-pointer">
+                                    🍔 Food Ready (Pickup/Takeout)
+                                  </label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <Checkbox
+                                    id={`edit-table-${venue.id}`}
+                                    checked={editingServiceTypes.includes("table_ready")}
+                                    onCheckedChange={(checked) => {
+                                      if (checked) {
+                                        setEditingServiceTypes([...editingServiceTypes, "table_ready"]);
+                                      } else {
+                                        setEditingServiceTypes(editingServiceTypes.filter(t => t !== "table_ready"));
+                                      }
+                                    }}
+                                  />
+                                  <label htmlFor={`edit-table-${venue.id}`} className="text-sm cursor-pointer">
+                                    🍽️ Table Ready (Dine-in Waitlist)
+                                  </label>
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm" disabled={loading}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Delete Venue?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete "{venue.name}"? This will remove all associated orders, waitlist entries, and staff assignments. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteVenue(venue.id, venue.name)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        <div className="flex gap-2">
+                          {editingVenueId === venue.id ? (
+                            <>
+                              <Button 
+                                variant="default" 
+                                size="sm" 
+                                onClick={() => handleSaveServiceTypes(venue.id, venue.name)}
+                                disabled={loading}
                               >
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                                <Save className="w-4 h-4" />
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={handleCancelEdit}
+                                disabled={loading}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => handleEditServiceTypes(venue.id, venue.service_types || [])}
+                                disabled={loading}
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="destructive" size="sm" disabled={loading}>
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Delete Venue?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Are you sure you want to delete "{venue.name}"? This will remove all associated orders, waitlist entries, and staff assignments. This action cannot be undone.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDeleteVenue(venue.id, venue.name)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Delete
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
                   ))}
