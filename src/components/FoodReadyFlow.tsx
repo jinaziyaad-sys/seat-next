@@ -396,7 +396,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
               <div className="flex items-center justify-center gap-2 text-lg">
                 <Clock size={20} />
                 <span className="font-semibold">
-                  {Math.ceil((new Date(currentOrder.eta).getTime() - new Date().getTime()) / (1000 * 60))} min remaining
+                  {Math.ceil((new Date(currentOrder.eta).getTime() - new Date().getTime()) / (1000 * 60))} minutes • ETA {new Date(currentOrder.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
                 </span>
               </div>
             )}

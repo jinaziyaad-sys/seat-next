@@ -332,7 +332,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                 </span>
                 <span className="flex items-center gap-1">
                   <Clock size={14} />
-                  ETA: {formatTime(entry.eta)} ({getMinutesLeft(entry.eta)}m)
+                  {getMinutesLeft(entry.eta)} min • ETA {formatTime(entry.eta)}
                 </span>
               </div>
             </CardHeader>

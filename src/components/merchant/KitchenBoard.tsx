@@ -320,7 +320,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock size={14} />
                 <span className={getTimeStatus(order.eta)}>
-                  ETA: {formatTime(order.eta)} ({getMinutesLeft(order.eta)}m)
+                  {getMinutesLeft(order.eta)} min • ETA {formatTime(order.eta)}
                 </span>
                 {getMinutesLeft(order.eta) < 0 && (
                   <AlertTriangle size={14} className="text-red-500" />

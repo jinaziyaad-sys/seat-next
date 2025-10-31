@@ -547,7 +547,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             <div className="flex items-center justify-center gap-2 text-lg">
               <Clock size={20} />
               <span className="font-semibold">
-                ~{waitlistEntry.eta ? Math.ceil((new Date(waitlistEntry.eta).getTime() - new Date().getTime()) / (1000 * 60)) : 0} min wait
+                {waitlistEntry.eta ? Math.ceil((new Date(waitlistEntry.eta).getTime() - new Date().getTime()) / (1000 * 60)) : 0} minutes • ETA {waitlistEntry.eta ? new Date(waitlistEntry.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }) : "--:--"}
               </span>
             </div>
 
