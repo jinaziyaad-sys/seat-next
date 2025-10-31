@@ -229,7 +229,7 @@ export default function DevDashboard() {
             venue_id: role.venue_id,
             role: role.role,
             email: profile?.email || "N/A",
-            full_name: profile?.full_name || "N/A",
+            full_name: profile?.full_name || "",
             venue_name: role.venues?.name || "N/A",
           };
         })
