@@ -80,7 +80,7 @@ const Index = () => {
       .from('waitlist_entries')
       .select('*, venues(name)')
       .eq('user_id', user.id)
-      .eq('status', 'waiting')
+      .in('status', ['waiting', 'ready'])
       .order('created_at', { ascending: false });
 
     setActiveOrders(orders || []);
