@@ -10,6 +10,7 @@ import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
+import { cn } from "@/lib/utils";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
@@ -186,7 +187,10 @@ const Index = () => {
           {activeOrders.map((order) => (
             <Card 
               key={order.id} 
-              className="shadow-card cursor-pointer hover:shadow-floating transition-shadow" 
+              className={cn(
+                "shadow-card cursor-pointer hover:shadow-floating transition-all",
+                order.status === 'ready' && "bg-success/10 border-success animate-pulse-success"
+              )}
               onClick={() => {
                 setSelectedOrder(order);
                 setActiveTab("food-ready");
@@ -195,8 +199,14 @@ const Index = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
-                      <UtensilsCrossed className="w-6 h-6 text-primary" />
+                    <div className={cn(
+                      "w-12 h-12 rounded-full flex items-center justify-center",
+                      order.status === 'ready' ? "bg-success/20" : "bg-primary/10"
+                    )}>
+                      <UtensilsCrossed className={cn(
+                        "w-6 h-6",
+                        order.status === 'ready' ? "text-success" : "text-primary"
+                      )} />
                     </div>
                     <div>
                       <h3 className="font-semibold">{order.venues?.name}</h3>
