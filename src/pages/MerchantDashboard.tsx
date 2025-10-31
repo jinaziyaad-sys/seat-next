@@ -17,28 +17,30 @@ const MerchantDashboard = () => {
   const { userRole, loading } = useMerchantAuth();
   const navigate = useNavigate();
   const [venueServiceTypes, setVenueServiceTypes] = useState<string[]>([]);
+  const [venueData, setVenueData] = useState<any>(null);
   const [loadingVenue, setLoadingVenue] = useState(true);
 
-  // Fetch venue service types
+  // Fetch venue data
   useEffect(() => {
-    const fetchVenueServiceTypes = async () => {
+    const fetchVenueData = async () => {
       if (!userRole?.venue_id) return;
       
       setLoadingVenue(true);
       const { data, error } = await supabase
         .from("venues")
-        .select("service_types")
+        .select("*")
         .eq("id", userRole.venue_id)
         .single();
       
       if (data && !error) {
+        setVenueData(data);
         setVenueServiceTypes(data.service_types || ["food_ready", "table_ready"]);
       }
       setLoadingVenue(false);
     };
 
     if (userRole?.venue_id) {
-      fetchVenueServiceTypes();
+      fetchVenueData();
     }
   }, [userRole?.venue_id]);
 
@@ -147,7 +149,13 @@ const MerchantDashboard = () => {
               </TabsContent>
 
               <TabsContent value="reports">
-                <MerchantReports venue={userRole.venue_name!} />
+                {venueData ? (
+                  <MerchantReports venue={venueData} />
+                ) : (
+                  <div className="flex items-center justify-center py-12">
+                    <p className="text-muted-foreground">Loading venue data...</p>
+                  </div>
+                )}
               </TabsContent>
             </>
           ) : (
