@@ -14,6 +14,72 @@ export type Database = {
   }
   public: {
     Tables: {
+      order_analytics: {
+        Row: {
+          actual_prep_time: number | null
+          collected_at: string | null
+          created_at: string
+          day_of_week: number
+          delay_reason: string | null
+          hour_of_day: number
+          id: string
+          in_prep_at: string | null
+          items_count: number
+          order_id: string
+          placed_at: string
+          quoted_prep_time: number
+          ready_at: string | null
+          venue_id: string
+        }
+        Insert: {
+          actual_prep_time?: number | null
+          collected_at?: string | null
+          created_at?: string
+          day_of_week: number
+          delay_reason?: string | null
+          hour_of_day: number
+          id?: string
+          in_prep_at?: string | null
+          items_count?: number
+          order_id: string
+          placed_at: string
+          quoted_prep_time: number
+          ready_at?: string | null
+          venue_id: string
+        }
+        Update: {
+          actual_prep_time?: number | null
+          collected_at?: string | null
+          created_at?: string
+          day_of_week?: number
+          delay_reason?: string | null
+          hour_of_day?: number
+          id?: string
+          in_prep_at?: string | null
+          items_count?: number
+          order_id?: string
+          placed_at?: string
+          quoted_prep_time?: number
+          ready_at?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_analytics_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_analytics_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
           created_at: string
@@ -157,6 +223,47 @@ export type Database = {
           },
         ]
       }
+      venue_capacity_snapshots: {
+        Row: {
+          current_orders: number
+          current_waitlist: number
+          day_of_week: number
+          hour_of_day: number
+          id: string
+          tables_occupied: number | null
+          timestamp: string
+          venue_id: string
+        }
+        Insert: {
+          current_orders?: number
+          current_waitlist?: number
+          day_of_week: number
+          hour_of_day: number
+          id?: string
+          tables_occupied?: number | null
+          timestamp?: string
+          venue_id: string
+        }
+        Update: {
+          current_orders?: number
+          current_waitlist?: number
+          day_of_week?: number
+          hour_of_day?: number
+          id?: string
+          tables_occupied?: number | null
+          timestamp?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_capacity_snapshots_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venues: {
         Row: {
           address: string | null
@@ -192,6 +299,69 @@ export type Database = {
           waitlist_preferences?: Json | null
         }
         Relationships: []
+      }
+      waitlist_analytics: {
+        Row: {
+          actual_wait_time: number | null
+          created_at: string
+          day_of_week: number
+          entry_id: string
+          hour_of_day: number
+          id: string
+          joined_at: string
+          party_size: number
+          quoted_wait_time: number
+          ready_at: string | null
+          seated_at: string | null
+          venue_id: string
+          was_no_show: boolean | null
+        }
+        Insert: {
+          actual_wait_time?: number | null
+          created_at?: string
+          day_of_week: number
+          entry_id: string
+          hour_of_day: number
+          id?: string
+          joined_at: string
+          party_size: number
+          quoted_wait_time: number
+          ready_at?: string | null
+          seated_at?: string | null
+          venue_id: string
+          was_no_show?: boolean | null
+        }
+        Update: {
+          actual_wait_time?: number | null
+          created_at?: string
+          day_of_week?: number
+          entry_id?: string
+          hour_of_day?: number
+          id?: string
+          joined_at?: string
+          party_size?: number
+          quoted_wait_time?: number
+          ready_at?: string | null
+          seated_at?: string | null
+          venue_id?: string
+          was_no_show?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_analytics_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "waitlist_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waitlist_analytics_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       waitlist_entries: {
         Row: {
@@ -258,12 +428,53 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      calculate_dynamic_prep_time: {
+        Args: {
+          p_current_load?: number
+          p_day_of_week: number
+          p_hour: number
+          p_venue_id: string
+        }
+        Returns: {
+          base_time: number
+          confidence_score: number
+          data_points: number
+          estimated_minutes: number
+          load_multiplier: number
+        }[]
+      }
+      calculate_dynamic_wait_time: {
+        Args: {
+          p_current_waitlist_length?: number
+          p_day_of_week: number
+          p_hour: number
+          p_party_size: number
+          p_venue_id: string
+        }
+        Returns: {
+          base_time: number
+          confidence_score: number
+          data_points: number
+          estimated_minutes: number
+          party_size_factor: number
+          position_multiplier: number
+        }[]
+      }
       cleanup_expired_otps: { Args: never; Returns: undefined }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]
       }
       get_user_venue: { Args: { _user_id: string }; Returns: string }
+      get_venue_capacity_status: {
+        Args: { p_venue_id: string }
+        Returns: {
+          capacity_percentage: number
+          current_orders: number
+          current_waitlist: number
+          is_busy: boolean
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

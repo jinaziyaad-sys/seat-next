@@ -14,3 +14,12 @@ verify_jwt = false
 
 [functions.send-push-notification]
 verify_jwt = false
+
+[functions.calculate-order-eta]
+verify_jwt = true
+
+[functions.calculate-waitlist-eta]
+verify_jwt = true
+
+[functions.get-venue-analytics]
+verify_jwt = true

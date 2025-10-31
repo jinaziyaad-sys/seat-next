@@ -162,7 +162,28 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     if (!newCustomerName || !venueId) return;
     
     const preferences = newPreferences ? newPreferences.split(",").map(p => p.trim()) : [];
-    const eta = new Date(Date.now() + 15 * 60000).toISOString();
+    
+    // Call edge function to calculate dynamic ETA
+    const { data: etaData, error: etaError } = await supabase.functions.invoke('calculate-waitlist-eta', {
+      body: { 
+        venue_id: venueId, 
+        party_size: parseInt(newPartySize),
+        preferences
+      }
+    });
+
+    let eta: string;
+    let confidence = 'low';
+    
+    if (etaError || !etaData) {
+      console.error('Error calculating waitlist ETA:', etaError);
+      // Fallback to default 20 minutes
+      eta = new Date(Date.now() + 20 * 60000).toISOString();
+    } else {
+      eta = new Date(Date.now() + etaData.eta_minutes * 60000).toISOString();
+      confidence = etaData.confidence;
+      console.log('Dynamic waitlist ETA calculated:', etaData);
+    }
 
     const { error } = await supabase
       .from("waitlist_entries")
@@ -172,7 +193,8 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
         party_size: parseInt(newPartySize),
         preferences,
         eta,
-        status: "waiting"
+        status: "waiting",
+        position: etaData?.position || null
       });
 
     if (error) {
@@ -189,7 +211,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     setNewPreferences("");
     toast({
       title: "Added to Waitlist",
-      description: `${newCustomerName} added to waitlist`,
+      description: `${newCustomerName} added to waitlist. ETA: ${etaData?.eta_minutes || 20}m (${confidence} confidence)`,
     });
   };
 

@@ -174,7 +174,28 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
     if (!newOrderNumber || !newOrderItems || !venueId) return;
     
     const items = newOrderItems.split(",").map(item => ({ name: item.trim() }));
-    const eta = new Date(Date.now() + 10 * 60000).toISOString();
+    
+    // Call edge function to calculate dynamic ETA
+    const { data: etaData, error: etaError } = await supabase.functions.invoke('calculate-order-eta', {
+      body: { 
+        venue_id: venueId, 
+        items, 
+        order_number: newOrderNumber.toUpperCase() 
+      }
+    });
+
+    let eta: string;
+    let confidence = 'low';
+    
+    if (etaError || !etaData) {
+      console.error('Error calculating ETA:', etaError);
+      // Fallback to default 15 minutes
+      eta = new Date(Date.now() + 15 * 60000).toISOString();
+    } else {
+      eta = new Date(Date.now() + etaData.eta_minutes * 60000).toISOString();
+      confidence = etaData.confidence;
+      console.log('Dynamic ETA calculated:', etaData);
+    }
 
     const { error } = await supabase
       .from("orders")
@@ -199,7 +220,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
     setNewOrderItems("");
     toast({
       title: "Order Added",
-      description: `Order ${newOrderNumber.toUpperCase()} added to kitchen`,
+      description: `Order ${newOrderNumber.toUpperCase()} added to kitchen. ETA: ${etaData?.eta_minutes || 15}m (${confidence} confidence)`,
     });
   };
 
