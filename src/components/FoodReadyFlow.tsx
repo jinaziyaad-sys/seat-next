@@ -8,6 +8,7 @@ import { ArrowLeft, Clock, CheckCircle, Package, Truck, Search, MapPin } from "l
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { sendBrowserNotification, vibratePhone, initializePushNotifications } from "@/utils/notifications";
 
 type OrderStatus = "placed" | "in_prep" | "ready" | "collected" | "no_show";
 
@@ -40,11 +41,17 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
   const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
 
-  // Get authenticated user
+  // Get authenticated user and initialize notifications
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user?.id || null);
+      
+      // Initialize push notifications if user is logged in
+      if (user?.id) {
+        const FIREBASE_PROJECT_ID = 'cuoqjgahpfymxqrdlzlf'; // Use your Supabase project ID
+        await initializePushNotifications(FIREBASE_PROJECT_ID);
+      }
     };
     getUser();
   }, []);
@@ -79,6 +86,16 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
               status: payload.new.status,
               eta: payload.new.eta
             } : null);
+            
+            // Send notification when order is ready
+            if (payload.new.status === 'ready') {
+              sendBrowserNotification(
+                "🍔 Your Order is Ready!",
+                `Order #${payload.new.order_number} is ready for pickup`,
+                { tag: 'order-ready', requireInteraction: true }
+              );
+              vibratePhone([200, 100, 200, 100, 200]);
+            }
           }
         })
         .subscribe();
@@ -189,6 +206,16 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
               status: payload.new.status,
               eta: payload.new.eta
             } : null);
+            
+            // Send notification when order is ready
+            if (payload.new.status === 'ready') {
+              sendBrowserNotification(
+                "🍔 Your Order is Ready!",
+                `Order #${payload.new.order_number} is ready for pickup`,
+                { tag: 'order-ready', requireInteraction: true }
+              );
+              vibratePhone([200, 100, 200, 100, 200]);
+            }
           }
         })
         .subscribe();

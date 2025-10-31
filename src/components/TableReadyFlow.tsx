@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
+import { sendBrowserNotification, vibratePhone, initializePushNotifications } from "@/utils/notifications";
 
 interface WaitlistEntry {
   id: string;
@@ -40,11 +41,17 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [userId, setUserId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Get authenticated user
+  // Get authenticated user and initialize notifications
   useEffect(() => {
     const getUser = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       setUserId(user?.id || null);
+      
+      // Initialize push notifications if user is logged in
+      if (user?.id) {
+        const FIREBASE_PROJECT_ID = 'cuoqjgahpfymxqrdlzlf'; // Use your Supabase project ID
+        await initializePushNotifications(FIREBASE_PROJECT_ID);
+      }
     };
     getUser();
   }, []);
@@ -83,6 +90,14 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             
             if (payload.new.status === "ready") {
               setStep("ready");
+              
+              // Send browser notification and vibrate
+              sendBrowserNotification(
+                "🍽️ Your Table is Ready!",
+                "Please proceed to the venue to be seated",
+                { tag: 'table-ready', requireInteraction: true }
+              );
+              vibratePhone([200, 100, 200, 100, 200]);
             }
           }
         })
@@ -256,6 +271,14 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               
               if (payload.new.status === "ready") {
                 setStep("ready");
+                
+                // Send browser notification and vibrate
+                sendBrowserNotification(
+                  "🍽️ Your Table is Ready!",
+                  "Please proceed to the venue to be seated",
+                  { tag: 'table-ready', requireInteraction: true }
+                );
+                vibratePhone([200, 100, 200, 100, 200]);
               }
             }
           })

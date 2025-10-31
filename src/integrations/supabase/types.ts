@@ -78,6 +78,7 @@ export type Database = {
         Row: {
           created_at: string
           email: string | null
+          fcm_token: string | null
           full_name: string
           id: string
           last_verification_sent_at: string | null
@@ -91,6 +92,7 @@ export type Database = {
         Insert: {
           created_at?: string
           email?: string | null
+          fcm_token?: string | null
           full_name: string
           id: string
           last_verification_sent_at?: string | null
@@ -104,6 +106,7 @@ export type Database = {
         Update: {
           created_at?: string
           email?: string | null
+          fcm_token?: string | null
           full_name?: string
           id?: string
           last_verification_sent_at?: string | null
@@ -257,6 +260,15 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      notify_user_via_push: {
+        Args: {
+          p_body: string
+          p_data?: Json
+          p_title: string
+          p_user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "staff" | "super_admin" | "patron"
