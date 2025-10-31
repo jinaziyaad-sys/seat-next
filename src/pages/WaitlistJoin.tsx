@@ -54,10 +54,17 @@ export default function WaitlistJoin() {
       setVenue(data);
       
       // Set available preferences from venue settings
+      console.log("Raw venue data:", data);
+      console.log("Waitlist preferences:", data.waitlist_preferences);
+      
       if (data.waitlist_preferences) {
         const prefs = data.waitlist_preferences as { options?: WaitlistPreference[] };
+        console.log("Parsed prefs:", prefs);
+        
         if (prefs.options) {
+          console.log("All options:", prefs.options);
           const enabledPrefs = prefs.options.filter((pref) => pref.enabled);
+          console.log("Enabled preferences:", enabledPrefs);
           setAvailablePreferences(enabledPrefs);
         }
       }
