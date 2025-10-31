@@ -10,8 +10,19 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag } from "lucide-react";
+import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2 } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Venue {
   id: string;
@@ -23,9 +34,20 @@ interface Venue {
   staff_count?: number;
 }
 
+interface MerchantUser {
+  id: string;
+  user_id: string;
+  venue_id: string;
+  role: string;
+  email?: string;
+  full_name?: string;
+  venue_name?: string;
+}
+
 export default function DevDashboard() {
   const { loading: authLoading } = useDevAuth();
   const [venues, setVenues] = useState<Venue[]>([]);
+  const [merchantUsers, setMerchantUsers] = useState<MerchantUser[]>([]);
   const [venueName, setVenueName] = useState("");
   const [venueAddress, setVenueAddress] = useState("");
   const [venuePhone, setVenuePhone] = useState("");
@@ -39,6 +61,7 @@ export default function DevDashboard() {
   useEffect(() => {
     if (!authLoading) {
       fetchVenues();
+      fetchMerchantUsers();
     }
   }, [authLoading]);
 
@@ -136,6 +159,103 @@ export default function DevDashboard() {
       toast({
         title: "Error",
         description: error.message || "Failed to create merchant account",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMerchantUsers = async () => {
+    const { data: rolesData } = await supabase
+      .from("user_roles")
+      .select(`
+        id,
+        user_id,
+        venue_id,
+        role,
+        venues (
+          name
+        )
+      `)
+      .in("role", ["admin", "staff"])
+      .order("role");
+
+    if (rolesData) {
+      // Fetch user profiles for each role
+      const usersWithProfiles = await Promise.all(
+        rolesData.map(async (role: any) => {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("email, full_name")
+            .eq("id", role.user_id)
+            .single();
+
+          return {
+            id: role.id,
+            user_id: role.user_id,
+            venue_id: role.venue_id,
+            role: role.role,
+            email: profile?.email || "N/A",
+            full_name: profile?.full_name || "N/A",
+            venue_name: role.venues?.name || "N/A",
+          };
+        })
+      );
+
+      setMerchantUsers(usersWithProfiles);
+    }
+  };
+
+  const handleDeleteVenue = async (venueId: string, venueName: string) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("venues")
+        .delete()
+        .eq("id", venueId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success!",
+        description: `Venue "${venueName}" deleted successfully`,
+      });
+
+      fetchVenues();
+      fetchMerchantUsers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to delete venue",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteMerchant = async (userId: string, venueId: string, email: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("delete-merchant", {
+        body: { userId, venueId },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: "Success!",
+        description: `Merchant admin "${email}" removed successfully`,
+      });
+
+      fetchMerchantUsers();
+      fetchVenues();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to remove merchant admin",
         variant: "destructive",
       });
     } finally {
@@ -279,7 +399,7 @@ export default function DevDashboard() {
                   {venues.map((venue) => (
                     <div key={venue.id} className="border rounded-lg p-4">
                       <div className="flex items-start justify-between">
-                        <div>
+                        <div className="flex-1">
                           <h3 className="font-semibold text-lg">{venue.name}</h3>
                           {venue.address && (
                             <p className="text-sm text-muted-foreground">{venue.address}</p>
@@ -287,12 +407,34 @@ export default function DevDashboard() {
                           {venue.phone && (
                             <p className="text-sm text-muted-foreground">{venue.phone}</p>
                           )}
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-sm text-muted-foreground mt-2">
                             {venue.staff_count} staff • {venue.orders_count} orders • {venue.waitlist_count} waitlist
                           </div>
                         </div>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm" disabled={loading}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Delete Venue?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to delete "{venue.name}"? This will remove all associated orders, waitlist entries, and staff assignments. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteVenue(venue.id, venue.name)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       </div>
                     </div>
                   ))}
@@ -357,6 +499,67 @@ export default function DevDashboard() {
                     {loading ? "Creating..." : "Create Merchant Admin"}
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+
+            {/* Merchant Users List */}
+            <Card>
+              <CardHeader>
+                <CardTitle>All Merchant Users ({merchantUsers.length})</CardTitle>
+                <CardDescription>Admin and staff accounts across all venues</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {merchantUsers.map((merchant) => (
+                    <div key={merchant.id} className="border rounded-lg p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold">{merchant.full_name}</h3>
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              merchant.role === 'admin' 
+                                ? 'bg-primary/10 text-primary' 
+                                : 'bg-muted text-muted-foreground'
+                            }`}>
+                              {merchant.role}
+                            </span>
+                          </div>
+                          <p className="text-sm text-muted-foreground">{merchant.email}</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Venue: {merchant.venue_name}
+                          </p>
+                        </div>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="destructive" size="sm" disabled={loading}>
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Remove Merchant User?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Are you sure you want to remove {merchant.role} "{merchant.email}" from {merchant.venue_name}? They will lose access to the merchant dashboard. This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => handleDeleteMerchant(merchant.user_id, merchant.venue_id, merchant.email)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Remove
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
+                    </div>
+                  ))}
+                  {merchantUsers.length === 0 && (
+                    <p className="text-center text-muted-foreground py-8">No merchant users yet</p>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
