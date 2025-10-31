@@ -59,6 +59,7 @@ export default function DevDashboard() {
   const [editingServiceTypes, setEditingServiceTypes] = useState<string[]>([]);
   const [merchantEmail, setMerchantEmail] = useState("");
   const [merchantPassword, setMerchantPassword] = useState("");
+  const [merchantFullName, setMerchantFullName] = useState("");
   const [selectedVenueId, setSelectedVenueId] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -149,6 +150,16 @@ export default function DevDashboard() {
 
   const handleCreateMerchant = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!merchantEmail || !merchantPassword || !merchantFullName || !selectedVenueId) {
+      toast({
+        title: "Missing information",
+        description: "Please fill in all fields",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setLoading(true);
 
     try {
@@ -156,6 +167,7 @@ export default function DevDashboard() {
         body: {
           email: merchantEmail,
           password: merchantPassword,
+          fullName: merchantFullName,
           venueId: selectedVenueId,
           role: "admin",
         },
@@ -171,8 +183,10 @@ export default function DevDashboard() {
 
       setMerchantEmail("");
       setMerchantPassword("");
+      setMerchantFullName("");
       setSelectedVenueId("");
       fetchVenues();
+      fetchMerchantUsers();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -657,17 +671,28 @@ export default function DevDashboard() {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="merchant-password">Password *</Label>
+                      <Label htmlFor="merchant-fullname">Full Name *</Label>
                       <Input
-                        id="merchant-password"
-                        type="password"
-                        value={merchantPassword}
-                        onChange={(e) => setMerchantPassword(e.target.value)}
-                        placeholder="Minimum 6 characters"
+                        id="merchant-fullname"
+                        type="text"
+                        value={merchantFullName}
+                        onChange={(e) => setMerchantFullName(e.target.value)}
+                        placeholder="John Doe"
                         required
-                        minLength={6}
                       />
                     </div>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="merchant-password">Password *</Label>
+                    <Input
+                      id="merchant-password"
+                      type="password"
+                      value={merchantPassword}
+                      onChange={(e) => setMerchantPassword(e.target.value)}
+                      placeholder="Minimum 6 characters"
+                      required
+                      minLength={6}
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="merchant-venue">Assign to Venue *</Label>
@@ -705,7 +730,7 @@ export default function DevDashboard() {
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <h3 className="font-semibold">{merchant.full_name}</h3>
+                            <h3 className="font-semibold">{merchant.full_name || merchant.email || "N/A"}</h3>
                             <span className={`text-xs px-2 py-1 rounded-full ${
                               merchant.role === 'admin' 
                                 ? 'bg-primary/10 text-primary' 

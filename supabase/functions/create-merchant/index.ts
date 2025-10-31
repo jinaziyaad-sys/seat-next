@@ -12,13 +12,13 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { email, password, venueId, role = 'admin' } = await req.json();
+    const { email, password, fullName, venueId, role = 'admin' } = await req.json();
 
     // Validate inputs
-    if (!email || !password || !venueId) {
-      console.error('Missing required fields:', { email: !!email, password: !!password, venueId: !!venueId });
+    if (!email || !password || !fullName || !venueId) {
+      console.error('Missing required fields:', { email: !!email, password: !!password, fullName: !!fullName, venueId: !!venueId });
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: email, password, and venueId are required' }),
+        JSON.stringify({ error: 'Missing required fields: email, password, fullName, and venueId are required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -71,11 +71,14 @@ Deno.serve(async (req) => {
       }
     } else {
       // Create new user
-      console.log('Creating new user with email:', email);
+      console.log('Creating new user with email:', email, 'and full name:', fullName);
       
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
+        user_metadata: {
+          full_name: fullName
+        }
         // Removed email_confirm: true - user must verify email
       });
 
