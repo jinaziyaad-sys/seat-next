@@ -7,8 +7,9 @@ import { MerchantSettings } from "@/components/merchant/MerchantSettings";
 import { StaffManagement } from "@/components/merchant/StaffManagement";
 import { MerchantReports } from "@/components/merchant/MerchantReports";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChefHat, Users, Settings, BarChart3, LogOut } from "lucide-react";
+import { ChefHat, Users, Settings, BarChart3, LogOut, Lock } from "lucide-react";
 
 const MerchantDashboard = () => {
   const { userRole, loading } = useMerchantAuth();
@@ -34,9 +35,14 @@ const MerchantDashboard = () => {
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-2xl font-bold text-primary">{userRole.venue_name}</h1>
-              <p className="text-sm text-muted-foreground capitalize">
-                {userRole.role} Dashboard
+              <div className="flex items-center gap-3">
+                <h1 className="text-2xl font-bold text-primary">{userRole.venue_name}</h1>
+                <Badge variant={userRole.role === 'admin' ? 'default' : 'secondary'}>
+                  {userRole.role === 'admin' ? 'Administrator' : 'Staff Member'}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                {userRole.role === 'admin' ? 'Full access to all features' : 'Kitchen & Waitlist access'}
               </p>
             </div>
             <Button variant="outline" onClick={handleLogout}>
@@ -85,7 +91,7 @@ const MerchantDashboard = () => {
             <WaitlistBoard venueId={userRole.venue_id!} />
           </TabsContent>
 
-          {userRole.role === "admin" && (
+          {userRole.role === "admin" ? (
             <>
               <TabsContent value="staff">
                 <StaffManagement venueId={userRole.venue_id!} />
@@ -97,6 +103,38 @@ const MerchantDashboard = () => {
 
               <TabsContent value="reports">
                 <MerchantReports venue={userRole.venue_name!} />
+              </TabsContent>
+            </>
+          ) : (
+            <>
+              <TabsContent value="staff">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Lock className="w-16 h-16 text-muted-foreground/50 mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Admin Access Required</h3>
+                  <p className="text-muted-foreground max-w-md">
+                    You need administrator privileges to manage staff members.
+                  </p>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="settings">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Lock className="w-16 h-16 text-muted-foreground/50 mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Admin Access Required</h3>
+                  <p className="text-muted-foreground max-w-md">
+                    You need administrator privileges to modify venue settings.
+                  </p>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="reports">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <Lock className="w-16 h-16 text-muted-foreground/50 mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">Admin Access Required</h3>
+                  <p className="text-muted-foreground max-w-md">
+                    You need administrator privileges to view reports and analytics.
+                  </p>
+                </div>
               </TabsContent>
             </>
           )}
