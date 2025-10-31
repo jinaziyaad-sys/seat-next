@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Building2, Mail } from "lucide-react";
+import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 
 export default function MerchantAuth() {
   const [email, setEmail] = useState("");
@@ -192,7 +193,20 @@ export default function MerchantAuth() {
               />
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="password">Password</Label>
+                <PasswordResetDialog 
+                  userEmail={email}
+                  trigger={
+                    <button
+                      type="button"
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  }
+                />
+              </div>
               <Input
                 id="password"
                 type="password"

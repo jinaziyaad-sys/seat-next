@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { Code2 } from "lucide-react";
+import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 
 export default function DevAuth() {
   const [email, setEmail] = useState("");
@@ -104,7 +105,20 @@ export default function DevAuth() {
               />
             </div>
             <div>
-              <Label htmlFor="password">Password</Label>
+              <div className="flex items-center justify-between mb-2">
+                <Label htmlFor="password">Password</Label>
+                <PasswordResetDialog 
+                  userEmail={email}
+                  trigger={
+                    <button
+                      type="button"
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </button>
+                  }
+                />
+              </div>
               <Input
                 id="password"
                 type="password"
