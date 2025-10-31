@@ -125,12 +125,20 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
 
     const currentETA = order.eta ? new Date(order.eta) : new Date();
     const newETA = new Date(currentETA.getTime() + minutes * 60000);
+    const newNotes = reason ? `Extended: ${reason}` : order.notes;
+
+    // Optimistic update
+    setOrders(prevOrders => 
+      prevOrders.map(o => 
+        o.id === orderId ? { ...o, eta: newETA.toISOString(), notes: newNotes } : o
+      )
+    );
 
     const { error } = await supabase
       .from("orders")
       .update({ 
         eta: newETA.toISOString(),
-        notes: reason ? `Extended: ${reason}` : order.notes
+        notes: newNotes
       })
       .eq("id", orderId);
 
@@ -140,6 +148,19 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
         description: "Could not update ETA",
         variant: "destructive"
       });
+      // Revert optimistic update on error by refetching
+      const { data } = await supabase
+        .from("orders")
+        .select("*")
+        .eq("venue_id", venueId)
+        .neq("status", "collected")
+        .order("created_at", { ascending: true });
+      if (data) {
+        setOrders(data.map(order => ({
+          ...order,
+          items: Array.isArray(order.items) ? order.items : [order.items]
+        })));
+      }
       return;
     }
 

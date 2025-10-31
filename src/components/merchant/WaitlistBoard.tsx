@@ -116,6 +116,13 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   const setETA = async (entryId: string, minutes: number) => {
     const newETA = new Date(Date.now() + minutes * 60000).toISOString();
 
+    // Optimistic update
+    setWaitlist(prevWaitlist => 
+      prevWaitlist.map(entry => 
+        entry.id === entryId ? { ...entry, eta: newETA } : entry
+      )
+    );
+
     const { error } = await supabase
       .from("waitlist_entries")
       .update({ eta: newETA })
@@ -127,6 +134,17 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
         description: "Could not update ETA",
         variant: "destructive"
       });
+      // Revert optimistic update on error by refetching
+      const { data } = await supabase
+        .from("waitlist_entries")
+        .select("*")
+        .eq("venue_id", venueId)
+        .neq("status", "seated")
+        .neq("status", "cancelled")
+        .order("created_at", { ascending: true });
+      if (data) {
+        setWaitlist(data);
+      }
       return;
     }
 
