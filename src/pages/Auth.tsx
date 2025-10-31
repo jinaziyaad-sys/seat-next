@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Mail, AlertCircle } from "lucide-react";
+import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -378,7 +379,20 @@ export default function Auth() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="password">Password</Label>
+                  <div className="flex items-center justify-between mb-2">
+                    <Label htmlFor="password">Password</Label>
+                    <PasswordResetDialog 
+                      userEmail={email}
+                      trigger={
+                        <button
+                          type="button"
+                          className="text-sm text-primary hover:underline"
+                        >
+                          Forgot password?
+                        </button>
+                      }
+                    />
+                  </div>
                   <Input
                     id="password"
                     type="password"
