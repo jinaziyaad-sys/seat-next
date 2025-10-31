@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChefHat, Users, Settings, BarChart3, LogOut, Lock } from "lucide-react";
+import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 
 const MerchantDashboard = () => {
   const { userRole, loading } = useMerchantAuth();
@@ -45,10 +46,13 @@ const MerchantDashboard = () => {
                 {userRole.role === 'admin' ? 'Full access to all features' : 'Kitchen & Waitlist access'}
               </p>
             </div>
-            <Button variant="outline" onClick={handleLogout}>
-              <LogOut size={16} className="mr-2" />
-              Logout
-            </Button>
+            <div className="flex gap-2">
+              <PasswordResetDialog />
+              <Button variant="outline" onClick={handleLogout}>
+                <LogOut size={16} className="mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </div>

@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, User, Bell, Accessibility, Shield, LogOut } from "lucide-react";
+import { ArrowLeft, User, Bell, Accessibility, Shield, LogOut, KeyRound } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
+import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 
 interface UserProfile {
   full_name: string;
@@ -132,13 +133,15 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
               <User size={24} />
               <CardTitle>Personal Information</CardTitle>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setIsEditing(!isEditing)}
-            >
-              {isEditing ? "Cancel" : "Edit"}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsEditing(!isEditing)}
+              >
+                {isEditing ? "Cancel" : "Edit"}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -183,6 +186,25 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
               Save Changes
             </Button>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Security Section */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Shield size={24} />
+            <CardTitle>Security</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">Password</p>
+              <p className="text-sm text-muted-foreground">Reset your account password</p>
+            </div>
+            <PasswordResetDialog userEmail={profile.email} />
+          </div>
         </CardContent>
       </Card>
 

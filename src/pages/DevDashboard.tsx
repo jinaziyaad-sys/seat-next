@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag } from "lucide-react";
+import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 
 interface Venue {
   id: string;
@@ -165,10 +166,13 @@ export default function DevDashboard() {
               <h1 className="text-2xl font-bold text-primary">Developer Portal</h1>
               <p className="text-sm text-muted-foreground">Platform Administration</p>
             </div>
-            <Button variant="outline" onClick={handleLogout}>
-              <LogOut size={16} className="mr-2" />
-              Logout
-            </Button>
+            <div className="flex gap-2">
+              <PasswordResetDialog />
+              <Button variant="outline" onClick={handleLogout}>
+                <LogOut size={16} className="mr-2" />
+                Logout
+              </Button>
+            </div>
           </div>
         </div>
       </div>
