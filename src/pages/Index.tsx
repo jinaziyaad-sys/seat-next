@@ -72,7 +72,7 @@ const Index = () => {
       .from('orders')
       .select('*, venues(name)')
       .eq('user_id', user.id)
-      .in('status', ['placed', 'in_prep'])
+      .in('status', ['placed', 'in_prep', 'ready'])
       .order('created_at', { ascending: false });
 
     const { data: waitlist } = await supabase
