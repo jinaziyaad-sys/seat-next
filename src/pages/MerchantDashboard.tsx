@@ -91,11 +91,12 @@ const MerchantDashboard = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto p-6">
         <Tabs defaultValue={hasFoodReady ? "kitchen" : "waitlist"} className="space-y-6">
-          <TabsList className={
+          <TabsList className={`grid w-full ${
             userRole.role === "admin" 
-              ? `grid w-full grid-cols-${3 + (hasFoodReady ? 1 : 0) + (hasTableReady ? 1 : 0)}`
-              : `grid w-full grid-cols-${(hasFoodReady ? 1 : 0) + (hasTableReady ? 1 : 0)}`
-          }>
+              ? (hasFoodReady && hasTableReady ? "grid-cols-5" : 
+                 hasFoodReady || hasTableReady ? "grid-cols-4" : "grid-cols-3")
+              : (hasFoodReady && hasTableReady ? "grid-cols-2" : "grid-cols-1")
+          }`}>
             {hasFoodReady && (
               <TabsTrigger value="kitchen" className="flex items-center gap-2">
                 <ChefHat size={16} />
