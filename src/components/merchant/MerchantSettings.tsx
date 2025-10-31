@@ -41,10 +41,22 @@ export const MerchantSettings = ({ venue, venueId }: { venue: string; venueId: s
         .eq("id", venueId)
         .single();
 
-      if (!error && data?.waitlist_preferences) {
+      if (error) {
+        console.error("Error fetching venue settings:", error);
+        return;
+      }
+
+      if (data?.waitlist_preferences) {
         const prefs = data.waitlist_preferences as { options?: WaitlistPreference[] };
         if (prefs.options) {
           setWaitlistPreferences(prefs.options);
+        } else {
+          // Set default preferences if none exist
+          setWaitlistPreferences([
+            { id: "indoor", label: "Indoor Seating", enabled: true },
+            { id: "outdoor", label: "Outdoor Seating", enabled: true },
+            { id: "smoking", label: "Smoking Area", enabled: false }
+          ]);
         }
       }
     };
@@ -53,6 +65,8 @@ export const MerchantSettings = ({ venue, venueId }: { venue: string; venueId: s
   }, [venueId]);
 
   const handleSave = async () => {
+    console.log("Saving preferences:", waitlistPreferences);
+    
     const { error } = await supabase
       .from("venues")
       .update({
@@ -61,9 +75,10 @@ export const MerchantSettings = ({ venue, venueId }: { venue: string; venueId: s
       .eq("id", venueId);
 
     if (error) {
+      console.error("Error saving settings:", error);
       toast({
         title: "Error",
-        description: "Could not save settings",
+        description: "Could not save settings: " + error.message,
         variant: "destructive"
       });
       return;
@@ -88,7 +103,14 @@ export const MerchantSettings = ({ venue, venueId }: { venue: string; venueId: s
   };
 
   const addCustomPreference = () => {
-    if (!newPreferenceLabel.trim()) return;
+    if (!newPreferenceLabel.trim()) {
+      toast({
+        title: "Label Required",
+        description: "Please enter a label for the preference",
+        variant: "destructive"
+      });
+      return;
+    }
 
     const newPref: WaitlistPreference = {
       id: newPreferenceLabel.toLowerCase().replace(/\s+/g, '_'),
@@ -99,6 +121,11 @@ export const MerchantSettings = ({ venue, venueId }: { venue: string; venueId: s
 
     setWaitlistPreferences(prev => [...prev, newPref]);
     setNewPreferenceLabel("");
+    
+    toast({
+      title: "Preference Added",
+      description: "Don't forget to click 'Save Settings' to apply changes",
+    });
   };
 
   const removeCustomPreference = (id: string) => {
