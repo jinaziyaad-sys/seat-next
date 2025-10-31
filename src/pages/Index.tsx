@@ -215,7 +215,7 @@ const Index = () => {
                       <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                         <Clock size={12} />
                         <span>
-                          {Math.ceil((new Date(order.eta).getTime() - new Date().getTime()) / (1000 * 60))} min
+                          {Math.ceil((new Date(order.eta).getTime() - new Date().getTime()) / (1000 * 60))} min • ETA {new Date(order.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
                         </span>
                       </div>
                     )}
@@ -268,7 +268,7 @@ const Index = () => {
                         <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                           <Clock size={12} />
                           <span>
-                            {Math.ceil((new Date(entry.eta).getTime() - new Date().getTime()) / (1000 * 60))} min
+                            {Math.ceil((new Date(entry.eta).getTime() - new Date().getTime()) / (1000 * 60))} min • ETA {new Date(entry.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
                           </span>
                         </div>
                       )}
