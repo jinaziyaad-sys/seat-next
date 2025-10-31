@@ -238,7 +238,10 @@ const Index = () => {
           {activeWaitlist.map((entry) => (
             <Card 
               key={entry.id} 
-              className="shadow-card cursor-pointer hover:shadow-floating transition-shadow" 
+              className={cn(
+                "shadow-card cursor-pointer hover:shadow-floating transition-all",
+                entry.status === 'ready' && "bg-success/10 border-success animate-pulse-success"
+              )}
               onClick={() => {
                 setSelectedOrder(entry);
                 setActiveTab("table-ready");
@@ -247,15 +250,21 @@ const Index = () => {
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-accent/10 rounded-full flex items-center justify-center">
-                      <Users className="w-6 h-6 text-accent" />
+                    <div className={cn(
+                      "w-12 h-12 rounded-full flex items-center justify-center",
+                      entry.status === 'ready' ? "bg-success/20" : "bg-accent/10"
+                    )}>
+                      <Users className={cn(
+                        "w-6 h-6",
+                        entry.status === 'ready' ? "text-success" : "text-accent"
+                      )} />
                     </div>
                     <div>
                       <h3 className="font-semibold">{entry.venues?.name}</h3>
                       <p className="text-sm text-muted-foreground">
                         Party of {entry.party_size} • Position {entry.position || '—'}
                       </p>
-                      {entry.eta && (
+                      {entry.eta && entry.status === 'waiting' && (
                         <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                           <Clock size={12} />
                           <span>
@@ -265,7 +274,9 @@ const Index = () => {
                       )}
                     </div>
                   </div>
-                  <Badge>Waiting</Badge>
+                  <Badge variant={entry.status === 'ready' ? 'default' : 'secondary'}>
+                    {entry.status === 'ready' ? 'Ready' : 'Waiting'}
+                  </Badge>
                 </div>
               </CardContent>
             </Card>
