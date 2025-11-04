@@ -6,10 +6,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
-import { TrendingUp, TrendingDown, Clock, Users, UtensilsCrossed, AlertTriangle, Loader2, Info } from "lucide-react";
+import { TrendingUp, TrendingDown, Clock, Users, UtensilsCrossed, AlertTriangle, Loader2, Info, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { RatingsView } from "./RatingsView";
+import * as XLSX from 'xlsx';
 
 interface AnalyticsData {
   time_range: string;
@@ -66,6 +67,7 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
   const [timeRange, setTimeRange] = useState("today");
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exportLoading, setExportLoading] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -94,6 +96,170 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
 
     fetchAnalytics();
   }, [venue?.id, timeRange, toast]);
+
+  const handleExportData = async () => {
+    if (!venue?.id) return;
+    
+    setExportLoading(true);
+    try {
+      // Calculate date range based on timeRange state
+      const now = new Date();
+      let startDate = new Date();
+      
+      switch (timeRange) {
+        case 'today':
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case '7days':
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case '30days':
+          startDate.setDate(now.getDate() - 30);
+          break;
+      }
+
+      // Fetch all data in parallel
+      const [ordersData, orderAnalyticsData, waitlistData, waitlistAnalyticsData, ratingsData] = await Promise.all([
+        supabase
+          .from('orders')
+          .select('*')
+          .eq('venue_id', venue.id)
+          .gte('created_at', startDate.toISOString())
+          .order('created_at', { ascending: false }),
+        
+        supabase
+          .from('order_analytics')
+          .select('*')
+          .eq('venue_id', venue.id)
+          .gte('placed_at', startDate.toISOString())
+          .order('placed_at', { ascending: false }),
+        
+        supabase
+          .from('waitlist_entries')
+          .select('*')
+          .eq('venue_id', venue.id)
+          .gte('created_at', startDate.toISOString())
+          .order('created_at', { ascending: false }),
+        
+        supabase
+          .from('waitlist_analytics')
+          .select('*')
+          .eq('venue_id', venue.id)
+          .gte('joined_at', startDate.toISOString())
+          .order('joined_at', { ascending: false }),
+        
+        supabase
+          .from('order_ratings')
+          .select('*')
+          .eq('venue_id', venue.id)
+          .gte('created_at', startDate.toISOString())
+          .order('created_at', { ascending: false })
+      ]);
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+
+      // Sheet 1: Orders
+      if (ordersData.data && ordersData.data.length > 0) {
+        const ordersSheet = XLSX.utils.json_to_sheet(ordersData.data.map(o => ({
+          'Order Number': o.order_number,
+          'Customer Name': o.customer_name,
+          'Customer Phone': o.customer_phone,
+          'Status': o.status,
+          'Items': JSON.stringify(o.items),
+          'ETA': o.eta ? new Date(o.eta).toLocaleString() : 'N/A',
+          'Notes': o.notes || '',
+          'Created At': new Date(o.created_at).toLocaleString(),
+          'Updated At': new Date(o.updated_at).toLocaleString(),
+        })));
+        XLSX.utils.book_append_sheet(wb, ordersSheet, 'Orders');
+      }
+
+      // Sheet 2: Order Analytics
+      if (orderAnalyticsData.data && orderAnalyticsData.data.length > 0) {
+        const analyticsSheet = XLSX.utils.json_to_sheet(orderAnalyticsData.data.map(o => ({
+          'Order ID': o.order_id,
+          'Placed At': new Date(o.placed_at).toLocaleString(),
+          'In Prep At': o.in_prep_at ? new Date(o.in_prep_at).toLocaleString() : 'N/A',
+          'Ready At': o.ready_at ? new Date(o.ready_at).toLocaleString() : 'N/A',
+          'Collected At': o.collected_at ? new Date(o.collected_at).toLocaleString() : 'N/A',
+          'Quoted Prep Time (min)': o.quoted_prep_time,
+          'Actual Prep Time (min)': o.actual_prep_time || 'N/A',
+          'Items Count': o.items_count,
+          'Hour of Day': o.hour_of_day,
+          'Day of Week': o.day_of_week,
+          'Delay Reason': o.delay_reason || '',
+        })));
+        XLSX.utils.book_append_sheet(wb, analyticsSheet, 'Order Analytics');
+      }
+
+      // Sheet 3: Waitlist Entries
+      if (waitlistData.data && waitlistData.data.length > 0) {
+        const waitlistSheet = XLSX.utils.json_to_sheet(waitlistData.data.map(w => ({
+          'Customer Name': w.customer_name,
+          'Customer Phone': w.customer_phone,
+          'Party Size': w.party_size,
+          'Status': w.status,
+          'Position': w.position || 'N/A',
+          'Preferences': w.preferences ? w.preferences.join(', ') : 'None',
+          'ETA': w.eta ? new Date(w.eta).toLocaleString() : 'N/A',
+          'Created At': new Date(w.created_at).toLocaleString(),
+          'Updated At': new Date(w.updated_at).toLocaleString(),
+        })));
+        XLSX.utils.book_append_sheet(wb, waitlistSheet, 'Waitlist');
+      }
+
+      // Sheet 4: Waitlist Analytics
+      if (waitlistAnalyticsData.data && waitlistAnalyticsData.data.length > 0) {
+        const waitlistAnalyticsSheet = XLSX.utils.json_to_sheet(waitlistAnalyticsData.data.map(w => ({
+          'Entry ID': w.entry_id,
+          'Party Size': w.party_size,
+          'Joined At': new Date(w.joined_at).toLocaleString(),
+          'Ready At': w.ready_at ? new Date(w.ready_at).toLocaleString() : 'N/A',
+          'Seated At': w.seated_at ? new Date(w.seated_at).toLocaleString() : 'N/A',
+          'Quoted Wait Time (min)': w.quoted_wait_time,
+          'Actual Wait Time (min)': w.actual_wait_time || 'N/A',
+          'Was No Show': w.was_no_show ? 'Yes' : 'No',
+          'Hour of Day': w.hour_of_day,
+          'Day of Week': w.day_of_week,
+        })));
+        XLSX.utils.book_append_sheet(wb, waitlistAnalyticsSheet, 'Waitlist Analytics');
+      }
+
+      // Sheet 5: Ratings
+      if (ratingsData.data && ratingsData.data.length > 0) {
+        const ratingsSheet = XLSX.utils.json_to_sheet(ratingsData.data.map(r => ({
+          'Order ID': r.order_id,
+          'Rating': r.rating,
+          'Feedback': r.feedback_text || 'No feedback',
+          'Created At': new Date(r.created_at).toLocaleString(),
+        })));
+        XLSX.utils.book_append_sheet(wb, ratingsSheet, 'Ratings');
+      }
+
+      // Generate filename
+      const timeRangeLabel = timeRange === 'today' ? 'Today' : timeRange === '7days' ? 'Last-7-Days' : 'Last-30-Days';
+      const filename = `${venue.name.replace(/[^a-z0-9]/gi, '_')}_${timeRangeLabel}_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+      // Download
+      XLSX.writeFile(wb, filename);
+
+      toast({
+        title: "Success",
+        description: "Data exported successfully",
+      });
+
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to export data",
+        variant: "destructive",
+      });
+    } finally {
+      setExportLoading(false);
+    }
+  };
 
   const MetricCard = ({ title, value, unit, icon: Icon, color = "text-primary" }: any) => (
     <Card className="shadow-card">
@@ -143,16 +309,26 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Reports & Analytics</h2>
-        <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-40">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="7days">Last 7 Days</SelectItem>
-            <SelectItem value="30days">Last 30 Days</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Button 
+            onClick={handleExportData} 
+            disabled={exportLoading}
+            variant="outline"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {exportLoading ? "Exporting..." : "Export to Excel"}
+          </Button>
+          <Select value={timeRange} onValueChange={setTimeRange}>
+            <SelectTrigger className="w-40">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="today">Today</SelectItem>
+              <SelectItem value="7days">Last 7 Days</SelectItem>
+              <SelectItem value="30days">Last 30 Days</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <Tabs defaultValue="food-ready" className="space-y-6">

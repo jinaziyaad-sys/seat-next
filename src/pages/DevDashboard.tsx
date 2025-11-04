@@ -12,9 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X } from "lucide-react";
+import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Download } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import * as XLSX from 'xlsx';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -63,6 +64,7 @@ export default function DevDashboard() {
   const [merchantFullName, setMerchantFullName] = useState("");
   const [selectedVenueId, setSelectedVenueId] = useState("");
   const [loading, setLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -343,6 +345,154 @@ export default function DevDashboard() {
     }
   };
 
+  const handleExportAllVenues = async () => {
+    setExportLoading(true);
+    try {
+      // Fetch all venues
+      const { data: allVenues } = await supabase
+        .from('venues')
+        .select('*')
+        .order('name');
+
+      if (!allVenues || allVenues.length === 0) {
+        toast({
+          title: "No Data",
+          description: "No venues found to export",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Create workbook
+      const wb = XLSX.utils.book_new();
+
+      // Create a summary sheet first
+      const summaryData = allVenues.map(v => ({
+        'Venue Name': v.name,
+        'Address': v.address || 'N/A',
+        'Phone': v.phone || 'N/A',
+        'Service Types': v.service_types?.join(', ') || 'N/A',
+        'Created At': new Date(v.created_at).toLocaleString(),
+      }));
+      const summarySheet = XLSX.utils.json_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(wb, summarySheet, 'All_Venues_Summary');
+
+      // For each venue, create separate sheets
+      for (const venue of allVenues) {
+        // Fetch all data for this venue
+        const [ordersData, orderAnalyticsData, waitlistData, waitlistAnalyticsData, ratingsData, staffData] = await Promise.all([
+          supabase.from('orders').select('*').eq('venue_id', venue.id).order('created_at', { ascending: false }),
+          supabase.from('order_analytics').select('*').eq('venue_id', venue.id).order('placed_at', { ascending: false }),
+          supabase.from('waitlist_entries').select('*').eq('venue_id', venue.id).order('created_at', { ascending: false }),
+          supabase.from('waitlist_analytics').select('*').eq('venue_id', venue.id).order('joined_at', { ascending: false }),
+          supabase.from('order_ratings').select('*').eq('venue_id', venue.id).order('created_at', { ascending: false }),
+          supabase.from('user_roles').select('user_id, role').eq('venue_id', venue.id)
+        ]);
+
+        // Create sanitized sheet name (Excel has 31 char limit)
+        const sanitizedName = venue.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 25);
+
+        // Orders sheet for this venue
+        if (ordersData.data && ordersData.data.length > 0) {
+          const sheet = XLSX.utils.json_to_sheet(ordersData.data.map(o => ({
+            'Venue': venue.name,
+            'Order Number': o.order_number,
+            'Customer Name': o.customer_name,
+            'Customer Phone': o.customer_phone,
+            'Status': o.status,
+            'Items': JSON.stringify(o.items),
+            'ETA': o.eta ? new Date(o.eta).toLocaleString() : 'N/A',
+            'Created At': new Date(o.created_at).toLocaleString(),
+          })));
+          XLSX.utils.book_append_sheet(wb, sheet, `${sanitizedName}_Orders`);
+        }
+
+        // Order Analytics sheet for this venue
+        if (orderAnalyticsData.data && orderAnalyticsData.data.length > 0) {
+          const sheet = XLSX.utils.json_to_sheet(orderAnalyticsData.data.map(o => ({
+            'Venue': venue.name,
+            'Placed At': new Date(o.placed_at).toLocaleString(),
+            'Quoted Prep (min)': o.quoted_prep_time,
+            'Actual Prep (min)': o.actual_prep_time || 'N/A',
+            'Items Count': o.items_count,
+            'Hour': o.hour_of_day,
+            'Day of Week': o.day_of_week,
+          })));
+          XLSX.utils.book_append_sheet(wb, sheet, `${sanitizedName}_OrderStats`);
+        }
+
+        // Waitlist sheet for this venue
+        if (waitlistData.data && waitlistData.data.length > 0) {
+          const sheet = XLSX.utils.json_to_sheet(waitlistData.data.map(w => ({
+            'Venue': venue.name,
+            'Customer Name': w.customer_name,
+            'Party Size': w.party_size,
+            'Status': w.status,
+            'ETA': w.eta ? new Date(w.eta).toLocaleString() : 'N/A',
+            'Created At': new Date(w.created_at).toLocaleString(),
+          })));
+          XLSX.utils.book_append_sheet(wb, sheet, `${sanitizedName}_Waitlist`);
+        }
+
+        // Waitlist Analytics sheet for this venue
+        if (waitlistAnalyticsData.data && waitlistAnalyticsData.data.length > 0) {
+          const sheet = XLSX.utils.json_to_sheet(waitlistAnalyticsData.data.map(w => ({
+            'Venue': venue.name,
+            'Joined At': new Date(w.joined_at).toLocaleString(),
+            'Party Size': w.party_size,
+            'Quoted Wait (min)': w.quoted_wait_time,
+            'Actual Wait (min)': w.actual_wait_time || 'N/A',
+            'No Show': w.was_no_show ? 'Yes' : 'No',
+            'Hour': w.hour_of_day,
+          })));
+          XLSX.utils.book_append_sheet(wb, sheet, `${sanitizedName}_WaitStats`);
+        }
+
+        // Ratings sheet for this venue
+        if (ratingsData.data && ratingsData.data.length > 0) {
+          const sheet = XLSX.utils.json_to_sheet(ratingsData.data.map(r => ({
+            'Venue': venue.name,
+            'Rating': r.rating,
+            'Feedback': r.feedback_text || 'No feedback',
+            'Created At': new Date(r.created_at).toLocaleString(),
+          })));
+          XLSX.utils.book_append_sheet(wb, sheet, `${sanitizedName}_Ratings`);
+        }
+
+        // Staff sheet for this venue
+        if (staffData.data && staffData.data.length > 0) {
+          const sheet = XLSX.utils.json_to_sheet(staffData.data.map(s => ({
+            'Venue': venue.name,
+            'User ID': s.user_id,
+            'Role': s.role,
+          })));
+          XLSX.utils.book_append_sheet(wb, sheet, `${sanitizedName}_Staff`);
+        }
+      }
+
+      // Generate filename
+      const filename = `All_Venues_Export_${new Date().toISOString().split('T')[0]}.xlsx`;
+
+      // Download
+      XLSX.writeFile(wb, filename);
+
+      toast({
+        title: "Success",
+        description: `Exported data for ${allVenues.length} venues`,
+      });
+
+    } catch (error) {
+      console.error('Export error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to export data",
+        variant: "destructive",
+      });
+    } finally {
+      setExportLoading(false);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/dev/auth");
@@ -513,7 +663,17 @@ export default function DevDashboard() {
             {/* Venues List */}
             <Card>
               <CardHeader>
-                <CardTitle>All Venues ({venues.length})</CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle>All Venues ({venues.length})</CardTitle>
+                  <Button 
+                    onClick={handleExportAllVenues} 
+                    disabled={exportLoading}
+                    variant="outline"
+                  >
+                    <Download className="mr-2 h-4 w-4" />
+                    {exportLoading ? "Exporting..." : "Export All Venues"}
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
