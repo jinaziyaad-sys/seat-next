@@ -289,9 +289,6 @@ const Index = () => {
         {!user && (
           <Card className="shadow-card border-2 border-primary/20">
             <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <LogIn size={28} />
-              </div>
               <div>
                 <h3 className="font-semibold">Sign In</h3>
                 <p className="text-sm text-muted-foreground mb-4">
