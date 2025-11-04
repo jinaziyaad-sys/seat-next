@@ -176,10 +176,10 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Hero Section - Honey Pot Minimalistic Design */}
-      <div className="relative overflow-hidden bg-gradient-hero px-6 py-20 text-white">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(249,116,75,0.15),transparent_70%)]" />
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,rgba(18,77,84,0.2),transparent_60%)]" />
+      {/* Hero Section - Black Background */}
+      <div className="relative overflow-hidden bg-black px-6 py-20 text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,107,53,0.08),transparent_70%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,rgba(255,107,53,0.05),transparent_60%)]" />
         
         <div className="absolute top-4 right-4 z-20">
           {user ? (
@@ -209,21 +209,16 @@ const Index = () => {
         
         <div className="relative z-10 flex flex-col items-center text-center">
           {/* Logo */}
-          <div className="mb-8 relative">
-            <div className="absolute inset-0 bg-primary/20 rounded-full blur-3xl animate-pulse" />
+          <div className="relative">
+            <div className="absolute inset-0 bg-primary/15 rounded-full blur-3xl animate-pulse" />
             <div className="relative backdrop-blur-sm">
               <img 
                 src={logo} 
                 alt="ReadyUp" 
-                className="h-32 w-auto drop-shadow-2xl"
+                className="h-48 w-auto drop-shadow-2xl"
               />
             </div>
           </div>
-          
-          {/* Subtitle */}
-          <p className="text-lg opacity-90 max-w-md font-light text-white/90">
-            Track your food orders and table reservations in real-time
-          </p>
         </div>
       </div>
 
