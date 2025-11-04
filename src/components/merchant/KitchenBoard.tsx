@@ -34,10 +34,9 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   const [newOrderItems, setNewOrderItems] = useState("");
   const { toast } = useToast();
 
-  // Fetch orders and set up real-time subscription
-  useEffect(() => {
-    const fetchOrders = async () => {
-      // Fetch orders for this venue including collected ones awaiting confirmation
+  // Fetch orders function (defined outside useEffect so subscription can use it)
+  const fetchOrders = async () => {
+    // Fetch orders for this venue including collected ones awaiting confirmation
     const { data: ordersData, error: ordersError } = await supabase
       .from("orders")
       .select(`
@@ -52,37 +51,56 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
       .order("awaiting_merchant_confirmation", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: true });
 
-      if (ordersError) {
-        toast({
-          title: "Error",
-          description: "Could not load orders",
-          variant: "destructive"
-        });
-        return;
-      }
+    if (ordersError) {
+      toast({
+        title: "Error",
+        description: "Could not load orders",
+        variant: "destructive"
+      });
+      return;
+    }
 
-      if (ordersData) {
-        setOrders(ordersData.map(order => ({
-          ...order,
-          items: Array.isArray(order.items) ? order.items : [order.items],
-          order_ratings: Array.isArray(order.order_ratings) ? order.order_ratings : []
-        })));
-      }
-    };
+    if (ordersData) {
+      setOrders(ordersData.map(order => ({
+        ...order,
+        items: Array.isArray(order.items) ? order.items : [order.items],
+        order_ratings: Array.isArray(order.order_ratings) ? order.order_ratings : []
+      })));
+    }
+  };
 
+  // Fetch orders and set up real-time subscription
+  useEffect(() => {
     fetchOrders();
 
-    // Set up real-time subscription
+    // Set up real-time subscription with venue filter
     const channel = supabase
-      .channel('kitchen-orders')
+      .channel(`kitchen-orders-${venueId}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'orders'
+        table: 'orders',
+        filter: `venue_id=eq.${venueId}`
       }, (payload) => {
-        console.log('Order change:', payload);
-        // Refresh orders when any order changes
-        fetchOrders();
+        console.log('Order change for venue:', payload);
+        
+        // Handle the update directly in state for instant UI update
+        if (payload.eventType === 'INSERT') {
+          fetchOrders(); // Fetch fresh data for new orders
+        } else if (payload.eventType === 'UPDATE' && payload.new) {
+          // Optimistically update the specific order in state
+          setOrders(prevOrders => 
+            prevOrders.map(order => 
+              order.id === payload.new.id 
+                ? { ...order, ...payload.new as any, items: Array.isArray(payload.new.items) ? payload.new.items : [payload.new.items] }
+                : order
+            )
+          );
+          // Also fetch to ensure we have ratings data
+          fetchOrders();
+        } else if (payload.eventType === 'DELETE') {
+          setOrders(prevOrders => prevOrders.filter(order => order.id !== payload.old?.id));
+        }
       })
       .subscribe();
 
