@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
+import { ComparativeMetrics } from "./ComparativeMetrics";
 
 interface CustomerInsightsSummary {
   total_customers: number;
@@ -58,6 +59,7 @@ export const CustomerInsights = ({ venueId }: CustomerInsightsProps) => {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState("30days");
   const [summary, setSummary] = useState<CustomerInsightsSummary | null>(null);
+  const [previousSummary, setPreviousSummary] = useState<CustomerInsightsSummary | null>(null);
   const [segments, setSegments] = useState<CustomerSegments | null>(null);
   const [loyalCustomers, setLoyalCustomers] = useState<LoyalCustomer[]>([]);
   const [activityTrend, setActivityTrend] = useState<any[]>([]);
@@ -80,9 +82,7 @@ export const CustomerInsights = ({ venueId }: CustomerInsightsProps) => {
 
       const { data, error } = await supabase.functions.invoke('get-venue-customer-insights', {
         body: { venue_id: venueId, time_range: timeRange },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
       if (error) throw error;
@@ -91,11 +91,47 @@ export const CustomerInsights = ({ venueId }: CustomerInsightsProps) => {
       setSegments(data.segments);
       setLoyalCustomers(data.top_loyal_customers);
       setActivityTrend(data.activity_trend);
+
+      // Fetch previous period from daily snapshots for comparison
+      await fetchComparisonData();
     } catch (error: any) {
       console.error("Error fetching customer insights:", error);
       toast.error(error.message || "Failed to load customer insights");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchComparisonData = async () => {
+    try {
+      const daysBack = timeRange === '7days' ? 7 : timeRange === '30days' ? 30 : timeRange === '90days' ? 90 : 1;
+      const compareStartDate = new Date();
+      compareStartDate.setDate(compareStartDate.getDate() - (daysBack * 2));
+      const compareEndDate = new Date();
+      compareEndDate.setDate(compareEndDate.getDate() - daysBack);
+
+      const { data: snapshots } = await supabase
+        .from('daily_venue_snapshots')
+        .select('*')
+        .eq('venue_id', venueId)
+        .gte('snapshot_date', compareStartDate.toISOString().split('T')[0])
+        .lte('snapshot_date', compareEndDate.toISOString().split('T')[0]);
+
+      if (snapshots && snapshots.length > 0) {
+        const avgNewCustomers = snapshots.reduce((sum, s) => sum + (s.new_customers || 0), 0) / snapshots.length;
+        const avgReturnRate = snapshots.reduce((sum, s) => sum + ((s.returning_customers || 0) / Math.max(s.total_customers || 1, 1) * 100), 0) / snapshots.length;
+        
+        setPreviousSummary({
+          total_customers: 0,
+          new_customers: Math.round(avgNewCustomers),
+          active_customers: Math.round(snapshots.reduce((sum, s) => sum + (s.total_customers || 0), 0) / snapshots.length),
+          returning_customers: 0,
+          return_rate: parseFloat(avgReturnRate.toFixed(2)),
+          avg_visit_frequency_days: 0,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching comparison data:", error);
     }
   };
 
@@ -141,56 +177,90 @@ export const CustomerInsights = ({ venueId }: CustomerInsightsProps) => {
         </Select>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards with Comparisons */}
       {summary && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
-              <Users className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary.total_customers}</div>
-              <p className="text-xs text-muted-foreground">All-time</p>
-            </CardContent>
-          </Card>
+          {previousSummary ? (
+            <>
+              <ComparativeMetrics
+                title="New Customers"
+                currentValue={summary.new_customers}
+                previousValue={previousSummary.new_customers}
+                format="number"
+              />
+              <ComparativeMetrics
+                title="Active Customers"
+                currentValue={summary.active_customers}
+                previousValue={previousSummary.active_customers}
+                format="number"
+              />
+              <ComparativeMetrics
+                title="Return Rate"
+                currentValue={summary.return_rate}
+                previousValue={previousSummary.return_rate}
+                unit="%"
+                format="percentage"
+              />
+              <ComparativeMetrics
+                title="Visit Frequency"
+                currentValue={summary.avg_visit_frequency_days}
+                previousValue={previousSummary.avg_visit_frequency_days}
+                unit=" days"
+                format="time"
+                reverseColors={true}
+              />
+            </>
+          ) : (
+            <>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{summary.total_customers}</div>
+                  <p className="text-xs text-muted-foreground">All-time</p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">New Customers</CardTitle>
-              <UserPlus className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary.new_customers}</div>
-              <p className="text-xs text-muted-foreground">This period</p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">New Customers</CardTitle>
+                  <UserPlus className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{summary.new_customers}</div>
+                  <p className="text-xs text-muted-foreground">This period</p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Return Rate</CardTitle>
-              <Repeat className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary.return_rate}%</div>
-              <p className="text-xs text-muted-foreground">
-                {summary.returning_customers} returning
-              </p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Return Rate</CardTitle>
+                  <Repeat className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{summary.return_rate}%</div>
+                  <p className="text-xs text-muted-foreground">
+                    {summary.returning_customers} returning
+                  </p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Visit Frequency</CardTitle>
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {summary.avg_visit_frequency_days.toFixed(1)} days
-              </div>
-              <p className="text-xs text-muted-foreground">Between visits</p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Visit Frequency</CardTitle>
+                  <Calendar className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">
+                    {summary.avg_visit_frequency_days.toFixed(1)} days
+                  </div>
+                  <p className="text-xs text-muted-foreground">Between visits</p>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
       )}
 

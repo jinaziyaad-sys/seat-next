@@ -35,3 +35,6 @@ verify_jwt = true
 
 [functions.update-customer-segments]
 verify_jwt = false
+
+[functions.generate-daily-snapshots]
+verify_jwt = false

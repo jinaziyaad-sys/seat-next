@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
+import { ComparativeMetrics } from "./ComparativeMetrics";
 
 interface EfficiencySummary {
   avg_prep_time: number;
@@ -42,6 +43,7 @@ export const OperationsEfficiency = ({ venueId }: OperationsEfficiencyProps) => 
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState("30days");
   const [summary, setSummary] = useState<EfficiencySummary | null>(null);
+  const [previousSummary, setPreviousSummary] = useState<EfficiencySummary | null>(null);
   const [peakHours, setPeakHours] = useState<PeakHour[]>([]);
   const [busiestDays, setBusiestDays] = useState<any[]>([]);
   const [onTimeByHour, setOnTimeByHour] = useState<any[]>([]);
@@ -66,9 +68,7 @@ export const OperationsEfficiency = ({ venueId }: OperationsEfficiencyProps) => 
 
       const { data, error } = await supabase.functions.invoke('get-venue-efficiency-analytics', {
         body: { venue_id: venueId, time_range: timeRange },
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
+        headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
       if (error) throw error;
@@ -79,11 +79,49 @@ export const OperationsEfficiency = ({ venueId }: OperationsEfficiencyProps) => 
       setOnTimeByHour(data.on_time_by_hour);
       setPrepTimeTrend(data.prep_time_trend);
       setStaffLeaderboard(data.staff_leaderboard);
+
+      // Fetch comparison data from daily snapshots
+      await fetchComparisonData();
     } catch (error: any) {
       console.error("Error fetching efficiency analytics:", error);
       toast.error(error.message || "Failed to load efficiency analytics");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchComparisonData = async () => {
+    try {
+      const daysBack = timeRange === '7days' ? 7 : timeRange === '30days' ? 30 : timeRange === '90days' ? 90 : 1;
+      const compareStartDate = new Date();
+      compareStartDate.setDate(compareStartDate.getDate() - (daysBack * 2));
+      const compareEndDate = new Date();
+      compareEndDate.setDate(compareEndDate.getDate() - daysBack);
+
+      const { data: snapshots } = await supabase
+        .from('daily_venue_snapshots')
+        .select('*')
+        .eq('venue_id', venueId)
+        .gte('snapshot_date', compareStartDate.toISOString().split('T')[0])
+        .lte('snapshot_date', compareEndDate.toISOString().split('T')[0]);
+
+      if (snapshots && snapshots.length > 0) {
+        const avgPrepTime = snapshots.reduce((sum, s) => sum + (s.avg_prep_time_minutes || 0), 0) / snapshots.length;
+        const avgOnTime = snapshots.reduce((sum, s) => sum + (s.on_time_percentage || 0), 0) / snapshots.length;
+        const avgWaitTime = snapshots.reduce((sum, s) => sum + (s.avg_wait_time_minutes || 0), 0) / snapshots.length;
+        const totalOrders = snapshots.reduce((sum, s) => sum + (s.total_orders || 0), 0);
+        const totalWaitlist = snapshots.reduce((sum, s) => sum + (s.total_waitlist_joins || 0), 0);
+
+        setPreviousSummary({
+          avg_prep_time: parseFloat(avgPrepTime.toFixed(1)),
+          on_time_rate: parseFloat(avgOnTime.toFixed(1)),
+          avg_wait_time: parseFloat(avgWaitTime.toFixed(1)),
+          total_orders: totalOrders,
+          total_waitlist: totalWaitlist,
+        });
+      }
+    } catch (error) {
+      console.error("Error fetching comparison data:", error);
     }
   };
 
@@ -118,52 +156,88 @@ export const OperationsEfficiency = ({ venueId }: OperationsEfficiencyProps) => 
         </Select>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards with Comparisons */}
       {summary && (
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Prep Time</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary.avg_prep_time} min</div>
-              <p className="text-xs text-muted-foreground">Per order</p>
-            </CardContent>
-          </Card>
+          {previousSummary ? (
+            <>
+              <ComparativeMetrics
+                title="Avg Prep Time"
+                currentValue={summary.avg_prep_time}
+                previousValue={previousSummary.avg_prep_time}
+                unit=" min"
+                format="time"
+                reverseColors={true}
+              />
+              <ComparativeMetrics
+                title="On-Time Rate"
+                currentValue={summary.on_time_rate}
+                previousValue={previousSummary.on_time_rate}
+                unit="%"
+                format="percentage"
+              />
+              <ComparativeMetrics
+                title="Avg Wait Time"
+                currentValue={summary.avg_wait_time}
+                previousValue={previousSummary.avg_wait_time}
+                unit=" min"
+                format="time"
+                reverseColors={true}
+              />
+              <ComparativeMetrics
+                title="Total Volume"
+                currentValue={summary.total_orders + summary.total_waitlist}
+                previousValue={previousSummary.total_orders + previousSummary.total_waitlist}
+                format="number"
+              />
+            </>
+          ) : (
+            <>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Avg Prep Time</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{summary.avg_prep_time} min</div>
+                  <p className="text-xs text-muted-foreground">Per order</p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">On-Time Rate</CardTitle>
-              <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary.on_time_rate}%</div>
-              <p className="text-xs text-muted-foreground">Orders ready on time</p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">On-Time Rate</CardTitle>
+                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{summary.on_time_rate}%</div>
+                  <p className="text-xs text-muted-foreground">Orders ready on time</p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Avg Wait Time</CardTitle>
-              <Clock className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary.avg_wait_time} min</div>
-              <p className="text-xs text-muted-foreground">For waitlist</p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Avg Wait Time</CardTitle>
+                  <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{summary.avg_wait_time} min</div>
+                  <p className="text-xs text-muted-foreground">For waitlist</p>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Volume</CardTitle>
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{summary.total_orders}</div>
-              <p className="text-xs text-muted-foreground">Orders + {summary.total_waitlist} waitlist</p>
-            </CardContent>
-          </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">Total Volume</CardTitle>
+                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{summary.total_orders}</div>
+                  <p className="text-xs text-muted-foreground">Orders + {summary.total_waitlist} waitlist</p>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </div>
       )}
 

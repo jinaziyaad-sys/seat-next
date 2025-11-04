@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RatingsView } from "./RatingsView";
 import { CustomerInsights } from "./CustomerInsights";
 import { OperationsEfficiency } from "./OperationsEfficiency";
+import { MerchantExport } from "./MerchantExport";
 import * as XLSX from 'xlsx';
 
 interface AnalyticsData {
@@ -340,6 +341,7 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
           <TabsTrigger value="customer-insights">Customer Insights</TabsTrigger>
           <TabsTrigger value="operations">Operations</TabsTrigger>
           <TabsTrigger value="ratings">Ratings</TabsTrigger>
+          <TabsTrigger value="export">Export</TabsTrigger>
           <TabsTrigger value="overview">Overview</TabsTrigger>
         </TabsList>
 
@@ -599,6 +601,10 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
 
         <TabsContent value="ratings" className="space-y-6">
           <RatingsView venueId={venue.id} />
+        </TabsContent>
+
+        <TabsContent value="export" className="space-y-6">
+          <MerchantExport venueId={venue.id} venueName={venue.name} />
         </TabsContent>
 
         <TabsContent value="overview" className="space-y-6">
