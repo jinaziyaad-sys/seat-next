@@ -207,15 +207,15 @@ const Index = () => {
           )}
         </div>
         
-        <div className="relative z-10 flex flex-col items-center text-center">
+        <div className="relative z-10 flex flex-col items-center text-center py-8">
           {/* Logo */}
           <div className="relative">
-            <div className="absolute inset-0 bg-primary/15 rounded-full blur-3xl animate-pulse" />
-            <div className="relative backdrop-blur-sm">
+            <div className="absolute inset-0 bg-primary/25 rounded-full blur-[100px] animate-pulse scale-150" />
+            <div className="relative">
               <img 
                 src={logo} 
                 alt="ReadyUp" 
-                className="h-48 w-auto drop-shadow-2xl"
+                className="h-72 w-auto drop-shadow-[0_0_60px_rgba(255,107,53,0.5)]"
               />
             </div>
           </div>
