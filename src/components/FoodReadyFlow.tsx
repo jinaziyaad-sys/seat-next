@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Clock, CheckCircle, Package, Truck, Search, MapPin } from "lucide-react";
+import { ArrowLeft, Clock, CheckCircle, Package, Truck, Search, MapPin, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -527,25 +527,26 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
           <h2 className="text-3xl font-bold">Thank You!</h2>
           <p className="text-lg text-muted-foreground">Rate Your Experience</p>
           
-          <div className="flex justify-center gap-1">
+          <div className="flex justify-center gap-2">
             {[1, 2, 3, 4, 5].map((star) => (
               <button 
                 key={star} 
                 onClick={() => setRating(star)}
                 onMouseEnter={() => setHoveredRating(star)}
                 onMouseLeave={() => setHoveredRating(0)}
-                className="text-5xl transition-all duration-200 hover:scale-110 active:scale-95"
+                className="transition-all duration-200 hover:scale-110 active:scale-95"
                 disabled={isSubmittingRating}
               >
-                <span className={
-                  hoveredRating > 0 && star <= hoveredRating
-                    ? "text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.6)]"
-                  : star <= rating
-                    ? "text-green-500 drop-shadow-[0_0_10px_rgba(34,197,94,0.7)]"
-                  : "text-white"
-                }>
-                  ⭐
-                </span>
+                <Star
+                  size={48}
+                  className={
+                    hoveredRating > 0 && star <= hoveredRating
+                      ? "fill-green-400 stroke-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.6)]"
+                    : star <= rating
+                      ? "fill-green-500 stroke-green-500 drop-shadow-[0_0_10px_rgba(34,197,94,0.7)]"
+                    : "fill-transparent stroke-white"
+                  }
+                />
               </button>
             ))}
           </div>
