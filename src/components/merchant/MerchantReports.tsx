@@ -17,7 +17,16 @@ interface AnalyticsData {
     total: number;
     completed: number;
     avg_prep_time: number;
-    accuracy: number;
+    performance: {
+      early_rate: number;
+      early_count: number;
+      avg_advance: number;
+      on_time_rate: number;
+      on_time_count: number;
+      late_rate: number;
+      late_count: number;
+      avg_delay: number;
+    };
     hourly_distribution: number[];
     peak_hour: number;
   };
@@ -25,7 +34,16 @@ interface AnalyticsData {
     total: number;
     completed: number;
     avg_wait_time: number;
-    accuracy: number;
+    performance: {
+      early_rate: number;
+      early_count: number;
+      avg_advance: number;
+      on_time_rate: number;
+      on_time_count: number;
+      late_rate: number;
+      late_count: number;
+      avg_delay: number;
+    };
     no_show_rate: number;
     hourly_distribution: number[];
     peak_hour: number;
@@ -34,7 +52,7 @@ interface AnalyticsData {
     type: 'warning' | 'info' | 'success';
     category: string;
     message: string;
-    action: string;
+    action: string | null;
   }>;
   data_quality: {
     has_enough_order_data: boolean;
@@ -173,20 +191,76 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
               color="text-blue-500"
             />
             <MetricCard
-              title="Time Accuracy"
-              value={analytics.order_metrics.accuracy}
-              unit="%"
-              icon={Clock}
-              color={analytics.order_metrics.accuracy >= 70 ? "text-green-500" : "text-amber-500"}
-            />
-            <MetricCard
               title="Completed"
               value={analytics.order_metrics.completed}
               unit=""
               icon={UtensilsCrossed}
               color="text-green-500"
             />
+            <MetricCard
+              title="Peak Hour"
+              value={`${analytics.order_metrics.peak_hour}:00`}
+              unit=""
+              icon={TrendingUp}
+              color="text-purple-500"
+            />
           </div>
+
+          {/* Performance Breakdown - Three Brackets */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle>Performance Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="text-green-500" size={20} />
+                    <span className="font-semibold text-green-600 dark:text-green-400">Early Orders</span>
+                  </div>
+                  <p className="text-3xl font-bold">{analytics.order_metrics.performance.early_rate}%</p>
+                  <p className="text-sm text-muted-foreground">
+                    {analytics.order_metrics.performance.early_count} orders
+                  </p>
+                  {analytics.order_metrics.performance.avg_advance > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      ~{analytics.order_metrics.performance.avg_advance}min ahead of ETA
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="text-blue-500" size={20} />
+                    <span className="font-semibold text-blue-600 dark:text-blue-400">On Time Orders</span>
+                  </div>
+                  <p className="text-3xl font-bold">{analytics.order_metrics.performance.on_time_rate}%</p>
+                  <p className="text-sm text-muted-foreground">
+                    {analytics.order_metrics.performance.on_time_count} orders
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    ±5 minutes of ETA
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="text-red-500" size={20} />
+                    <span className="font-semibold text-red-600 dark:text-red-400">Late Orders</span>
+                  </div>
+                  <p className="text-3xl font-bold">{analytics.order_metrics.performance.late_rate}%</p>
+                  <p className="text-sm text-muted-foreground">
+                    {analytics.order_metrics.performance.late_count} orders
+                  </p>
+                  {analytics.order_metrics.performance.avg_delay > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      ~{analytics.order_metrics.performance.avg_delay}min behind ETA
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Hourly Orders Chart */}
           {hourlyOrderData.length > 0 ? (
@@ -244,20 +318,76 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
               color="text-blue-500"
             />
             <MetricCard
-              title="Time Accuracy"
-              value={analytics.waitlist_metrics.accuracy}
-              unit="%"
-              icon={Clock}
-              color={analytics.waitlist_metrics.accuracy >= 70 ? "text-green-500" : "text-amber-500"}
-            />
-            <MetricCard
               title="No Show Rate"
               value={analytics.waitlist_metrics.no_show_rate}
               unit="%"
               icon={AlertTriangle}
               color="text-red-500"
             />
+            <MetricCard
+              title="Peak Hour"
+              value={`${analytics.waitlist_metrics.peak_hour}:00`}
+              unit=""
+              icon={TrendingUp}
+              color="text-purple-500"
+            />
           </div>
+
+          {/* Waitlist Performance Breakdown - Three Brackets */}
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle>Performance Breakdown</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="text-green-500" size={20} />
+                    <span className="font-semibold text-green-600 dark:text-green-400">Early Tables</span>
+                  </div>
+                  <p className="text-3xl font-bold">{analytics.waitlist_metrics.performance.early_rate}%</p>
+                  <p className="text-sm text-muted-foreground">
+                    {analytics.waitlist_metrics.performance.early_count} tables
+                  </p>
+                  {analytics.waitlist_metrics.performance.avg_advance > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      ~{analytics.waitlist_metrics.performance.avg_advance}min ahead of ETA
+                    </p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="text-blue-500" size={20} />
+                    <span className="font-semibold text-blue-600 dark:text-blue-400">On Time Tables</span>
+                  </div>
+                  <p className="text-3xl font-bold">{analytics.waitlist_metrics.performance.on_time_rate}%</p>
+                  <p className="text-sm text-muted-foreground">
+                    {analytics.waitlist_metrics.performance.on_time_count} tables
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    ±5 minutes of ETA
+                  </p>
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Clock className="text-red-500" size={20} />
+                    <span className="font-semibold text-red-600 dark:text-red-400">Late Tables</span>
+                  </div>
+                  <p className="text-3xl font-bold">{analytics.waitlist_metrics.performance.late_rate}%</p>
+                  <p className="text-sm text-muted-foreground">
+                    {analytics.waitlist_metrics.performance.late_count} tables
+                  </p>
+                  {analytics.waitlist_metrics.performance.avg_delay > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      ~{analytics.waitlist_metrics.performance.avg_delay}min behind ETA
+                    </p>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Hourly Waitlist Chart */}
           {hourlyWaitlistData.length > 0 ? (
@@ -307,15 +437,27 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
                   <Badge variant="secondary">{analytics.waitlist_metrics.total}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>Order Time Accuracy</span>
-                  <Badge className={analytics.order_metrics.accuracy >= 70 ? "bg-green-500" : "bg-amber-500"}>
-                    {analytics.order_metrics.accuracy}%
+                  <span>Orders On Time</span>
+                  <Badge className={analytics.order_metrics.performance.on_time_rate >= 70 ? "bg-green-500" : "bg-amber-500"}>
+                    {analytics.order_metrics.performance.on_time_rate}%
                   </Badge>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span>Waitlist Time Accuracy</span>
-                  <Badge className={analytics.waitlist_metrics.accuracy >= 70 ? "bg-green-500" : "bg-amber-500"}>
-                    {analytics.waitlist_metrics.accuracy}%
+                  <span>Orders Late</span>
+                  <Badge className={analytics.order_metrics.performance.late_rate <= 30 ? "bg-green-500" : "bg-red-500"}>
+                    {analytics.order_metrics.performance.late_rate}%
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Tables On Time</span>
+                  <Badge className={analytics.waitlist_metrics.performance.on_time_rate >= 70 ? "bg-green-500" : "bg-amber-500"}>
+                    {analytics.waitlist_metrics.performance.on_time_rate}%
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span>Tables Late</span>
+                  <Badge className={analytics.waitlist_metrics.performance.late_rate <= 30 ? "bg-green-500" : "bg-red-500"}>
+                    {analytics.waitlist_metrics.performance.late_rate}%
                   </Badge>
                 </div>
               </CardContent>
@@ -330,7 +472,7 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
                   analytics.insights.map((insight, idx) => (
                     <div 
                       key={idx}
-                      className={`p-3 rounded-lg border ${
+                      className={`p-4 rounded-lg border space-y-2 ${
                         insight.type === 'warning' 
                           ? 'bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800'
                           : insight.type === 'info'
@@ -345,8 +487,17 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
                           ? 'text-blue-800 dark:text-blue-200'
                           : 'text-green-800 dark:text-green-200'
                       }`}>
-                        <strong>{insight.type === 'warning' ? '⚠' : insight.type === 'info' ? 'ℹ' : '✓'} {insight.category}:</strong> {insight.message}
+                        <strong>{insight.type === 'warning' ? '⚠️' : insight.type === 'info' ? 'ℹ️' : '✅'} {insight.category}:</strong> {insight.message}
                       </p>
+                      {insight.action && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="w-full"
+                        >
+                          {insight.action}
+                        </Button>
+                      )}
                     </div>
                   ))
                 ) : (

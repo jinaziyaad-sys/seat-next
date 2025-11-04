@@ -67,10 +67,38 @@ serve(async (req) => {
       ? Math.round(completedOrders.reduce((sum, o) => sum + (o.actual_prep_time || 0), 0) / completedOrders.length)
       : 0;
 
-    const prepTimeAccuracy = completedOrders.length > 0
-      ? Math.round((completedOrders.filter(o => 
-          Math.abs((o.actual_prep_time || 0) - o.quoted_prep_time) <= 5
-        ).length / completedOrders.length) * 100)
+    // Calculate performance brackets
+    const earlyOrders = completedOrders.filter(o => 
+      (o.actual_prep_time || 0) < o.quoted_prep_time - 5
+    );
+    const onTimeOrders = completedOrders.filter(o => 
+      Math.abs((o.actual_prep_time || 0) - o.quoted_prep_time) <= 5
+    );
+    const lateOrders = completedOrders.filter(o => 
+      (o.actual_prep_time || 0) > o.quoted_prep_time + 5
+    );
+
+    const earlyRate = completedOrders.length > 0
+      ? Math.round((earlyOrders.length / completedOrders.length) * 100)
+      : 0;
+    const onTimeRate = completedOrders.length > 0
+      ? Math.round((onTimeOrders.length / completedOrders.length) * 100)
+      : 0;
+    const lateRate = completedOrders.length > 0
+      ? Math.round((lateOrders.length / completedOrders.length) * 100)
+      : 0;
+
+    // Calculate average delay/advance for insights
+    const avgDelay = lateOrders.length > 0
+      ? Math.round(lateOrders.reduce((sum, o) => 
+          sum + ((o.actual_prep_time || 0) - o.quoted_prep_time), 0
+        ) / lateOrders.length)
+      : 0;
+
+    const avgAdvance = earlyOrders.length > 0
+      ? Math.round(earlyOrders.reduce((sum, o) => 
+          sum + (o.quoted_prep_time - (o.actual_prep_time || 0)), 0
+        ) / earlyOrders.length)
       : 0;
 
     // Group by hour for hourly data
@@ -87,10 +115,37 @@ serve(async (req) => {
       ? Math.round(completedWaitlist.reduce((sum, w) => sum + (w.actual_wait_time || 0), 0) / completedWaitlist.length)
       : 0;
 
-    const waitTimeAccuracy = completedWaitlist.length > 0
-      ? Math.round((completedWaitlist.filter(w => 
-          Math.abs((w.actual_wait_time || 0) - w.quoted_wait_time) <= 5
-        ).length / completedWaitlist.length) * 100)
+    // Calculate waitlist performance brackets
+    const earlyWaitlist = completedWaitlist.filter(w => 
+      (w.actual_wait_time || 0) < w.quoted_wait_time - 5
+    );
+    const onTimeWaitlist = completedWaitlist.filter(w => 
+      Math.abs((w.actual_wait_time || 0) - w.quoted_wait_time) <= 5
+    );
+    const lateWaitlist = completedWaitlist.filter(w => 
+      (w.actual_wait_time || 0) > w.quoted_wait_time + 5
+    );
+
+    const waitEarlyRate = completedWaitlist.length > 0
+      ? Math.round((earlyWaitlist.length / completedWaitlist.length) * 100)
+      : 0;
+    const waitOnTimeRate = completedWaitlist.length > 0
+      ? Math.round((onTimeWaitlist.length / completedWaitlist.length) * 100)
+      : 0;
+    const waitLateRate = completedWaitlist.length > 0
+      ? Math.round((lateWaitlist.length / completedWaitlist.length) * 100)
+      : 0;
+
+    const waitAvgDelay = lateWaitlist.length > 0
+      ? Math.round(lateWaitlist.reduce((sum, w) => 
+          sum + ((w.actual_wait_time || 0) - w.quoted_wait_time), 0
+        ) / lateWaitlist.length)
+      : 0;
+
+    const waitAvgAdvance = earlyWaitlist.length > 0
+      ? Math.round(earlyWaitlist.reduce((sum, w) => 
+          sum + (w.quoted_wait_time - (w.actual_wait_time || 0)), 0
+        ) / earlyWaitlist.length)
       : 0;
 
     const noShowRate = totalWaitlist > 0
@@ -110,28 +165,66 @@ serve(async (req) => {
     // Generate insights
     const insights = [];
     
-    if (prepTimeAccuracy < 70) {
+    // Order insights
+    if (lateRate > 30) {
       insights.push({
         type: 'warning',
-        category: 'orders',
-        message: `Order prep time accuracy is ${prepTimeAccuracy}%. Consider reviewing kitchen capacity settings.`,
-        action: 'Review kitchen settings'
+        category: 'Orders',
+        message: `${lateRate}% of orders are running late by ~${avgDelay} minutes. Consider increasing your default prep time in settings.`,
+        action: 'Increase prep time estimate'
       });
     }
 
-    if (waitTimeAccuracy < 70) {
+    if (earlyRate > 50) {
+      insights.push({
+        type: 'info',
+        category: 'Orders',
+        message: `${earlyRate}% of orders are ready early by ~${avgAdvance} minutes. You may be overestimating prep time.`,
+        action: 'Reduce prep time estimate'
+      });
+    }
+
+    if (onTimeRate > 70 && completedOrders.length >= 30) {
+      insights.push({
+        type: 'success',
+        category: 'Orders',
+        message: `Excellent! ${onTimeRate}% of orders are delivered on time. Keep it up!`,
+        action: null
+      });
+    }
+
+    // Waitlist insights
+    if (waitLateRate > 30) {
       insights.push({
         type: 'warning',
-        category: 'waitlist',
-        message: `Waitlist time accuracy is ${waitTimeAccuracy}%. Review seating capacity and turnover estimates.`,
+        category: 'Waitlist',
+        message: `${waitLateRate}% of tables are running late by ~${waitAvgDelay} minutes. Review seating capacity settings.`,
         action: 'Adjust capacity settings'
+      });
+    }
+
+    if (waitEarlyRate > 50) {
+      insights.push({
+        type: 'info',
+        category: 'Waitlist',
+        message: `${waitEarlyRate}% of tables are ready early by ~${waitAvgAdvance} minutes. You may be overestimating wait time.`,
+        action: 'Reduce wait time estimate'
+      });
+    }
+
+    if (waitOnTimeRate > 70 && completedWaitlist.length >= 30) {
+      insights.push({
+        type: 'success',
+        category: 'Waitlist',
+        message: `Excellent! ${waitOnTimeRate}% of tables are ready on time. Keep it up!`,
+        action: null
       });
     }
 
     if (noShowRate > 20) {
       insights.push({
         type: 'warning',
-        category: 'waitlist',
+        category: 'Waitlist',
         message: `No-show rate is ${noShowRate}%. Consider implementing confirmation reminders.`,
         action: 'Enable notifications'
       });
@@ -140,7 +233,7 @@ serve(async (req) => {
     if (completedOrders.length < 30) {
       insights.push({
         type: 'info',
-        category: 'system',
+        category: 'System',
         message: `Collecting data... ${completedOrders.length} orders tracked. Need 30+ for high confidence predictions.`,
         action: 'Keep using system'
       });
@@ -161,7 +254,16 @@ serve(async (req) => {
           total: totalOrders,
           completed: completedOrders.length,
           avg_prep_time: avgPrepTime,
-          accuracy: prepTimeAccuracy,
+          performance: {
+            early_rate: earlyRate,
+            early_count: earlyOrders.length,
+            avg_advance: avgAdvance,
+            on_time_rate: onTimeRate,
+            on_time_count: onTimeOrders.length,
+            late_rate: lateRate,
+            late_count: lateOrders.length,
+            avg_delay: avgDelay
+          },
           hourly_distribution: hourlyOrders,
           peak_hour: peakOrderHour
         },
@@ -169,7 +271,16 @@ serve(async (req) => {
           total: totalWaitlist,
           completed: completedWaitlist.length,
           avg_wait_time: avgWaitTime,
-          accuracy: waitTimeAccuracy,
+          performance: {
+            early_rate: waitEarlyRate,
+            early_count: earlyWaitlist.length,
+            avg_advance: waitAvgAdvance,
+            on_time_rate: waitOnTimeRate,
+            on_time_count: onTimeWaitlist.length,
+            late_rate: waitLateRate,
+            late_count: lateWaitlist.length,
+            avg_delay: waitAvgDelay
+          },
           no_show_rate: noShowRate,
           hourly_distribution: hourlyWaitlist,
           peak_hour: peakWaitlistHour
