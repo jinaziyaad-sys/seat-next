@@ -14,6 +14,134 @@ export type Database = {
   }
   public: {
     Tables: {
+      customer_analytics: {
+        Row: {
+          avg_rating_given: number | null
+          created_at: string | null
+          customer_segment: string | null
+          days_since_last_visit: number | null
+          first_order_date: string | null
+          first_waitlist_date: string | null
+          id: string
+          last_order_date: string | null
+          last_waitlist_date: string | null
+          total_orders: number | null
+          total_waitlist_joins: number | null
+          updated_at: string | null
+          user_id: string | null
+          venue_id: string | null
+          visit_frequency_days: number | null
+        }
+        Insert: {
+          avg_rating_given?: number | null
+          created_at?: string | null
+          customer_segment?: string | null
+          days_since_last_visit?: number | null
+          first_order_date?: string | null
+          first_waitlist_date?: string | null
+          id?: string
+          last_order_date?: string | null
+          last_waitlist_date?: string | null
+          total_orders?: number | null
+          total_waitlist_joins?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          venue_id?: string | null
+          visit_frequency_days?: number | null
+        }
+        Update: {
+          avg_rating_given?: number | null
+          created_at?: string | null
+          customer_segment?: string | null
+          days_since_last_visit?: number | null
+          first_order_date?: string | null
+          first_waitlist_date?: string | null
+          id?: string
+          last_order_date?: string | null
+          last_waitlist_date?: string | null
+          total_orders?: number | null
+          total_waitlist_joins?: number | null
+          updated_at?: string | null
+          user_id?: string | null
+          venue_id?: string | null
+          visit_frequency_days?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customer_analytics_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "customer_analytics_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      daily_venue_snapshots: {
+        Row: {
+          avg_prep_time_minutes: number | null
+          avg_rating: number | null
+          avg_wait_time_minutes: number | null
+          completed_orders: number | null
+          created_at: string | null
+          id: string
+          new_customers: number | null
+          on_time_percentage: number | null
+          returning_customers: number | null
+          snapshot_date: string
+          total_customers: number | null
+          total_orders: number | null
+          total_waitlist_joins: number | null
+          venue_id: string | null
+        }
+        Insert: {
+          avg_prep_time_minutes?: number | null
+          avg_rating?: number | null
+          avg_wait_time_minutes?: number | null
+          completed_orders?: number | null
+          created_at?: string | null
+          id?: string
+          new_customers?: number | null
+          on_time_percentage?: number | null
+          returning_customers?: number | null
+          snapshot_date: string
+          total_customers?: number | null
+          total_orders?: number | null
+          total_waitlist_joins?: number | null
+          venue_id?: string | null
+        }
+        Update: {
+          avg_prep_time_minutes?: number | null
+          avg_rating?: number | null
+          avg_wait_time_minutes?: number | null
+          completed_orders?: number | null
+          created_at?: string | null
+          id?: string
+          new_customers?: number | null
+          on_time_percentage?: number | null
+          returning_customers?: number | null
+          snapshot_date?: string
+          total_customers?: number | null
+          total_orders?: number | null
+          total_waitlist_joins?: number | null
+          venue_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_venue_snapshots_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       order_analytics: {
         Row: {
           actual_prep_time: number | null
@@ -134,8 +262,10 @@ export type Database = {
           eta: string | null
           id: string
           items: Json
+          marked_ready_by_staff_id: string | null
           notes: string | null
           order_number: string
+          prepared_by_staff_id: string | null
           status: Database["public"]["Enums"]["order_status"]
           updated_at: string
           user_id: string | null
@@ -149,8 +279,10 @@ export type Database = {
           eta?: string | null
           id?: string
           items?: Json
+          marked_ready_by_staff_id?: string | null
           notes?: string | null
           order_number: string
+          prepared_by_staff_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           updated_at?: string
           user_id?: string | null
@@ -164,14 +296,30 @@ export type Database = {
           eta?: string | null
           id?: string
           items?: Json
+          marked_ready_by_staff_id?: string | null
           notes?: string | null
           order_number?: string
+          prepared_by_staff_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           updated_at?: string
           user_id?: string | null
           venue_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "orders_marked_ready_by_staff_id_fkey"
+            columns: ["marked_ready_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "orders_prepared_by_staff_id_fkey"
+            columns: ["prepared_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "orders_user_id_fkey"
             columns: ["user_id"]
@@ -540,6 +688,7 @@ export type Database = {
         }
         Returns: undefined
       }
+      update_customer_days_since_visit: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "staff" | "super_admin" | "patron"

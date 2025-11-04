@@ -15,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Download } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { PatronManagement } from "@/components/dev/PatronManagement";
 import * as XLSX from 'xlsx';
 import {
   AlertDialog,
@@ -570,6 +571,7 @@ export default function DevDashboard() {
           <TabsList>
             <TabsTrigger value="venues">Manage Venues</TabsTrigger>
             <TabsTrigger value="merchants">Manage Merchants</TabsTrigger>
+            <TabsTrigger value="patrons">Patron Management</TabsTrigger>
           </TabsList>
 
           <TabsContent value="venues" className="space-y-6">
@@ -939,6 +941,10 @@ export default function DevDashboard() {
                 </div>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="patrons">
+            <PatronManagement />
           </TabsContent>
         </Tabs>
       </div>
