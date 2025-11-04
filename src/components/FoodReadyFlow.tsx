@@ -542,7 +542,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
                     ? "text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.6)]"
                   : star <= rating
                     ? "text-green-500 drop-shadow-[0_0_10px_rgba(34,197,94,0.7)]"
-                  : "text-orange-400"
+                  : "text-white"
                 }>
                   ⭐
                 </span>
