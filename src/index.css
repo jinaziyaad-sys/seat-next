@@ -8,53 +8,53 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* ReadyUp Design System - Honey Pot Minimalistic Palette */
-    --background: 0 0% 93%; /* #ededed */
-    --foreground: 197 55% 14%; /* #102937 */
+    /* ReadyUp Design System - Orange Brand Palette */
+    --background: 0 0% 98%; /* #fafafa */
+    --foreground: 24 45% 25%; /* #5A3825 - Dark brown */
     
-    /* Core Brand Colors - Honey Pot Palette */
-    --charcoal: 197 55% 14%; /* #102937 */
-    --electric-lime: 186 65% 20%; /* #124d54 - Teal */
-    --coral: 14 93% 64%; /* #f9744b - Coral Orange */
-    --slate: 184 77% 15%; /* #094044 - Dark Teal */
-    --pure-white: 0 0% 93%; /* #ededed */
+    /* Core Brand Colors - Orange Palette from Logo */
+    --primary-orange: 14 100% 60%; /* #FF6B35 - Vibrant orange */
+    --burnt-orange: 14 67% 40%; /* #A94122 - Darker burnt orange */
+    --light-orange: 22 100% 62%; /* #FF8D3F - Accent orange */
+    --cream: 39 33% 95%; /* #F9F5F0 - Warm cream */
+    --dark-brown: 24 45% 25%; /* #5A3825 - Text brown */
     
     /* Semantic Tokens */
-    --primary: 186 65% 20%; /* Teal #124d54 */
-    --primary-foreground: 0 0% 93%; /* Light */
-    --primary-muted: 186 30% 40%;
+    --primary: 14 100% 60%; /* Vibrant Orange #FF6B35 */
+    --primary-foreground: 0 0% 100%; /* White text */
+    --primary-muted: 14 80% 70%; /* Lighter orange */
     
-    --secondary: 33 26% 85%; /* Beige #e1d9cf */
-    --secondary-foreground: 197 55% 14%; /* Dark Teal */
+    --secondary: 39 33% 95%; /* Cream #F9F5F0 */
+    --secondary-foreground: 24 45% 25%; /* Dark Brown */
     
-    --accent: 14 93% 64%; /* Coral #f9744b */
-    --accent-foreground: 0 0% 100%;
+    --accent: 22 100% 62%; /* Light Orange #FF8D3F */
+    --accent-foreground: 0 0% 100%; /* White */
     
-    --muted: 33 26% 85%; /* Beige */
-    --muted-foreground: 197 55% 14%; /* Dark Teal */
+    --muted: 39 33% 95%; /* Cream */
+    --muted-foreground: 24 45% 25%; /* Dark Brown */
     
     --card: 0 0% 100%;
-    --card-foreground: 197 55% 14%;
+    --card-foreground: 24 45% 25%;
     
-    --border: 33 26% 80%;
-    --input: 33 26% 90%;
-    --ring: 186 65% 20%;
+    --border: 39 33% 85%;
+    --input: 39 33% 93%;
+    --ring: 14 100% 60%;
     
-    --destructive: 13 72% 51%; /* Darker Coral #d84f2a */
+    --destructive: 0 72% 51%; /* Red */
     --destructive-foreground: 0 0% 100%;
     
     --success: 142 71% 45%;
-    --warning: 14 93% 64%;
+    --warning: 38 92% 50%;
     
-    /* Gradients - Honey Pot Inspired */
-    --gradient-primary: linear-gradient(135deg, hsl(186 65% 20%), hsl(14 93% 64%));
-    --gradient-hero: linear-gradient(135deg, hsl(197 55% 14%), hsl(186 65% 20%), hsl(14 93% 64%));
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(33 26% 95%));
+    /* Gradients - Orange Themed */
+    --gradient-primary: linear-gradient(135deg, hsl(14 100% 60%), hsl(22 100% 62%));
+    --gradient-hero: linear-gradient(135deg, hsl(24 45% 25%), hsl(14 67% 40%), hsl(14 100% 60%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(39 33% 97%));
     
-    /* Shadows - Teal and Coral */
-    --shadow-card: 0 4px 20px -8px hsl(197 55% 14% / 0.2);
-    --shadow-button: 0 2px 8px -2px hsl(14 93% 64% / 0.5);
-    --shadow-floating: 0 8px 32px -8px hsl(197 55% 14% / 0.25);
+    /* Shadows - Orange Tinted */
+    --shadow-card: 0 4px 20px -8px hsl(14 50% 40% / 0.15);
+    --shadow-button: 0 2px 8px -2px hsl(14 100% 60% / 0.4);
+    --shadow-floating: 0 8px 32px -8px hsl(14 50% 40% / 0.2);
     
     /* Animation */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -80,41 +80,41 @@ All colors MUST be HSL.
   }
 
   .dark {
-    /* Dark Mode - Honey Pot Dark */
-    --background: 199 62% 9%; /* #091d26 - Very Dark Teal */
-    --foreground: 0 0% 93%;
+    /* Dark Mode - Orange Dark */
+    --background: 24 25% 12%; /* #1F1813 - Dark brown-black */
+    --foreground: 39 33% 95%; /* Cream */
     
-    --charcoal: 199 62% 9%;
-    --electric-lime: 186 65% 25%; /* Lighter teal for dark mode */
-    --coral: 14 93% 64%;
-    --slate: 184 77% 15%;
-    --pure-white: 0 0% 93%;
+    --primary-orange: 14 100% 65%; /* Brighter orange for dark */
+    --burnt-orange: 14 67% 45%; /* Lighter burnt orange */
+    --light-orange: 22 100% 65%; /* Lighter accent orange */
+    --cream: 39 33% 95%;
+    --dark-brown: 24 25% 12%;
     
-    --primary: 186 65% 25%; /* Lighter Teal */
-    --primary-foreground: 0 0% 93%;
-    --primary-muted: 186 30% 15%;
+    --primary: 14 100% 65%; /* Brighter orange for dark mode */
+    --primary-foreground: 24 25% 12%;
+    --primary-muted: 14 80% 30%;
     
-    --secondary: 197 55% 14%; /* Dark Teal */
-    --secondary-foreground: 0 0% 93%;
+    --secondary: 24 30% 20%; /* Dark brown */
+    --secondary-foreground: 39 33% 95%;
     
-    --accent: 14 93% 64%; /* Coral */
-    --accent-foreground: 0 0% 100%;
+    --accent: 22 100% 65%; /* Bright accent orange */
+    --accent-foreground: 24 25% 12%;
     
-    --muted: 197 55% 14%;
-    --muted-foreground: 32 31% 76%; /* Darker Beige */
+    --muted: 24 30% 20%;
+    --muted-foreground: 39 25% 70%;
     
-    --card: 197 55% 14%;
-    --card-foreground: 0 0% 93%;
+    --card: 24 25% 15%;
+    --card-foreground: 39 33% 95%;
     
-    --border: 186 65% 20%;
-    --input: 197 55% 14%;
-    --ring: 186 65% 25%;
+    --border: 24 20% 25%;
+    --input: 24 20% 20%;
+    --ring: 14 100% 65%;
     
-    --destructive: 13 72% 51%;
+    --destructive: 0 72% 51%;
     --destructive-foreground: 0 0% 100%;
     
     --success: 142 71% 45%;
-    --warning: 14 93% 64%;
+    --warning: 38 92% 50%;
   }
 }
 

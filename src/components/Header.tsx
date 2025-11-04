@@ -1,6 +1,6 @@
-import { Home } from "lucide-react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "./ui/button";
+import logo from "@/assets/logo.png";
 
 export const Header = () => {
   const navigate = useNavigate();
@@ -16,10 +16,13 @@ export const Header = () => {
           variant="ghost"
           size="sm"
           onClick={() => navigate("/")}
-          className="gap-2"
+          className="hover:bg-transparent p-2"
         >
-          <Home size={20} />
-          <span className="font-semibold">ReadyUp</span>
+          <img 
+            src={logo} 
+            alt="ReadyUp" 
+            className="h-8 w-auto"
+          />
         </Button>
       </div>
     </header>

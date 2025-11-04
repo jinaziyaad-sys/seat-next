@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Building2, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
+import logo from "@/assets/logo.png";
 
 export default function MerchantAuth() {
   const [email, setEmail] = useState("");
@@ -164,8 +165,12 @@ export default function MerchantAuth() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto w-12 h-12 bg-primary rounded-full flex items-center justify-center mb-4">
-            <Building2 className="w-6 h-6 text-primary-foreground" />
+          <div className="mx-auto mb-4">
+            <img 
+              src={logo} 
+              alt="ReadyUp" 
+              className="h-16 w-auto mx-auto"
+            />
           </div>
           <CardTitle>Merchant Portal</CardTitle>
           <CardDescription>Sign in to manage your venue</CardDescription>

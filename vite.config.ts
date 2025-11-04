@@ -20,8 +20,8 @@ export default defineConfig(({ mode }) => ({
         name: 'ReadyUp - Restaurant Notifications',
         short_name: 'ReadyUp',
         description: 'Get notified when your table or food is ready',
-        theme_color: '#000000',
-        background_color: '#ffffff',
+        theme_color: '#FF6B35',
+        background_color: '#fafafa',
         display: 'standalone',
         icons: [
           {

@@ -24,11 +24,11 @@ export default {
         foreground: "hsl(var(--foreground))",
         
         /* Brand Colors */
-        charcoal: "hsl(var(--charcoal))",
-        "electric-lime": "hsl(var(--electric-lime))",
-        coral: "hsl(var(--coral))",
-        slate: "hsl(var(--slate))",
-        "pure-white": "hsl(var(--pure-white))",
+        "primary-orange": "hsl(var(--primary-orange))",
+        "burnt-orange": "hsl(var(--burnt-orange))",
+        "light-orange": "hsl(var(--light-orange))",
+        "cream": "hsl(var(--cream))",
+        "dark-brown": "hsl(var(--dark-brown))",
         
         /* Semantic Colors */
         primary: {

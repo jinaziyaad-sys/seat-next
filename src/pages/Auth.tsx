@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Mail, AlertCircle } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
+import logo from "@/assets/logo.png";
 
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
@@ -355,7 +356,14 @@ export default function Auth() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted p-4">
       <Card className="w-full max-w-md">
-        <CardHeader>
+        <CardHeader className="text-center">
+          <div className="mx-auto mb-4">
+            <img 
+              src={logo} 
+              alt="ReadyUp" 
+              className="h-16 w-auto mx-auto"
+            />
+          </div>
           <CardTitle>Welcome</CardTitle>
           <CardDescription>Sign in to track your orders and reservations</CardDescription>
         </CardHeader>

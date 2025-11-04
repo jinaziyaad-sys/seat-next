@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Zap } from "lucide-react";
+import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
+import logo from "@/assets/logo.png";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
@@ -207,18 +208,17 @@ const Index = () => {
         </div>
         
         <div className="relative z-10 flex flex-col items-center text-center">
-          {/* Logo Icon */}
+          {/* Logo */}
           <div className="mb-8 relative">
-            <div className="absolute inset-0 bg-coral/30 rounded-full blur-3xl animate-pulse" />
-            <div className="relative bg-gradient-to-br from-coral/30 to-primary/30 backdrop-blur-xl rounded-full p-8 border border-white/20 shadow-floating">
-              <Zap size={56} className="text-white drop-shadow-lg" strokeWidth={2.5} />
+            <div className="absolute inset-0 bg-primary/20 rounded-full blur-3xl animate-pulse" />
+            <div className="relative backdrop-blur-sm">
+              <img 
+                src={logo} 
+                alt="ReadyUp" 
+                className="h-32 w-auto drop-shadow-2xl"
+              />
             </div>
           </div>
-          
-          {/* Title */}
-          <h1 className="mb-4 text-6xl font-bold tracking-tight drop-shadow-lg">
-            ReadyUp
-          </h1>
           
           {/* Subtitle */}
           <p className="text-lg opacity-90 max-w-md font-light text-white/90">
