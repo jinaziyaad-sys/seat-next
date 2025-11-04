@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Users, UserPlus, Repeat, TrendingUp, Calendar, Award } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Users, UserPlus, Repeat, TrendingUp, Calendar, Award, Info } from "lucide-react";
 import { toast } from "sonner";
 import {
   Table,
@@ -33,8 +34,7 @@ interface CustomerSegments {
 }
 
 interface LoyalCustomer {
-  user_id: string;
-  name: string;
+  customer_id: string; // Anonymized ID for POPIA compliance
   total_orders: number;
   total_waitlist_joins: number;
   total_activity: number;
@@ -117,6 +117,15 @@ export const CustomerInsights = ({ venueId }: CustomerInsightsProps) => {
 
   return (
     <div className="space-y-6">
+      {/* POPIA Compliance Notice */}
+      <Alert className="bg-muted/50 border-primary/20">
+        <Info className="h-4 w-4" />
+        <AlertDescription>
+          Customer identities are anonymized to comply with POPIA (Protection of Personal Information Act). 
+          Full customer details are only available to platform administrators.
+        </AlertDescription>
+      </Alert>
+
       {/* Time Range Selector */}
       <div className="flex justify-end">
         <Select value={timeRange} onValueChange={setTimeRange}>
@@ -271,7 +280,7 @@ export const CustomerInsights = ({ venueId }: CustomerInsightsProps) => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Customer</TableHead>
+                <TableHead>Customer ID</TableHead>
                 <TableHead className="text-center">Orders</TableHead>
                 <TableHead className="text-center">Waitlist</TableHead>
                 <TableHead className="text-center">Total Activity</TableHead>
@@ -280,8 +289,8 @@ export const CustomerInsights = ({ venueId }: CustomerInsightsProps) => {
             </TableHeader>
             <TableBody>
               {loyalCustomers.map((customer) => (
-                <TableRow key={customer.user_id}>
-                  <TableCell className="font-medium">{customer.name}</TableCell>
+                <TableRow key={customer.customer_id}>
+                  <TableCell className="font-medium">{customer.customer_id}</TableCell>
                   <TableCell className="text-center">{customer.total_orders}</TableCell>
                   <TableCell className="text-center">{customer.total_waitlist_joins}</TableCell>
                   <TableCell className="text-center">

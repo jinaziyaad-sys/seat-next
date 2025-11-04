@@ -132,7 +132,7 @@ serve(async (req) => {
       }
     });
 
-    // Top loyal customers (by total activity)
+    // Top loyal customers (by total activity) - ANONYMIZED for POPIA compliance
     const loyalCustomers = customers
       ?.map(c => ({
         user_id: c.user_id,
@@ -145,18 +145,14 @@ serve(async (req) => {
       .sort((a, b) => b.total_activity - a.total_activity)
       .slice(0, 10) || [];
 
-    // Get profile names for top customers
-    const loyalCustomerIds = loyalCustomers.map(c => c.user_id);
-    const { data: profiles } = await supabase
-      .from('profiles')
-      .select('id, full_name')
-      .in('id', loyalCustomerIds);
-
-    const profileMap = new Map(profiles?.map(p => [p.id, p.full_name]) || []);
-
-    const topLoyalCustomers = loyalCustomers.map(c => ({
-      ...c,
-      name: profileMap.get(c.user_id) || 'Unknown',
+    // Anonymize customer identities for merchant view (POPIA compliance)
+    const topLoyalCustomers = loyalCustomers.map((c, index) => ({
+      customer_id: `Customer #${index + 1}`,
+      total_orders: c.total_orders,
+      total_waitlist_joins: c.total_waitlist_joins,
+      total_activity: c.total_activity,
+      last_visit: c.last_visit,
+      days_since_last_visit: c.days_since_last_visit,
     }));
 
     // Average visit frequency
