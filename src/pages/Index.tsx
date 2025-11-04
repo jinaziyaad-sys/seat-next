@@ -35,37 +35,6 @@ const Index = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      fetchActiveTracking();
-      
-      const ordersChannel = supabase
-        .channel('orders-changes')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'orders',
-          filter: `user_id=eq.${user.id}`
-        }, () => fetchActiveTracking())
-        .subscribe();
-
-      const waitlistChannel = supabase
-        .channel('waitlist-changes')
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'waitlist_entries',
-          filter: `user_id=eq.${user.id}`
-        }, () => fetchActiveTracking())
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(ordersChannel);
-        supabase.removeChannel(waitlistChannel);
-      };
-    }
-  }, [user]);
-
   const fetchActiveTracking = async () => {
     if (!user) return;
 
@@ -86,6 +55,85 @@ const Index = () => {
     setActiveOrders(orders || []);
     setActiveWaitlist(waitlist || []);
   };
+
+  useEffect(() => {
+    if (user) {
+      fetchActiveTracking();
+      
+      const ordersChannel = supabase
+        .channel(`patron-orders-${user.id}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'orders',
+          filter: `user_id=eq.${user.id}`
+        }, (payload) => {
+          console.log('Patron order update:', payload);
+          
+          // Optimistic state update
+          if (payload.eventType === 'UPDATE' && payload.new) {
+            setActiveOrders(prevOrders => {
+              const updatedOrders = prevOrders.map(order => 
+                order.id === payload.new.id 
+                  ? { ...order, ...payload.new, items: Array.isArray(payload.new.items) ? payload.new.items : [payload.new.items] }
+                  : order
+              );
+              // Remove from list if status is no longer active
+              return updatedOrders.filter(order => 
+                ['placed', 'in_prep', 'ready'].includes(order.status)
+              );
+            });
+          } else if (payload.eventType === 'INSERT') {
+            fetchActiveTracking(); // Fetch for new orders
+          } else if (payload.eventType === 'DELETE') {
+            setActiveOrders(prevOrders => prevOrders.filter(order => order.id !== payload.old?.id));
+          }
+          
+          // Also fetch to ensure consistency
+          fetchActiveTracking();
+        })
+        .subscribe();
+
+      const waitlistChannel = supabase
+        .channel(`patron-waitlist-${user.id}`)
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'waitlist_entries',
+          filter: `user_id=eq.${user.id}`
+        }, (payload) => {
+          console.log('Patron waitlist update:', payload);
+          
+          // Optimistic state update
+          if (payload.eventType === 'UPDATE' && payload.new) {
+            setActiveWaitlist(prevEntries => {
+              const updatedEntries = prevEntries.map(entry => 
+                entry.id === payload.new.id 
+                  ? { ...entry, ...payload.new }
+                  : entry
+              );
+              // Remove from list if status is no longer active
+              return updatedEntries.filter(entry => 
+                ['waiting', 'ready'].includes(entry.status)
+              );
+            });
+          } else if (payload.eventType === 'INSERT') {
+            fetchActiveTracking(); // Fetch for new entries
+          } else if (payload.eventType === 'DELETE') {
+            setActiveWaitlist(prevEntries => prevEntries.filter(entry => entry.id !== payload.old?.id));
+          }
+          
+          // Also fetch to ensure consistency
+          fetchActiveTracking();
+        })
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(ordersChannel);
+        supabase.removeChannel(waitlistChannel);
+      };
+    }
+  }, [user]);
 
   if (activeTab === "food-ready") {
     return (
