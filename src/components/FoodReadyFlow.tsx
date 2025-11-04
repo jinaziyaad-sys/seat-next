@@ -523,7 +523,9 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
     <div className="space-y-6 p-6 max-w-lg mx-auto">
       <Card className="shadow-card text-center">
         <CardContent className="p-8 space-y-6">
-          <div className="text-6xl animate-fade-in">🎉</div>
+          <div className="w-16 h-16 mx-auto mb-2 rounded-full bg-success/10 flex items-center justify-center animate-scale-in">
+            <CheckCircle className="w-10 h-10 text-success" />
+          </div>
           <h2 className="text-3xl font-bold">Thank You!</h2>
           <p className="text-lg text-muted-foreground">Rate Your Experience</p>
           
@@ -541,10 +543,10 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
                   size={48}
                   className={
                     hoveredRating > 0 && star <= hoveredRating
-                      ? "fill-green-400 stroke-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.6)]"
+                      ? "fill-success/70 stroke-success transition-all duration-200"
                     : star <= rating
-                      ? "fill-green-500 stroke-green-500 drop-shadow-[0_0_10px_rgba(34,197,94,0.7)]"
-                    : "fill-transparent stroke-white"
+                      ? "fill-success stroke-success transition-all duration-200"
+                    : "fill-transparent stroke-slate/30 stroke-[1.5] transition-all duration-200"
                   }
                 />
               </button>
@@ -553,11 +555,11 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
           
           {rating > 0 && (
             <div className="text-sm font-medium text-primary animate-fade-in">
-              {rating === 5 && "Amazing! 🌟"}
-              {rating === 4 && "Great! 👍"}
-              {rating === 3 && "Good 👌"}
-              {rating === 2 && "Could be better 🤔"}
-              {rating === 1 && "Not satisfied 😔"}
+              {rating === 5 && "Exceptional"}
+              {rating === 4 && "Very Good"}
+              {rating === 3 && "Satisfactory"}
+              {rating === 2 && "Needs Improvement"}
+              {rating === 1 && "Below Expectations"}
             </div>
           )}
           
