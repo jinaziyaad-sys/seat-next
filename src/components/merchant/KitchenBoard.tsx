@@ -38,19 +38,19 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   useEffect(() => {
     const fetchOrders = async () => {
       // Fetch orders for this venue including collected ones awaiting confirmation
-      const { data: ordersData, error: ordersError } = await supabase
-        .from("orders")
-        .select(`
-          *,
-          order_ratings (
-            rating,
-            feedback_text
-          )
-        `)
-        .eq("venue_id", venueId)
-        .or('status.neq.collected,awaiting_merchant_confirmation.eq.true')
-        .order("awaiting_merchant_confirmation", { ascending: false })
-        .order("created_at", { ascending: true });
+    const { data: ordersData, error: ordersError } = await supabase
+      .from("orders")
+      .select(`
+        *,
+        order_ratings (
+          rating,
+          feedback_text
+        )
+      `)
+      .eq("venue_id", venueId)
+      .or('status.neq.collected,and(status.eq.collected,awaiting_merchant_confirmation.eq.true)')
+      .order("awaiting_merchant_confirmation", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: true });
 
       if (ordersError) {
         toast({

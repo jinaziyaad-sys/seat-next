@@ -538,9 +538,11 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
                 disabled={isSubmittingRating}
               >
                 <span className={
-                  star <= (hoveredRating || rating) 
-                    ? "text-yellow-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]" 
-                    : "text-gray-300 dark:text-gray-600"
+                  hoveredRating > 0 && star <= hoveredRating
+                    ? "text-green-400 drop-shadow-[0_0_10px_rgba(74,222,128,0.6)]"
+                  : star <= rating
+                    ? "text-green-500 drop-shadow-[0_0_10px_rgba(34,197,94,0.7)]"
+                  : "text-orange-400"
                 }>
                   ⭐
                 </span>
