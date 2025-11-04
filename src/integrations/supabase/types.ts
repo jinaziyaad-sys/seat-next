@@ -80,8 +80,54 @@ export type Database = {
           },
         ]
       }
+      order_ratings: {
+        Row: {
+          created_at: string
+          feedback_text: string | null
+          id: string
+          order_id: string
+          rating: number
+          user_id: string | null
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          order_id: string
+          rating: number
+          user_id?: string | null
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          order_id?: string
+          rating?: number
+          user_id?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_ratings_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: true
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_ratings_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       orders: {
         Row: {
+          awaiting_merchant_confirmation: boolean | null
           created_at: string
           customer_name: string | null
           customer_phone: string | null
@@ -96,6 +142,7 @@ export type Database = {
           venue_id: string
         }
         Insert: {
+          awaiting_merchant_confirmation?: boolean | null
           created_at?: string
           customer_name?: string | null
           customer_phone?: string | null
@@ -110,6 +157,7 @@ export type Database = {
           venue_id: string
         }
         Update: {
+          awaiting_merchant_confirmation?: boolean | null
           created_at?: string
           customer_name?: string | null
           customer_phone?: string | null

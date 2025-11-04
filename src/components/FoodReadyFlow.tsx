@@ -4,6 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Clock, CheckCircle, Package, Truck, Search, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -39,6 +41,10 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [rating, setRating] = useState(0);
+  const [hoveredRating, setHoveredRating] = useState(0);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const { toast } = useToast();
 
   // Get authenticated user and initialize notifications
@@ -257,6 +263,69 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
     setStep("feedback");
   };
 
+  const handleRatingSubmit = async () => {
+    if (!rating || !currentOrder) return;
+    
+    setIsSubmittingRating(true);
+    
+    try {
+      // Insert rating
+      const { error: ratingError } = await supabase
+        .from('order_ratings')
+        .insert({
+          order_id: currentOrder.id,
+          venue_id: venues.find(v => v.name === currentOrder.venue)?.id,
+          user_id: userId,
+          rating,
+          feedback_text: feedbackText.trim() || null
+        });
+
+      if (ratingError) throw ratingError;
+
+      // Update order status
+      const { error: orderError } = await supabase
+        .from('orders')
+        .update({
+          status: 'collected',
+          awaiting_merchant_confirmation: true
+        })
+        .eq('id', currentOrder.id);
+
+      if (orderError) throw orderError;
+
+      toast({
+        title: "Thank you for your feedback!",
+        description: "Your rating has been submitted successfully."
+      });
+      
+      onBack();
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      toast({
+        title: "Error",
+        description: "Could not submit rating. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmittingRating(false);
+    }
+  };
+
+  const handleSkipRating = async () => {
+    if (!currentOrder) return;
+    
+    // Just mark as collected without rating
+    await supabase
+      .from('orders')
+      .update({
+        status: 'collected',
+        awaiting_merchant_confirmation: true
+      })
+      .eq('id', currentOrder.id);
+    
+    onBack();
+  };
+
   if (step === "scan") {
     return (
       <div className="space-y-6 p-6">
@@ -451,24 +520,80 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6 p-6 max-w-lg mx-auto">
       <Card className="shadow-card text-center">
         <CardContent className="p-8 space-y-6">
-          <div className="text-6xl">🎉</div>
-          <h2 className="text-2xl font-bold">Thank You!</h2>
-          <p className="text-muted-foreground">How was your experience today?</p>
+          <div className="text-6xl animate-fade-in">🎉</div>
+          <h2 className="text-3xl font-bold">Thank You!</h2>
+          <p className="text-lg text-muted-foreground">Rate Your Experience</p>
           
-          <div className="flex justify-center gap-2">
+          <div className="flex justify-center gap-1">
             {[1, 2, 3, 4, 5].map((star) => (
-              <button key={star} className="text-3xl hover:scale-110 transition-transform">
-                ⭐
+              <button 
+                key={star} 
+                onClick={() => setRating(star)}
+                onMouseEnter={() => setHoveredRating(star)}
+                onMouseLeave={() => setHoveredRating(0)}
+                className="text-5xl transition-all duration-200 hover:scale-110 active:scale-95"
+                disabled={isSubmittingRating}
+              >
+                <span className={
+                  star <= (hoveredRating || rating) 
+                    ? "text-yellow-400 drop-shadow-[0_0_8px_rgba(251,191,36,0.6)]" 
+                    : "text-gray-300 dark:text-gray-600"
+                }>
+                  ⭐
+                </span>
               </button>
             ))}
           </div>
           
-          <Button onClick={onBack} className="w-full h-12">
-            Done
-          </Button>
+          {rating > 0 && (
+            <div className="text-sm font-medium text-primary animate-fade-in">
+              {rating === 5 && "Amazing! 🌟"}
+              {rating === 4 && "Great! 👍"}
+              {rating === 3 && "Good 👌"}
+              {rating === 2 && "Could be better 🤔"}
+              {rating === 1 && "Not satisfied 😔"}
+            </div>
+          )}
+          
+          <div className="space-y-2 animate-fade-in">
+            <Label htmlFor="feedback" className="text-sm text-muted-foreground">
+              Tell us more (optional)
+            </Label>
+            <Textarea
+              id="feedback"
+              placeholder="What did you like? Any suggestions?"
+              value={feedbackText}
+              onChange={(e) => setFeedbackText(e.target.value.slice(0, 500))}
+              maxLength={500}
+              rows={4}
+              className="resize-none"
+              disabled={isSubmittingRating}
+            />
+            <div className="text-xs text-muted-foreground text-right">
+              {feedbackText.length}/500
+            </div>
+          </div>
+          
+          <div className="flex gap-3">
+            <Button 
+              variant="outline" 
+              onClick={handleSkipRating} 
+              className="flex-1 h-12"
+              disabled={isSubmittingRating}
+            >
+              Skip
+            </Button>
+            <Button 
+              onClick={handleRatingSubmit}
+              disabled={!rating || isSubmittingRating}
+              className="flex-1 h-12"
+            >
+              {isSubmittingRating ? "Submitting..." : "Submit Rating"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

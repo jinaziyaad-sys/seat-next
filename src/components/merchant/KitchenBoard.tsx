@@ -21,6 +21,11 @@ interface Order {
   notes?: string | null;
   customer_name?: string | null;
   venue_id: string;
+  awaiting_merchant_confirmation?: boolean;
+  order_ratings?: Array<{
+    rating: number;
+    feedback_text: string | null;
+  }>;
 }
 
 export const KitchenBoard = ({ venueId }: { venueId: string }) => {
@@ -32,12 +37,19 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   // Fetch orders and set up real-time subscription
   useEffect(() => {
     const fetchOrders = async () => {
-      // Fetch orders for this venue
+      // Fetch orders for this venue including collected ones awaiting confirmation
       const { data: ordersData, error: ordersError } = await supabase
         .from("orders")
-        .select("*")
+        .select(`
+          *,
+          order_ratings (
+            rating,
+            feedback_text
+          )
+        `)
         .eq("venue_id", venueId)
-        .neq("status", "collected")
+        .or('status.neq.collected,awaiting_merchant_confirmation.eq.true')
+        .order("awaiting_merchant_confirmation", { ascending: false })
         .order("created_at", { ascending: true });
 
       if (ordersError) {
@@ -52,7 +64,8 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
       if (ordersData) {
         setOrders(ordersData.map(order => ({
           ...order,
-          items: Array.isArray(order.items) ? order.items : [order.items]
+          items: Array.isArray(order.items) ? order.items : [order.items],
+          order_ratings: Array.isArray(order.order_ratings) ? order.order_ratings : []
         })));
       }
     };
@@ -264,6 +277,27 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
     return minutes;
   };
 
+  const closeOrder = async (orderId: string) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ awaiting_merchant_confirmation: false })
+      .eq("id", orderId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not close order",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    toast({
+      title: "Order Closed",
+      description: "Order has been marked as complete",
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -307,16 +341,40 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
         </Dialog>
       </div>
 
+      <style>{`
+        @keyframes flash-green {
+          0%, 100% { background-color: rgba(34, 197, 94, 0.2); }
+          50% { background-color: rgba(34, 197, 94, 0.5); }
+        }
+        .awaiting-confirmation {
+          animation: flash-green 2s ease-in-out infinite;
+        }
+      `}</style>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {orders.map((order) => (
-          <Card key={order.id} className="shadow-card">
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">#{order.order_number}</CardTitle>
-                <Badge className={`${getStatusColor(order.status)} text-white`}>
-                  {order.status.replace("_", " ").toUpperCase()}
-                </Badge>
-              </div>
+        {orders.map((order) => {
+          const hasRating = order.order_ratings && order.order_ratings.length > 0;
+          const rating = hasRating ? order.order_ratings[0] : null;
+          
+          return (
+            <Card 
+              key={order.id} 
+              className={`shadow-card ${order.awaiting_merchant_confirmation ? 'awaiting-confirmation' : ''}`}
+            >
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-lg">#{order.order_number}</CardTitle>
+                  <div className="flex flex-col gap-1 items-end">
+                    <Badge className={`${getStatusColor(order.status)} text-white`}>
+                      {order.status.replace("_", " ").toUpperCase()}
+                    </Badge>
+                    {order.awaiting_merchant_confirmation && (
+                      <Badge className="bg-green-500 text-white text-xs">
+                        AWAITING CONFIRMATION
+                      </Badge>
+                    )}
+                  </div>
+                </div>
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <Clock size={14} />
                 <span className={getTimeStatus(order.eta)}>
@@ -349,53 +407,84 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
                 </div>
               )}
 
-              <div className="space-y-2">
-                <Select
-                  value={order.status}
-                  onValueChange={(value) => updateOrderStatus(order.id, value as Order["status"])}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background z-50">
-                    <SelectItem value="placed">Placed</SelectItem>
-                    <SelectItem value="in_prep">In Prep</SelectItem>
-                    <SelectItem value="ready">Ready</SelectItem>
-                    <SelectItem value="collected">Collected</SelectItem>
-                    <SelectItem value="no_show">No Show</SelectItem>
-                  </SelectContent>
-                </Select>
-
-                <div className="flex gap-2">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => extendETA(order.id, 5, "Kitchen delay")}
-                    className="flex-1"
-                  >
-                    +5m
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => extendETA(order.id, 10, "Extra prep time")}
-                    className="flex-1"
-                  >
-                    +10m
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => extendETA(order.id, 15, "Busy period")}
-                    className="flex-1"
-                  >
-                    +15m
-                  </Button>
+              {hasRating && rating && (
+                <div className="p-3 bg-primary/10 rounded-lg space-y-2 border border-primary/20">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-semibold">Customer Rating:</span>
+                    <div className="flex gap-0.5">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <span key={star} className={star <= rating.rating ? "text-yellow-400" : "text-gray-300"}>
+                          ⭐
+                        </span>
+                      ))}
+                    </div>
+                    <span className="text-sm font-bold">({rating.rating}/5)</span>
+                  </div>
+                  {rating.feedback_text && (
+                    <p className="text-sm text-muted-foreground italic">
+                      "{rating.feedback_text}"
+                    </p>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {order.awaiting_merchant_confirmation ? (
+                <Button 
+                  onClick={() => closeOrder(order.id)}
+                  className="w-full bg-green-600 hover:bg-green-700"
+                >
+                  ✓ Close Order
+                </Button>
+              ) : (
+                <div className="space-y-2">
+                  <Select
+                    value={order.status}
+                    onValueChange={(value) => updateOrderStatus(order.id, value as Order["status"])}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background z-50">
+                      <SelectItem value="placed">Placed</SelectItem>
+                      <SelectItem value="in_prep">In Prep</SelectItem>
+                      <SelectItem value="ready">Ready</SelectItem>
+                      <SelectItem value="collected">Collected</SelectItem>
+                      <SelectItem value="no_show">No Show</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => extendETA(order.id, 5, "Kitchen delay")}
+                      className="flex-1"
+                    >
+                      +5m
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => extendETA(order.id, 10, "Extra prep time")}
+                      className="flex-1"
+                    >
+                      +10m
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => extendETA(order.id, 15, "Busy period")}
+                      className="flex-1"
+                    >
+                      +15m
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
-        ))}
+        );
+        })}
       </div>
 
       {orders.length === 0 && (

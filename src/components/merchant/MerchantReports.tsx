@@ -9,6 +9,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { TrendingUp, TrendingDown, Clock, Users, UtensilsCrossed, AlertTriangle, Loader2, Info } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { RatingsView } from "./RatingsView";
 
 interface AnalyticsData {
   time_range: string;
@@ -140,6 +141,7 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
         <TabsList>
           <TabsTrigger value="food-ready">Food Ready</TabsTrigger>
           <TabsTrigger value="table-ready">Table Ready</TabsTrigger>
+          <TabsTrigger value="ratings">Ratings</TabsTrigger>
           <TabsTrigger value="overview">Overview</TabsTrigger>
         </TabsList>
 
@@ -283,6 +285,10 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
               <p className="text-muted-foreground">No waitlist data for this period</p>
             </Card>
           )}
+        </TabsContent>
+
+        <TabsContent value="ratings" className="space-y-6">
+          <RatingsView venueId={venue.id} />
         </TabsContent>
 
         <TabsContent value="overview" className="space-y-6">
