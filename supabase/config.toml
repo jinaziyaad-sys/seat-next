@@ -26,3 +26,12 @@ verify_jwt = true
 
 [functions.get-platform-patron-data]
 verify_jwt = true
+
+[functions.get-venue-customer-insights]
+verify_jwt = true
+
+[functions.get-venue-efficiency-analytics]
+verify_jwt = true
+
+[functions.update-customer-segments]
+verify_jwt = false

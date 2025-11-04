@@ -10,6 +10,8 @@ import { TrendingUp, TrendingDown, Clock, Users, UtensilsCrossed, AlertTriangle,
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { RatingsView } from "./RatingsView";
+import { CustomerInsights } from "./CustomerInsights";
+import { OperationsEfficiency } from "./OperationsEfficiency";
 import * as XLSX from 'xlsx';
 
 interface AnalyticsData {
@@ -335,6 +337,8 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
         <TabsList>
           <TabsTrigger value="food-ready">Food Ready</TabsTrigger>
           <TabsTrigger value="table-ready">Table Ready</TabsTrigger>
+          <TabsTrigger value="customer-insights">Customer Insights</TabsTrigger>
+          <TabsTrigger value="operations">Operations</TabsTrigger>
           <TabsTrigger value="ratings">Ratings</TabsTrigger>
           <TabsTrigger value="overview">Overview</TabsTrigger>
         </TabsList>
@@ -684,6 +688,14 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="customer-insights">
+          <CustomerInsights venueId={venue.id} />
+        </TabsContent>
+
+        <TabsContent value="operations">
+          <OperationsEfficiency venueId={venue.id} />
         </TabsContent>
       </Tabs>
     </div>
