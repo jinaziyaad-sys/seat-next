@@ -546,7 +546,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
                       ? "fill-success/70 stroke-success transition-all duration-200"
                     : star <= rating
                       ? "fill-success stroke-success transition-all duration-200"
-                    : "fill-transparent stroke-slate/30 stroke-[1.5] transition-all duration-200"
+                    : "fill-none stroke-slate-400 stroke-2 transition-all duration-200"
                   }
                 />
               </button>
