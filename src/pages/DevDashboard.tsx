@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -366,6 +367,7 @@ export default function DevDashboard() {
               <p className="text-sm text-muted-foreground">Platform Administration</p>
             </div>
             <div className="flex gap-2">
+              <ThemeToggle />
               <PasswordResetDialog />
               <Button variant="outline" onClick={handleLogout}>
                 <LogOut size={16} className="mr-2" />

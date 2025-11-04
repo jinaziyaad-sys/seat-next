@@ -4,11 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, User, Bell, Accessibility, Shield, LogOut, KeyRound } from "lucide-react";
+import { ArrowLeft, User, Bell, Accessibility, Shield, LogOut, KeyRound, Palette } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 interface UserProfile {
   full_name: string;
@@ -204,6 +205,25 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
               <p className="text-sm text-muted-foreground">Reset your account password</p>
             </div>
             <PasswordResetDialog userEmail={profile.email} />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Appearance Section */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Palette size={24} />
+            <CardTitle>Appearance</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">Theme</p>
+              <p className="text-sm text-muted-foreground">Choose your preferred color scheme</p>
+            </div>
+            <ThemeToggle />
           </div>
         </CardContent>
       </Card>
