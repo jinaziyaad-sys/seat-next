@@ -243,8 +243,10 @@ serve(async (req) => {
       time_range,
       total_orders: totalOrders,
       total_waitlist: totalWaitlist,
-      prep_accuracy: prepTimeAccuracy,
-      wait_accuracy: waitTimeAccuracy
+      order_on_time_rate: onTimeRate,
+      order_late_rate: lateRate,
+      waitlist_on_time_rate: waitOnTimeRate,
+      waitlist_late_rate: waitLateRate
     });
 
     return new Response(
