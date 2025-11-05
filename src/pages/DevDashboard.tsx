@@ -16,6 +16,7 @@ import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, Utensil
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PatronManagement } from "@/components/dev/PatronManagement";
+import { PlatformAnalytics } from "@/components/dev/PlatformAnalytics";
 import * as XLSX from 'xlsx';
 import {
   AlertDialog,
@@ -572,6 +573,7 @@ export default function DevDashboard() {
             <TabsTrigger value="venues">Manage Venues</TabsTrigger>
             <TabsTrigger value="merchants">Manage Merchants</TabsTrigger>
             <TabsTrigger value="patrons">Patron Management</TabsTrigger>
+            <TabsTrigger value="platform">Platform Analytics</TabsTrigger>
           </TabsList>
 
           <TabsContent value="venues" className="space-y-6">
@@ -945,6 +947,10 @@ export default function DevDashboard() {
 
           <TabsContent value="patrons">
             <PatronManagement />
+          </TabsContent>
+
+          <TabsContent value="platform">
+            <PlatformAnalytics />
           </TabsContent>
         </Tabs>
       </div>
