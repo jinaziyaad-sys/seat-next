@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Clock, CheckCircle2, TrendingUp, Calendar } from "lucide-react";
-import { toast } from "sonner";
+import { ComparativeMetrics } from "./ComparativeMetrics";
+import { SmartInsights } from "./SmartInsights";
 import {
   Table,
   TableBody,
@@ -14,7 +15,6 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from "recharts";
-import { ComparativeMetrics } from "./ComparativeMetrics";
 
 interface EfficiencySummary {
   avg_prep_time: number;
@@ -62,7 +62,7 @@ export const OperationsEfficiency = ({ venueId }: OperationsEfficiencyProps) => 
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        toast.error("Not authenticated");
+        console.error("Not authenticated");
         return;
       }
 
@@ -84,7 +84,6 @@ export const OperationsEfficiency = ({ venueId }: OperationsEfficiencyProps) => 
       await fetchComparisonData();
     } catch (error: any) {
       console.error("Error fetching efficiency analytics:", error);
-      toast.error(error.message || "Failed to load efficiency analytics");
     } finally {
       setLoading(false);
     }
@@ -141,6 +140,33 @@ export const OperationsEfficiency = ({ venueId }: OperationsEfficiencyProps) => 
 
   return (
     <div className="space-y-6">
+      {/* Smart Insights */}
+      {summary && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Operational Performance Insights</CardTitle>
+            <CardDescription>Smart recommendations to optimize your operations</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SmartInsights
+              data={{
+                orderMetrics: {
+                  avgPrepTime: summary.avg_prep_time,
+                  onTimeRate: summary.on_time_rate,
+                  totalOrders: summary.total_orders,
+                },
+                efficiencyMetrics: {
+                  avgWaitTime: summary.avg_wait_time,
+                  peakHours: peakHours.slice(0, 3).map(h => ({ hour: h.hour, count: h.count })),
+                  onTimePerformanceByHour: onTimeByHour.map(h => ({ hour: h.hour, rate: h.on_time_rate })),
+                },
+              }}
+              type="operations"
+            />
+          </CardContent>
+        </Card>
+      )}
+
       {/* Time Range Selector */}
       <div className="flex justify-end">
         <Select value={timeRange} onValueChange={setTimeRange}>

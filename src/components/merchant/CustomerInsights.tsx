@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Users, UserPlus, Repeat, TrendingUp, Calendar, Award, Info } from "lucide-react";
@@ -16,6 +16,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 import { ComparativeMetrics } from "./ComparativeMetrics";
+import { SmartInsights } from "./SmartInsights";
 
 interface CustomerInsightsSummary {
   total_customers: number;
@@ -96,7 +97,6 @@ export const CustomerInsights = ({ venueId }: CustomerInsightsProps) => {
       await fetchComparisonData();
     } catch (error: any) {
       console.error("Error fetching customer insights:", error);
-      toast.error(error.message || "Failed to load customer insights");
     } finally {
       setLoading(false);
     }
@@ -161,6 +161,30 @@ export const CustomerInsights = ({ venueId }: CustomerInsightsProps) => {
           Full customer details are only available to platform administrators.
         </AlertDescription>
       </Alert>
+
+      {/* Smart Insights */}
+      {summary && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Customer Retention Insights</CardTitle>
+            <CardDescription>AI-powered recommendations to improve customer loyalty</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <SmartInsights
+              data={{
+                customerMetrics: {
+                  returnRate: summary.return_rate,
+                  atRiskCustomers: segments?.at_risk || 0,
+                  totalCustomers: summary.total_customers,
+                  newCustomers: summary.new_customers,
+                  activeCustomers: summary.active_customers,
+                },
+              }}
+              type="customers"
+            />
+          </CardContent>
+        </Card>
+      )}
 
       {/* Time Range Selector */}
       <div className="flex justify-end">

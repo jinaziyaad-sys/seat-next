@@ -13,6 +13,7 @@ import { RatingsView } from "./RatingsView";
 import { CustomerInsights } from "./CustomerInsights";
 import { OperationsEfficiency } from "./OperationsEfficiency";
 import { MerchantExport } from "./MerchantExport";
+import { SmartInsights } from "./SmartInsights";
 import * as XLSX from 'xlsx';
 
 interface AnalyticsData {
@@ -651,46 +652,26 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
 
             <Card className="shadow-card">
               <CardHeader>
-                <CardTitle>Insights & Recommendations</CardTitle>
+                <CardTitle className="flex items-center gap-2">
+                  <AlertTriangle className="h-5 w-5" />
+                  Smart Insights & Recommendations
+                </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {analytics.insights.length > 0 ? (
-                  analytics.insights.map((insight, idx) => (
-                    <div 
-                      key={idx}
-                      className={`p-4 rounded-lg border space-y-2 ${
-                        insight.type === 'warning' 
-                          ? 'bg-amber-50 dark:bg-amber-950 border-amber-200 dark:border-amber-800'
-                          : insight.type === 'info'
-                          ? 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800'
-                          : 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800'
-                      }`}
-                    >
-                      <p className={`text-sm ${
-                        insight.type === 'warning' 
-                          ? 'text-amber-800 dark:text-amber-200'
-                          : insight.type === 'info'
-                          ? 'text-blue-800 dark:text-blue-200'
-                          : 'text-green-800 dark:text-green-200'
-                      }`}>
-                        <strong>{insight.type === 'warning' ? '⚠️' : insight.type === 'info' ? 'ℹ️' : '✅'} {insight.category}:</strong> {insight.message}
-                      </p>
-                      {insight.action && (
-                        <Button 
-                          size="sm" 
-                          variant="outline"
-                          className="w-full"
-                        >
-                          {insight.action}
-                        </Button>
-                      )}
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    Everything looks good! Keep monitoring your operations.
-                  </p>
-                )}
+              <CardContent>
+                <SmartInsights
+                  data={{
+                    orderMetrics: {
+                      avgPrepTime: analytics.order_metrics.avg_prep_time,
+                      onTimeRate: analytics.order_metrics.performance.on_time_rate,
+                      totalOrders: analytics.order_metrics.total,
+                    },
+                    efficiencyMetrics: {
+                      avgWaitTime: analytics.waitlist_metrics.avg_wait_time,
+                      peakHours: analytics.order_metrics.peak_hour ? [{ hour: analytics.order_metrics.peak_hour, count: 0 }] : [],
+                    },
+                  }}
+                  type="overview"
+                />
               </CardContent>
             </Card>
           </div>
