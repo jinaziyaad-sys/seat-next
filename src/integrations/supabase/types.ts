@@ -561,6 +561,7 @@ export type Database = {
       }
       waitlist_entries: {
         Row: {
+          awaiting_merchant_confirmation: boolean | null
           created_at: string
           customer_name: string
           customer_phone: string | null
@@ -575,6 +576,7 @@ export type Database = {
           venue_id: string
         }
         Insert: {
+          awaiting_merchant_confirmation?: boolean | null
           created_at?: string
           customer_name: string
           customer_phone?: string | null
@@ -589,6 +591,7 @@ export type Database = {
           venue_id: string
         }
         Update: {
+          awaiting_merchant_confirmation?: boolean | null
           created_at?: string
           customer_name?: string
           customer_phone?: string | null
@@ -615,6 +618,54 @@ export type Database = {
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      waitlist_ratings: {
+        Row: {
+          created_at: string
+          feedback_text: string | null
+          id: string
+          rating: number
+          updated_at: string
+          user_id: string | null
+          venue_id: string
+          waitlist_entry_id: string
+        }
+        Insert: {
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          rating: number
+          updated_at?: string
+          user_id?: string | null
+          venue_id: string
+          waitlist_entry_id: string
+        }
+        Update: {
+          created_at?: string
+          feedback_text?: string | null
+          id?: string
+          rating?: number
+          updated_at?: string
+          user_id?: string | null
+          venue_id?: string
+          waitlist_entry_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "waitlist_ratings_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "waitlist_ratings_waitlist_entry_id_fkey"
+            columns: ["waitlist_entry_id"]
+            isOneToOne: false
+            referencedRelation: "waitlist_entries"
             referencedColumns: ["id"]
           },
         ]

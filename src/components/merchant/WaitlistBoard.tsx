@@ -20,6 +20,7 @@ interface WaitlistEntry {
   status: "waiting" | "ready" | "seated" | "cancelled" | "no_show";
   position: number | null;
   venue_id: string;
+  awaiting_merchant_confirmation?: boolean;
 }
 
 export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
@@ -32,12 +33,12 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   // Fetch waitlist and set up real-time subscription
   useEffect(() => {
     const fetchWaitlist = async () => {
-      // Fetch waitlist entries for this venue
+      // Fetch waitlist entries for this venue (exclude seated unless awaiting confirmation)
       const { data: waitlistData, error: waitlistError } = await supabase
         .from("waitlist_entries")
         .select("*")
         .eq("venue_id", venueId)
-        .neq("status", "seated")
+        .or("status.neq.seated,awaiting_merchant_confirmation.eq.true")
         .neq("status", "cancelled")
         .order("created_at", { ascending: true });
 
@@ -74,6 +75,30 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     };
   }, [venueId, toast]);
 
+  const confirmSeating = async (entryId: string) => {
+    const { error } = await supabase
+      .from("waitlist_entries")
+      .update({ 
+        status: 'seated',
+        awaiting_merchant_confirmation: false 
+      })
+      .eq("id", entryId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not confirm seating",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    toast({
+      title: "Seating Confirmed",
+      description: "Patron will now be asked to rate their experience",
+    });
+  };
+
   const updateEntryStatus = async (entryId: string, newStatus: WaitlistEntry["status"]) => {
     // Optimistic update
     setWaitlist(prevWaitlist => 
@@ -98,7 +123,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
         .from("waitlist_entries")
         .select("*")
         .eq("venue_id", venueId)
-        .neq("status", "seated")
+        .or("status.neq.seated,awaiting_merchant_confirmation.eq.true")
         .neq("status", "cancelled")
         .order("created_at", { ascending: true });
       if (data) {
@@ -143,7 +168,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
         .from("waitlist_entries")
         .select("*")
         .eq("venue_id", venueId)
-        .neq("status", "seated")
+        .or("status.neq.seated,awaiting_merchant_confirmation.eq.true")
         .neq("status", "cancelled")
         .order("created_at", { ascending: true });
       if (data) {
@@ -250,11 +275,15 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   };
 
   const sortedWaitlist = [...waitlist].sort((a, b) => {
+    // Highest priority: awaiting confirmation
+    if (a.awaiting_merchant_confirmation && !b.awaiting_merchant_confirmation) return -1;
+    if (b.awaiting_merchant_confirmation && !a.awaiting_merchant_confirmation) return 1;
+    
+    // Second priority: ready status
     if (a.status === "ready" && b.status !== "ready") return -1;
     if (b.status === "ready" && a.status !== "ready") return 1;
-    if (a.status === "waiting" && b.status === "waiting") {
-      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-    }
+    
+    // Otherwise by creation time
     return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
   });
 
@@ -321,9 +350,16 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">{entry.customer_name}</CardTitle>
-                <Badge className={`${getStatusColor(entry.status)} text-white`}>
-                  {entry.status === "waiting" ? `#${entry.position || '?'}` : entry.status.replace("_", " ").toUpperCase()}
-                </Badge>
+                <div className="flex flex-col gap-1 items-end">
+                  <Badge className={`${getStatusColor(entry.status)} text-white`}>
+                    {entry.status === "waiting" ? `#${entry.position || '?'}` : entry.status.replace("_", " ").toUpperCase()}
+                  </Badge>
+                  {entry.awaiting_merchant_confirmation && entry.status === "ready" && (
+                    <Badge className="bg-orange-500 text-white animate-pulse text-xs">
+                      PATRON HERE
+                    </Badge>
+                  )}
+                </div>
               </div>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
                 <span className="flex items-center gap-1">
@@ -347,6 +383,15 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
               )}
 
               <div className="space-y-2">
+                {entry.awaiting_merchant_confirmation && entry.status === "ready" && (
+                  <Button
+                    onClick={() => confirmSeating(entry.id)}
+                    className="w-full bg-green-600 hover:bg-green-700"
+                  >
+                    ✓ Confirm Patron Seated
+                  </Button>
+                )}
+                
                 <div className="flex gap-2">
                   <Button
                     size="sm"

@@ -4,7 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
-import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin, Loader2, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -19,6 +21,7 @@ interface WaitlistEntry {
   eta: string | null;
   preferences?: string[];
   status: "waiting" | "ready" | "seated" | "cancelled" | "no_show";
+  awaiting_merchant_confirmation?: boolean;
 }
 
 const partyDetailsSchema = z.object({
@@ -28,7 +31,7 @@ const partyDetailsSchema = z.object({
 
 export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; initialEntry?: any }) {
   const { toast } = useToast();
-  const [step, setStep] = useState<"venue-select" | "party-details" | "waiting" | "ready">("venue-select");
+  const [step, setStep] = useState<"venue-select" | "party-details" | "waiting" | "ready" | "awaiting-confirmation" | "feedback">("venue-select");
   const [selectedVenue, setSelectedVenue] = useState("");
   const [partyName, setPartyName] = useState("");
   const [partySize, setPartySize] = useState(2);
@@ -40,6 +43,10 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [hoveredRating, setHoveredRating] = useState(0);
+  const [feedbackText, setFeedbackText] = useState("");
+  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
 
   // Get authenticated user and initialize notifications
   useEffect(() => {
@@ -56,6 +63,30 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     getUser();
   }, []);
 
+  // Listen for merchant confirmation
+  useEffect(() => {
+    if (!waitlistEntry || step !== "awaiting-confirmation") return;
+
+    const channel = supabase
+      .channel(`waitlist-confirmation-${waitlistEntry.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'waitlist_entries',
+        filter: `id=eq.${waitlistEntry.id}`
+      }, (payload) => {
+        if (payload.new.status === 'seated') {
+          // Merchant confirmed seating - show rating screen
+          setStep("feedback");
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [waitlistEntry, step]);
+
   // Handle initial entry from home page
   useEffect(() => {
     if (initialEntry) {
@@ -66,7 +97,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         position: initialEntry.position || 3,
         eta: initialEntry.eta,
         preferences: initialEntry.preferences || [],
-        status: initialEntry.status
+        status: initialEntry.status,
+        awaiting_merchant_confirmation: initialEntry.awaiting_merchant_confirmation
       };
       setWaitlistEntry(entry);
       setStep(initialEntry.status === "ready" ? "ready" : "waiting");
@@ -317,18 +349,95 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
   const handleConfirmSeat = async () => {
     if (!waitlistEntry) return;
+    
+    // Set flag for merchant to confirm
+    const { error } = await supabase
+      .from('waitlist_entries')
+      .update({ awaiting_merchant_confirmation: true })
+      .eq('id', waitlistEntry.id);
+
+    if (!error) {
+      setWaitlistEntry(prev => prev ? { ...prev, awaiting_merchant_confirmation: true } : null);
+      setStep("awaiting-confirmation");
+      
+      toast({
+        title: "Notified Host",
+        description: "The host has been notified you're here. Please wait to be seated.",
+      });
+    }
+  };
+
+  const handleWait5Minutes = async () => {
+    if (!waitlistEntry) return;
+
+    const currentETA = waitlistEntry.eta ? new Date(waitlistEntry.eta) : new Date();
+    const newETA = new Date(currentETA.getTime() + 5 * 60000); // Add 5 minutes
 
     const { error } = await supabase
       .from("waitlist_entries")
-      .update({ status: "seated" })
+      .update({ eta: newETA.toISOString() })
       .eq("id", waitlistEntry.id);
 
     if (!error) {
-      setWaitlistEntry(prev => prev ? { ...prev, status: "seated" } : null);
+      setWaitlistEntry(prev => prev ? { ...prev, eta: newETA.toISOString() } : null);
+      toast({
+        title: "ETA Extended",
+        description: "We've added 5 minutes to your estimated time. See you soon!",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Could not update your wait time. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleRatingSubmit = async () => {
+    if (!rating || !waitlistEntry) return;
+    
+    setIsSubmittingRating(true);
+    
+    try {
+      const venue = venues.find(v => v.name === waitlistEntry.venue);
+      
+      // Insert rating
+      const { error: ratingError } = await supabase
+        .from('waitlist_ratings')
+        .insert({
+          waitlist_entry_id: waitlistEntry.id,
+          venue_id: venue?.id,
+          user_id: userId,
+          rating,
+          feedback_text: feedbackText.trim() || null
+        });
+
+      if (ratingError) throw ratingError;
+
+      toast({
+        title: "Thank you for your feedback!",
+        description: "Your rating has been submitted successfully."
+      });
+      
       setTimeout(() => {
         onBack();
-      }, 2000);
+      }, 1500);
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      toast({
+        title: "Error",
+        description: "Could not submit rating. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmittingRating(false);
     }
+  };
+
+  const handleSkipRating = async () => {
+    setTimeout(() => {
+      onBack();
+    }, 500);
   };
 
   if (step === "venue-select") {
@@ -610,6 +719,13 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   if (step === "ready" && waitlistEntry) {
     return (
       <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Table Ready!</h1>
+        </div>
+
         <Card className="shadow-card">
           <CardContent className="p-8 text-center space-y-6">
             <div className="text-6xl">🎉</div>
@@ -626,10 +742,144 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
             <div className="space-y-3">
               <Button onClick={handleConfirmSeat} className="w-full h-12">
-                I'm Here - Confirm Seating
+                I'm Here - Get Seated
               </Button>
-              <Button variant="outline" className="w-full h-12">
+              <Button 
+                variant="outline" 
+                className="w-full h-12"
+                onClick={handleWait5Minutes}
+              >
                 Need 5 More Minutes
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full h-12 text-destructive hover:bg-destructive/10"
+                onClick={handleCancelBooking}
+              >
+                Cancel Booking
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (step === "awaiting-confirmation" && waitlistEntry) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => setStep("ready")}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Confirmation Pending</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardContent className="p-8 text-center space-y-6">
+            <div className="text-6xl animate-pulse">⏳</div>
+            
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-primary">Host Notified</h2>
+              <p className="text-muted-foreground">{waitlistEntry.venue}</p>
+            </div>
+
+            <div className="p-6 bg-blue-50 dark:bg-blue-950 rounded-xl border border-blue-200 dark:border-blue-800">
+              <p className="font-semibold text-blue-900 dark:text-blue-100">
+                Please wait at the host stand
+              </p>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                The host will confirm your seating in just a moment
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Button 
+                variant="outline" 
+                className="w-full h-12 text-destructive hover:bg-destructive/10"
+                onClick={handleCancelBooking}
+              >
+                Cancel Booking
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (step === "feedback" && waitlistEntry) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={handleSkipRating}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Rate Your Experience</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardContent className="p-8 space-y-6">
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-semibold">How was your experience at {waitlistEntry.venue}?</h3>
+              <p className="text-sm text-muted-foreground">Your feedback helps improve the service</p>
+            </div>
+
+            <div className="flex justify-center gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setRating(star)}
+                  onMouseEnter={() => setHoveredRating(star)}
+                  onMouseLeave={() => setHoveredRating(0)}
+                  className="transition-transform hover:scale-110"
+                >
+                  <Star
+                    size={40}
+                    className={cn(
+                      "transition-colors",
+                      (hoveredRating || rating) >= star
+                        ? "fill-yellow-400 text-yellow-400"
+                        : "text-gray-300"
+                    )}
+                  />
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="feedback">Additional Comments (Optional)</Label>
+              <Textarea
+                id="feedback"
+                placeholder="Tell us more about your experience..."
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                rows={4}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Button 
+                onClick={handleRatingSubmit}
+                disabled={!rating || isSubmittingRating}
+                className="w-full h-12"
+              >
+                {isSubmittingRating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Rating"
+                )}
+              </Button>
+              <Button 
+                variant="ghost"
+                onClick={handleSkipRating}
+                disabled={isSubmittingRating}
+                className="w-full"
+              >
+                Skip for now
               </Button>
             </div>
           </CardContent>
