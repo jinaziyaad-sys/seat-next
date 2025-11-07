@@ -565,9 +565,11 @@ export type Database = {
           created_at: string
           customer_name: string
           customer_phone: string | null
+          delayed_until: string | null
           eta: string | null
           id: string
           party_size: number
+          patron_delayed: boolean | null
           position: number | null
           preferences: string[] | null
           status: Database["public"]["Enums"]["waitlist_status"]
@@ -580,9 +582,11 @@ export type Database = {
           created_at?: string
           customer_name: string
           customer_phone?: string | null
+          delayed_until?: string | null
           eta?: string | null
           id?: string
           party_size?: number
+          patron_delayed?: boolean | null
           position?: number | null
           preferences?: string[] | null
           status?: Database["public"]["Enums"]["waitlist_status"]
@@ -595,9 +599,11 @@ export type Database = {
           created_at?: string
           customer_name?: string
           customer_phone?: string | null
+          delayed_until?: string | null
           eta?: string | null
           id?: string
           party_size?: number
+          patron_delayed?: boolean | null
           position?: number | null
           preferences?: string[] | null
           status?: Database["public"]["Enums"]["waitlist_status"]

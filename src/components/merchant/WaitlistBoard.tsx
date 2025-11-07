@@ -21,6 +21,8 @@ interface WaitlistEntry {
   position: number | null;
   venue_id: string;
   awaiting_merchant_confirmation?: boolean;
+  patron_delayed?: boolean;
+  delayed_until?: string | null;
 }
 
 export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
@@ -357,6 +359,11 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                   {entry.awaiting_merchant_confirmation && entry.status === "ready" && (
                     <Badge className="bg-orange-500 text-white animate-pulse text-xs">
                       PATRON HERE
+                    </Badge>
+                  )}
+                  {entry.patron_delayed && entry.status === "ready" && (
+                    <Badge className="bg-yellow-500 text-white text-xs">
+                      NEEDS 5 MIN
                     </Badge>
                   )}
                 </div>

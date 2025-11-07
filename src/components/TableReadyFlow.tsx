@@ -22,6 +22,8 @@ interface WaitlistEntry {
   preferences?: string[];
   status: "waiting" | "ready" | "seated" | "cancelled" | "no_show";
   awaiting_merchant_confirmation?: boolean;
+  patron_delayed?: boolean;
+  delayed_until?: string | null;
 }
 
 const partyDetailsSchema = z.object({
@@ -31,7 +33,7 @@ const partyDetailsSchema = z.object({
 
 export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; initialEntry?: any }) {
   const { toast } = useToast();
-  const [step, setStep] = useState<"venue-select" | "party-details" | "waiting" | "ready" | "awaiting-confirmation" | "feedback">("venue-select");
+  const [step, setStep] = useState<"venue-select" | "party-details" | "waiting" | "ready" | "awaiting-confirmation" | "delayed-countdown" | "feedback">("venue-select");
   const [selectedVenue, setSelectedVenue] = useState("");
   const [partyName, setPartyName] = useState("");
   const [partySize, setPartySize] = useState(2);
@@ -47,6 +49,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [hoveredRating, setHoveredRating] = useState(0);
   const [feedbackText, setFeedbackText] = useState("");
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
+  const [countdownMinutes, setCountdownMinutes] = useState(5);
+  const [countdownSeconds, setCountdownSeconds] = useState(0);
 
   // Get authenticated user and initialize notifications
   useEffect(() => {
@@ -74,9 +78,11 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         schema: 'public',
         table: 'waitlist_entries',
         filter: `id=eq.${waitlistEntry.id}`
-      }, (payload) => {
+      }, (payload: any) => {
+        console.log('Received update:', payload.new);
         if (payload.new.status === 'seated') {
           // Merchant confirmed seating - show rating screen
+          console.log('Transitioning to feedback step');
           setStep("feedback");
         }
       })
@@ -86,6 +92,28 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       supabase.removeChannel(channel);
     };
   }, [waitlistEntry, step]);
+
+  // Countdown timer for delayed patrons
+  useEffect(() => {
+    if (step !== "delayed-countdown" || !waitlistEntry) return;
+
+    const timer = setInterval(() => {
+      setCountdownSeconds((prevSeconds) => {
+        if (prevSeconds === 0) {
+          if (countdownMinutes === 0) {
+            // Time's up - auto-cancel
+            handleAutoCancelAfterDelay();
+            return 0;
+          }
+          setCountdownMinutes((prevMinutes) => prevMinutes - 1);
+          return 59;
+        }
+        return prevSeconds - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [step, countdownMinutes, waitlistEntry]);
 
   // Handle initial entry from home page
   useEffect(() => {
@@ -370,25 +398,86 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const handleWait5Minutes = async () => {
     if (!waitlistEntry) return;
 
-    const currentETA = waitlistEntry.eta ? new Date(waitlistEntry.eta) : new Date();
-    const newETA = new Date(currentETA.getTime() + 5 * 60000); // Add 5 minutes
+    const delayedUntil = new Date(Date.now() + 5 * 60000); // 5 minutes from now
 
     const { error } = await supabase
       .from("waitlist_entries")
-      .update({ eta: newETA.toISOString() })
+      .update({ 
+        patron_delayed: true,
+        delayed_until: delayedUntil.toISOString()
+      })
       .eq("id", waitlistEntry.id);
 
     if (!error) {
-      setWaitlistEntry(prev => prev ? { ...prev, eta: newETA.toISOString() } : null);
+      setWaitlistEntry(prev => prev ? { 
+        ...prev, 
+        patron_delayed: true,
+        delayed_until: delayedUntil.toISOString()
+      } : null);
+      
+      // Reset countdown
+      setCountdownMinutes(5);
+      setCountdownSeconds(0);
+      setStep("delayed-countdown");
+      
       toast({
-        title: "ETA Extended",
-        description: "We've added 5 minutes to your estimated time. See you soon!",
+        title: "Delay Confirmed",
+        description: "The restaurant has been notified. You have 5 minutes.",
       });
     } else {
       toast({
         title: "Error",
         description: "Could not update your wait time. Please try again.",
         variant: "destructive"
+      });
+    }
+  };
+
+  const handleAutoCancelAfterDelay = async () => {
+    if (!waitlistEntry) return;
+
+    const { error } = await supabase
+      .from("waitlist_entries")
+      .update({ status: "cancelled" })
+      .eq("id", waitlistEntry.id);
+
+    if (!error) {
+      toast({
+        title: "Booking Cancelled",
+        description: "Your table has been released due to no arrival.",
+        variant: "destructive"
+      });
+      
+      setTimeout(() => {
+        onBack();
+      }, 2000);
+    }
+  };
+
+  const handleConfirmArrivalAfterDelay = async () => {
+    if (!waitlistEntry) return;
+    
+    // Clear delay flag and set awaiting confirmation
+    const { error } = await supabase
+      .from('waitlist_entries')
+      .update({ 
+        patron_delayed: false,
+        delayed_until: null,
+        awaiting_merchant_confirmation: true 
+      })
+      .eq('id', waitlistEntry.id);
+
+    if (!error) {
+      setWaitlistEntry(prev => prev ? { 
+        ...prev, 
+        patron_delayed: false,
+        awaiting_merchant_confirmation: true 
+      } : null);
+      setStep("awaiting-confirmation");
+      
+      toast({
+        title: "Notified Host",
+        description: "The host has been notified you're here. Please wait to be seated.",
       });
     }
   };
@@ -750,6 +839,58 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 onClick={handleWait5Minutes}
               >
                 Need 5 More Minutes
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full h-12 text-destructive hover:bg-destructive/10"
+                onClick={handleCancelBooking}
+              >
+                Cancel Booking
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (step === "delayed-countdown" && waitlistEntry) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => setStep("ready")}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Delay Countdown</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardContent className="p-8 text-center space-y-6">
+            <div className="text-6xl">⏱️</div>
+            
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-primary">Time Remaining</h2>
+              <p className="text-muted-foreground">{waitlistEntry.venue}</p>
+            </div>
+
+            <div className="p-8 bg-orange-50 dark:bg-orange-950 rounded-xl border border-orange-200 dark:border-orange-800">
+              <p className="text-5xl font-bold text-orange-600 dark:text-orange-400">
+                {String(countdownMinutes).padStart(2, '0')}:{String(countdownSeconds).padStart(2, '0')}
+              </p>
+              <p className="text-sm text-orange-700 dark:text-orange-300 mt-2">
+                Your table will be released if you don't arrive
+              </p>
+            </div>
+
+            <div className="p-4 bg-muted rounded-xl">
+              <p className="text-sm text-muted-foreground">
+                📍 The restaurant has been notified you need 5 more minutes
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Button onClick={handleConfirmArrivalAfterDelay} className="w-full h-12">
+                I'm Here Now - Get Seated
               </Button>
               <Button 
                 variant="outline" 
