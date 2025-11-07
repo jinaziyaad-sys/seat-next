@@ -6,9 +6,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Clock, Users, Plus, MapPin } from "lucide-react";
+import { Clock, Users, Plus, MapPin, Calendar as CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { differenceInMinutes, format } from "date-fns";
+import { cn } from "@/lib/utils";
 
 interface WaitlistEntry {
   id: string;
@@ -23,14 +25,45 @@ interface WaitlistEntry {
   awaiting_merchant_confirmation?: boolean;
   patron_delayed?: boolean;
   delayed_until?: string | null;
+  reservation_type?: string;
+  reservation_time?: string | null;
 }
 
 export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
+  const [todaysReservations, setTodaysReservations] = useState<WaitlistEntry[]>([]);
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newPartySize, setNewPartySize] = useState("2");
   const [newPreferences, setNewPreferences] = useState("");
   const { toast } = useToast();
+
+  // Fetch today's reservations
+  useEffect(() => {
+    const fetchTodaysReservations = async () => {
+      const startOfToday = new Date();
+      startOfToday.setHours(0, 0, 0, 0);
+      
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+
+      const { data } = await supabase
+        .from('waitlist_entries')
+        .select('*')
+        .eq('venue_id', venueId)
+        .eq('reservation_type', 'reservation')
+        .gte('reservation_time', startOfToday.toISOString())
+        .lte('reservation_time', endOfToday.toISOString())
+        .in('status', ['waiting', 'ready'])
+        .order('reservation_time', { ascending: true });
+
+      setTodaysReservations(data || []);
+    };
+
+    fetchTodaysReservations();
+    
+    const interval = setInterval(fetchTodaysReservations, 60000);
+    return () => clearInterval(interval);
+  }, [venueId]);
 
   // Fetch waitlist and set up real-time subscription
   useEffect(() => {
@@ -291,8 +324,63 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
 
   return (
     <div className="space-y-6">
+      {/* Today's Reservations Section */}
+      {todaysReservations.length > 0 && (
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>Today's Reservations</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {todaysReservations.map((reservation) => {
+              const timeUntil = differenceInMinutes(
+                new Date(reservation.reservation_time!),
+                new Date()
+              );
+              const isNear = timeUntil <= 30 && timeUntil >= -15;
+
+              return (
+                <div 
+                  key={reservation.id}
+                  className={cn(
+                    "p-4 rounded-lg border",
+                    isNear && "bg-yellow-50 border-yellow-300 dark:bg-yellow-950 dark:border-yellow-700"
+                  )}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="font-semibold">{reservation.customer_name}</p>
+                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                        <span className="flex items-center gap-1">
+                          <Users size={14} />
+                          Party of {reservation.party_size}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <CalendarIcon size={14} />
+                          {format(new Date(reservation.reservation_time!), 'HH:mm')}
+                          {isNear && timeUntil > 0 && ` • In ${timeUntil} min`}
+                          {isNear && timeUntil <= 0 && ` • ${Math.abs(timeUntil)} min ago`}
+                        </span>
+                      </div>
+                      {reservation.preferences && reservation.preferences.length > 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {reservation.preferences.join(", ")}
+                        </p>
+                      )}
+                    </div>
+                    {isNear && (
+                      <Badge className="bg-yellow-500 text-white">ARRIVING SOON</Badge>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Regular Waitlist Section */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Waitlist Management</h2>
+        <h2 className="text-2xl font-bold">Walk-in Waitlist</h2>
         <Dialog>
           <DialogTrigger asChild>
             <Button>

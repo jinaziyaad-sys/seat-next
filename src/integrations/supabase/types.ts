@@ -572,6 +572,8 @@ export type Database = {
           patron_delayed: boolean | null
           position: number | null
           preferences: string[] | null
+          reservation_time: string | null
+          reservation_type: string | null
           status: Database["public"]["Enums"]["waitlist_status"]
           updated_at: string
           user_id: string | null
@@ -589,6 +591,8 @@ export type Database = {
           patron_delayed?: boolean | null
           position?: number | null
           preferences?: string[] | null
+          reservation_time?: string | null
+          reservation_type?: string | null
           status?: Database["public"]["Enums"]["waitlist_status"]
           updated_at?: string
           user_id?: string | null
@@ -606,6 +610,8 @@ export type Database = {
           patron_delayed?: boolean | null
           position?: number | null
           preferences?: string[] | null
+          reservation_time?: string | null
+          reservation_type?: string | null
           status?: Database["public"]["Enums"]["waitlist_status"]
           updated_at?: string
           user_id?: string | null

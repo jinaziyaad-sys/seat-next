@@ -41,3 +41,9 @@ verify_jwt = false
 
 [functions.get-platform-analytics]
 verify_jwt = true
+
+[functions.activate-upcoming-reservations]
+verify_jwt = false
+
+[[functions.activate-upcoming-reservations.cron]]
+schedule = "*/5 * * * *"

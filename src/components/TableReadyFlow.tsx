@@ -6,7 +6,11 @@ import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin, Loader2, Star } from "lucide-react";
+import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin, Loader2, Star, Calendar as CalendarIcon } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -24,6 +28,8 @@ interface WaitlistEntry {
   awaiting_merchant_confirmation?: boolean;
   patron_delayed?: boolean;
   delayed_until?: string | null;
+  reservation_type?: string;
+  reservation_time?: string | null;
 }
 
 const partyDetailsSchema = z.object({
@@ -33,8 +39,11 @@ const partyDetailsSchema = z.object({
 
 export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; initialEntry?: any }) {
   const { toast } = useToast();
-  const [step, setStep] = useState<"venue-select" | "party-details" | "waiting" | "ready" | "awaiting-confirmation" | "delayed-countdown" | "feedback">("venue-select");
+  const [step, setStep] = useState<"venue-select" | "booking-type" | "reservation-details" | "party-details" | "waiting" | "ready" | "awaiting-confirmation" | "delayed-countdown" | "feedback">("venue-select");
   const [selectedVenue, setSelectedVenue] = useState("");
+  const [bookingType, setBookingType] = useState<"now" | "later">("now");
+  const [reservationDate, setReservationDate] = useState<Date | undefined>(undefined);
+  const [reservationTime, setReservationTime] = useState<string>("");
   const [partyName, setPartyName] = useState("");
   const [partySize, setPartySize] = useState(2);
   const [preferences, setPreferences] = useState<string[]>([]);
@@ -208,7 +217,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
   const handleVenueSelect = (venue: string) => {
     setSelectedVenue(venue);
-    setStep("party-details");
+    setStep("booking-type");
   };
 
   const togglePreference = (pref: string) => {
@@ -271,17 +280,31 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     }
 
     try {
+      let insertData: any = {
+        venue_id: venue.id,
+        customer_name: partyName.trim(),
+        party_size: partySize,
+        preferences: finalPreferences,
+        status: "waiting",
+        user_id: userId
+      };
+
+      if (bookingType === "later" && reservationDate && reservationTime) {
+        const [hours, minutes] = reservationTime.split(':').map(Number);
+        const reservationDateTime = new Date(reservationDate);
+        reservationDateTime.setHours(hours, minutes, 0, 0);
+
+        insertData.reservation_type = 'reservation';
+        insertData.reservation_time = reservationDateTime.toISOString();
+        insertData.eta = reservationDateTime.toISOString();
+      } else {
+        insertData.reservation_type = 'walk_in';
+        insertData.eta = new Date(Date.now() + 18 * 60000).toISOString();
+      }
+
       const { data: newEntry, error } = await supabase
         .from("waitlist_entries")
-        .insert({
-          venue_id: venue.id,
-          customer_name: partyName.trim(),
-          party_size: partySize,
-          preferences: finalPreferences,
-          eta: new Date(Date.now() + 18 * 60000).toISOString(),
-          status: "waiting",
-          user_id: userId
-        })
+        .insert(insertData)
         .select()
         .single();
 
@@ -599,6 +622,135 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 </div>
               </div>
             )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (step === "booking-type") {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => setStep("venue-select")}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">When would you like to dine?</h1>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Card 
+            className={cn(
+              "cursor-pointer transition-all hover:shadow-floating",
+              bookingType === "now" && "border-2 border-primary"
+            )}
+            onClick={() => {
+              setBookingType("now");
+              setStep("party-details");
+            }}
+          >
+            <CardContent className="p-6 text-center">
+              <Clock className="mx-auto mb-2" size={32} />
+              <h3 className="font-semibold">Join Waitlist Now</h3>
+              <p className="text-sm text-muted-foreground">Get seated today</p>
+            </CardContent>
+          </Card>
+          
+          <Card 
+            className={cn(
+              "cursor-pointer transition-all hover:shadow-floating",
+              bookingType === "later" && "border-2 border-primary"
+            )}
+            onClick={() => {
+              setBookingType("later");
+              setStep("reservation-details");
+            }}
+          >
+            <CardContent className="p-6 text-center">
+              <CalendarIcon className="mx-auto mb-2" size={32} />
+              <h3 className="font-semibold">Book for Later</h3>
+              <p className="text-sm text-muted-foreground">Reserve in advance</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  if (step === "reservation-details") {
+    const timeSlots: string[] = [];
+    for (let hour = 0; hour < 24; hour++) {
+      for (let minute of [0, 15, 30, 45]) {
+        const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        timeSlots.push(time);
+      }
+    }
+
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => setStep("booking-type")}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Choose Date & Time</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>{selectedVenue}</CardTitle>
+            <p className="text-muted-foreground">Select your preferred date and time</p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div>
+              <Label>Select Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal mt-2",
+                      !reservationDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {reservationDate ? format(reservationDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={reservationDate}
+                    onSelect={setReservationDate}
+                    disabled={(date) => date < new Date() || date > addDays(new Date(), 30)}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div>
+              <Label>Select Time</Label>
+              <Select value={reservationTime} onValueChange={setReservationTime}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Choose time slot" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {timeSlots.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button 
+              onClick={() => setStep("party-details")}
+              disabled={!reservationDate || !reservationTime}
+              className="w-full"
+            >
+              Continue to Party Details
+            </Button>
           </CardContent>
         </Card>
       </div>

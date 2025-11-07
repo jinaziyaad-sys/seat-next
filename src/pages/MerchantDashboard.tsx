@@ -4,13 +4,14 @@ import { useMerchantAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { KitchenBoard } from "@/components/merchant/KitchenBoard";
 import { WaitlistBoard } from "@/components/merchant/WaitlistBoard";
+import { ReservationCalendar } from "@/components/merchant/ReservationCalendar";
 import { MerchantSettings } from "@/components/merchant/MerchantSettings";
 import { StaffManagement } from "@/components/merchant/StaffManagement";
 import { MerchantReports } from "@/components/merchant/MerchantReports";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChefHat, Users, Settings, BarChart3, LogOut, Lock } from "lucide-react";
+import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
@@ -95,9 +96,9 @@ const MerchantDashboard = () => {
         <Tabs defaultValue={hasFoodReady ? "kitchen" : "waitlist"} className="space-y-6">
           <TabsList className={`grid w-full ${
             userRole.role === "admin" 
-              ? (hasFoodReady && hasTableReady ? "grid-cols-5" : 
-                 hasFoodReady || hasTableReady ? "grid-cols-4" : "grid-cols-3")
-              : (hasFoodReady && hasTableReady ? "grid-cols-2" : "grid-cols-1")
+              ? (hasFoodReady && hasTableReady ? "grid-cols-6" : 
+                 hasFoodReady || hasTableReady ? "grid-cols-5" : "grid-cols-3")
+              : (hasFoodReady && hasTableReady ? "grid-cols-3" : hasFoodReady || hasTableReady ? "grid-cols-2" : "grid-cols-1")
           }`}>
             {hasFoodReady && (
               <TabsTrigger value="kitchen" className="flex items-center gap-2">
@@ -106,10 +107,16 @@ const MerchantDashboard = () => {
               </TabsTrigger>
             )}
             {hasTableReady && (
-              <TabsTrigger value="waitlist" className="flex items-center gap-2">
-                <Users size={16} />
-                Waitlist
-              </TabsTrigger>
+              <>
+                <TabsTrigger value="waitlist" className="flex items-center gap-2">
+                  <Users size={16} />
+                  Waitlist
+                </TabsTrigger>
+                <TabsTrigger value="reservations" className="flex items-center gap-2">
+                  <Calendar size={16} />
+                  Reservations
+                </TabsTrigger>
+              </>
             )}
             {userRole.role === "admin" && (
               <>
@@ -136,9 +143,15 @@ const MerchantDashboard = () => {
           )}
 
           {hasTableReady && (
-            <TabsContent value="waitlist">
-              <WaitlistBoard venueId={userRole.venue_id!} />
-            </TabsContent>
+            <>
+              <TabsContent value="waitlist">
+                <WaitlistBoard venueId={userRole.venue_id!} />
+              </TabsContent>
+              
+              <TabsContent value="reservations">
+                <ReservationCalendar venueId={userRole.venue_id!} />
+              </TabsContent>
+            </>
           )}
 
           {userRole.role === "admin" ? (

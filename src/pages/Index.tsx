@@ -6,11 +6,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon } from "lucide-react";
+import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
+import { format } from "date-fns";
 import logo from "@/assets/logo.png";
 
 const Index = () => {
@@ -50,7 +51,10 @@ const Index = () => {
       .from('waitlist_entries')
       .select('*, venues(name)')
       .eq('user_id', user.id)
-      .in('status', ['waiting', 'ready'])
+      .or('status.in.(waiting,ready),and(reservation_type.eq.reservation,reservation_time.gte.' + new Date().toISOString() + ')')
+      .neq('status', 'cancelled')
+      .neq('status', 'seated')
+      .order('reservation_time', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
 
     setActiveOrders(orders || []);
@@ -278,52 +282,83 @@ const Index = () => {
             </Card>
           ))}
 
-          {activeWaitlist.map((entry) => (
-            <Card 
-              key={entry.id} 
-              className={cn(
-                "shadow-card cursor-pointer hover:shadow-floating transition-all",
-                entry.status === 'ready' && "bg-success/10 border-success animate-pulse-success"
-              )}
-              onClick={() => {
-                setSelectedOrder(entry);
-                setActiveTab("table-ready");
-              }}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "w-12 h-12 rounded-full flex items-center justify-center",
-                      entry.status === 'ready' ? "bg-success/20" : "bg-accent/10"
-                    )}>
-                      <Users className={cn(
-                        "w-6 h-6",
-                        entry.status === 'ready' ? "text-success" : "text-accent"
-                      )} />
+          {activeWaitlist.map((entry) => {
+            const isUpcomingReservation = entry.reservation_type === 'reservation' && 
+              entry.reservation_time && 
+              new Date(entry.reservation_time) > new Date();
+            
+            const isToday = entry.reservation_time && 
+              new Date(entry.reservation_time).toDateString() === new Date().toDateString();
+
+            return (
+              <Card 
+                key={entry.id} 
+                className={cn(
+                  "shadow-card cursor-pointer hover:shadow-floating transition-all",
+                  entry.status === 'ready' && "bg-success/10 border-success animate-pulse-success"
+                )}
+                onClick={() => {
+                  setSelectedOrder(entry);
+                  setActiveTab("table-ready");
+                }}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-12 h-12 rounded-full flex items-center justify-center",
+                        entry.status === 'ready' ? "bg-success/20" : "bg-accent/10"
+                      )}>
+                        <Users className={cn(
+                          "w-6 h-6",
+                          entry.status === 'ready' ? "text-success" : "text-accent"
+                        )} />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">{entry.venues?.name}</h3>
+                        {isUpcomingReservation ? (
+                          <>
+                            <p className="text-sm text-muted-foreground">
+                              Reservation for {entry.party_size}
+                            </p>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                              <CalendarIcon size={12} />
+                              <span>
+                                {isToday ? 'Today' : format(new Date(entry.reservation_time), 'MMM d')} 
+                                {' at '}
+                                {format(new Date(entry.reservation_time), 'HH:mm')}
+                              </span>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-sm text-muted-foreground">
+                              Party of {entry.party_size} • Position {entry.position || '—'}
+                            </p>
+                            {entry.eta && entry.status === 'waiting' && (
+                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                                <Clock size={12} />
+                                <span>
+                                  {Math.ceil((new Date(entry.eta).getTime() - new Date().getTime()) / (1000 * 60))} min • ETA {new Date(entry.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                                </span>
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold">{entry.venues?.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        Party of {entry.party_size} • Position {entry.position || '—'}
-                      </p>
-                      {entry.eta && entry.status === 'waiting' && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                          <Clock size={12} />
-                          <span>
-                            {Math.ceil((new Date(entry.eta).getTime() - new Date().getTime()) / (1000 * 60))} min • ETA {new Date(entry.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
-                          </span>
-                        </div>
-                      )}
-                    </div>
+                    <Badge variant={
+                      isUpcomingReservation ? 'outline' : 
+                      entry.status === 'ready' ? 'default' : 'secondary'
+                    }>
+                      {isUpcomingReservation ? 'Reserved' : 
+                       entry.status === 'ready' ? 'Ready' : 'Waiting'}
+                    </Badge>
                   </div>
-                  <Badge variant={entry.status === 'ready' ? 'default' : 'secondary'}>
-                    {entry.status === 'ready' ? 'Ready' : 'Waiting'}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
