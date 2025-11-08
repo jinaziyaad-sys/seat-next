@@ -256,6 +256,7 @@ export type Database = {
       orders: {
         Row: {
           awaiting_merchant_confirmation: boolean | null
+          awaiting_patron_confirmation: boolean | null
           created_at: string
           customer_name: string | null
           customer_phone: string | null
@@ -273,6 +274,7 @@ export type Database = {
         }
         Insert: {
           awaiting_merchant_confirmation?: boolean | null
+          awaiting_patron_confirmation?: boolean | null
           created_at?: string
           customer_name?: string | null
           customer_phone?: string | null
@@ -290,6 +292,7 @@ export type Database = {
         }
         Update: {
           awaiting_merchant_confirmation?: boolean | null
+          awaiting_patron_confirmation?: boolean | null
           created_at?: string
           customer_name?: string | null
           customer_phone?: string | null

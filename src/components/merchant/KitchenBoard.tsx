@@ -21,7 +21,9 @@ interface Order {
   notes?: string | null;
   customer_name?: string | null;
   venue_id: string;
+  user_id?: string | null;
   awaiting_merchant_confirmation?: boolean;
+  awaiting_patron_confirmation?: boolean;
   order_ratings?: Array<{
     rating: number;
     feedback_text: string | null;
@@ -48,6 +50,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
       `)
       .eq("venue_id", venueId)
       .or('status.neq.collected,and(status.eq.collected,awaiting_merchant_confirmation.eq.true)')
+      .order("awaiting_patron_confirmation", { ascending: false, nullsFirst: false })
       .order("awaiting_merchant_confirmation", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: true });
 
@@ -316,6 +319,53 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
     });
   };
 
+  const confirmPatronOrder = async (orderId: string) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ 
+        awaiting_patron_confirmation: false
+      })
+      .eq("id", orderId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not confirm order",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    toast({
+      title: "Order Confirmed",
+      description: "Patron can now track their order",
+    });
+  };
+
+  const rejectPatronOrder = async (orderId: string) => {
+    const { error } = await supabase
+      .from("orders")
+      .update({ 
+        awaiting_patron_confirmation: false,
+        user_id: null
+      })
+      .eq("id", orderId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not reject order",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    toast({
+      title: "Order Rejected",
+      description: "Patron has been notified",
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -364,8 +414,15 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
           0%, 100% { background-color: rgba(34, 197, 94, 0.2); }
           50% { background-color: rgba(34, 197, 94, 0.5); }
         }
+        @keyframes flash-orange {
+          0%, 100% { background-color: rgba(249, 115, 22, 0.2); }
+          50% { background-color: rgba(249, 115, 22, 0.5); }
+        }
         .awaiting-confirmation {
           animation: flash-green 2s ease-in-out infinite;
+        }
+        .awaiting-patron-verification {
+          animation: flash-orange 2s ease-in-out infinite;
         }
       `}</style>
 
@@ -377,7 +434,10 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
           return (
             <Card 
               key={order.id} 
-              className={`shadow-card ${order.awaiting_merchant_confirmation ? 'awaiting-confirmation' : ''}`}
+              className={`shadow-card ${
+                order.awaiting_patron_confirmation ? 'awaiting-patron-verification' : 
+                order.awaiting_merchant_confirmation ? 'awaiting-confirmation' : ''
+              }`}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
@@ -386,6 +446,11 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
                     <Badge className={`${getStatusColor(order.status)} text-white`}>
                       {order.status.replace("_", " ").toUpperCase()}
                     </Badge>
+                    {order.awaiting_patron_confirmation && (
+                      <Badge className="bg-orange-500 text-white animate-pulse text-xs">
+                        PATRON VERIFICATION
+                      </Badge>
+                    )}
                     {order.awaiting_merchant_confirmation && (
                       <Badge className="bg-green-500 text-white text-xs">
                         AWAITING CONFIRMATION
@@ -446,7 +511,33 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
                 </div>
               )}
 
-              {order.awaiting_merchant_confirmation ? (
+              {order.awaiting_patron_confirmation ? (
+                <div className="space-y-2">
+                  <div className="p-3 bg-orange-50 dark:bg-orange-950 rounded-lg border border-orange-200">
+                    <p className="text-sm font-semibold text-orange-900 dark:text-orange-100">
+                      Patron is trying to claim this order
+                    </p>
+                    <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
+                      Verify this is a legitimate order number
+                    </p>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      onClick={() => confirmPatronOrder(order.id)}
+                      className="bg-green-600 hover:bg-green-700"
+                    >
+                      ✓ Valid Order
+                    </Button>
+                    <Button
+                      onClick={() => rejectPatronOrder(order.id)}
+                      variant="destructive"
+                    >
+                      ✗ Invalid
+                    </Button>
+                  </div>
+                </div>
+              ) : order.awaiting_merchant_confirmation ? (
                 <Button 
                   onClick={() => closeOrder(order.id)}
                   className="w-full bg-green-600 hover:bg-green-700"
