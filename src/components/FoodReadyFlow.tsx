@@ -33,10 +33,11 @@ const statusConfig = {
 };
 
 export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; initialOrder?: any }) {
-  const [step, setStep] = useState<"scan" | "order-entry" | "awaiting-verification" | "tracking" | "feedback">("scan");
+  const [step, setStep] = useState<"scan" | "order-entry" | "awaiting-verification" | "rejected" | "tracking" | "feedback">("scan");
   const [orderNumber, setOrderNumber] = useState("");
   const [selectedVenue, setSelectedVenue] = useState("");
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
+  const [rejectedOrderNumber, setRejectedOrderNumber] = useState<string>("");
   const [venues, setVenues] = useState<{id: string; name: string; address?: string; phone?: string}[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -169,17 +170,18 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
                 }
               })
               .subscribe();
-          } else {
-            // Rejected - user_id was cleared
-            setStep("order-entry");
-            setCurrentOrder(null);
-            
-            toast({
-              title: "Order Not Valid",
-              description: "The kitchen couldn't verify this order. Please check your order number and try again.",
-              variant: "destructive"
-            });
-          }
+        } else {
+          // Rejected - user_id was cleared
+          setRejectedOrderNumber(currentOrder.order_number);
+          setCurrentOrder(null);
+          setStep("rejected");
+          
+          toast({
+            title: "Order Rejected",
+            description: "The kitchen could not verify this order",
+            variant: "destructive"
+          });
+        }
         }
       })
       .subscribe();
@@ -369,6 +371,92 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
     
     onBack();
   };
+
+  if (step === "rejected") {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Order Not Found</h1>
+        </div>
+
+        <Card className="shadow-card border-2 border-destructive">
+          <CardContent className="p-8 text-center space-y-6">
+            <div className="text-6xl">❌</div>
+            
+            <div className="space-y-3">
+              <h2 className="text-2xl font-bold text-destructive">Order Verification Failed</h2>
+              <p className="text-lg font-semibold">{selectedVenue}</p>
+            </div>
+
+            <div className="p-6 bg-destructive/10 rounded-xl border-2 border-destructive/30">
+              <p className="font-mono text-xl font-bold text-destructive mb-3">
+                Order #{rejectedOrderNumber}
+              </p>
+              <p className="text-sm text-muted-foreground">
+                The kitchen could not verify this order number. This could mean:
+              </p>
+              <ul className="text-sm text-muted-foreground mt-3 space-y-2 text-left">
+                <li>• The order number is incorrect</li>
+                <li>• The order is from a different restaurant</li>
+                <li>• The order hasn't been entered in their system yet</li>
+              </ul>
+            </div>
+
+            <div className="space-y-3 pt-4">
+              <Button 
+                className="w-full h-12 text-lg"
+                onClick={() => {
+                  setOrderNumber("");
+                  setRejectedOrderNumber("");
+                  setStep("order-entry");
+                }}
+              >
+                Try Different Order Number
+              </Button>
+              
+              <Button 
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setOrderNumber("");
+                  setRejectedOrderNumber("");
+                  setSelectedVenue("");
+                  setStep("scan");
+                }}
+              >
+                Choose Different Restaurant
+              </Button>
+
+              <Button 
+                variant="ghost"
+                className="w-full text-muted-foreground"
+                onClick={onBack}
+              >
+                Back to Home
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-card bg-blue-50 dark:bg-blue-950">
+          <CardContent className="p-4">
+            <div className="flex gap-3">
+              <div className="text-2xl">💡</div>
+              <div className="text-sm space-y-1">
+                <p className="font-semibold text-blue-900 dark:text-blue-100">Helpful Tip</p>
+                <p className="text-blue-700 dark:text-blue-300">
+                  Double-check your receipt for the correct order number. It's usually at the top of your receipt and may contain letters and numbers.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   if (step === "scan") {
     return (
