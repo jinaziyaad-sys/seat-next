@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface Order {
   id: string;
   order_number: string;
-  status: "placed" | "in_prep" | "ready" | "collected" | "no_show";
+  status: "awaiting_verification" | "placed" | "in_prep" | "ready" | "collected" | "no_show";
   items: any[];
   created_at: string;
   eta: string | null;
@@ -23,7 +23,6 @@ interface Order {
   venue_id: string;
   user_id?: string | null;
   awaiting_merchant_confirmation?: boolean;
-  awaiting_patron_confirmation?: boolean;
   order_ratings?: Array<{
     rating: number;
     feedback_text: string | null;
@@ -50,7 +49,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
       `)
       .eq("venue_id", venueId)
       .or('status.neq.collected,and(status.eq.collected,awaiting_merchant_confirmation.eq.true)')
-      .order("awaiting_patron_confirmation", { ascending: false, nullsFirst: false })
+      .order("status", { ascending: true }) // awaiting_verification first
       .order("awaiting_merchant_confirmation", { ascending: false, nullsFirst: false })
       .order("created_at", { ascending: true });
 
@@ -260,6 +259,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
 
   const getStatusColor = (status: Order["status"]) => {
     switch (status) {
+      case "awaiting_verification": return "bg-orange-500";
       case "placed": return "bg-blue-500";
       case "in_prep": return "bg-yellow-500";
       case "ready": return "bg-green-500";
@@ -320,35 +320,34 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   };
 
   const confirmPatronOrder = async (orderId: string) => {
+    // Change status from awaiting_verification to placed
     const { error } = await supabase
       .from("orders")
       .update({ 
-        awaiting_patron_confirmation: false
+        status: 'placed'
       })
       .eq("id", orderId);
 
     if (error) {
       toast({
         title: "Error",
-        description: "Could not confirm order",
+        description: "Could not verify order",
         variant: "destructive"
       });
       return;
     }
 
     toast({
-      title: "Order Confirmed",
+      title: "Order Verified ✓",
       description: "Patron can now track their order",
     });
   };
 
   const rejectPatronOrder = async (orderId: string) => {
+    // Delete the order entirely
     const { error } = await supabase
       .from("orders")
-      .update({ 
-        awaiting_patron_confirmation: false,
-        user_id: null
-      })
+      .delete()
       .eq("id", orderId);
 
     if (error) {
@@ -362,7 +361,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
 
     toast({
       title: "Order Rejected",
-      description: "Patron has been notified",
+      description: "Invalid order removed from queue",
     });
   };
 
@@ -435,7 +434,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
             <Card 
               key={order.id} 
               className={`shadow-card ${
-                order.awaiting_patron_confirmation ? 'awaiting-patron-verification' : 
+                order.status === 'awaiting_verification' ? 'awaiting-patron-verification' : 
                 order.awaiting_merchant_confirmation ? 'awaiting-confirmation' : ''
               }`}
             >
@@ -446,9 +445,9 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
                     <Badge className={`${getStatusColor(order.status)} text-white`}>
                       {order.status.replace("_", " ").toUpperCase()}
                     </Badge>
-                    {order.awaiting_patron_confirmation && (
+                    {order.status === 'awaiting_verification' && (
                       <Badge className="bg-orange-500 text-white animate-pulse text-xs">
-                        PATRON VERIFICATION
+                        NEEDS VERIFICATION
                       </Badge>
                     )}
                     {order.awaiting_merchant_confirmation && (
@@ -511,14 +510,14 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
                 </div>
               )}
 
-              {order.awaiting_patron_confirmation ? (
+              {order.status === 'awaiting_verification' ? (
                 <div className="space-y-2">
                   <div className="p-3 bg-orange-50 dark:bg-orange-950 rounded-lg border border-orange-200">
                     <p className="text-sm font-semibold text-orange-900 dark:text-orange-100">
-                      Patron is trying to claim this order
+                      Patron Order #{order.order_number}
                     </p>
                     <p className="text-xs text-orange-700 dark:text-orange-300 mt-1">
-                      Verify this is a legitimate order number
+                      Verify this order exists in your POS system
                     </p>
                   </div>
                   
@@ -533,7 +532,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
                       onClick={() => rejectPatronOrder(order.id)}
                       variant="destructive"
                     >
-                      ✗ Invalid
+                      ✗ Not Found
                     </Button>
                   </div>
                 </div>

@@ -12,7 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { sendBrowserNotification, vibratePhone, initializePushNotifications } from "@/utils/notifications";
 
-type OrderStatus = "placed" | "in_prep" | "ready" | "collected" | "no_show";
+type OrderStatus = "awaiting_verification" | "placed" | "in_prep" | "ready" | "collected" | "no_show";
 
 interface Order {
   id: string;
@@ -25,6 +25,7 @@ interface Order {
 }
 
 const statusConfig = {
+  awaiting_verification: { label: "Awaiting Verification", icon: Clock, color: "bg-orange-500 text-white", progress: 5 },
   placed: { label: "Order Placed", icon: Package, color: "bg-slate text-white", progress: 25 },
   "in_prep": { label: "In Preparation", icon: Clock, color: "bg-warning text-white", progress: 60 },
   ready: { label: "Ready for Pickup", icon: CheckCircle, color: "bg-primary text-primary-foreground", progress: 90 },
@@ -127,62 +128,65 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
       }, (payload) => {
         console.log('Verification update:', payload);
         
-        if (payload.new.awaiting_patron_confirmation === false) {
-          // Kitchen responded
-          if (payload.new.user_id === userId) {
-            // Confirmed valid - start tracking
-            setCurrentOrder(prev => prev ? {
-              ...prev,
-              status: payload.new.status,
-              eta: payload.new.eta
-            } : null);
-            setStep("tracking");
-            
-            toast({
-              title: "Order Verified! ✓",
-              description: "You can now track your order",
-            });
-
-            // Set up tracking subscription
-            const trackingChannel = supabase
-              .channel(`order-tracking-${currentOrder.id}`)
-              .on('postgres_changes', {
-                event: 'UPDATE',
-                schema: 'public',
-                table: 'orders',
-                filter: `id=eq.${currentOrder.id}`
-              }, (payload) => {
-                if (payload.new) {
-                  setCurrentOrder(prev => prev ? {
-                    ...prev,
-                    status: payload.new.status,
-                    eta: payload.new.eta
-                  } : null);
-                  
-                  if (payload.new.status === 'ready') {
-                    sendBrowserNotification(
-                      "🍔 Your Order is Ready!",
-                      `Order #${payload.new.order_number} is ready for pickup`,
-                      { tag: 'order-ready', requireInteraction: true }
-                    );
-                    vibratePhone([200, 100, 200, 100, 200]);
-                  }
-                }
-              })
-              .subscribe();
-        } else {
-          // Rejected - user_id was cleared
-          setRejectedOrderNumber(currentOrder.order_number);
-          setCurrentOrder(null);
-          setStep("rejected");
+        // Kitchen changed status from awaiting_verification to placed
+        if (payload.new.status === 'placed') {
+          setCurrentOrder(prev => prev ? {
+            ...prev,
+            status: 'placed',
+            eta: payload.new.eta
+          } : null);
+          setStep("tracking");
           
           toast({
-            title: "Order Rejected",
-            description: "The kitchen could not verify this order",
-            variant: "destructive"
+            title: "Order Verified! ✓",
+            description: "Your order is now being prepared",
           });
+
+          // Set up tracking subscription for remaining statuses
+          const trackingChannel = supabase
+            .channel(`order-tracking-${currentOrder.id}`)
+            .on('postgres_changes', {
+              event: 'UPDATE',
+              schema: 'public',
+              table: 'orders',
+              filter: `id=eq.${currentOrder.id}`
+            }, (payload) => {
+              if (payload.new) {
+                setCurrentOrder(prev => prev ? {
+                  ...prev,
+                  status: payload.new.status,
+                  eta: payload.new.eta
+                } : null);
+                
+                if (payload.new.status === 'ready') {
+                  sendBrowserNotification(
+                    "🍔 Your Order is Ready!",
+                    `Order #${payload.new.order_number} is ready for pickup`,
+                    { tag: 'order-ready', requireInteraction: true }
+                  );
+                  vibratePhone([200, 100, 200, 100, 200]);
+                }
+              }
+            })
+            .subscribe();
         }
-        }
+      })
+      .on('postgres_changes', {
+        event: 'DELETE',
+        schema: 'public',
+        table: 'orders',
+        filter: `id=eq.${currentOrder.id}`
+      }, () => {
+        // Kitchen rejected by deleting the order
+        setRejectedOrderNumber(currentOrder.order_number);
+        setCurrentOrder(null);
+        setStep("rejected");
+        
+        toast({
+          title: "Order Rejected",
+          description: "The kitchen could not verify this order",
+          variant: "destructive"
+        });
       })
       .subscribe();
 
@@ -217,13 +221,19 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
 
 
   const handleOrderSubmit = async () => {
-    if (!orderNumber.trim() || !selectedVenue) return;
+    if (!orderNumber.trim() || !selectedVenue) {
+      toast({
+        title: "Missing Information",
+        description: "Please enter your order number",
+        variant: "destructive"
+      });
+      return;
+    }
 
-    // Check if user is authenticated
     if (!userId) {
       toast({
-        title: "Registration Required",
-        description: "Please create an account to track your food orders in real-time.",
+        title: "Authentication Required",
+        description: "Please sign in to track your order",
         variant: "default",
         action: (
           <Button 
@@ -231,78 +241,104 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
             size="sm" 
             onClick={() => window.location.href = '/auth'}
           >
-            Sign Up
+            Sign In
           </Button>
         ),
       });
       return;
     }
 
-    // Find the venue
     const venue = venues.find(v => v.name === selectedVenue);
-    if (!venue) return;
-
-    // Check if order exists
-    const { data: existingOrder, error } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("venue_id", venue.id)
-      .eq("order_number", orderNumber.toUpperCase())
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
+    if (!venue) {
       toast({
         title: "Error",
-        description: "Could not verify order",
+        description: "Venue not found",
         variant: "destructive"
       });
       return;
     }
 
-    if (existingOrder) {
-      // Order found - request kitchen verification
-      const { error: updateError } = await supabase
-        .from("orders")
-        .update({ 
-          awaiting_patron_confirmation: true,
-          user_id: userId
-        })
-        .eq("id", existingOrder.id);
+    // Check if this order number already exists for this venue
+    const { data: existingOrder } = await supabase
+      .from("orders")
+      .select("id, status, order_number")
+      .eq("venue_id", venue.id)
+      .eq("order_number", orderNumber.toUpperCase())
+      .maybeSingle();
 
-      if (updateError) {
+    if (existingOrder) {
+      // Order already exists
+      if (existingOrder.status === 'awaiting_verification') {
         toast({
-          title: "Error",
-          description: "Could not request verification",
-          variant: "destructive"
+          title: "Already Submitted",
+          description: "This order is already waiting for kitchen verification",
         });
         return;
+      } else {
+        // Order has been verified, allow tracking
+        const order: Order = {
+          id: existingOrder.id,
+          order_number: existingOrder.order_number,
+          venue: selectedVenue,
+          status: existingOrder.status as OrderStatus,
+          eta: null,
+          instructions: "Please collect from the main counter",
+          items: []
+        };
+        setCurrentOrder(order);
+        setStep("tracking");
+        return;
       }
+    }
 
-      // Set current order and move to verification waiting screen
-      const order: Order = {
-        id: existingOrder.id,
-        order_number: existingOrder.order_number,
-        venue: selectedVenue,
-        status: existingOrder.status,
-        eta: existingOrder.eta,
-        instructions: "Please collect from the main counter",
-        items: Array.isArray(existingOrder.items) ? existingOrder.items : [existingOrder.items]
-      };
-      setCurrentOrder(order);
-      setStep("awaiting-verification");
+    // Calculate initial ETA (will be recalculated by kitchen if needed)
+    const initialEta = new Date();
+    initialEta.setMinutes(initialEta.getMinutes() + 15); // Default 15 min
 
+    // Create new order with awaiting_verification status
+    const { data: newOrder, error: insertError } = await supabase
+      .from("orders")
+      .insert({
+        venue_id: venue.id,
+        order_number: orderNumber.toUpperCase(),
+        user_id: userId,
+        status: 'awaiting_verification',
+        items: [], // Empty initially, kitchen will see it
+        eta: initialEta.toISOString(),
+        awaiting_patron_confirmation: false,
+        awaiting_merchant_confirmation: false
+      })
+      .select()
+      .single();
+
+    if (insertError || !newOrder) {
+      console.error('Error creating order:', insertError);
       toast({
-        title: "Verification Requested",
-        description: "Waiting for kitchen to confirm your order...",
-      });
-    } else {
-      // Order not found - do NOT create it
-      toast({
-        title: "Order Not Found",
-        description: `Order #${orderNumber.toUpperCase()} doesn't exist at ${selectedVenue}. Please check your order number.`,
+        title: "Error",
+        description: "Could not create order tracking request",
         variant: "destructive"
       });
+      return;
     }
+
+    // Set current order and move to verification waiting screen
+    const order: Order = {
+      id: newOrder.id,
+      order_number: newOrder.order_number,
+      venue: selectedVenue,
+      status: 'awaiting_verification',
+      eta: newOrder.eta,
+      instructions: "Please collect from the main counter",
+      items: []
+    };
+    
+    setCurrentOrder(order);
+    setStep("awaiting-verification");
+
+    toast({
+      title: "Order Submitted",
+      description: "Waiting for kitchen to verify your order...",
+    });
   };
 
   const handleFeedback = () => {
