@@ -14,7 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 interface Order {
   id: string;
   order_number: string;
-  status: "awaiting_verification" | "placed" | "in_prep" | "ready" | "collected" | "no_show";
+  status: "awaiting_verification" | "placed" | "in_prep" | "ready" | "collected" | "no_show" | "rejected";
   items: any[];
   created_at: string;
   eta: string | null;
@@ -33,12 +33,13 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   const [orders, setOrders] = useState<Order[]>([]);
   const [newOrderNumber, setNewOrderNumber] = useState("");
   const [newOrderItems, setNewOrderItems] = useState("");
+  const [showRejected, setShowRejected] = useState(false);
   const { toast } = useToast();
 
   // Fetch orders function (defined outside useEffect so subscription can use it)
   const fetchOrders = async () => {
-    // Fetch orders for this venue including collected ones awaiting confirmation
-    const { data: ordersData, error: ordersError } = await supabase
+    // Build query based on showRejected state
+    const query = supabase
       .from("orders")
       .select(`
         *,
@@ -47,11 +48,24 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
           feedback_text
         )
       `)
-      .eq("venue_id", venueId)
-      .or('status.neq.collected,and(status.eq.collected,awaiting_merchant_confirmation.eq.true)')
-      .order("status", { ascending: true }) // awaiting_verification first
-      .order("awaiting_merchant_confirmation", { ascending: false, nullsFirst: false })
-      .order("created_at", { ascending: true });
+      .eq("venue_id", venueId);
+
+    if (showRejected) {
+      // Show only rejected orders, most recent first
+      query
+        .eq("status", "rejected")
+        .order("created_at", { ascending: false });
+    } else {
+      // Show all orders except rejected
+      query
+        .neq("status", "rejected")
+        .or('status.neq.collected,and(status.eq.collected,awaiting_merchant_confirmation.eq.true)')
+        .order("status", { ascending: true }) // awaiting_verification first
+        .order("awaiting_merchant_confirmation", { ascending: false, nullsFirst: false })
+        .order("created_at", { ascending: true });
+    }
+
+    const { data: ordersData, error: ordersError } = await query;
 
     if (ordersError) {
       toast({
@@ -71,7 +85,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
     }
   };
 
-  // Fetch orders and set up real-time subscription
+  // Fetch orders when showRejected changes
   useEffect(() => {
     fetchOrders();
 
@@ -109,7 +123,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [venueId, toast]);
+  }, [venueId, showRejected, toast]);
 
   const updateOrderStatus = async (orderId: string, newStatus: Order["status"]) => {
     // Optimistic update
@@ -265,6 +279,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
       case "ready": return "bg-green-500";
       case "collected": return "bg-gray-500";
       case "no_show": return "bg-red-500";
+      case "rejected": return "bg-red-600";
       default: return "bg-gray-500";
     }
   };
@@ -344,10 +359,13 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   };
 
   const rejectPatronOrder = async (orderId: string) => {
-    // Delete the order entirely
+    // Update status to 'rejected' instead of deleting
     const { error } = await supabase
       .from("orders")
-      .delete()
+      .update({ 
+        status: 'rejected',
+        updated_at: new Date().toISOString()
+      })
       .eq("id", orderId);
 
     if (error) {
@@ -361,15 +379,24 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
 
     toast({
       title: "Order Rejected",
-      description: "Invalid order removed from queue",
+      description: "Order marked as invalid and moved to rejected orders",
     });
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Kitchen Orders</h2>
-        <Dialog>
+        <h2 className="text-2xl font-bold">
+          {showRejected ? "Rejected Orders" : "Kitchen Orders"}
+        </h2>
+        <div className="flex gap-2">
+          <Button
+            variant={showRejected ? "default" : "outline"}
+            onClick={() => setShowRejected(!showRejected)}
+          >
+            {showRejected ? "Active Orders" : "Rejected Orders"}
+          </Button>
+          <Dialog>
           <DialogTrigger asChild>
             <Button>
               <Plus size={16} className="mr-2" />
@@ -406,6 +433,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <style>{`

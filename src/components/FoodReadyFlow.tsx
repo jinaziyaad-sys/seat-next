@@ -34,7 +34,7 @@ const statusConfig = {
 };
 
 export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; initialOrder?: any }) {
-  const [step, setStep] = useState<"scan" | "order-entry" | "awaiting-verification" | "rejected" | "tracking" | "feedback">("scan");
+  const [step, setStep] = useState<"scan" | "order-entry" | "rejected" | "tracking" | "feedback">("scan");
   const [orderNumber, setOrderNumber] = useState("");
   const [selectedVenue, setSelectedVenue] = useState("");
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
@@ -116,7 +116,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
 
   // Listen for kitchen verification response
   useEffect(() => {
-    if (!currentOrder || step !== "awaiting-verification") return;
+    if (!currentOrder) return;
 
     const channel = supabase
       .channel(`order-verification-${currentOrder.id}`)
@@ -126,74 +126,59 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
         table: 'orders',
         filter: `id=eq.${currentOrder.id}`
       }, (payload) => {
-        console.log('Verification update:', payload);
+        console.log('Order update:', payload);
         
-        // Kitchen changed status from awaiting_verification to placed
+        // Kitchen verified - status changed to placed
         if (payload.new.status === 'placed') {
           setCurrentOrder(prev => prev ? {
             ...prev,
             status: 'placed',
             eta: payload.new.eta
           } : null);
-          setStep("tracking");
           
           toast({
             title: "Order Verified! ✓",
             description: "Your order is now being prepared",
           });
-
-          // Set up tracking subscription for remaining statuses
-          const trackingChannel = supabase
-            .channel(`order-tracking-${currentOrder.id}`)
-            .on('postgres_changes', {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'orders',
-              filter: `id=eq.${currentOrder.id}`
-            }, (payload) => {
-              if (payload.new) {
-                setCurrentOrder(prev => prev ? {
-                  ...prev,
-                  status: payload.new.status,
-                  eta: payload.new.eta
-                } : null);
-                
-                if (payload.new.status === 'ready') {
-                  sendBrowserNotification(
-                    "🍔 Your Order is Ready!",
-                    `Order #${payload.new.order_number} is ready for pickup`,
-                    { tag: 'order-ready', requireInteraction: true }
-                  );
-                  vibratePhone([200, 100, 200, 100, 200]);
-                }
-              }
-            })
-            .subscribe();
         }
-      })
-      .on('postgres_changes', {
-        event: 'DELETE',
-        schema: 'public',
-        table: 'orders',
-        filter: `id=eq.${currentOrder.id}`
-      }, () => {
-        // Kitchen rejected by deleting the order
-        setRejectedOrderNumber(currentOrder.order_number);
-        setCurrentOrder(null);
-        setStep("rejected");
         
-        toast({
-          title: "Order Rejected",
-          description: "The kitchen could not verify this order",
-          variant: "destructive"
-        });
+        // Kitchen rejected - status changed to rejected
+        if (payload.new.status === 'rejected') {
+          setRejectedOrderNumber(currentOrder.order_number);
+          setCurrentOrder(null);
+          setStep("rejected");
+          
+          toast({
+            title: "Order Rejected",
+            description: "The kitchen could not verify this order",
+            variant: "destructive"
+          });
+        }
+        
+        // Update current order for other status changes
+        if (payload.new.status) {
+          setCurrentOrder(prev => prev ? {
+            ...prev,
+            status: payload.new.status,
+            eta: payload.new.eta
+          } : null);
+          
+          if (payload.new.status === 'ready') {
+            sendBrowserNotification(
+              "🍔 Your Order is Ready!",
+              `Order #${payload.new.order_number} is ready for pickup`,
+              { tag: 'order-ready', requireInteraction: true }
+            );
+            vibratePhone([200, 100, 200, 100, 200]);
+          }
+        }
       })
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [currentOrder, step, userId]);
+  }, [currentOrder, userId]);
 
   // Fetch venues on component mount - only show food_ready venues
   useEffect(() => {
@@ -309,7 +294,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
     };
     
     setCurrentOrder(order);
-    setStep("awaiting-verification");
+    setStep("tracking");
 
     toast({
       title: "Order Submitted",
@@ -570,58 +555,6 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
               className="w-full h-12"
             >
               Track My Order
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (step === "awaiting-verification" && currentOrder) {
-    return (
-      <div className="space-y-6 p-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => setStep("order-entry")}>
-            <ArrowLeft size={20} />
-          </Button>
-          <h1 className="text-2xl font-bold">Verifying Order</h1>
-        </div>
-
-        <Card className="shadow-card">
-          <CardContent className="p-8 text-center space-y-6">
-            <div className="text-6xl animate-pulse">⏳</div>
-            
-            <div className="space-y-2">
-              <h2 className="text-2xl font-bold text-primary">Kitchen Verification</h2>
-              <p className="text-muted-foreground">{selectedVenue}</p>
-            </div>
-
-            <div className="p-6 bg-blue-50 dark:bg-blue-950 rounded-xl border border-blue-200 dark:border-blue-800">
-              <p className="font-semibold text-blue-900 dark:text-blue-100">
-                Order #{currentOrder.order_number}
-              </p>
-              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
-                The kitchen is verifying your order. This usually takes a few seconds.
-              </p>
-            </div>
-
-            <Button 
-              variant="outline" 
-              className="w-full"
-              onClick={() => {
-                if (currentOrder) {
-                  supabase
-                    .from("orders")
-                    .update({ 
-                      awaiting_patron_confirmation: false,
-                      user_id: null 
-                    })
-                    .eq("id", currentOrder.id);
-                }
-                setStep("order-entry");
-              }}
-            >
-              Cancel
             </Button>
           </CardContent>
         </Card>

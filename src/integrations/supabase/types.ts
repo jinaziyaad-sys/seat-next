@@ -765,6 +765,7 @@ export type Database = {
         | "ready"
         | "collected"
         | "no_show"
+        | "rejected"
       waitlist_status: "waiting" | "ready" | "seated" | "cancelled" | "no_show"
     }
     CompositeTypes: {
@@ -901,6 +902,7 @@ export const Constants = {
         "ready",
         "collected",
         "no_show",
+        "rejected",
       ],
       waitlist_status: ["waiting", "ready", "seated", "cancelled", "no_show"],
     },
