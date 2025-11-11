@@ -258,40 +258,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
       return;
     }
 
-    // Check if this order number already exists for this venue
-    const { data: existingOrder } = await supabase
-      .from("orders")
-      .select("id, status, order_number")
-      .eq("venue_id", venue.id)
-      .eq("order_number", orderNumber.toUpperCase())
-      .maybeSingle();
-
-    if (existingOrder) {
-      // Order already exists
-      if (existingOrder.status === 'awaiting_verification') {
-        toast({
-          title: "Already Submitted",
-          description: "This order is already waiting for kitchen verification",
-        });
-        return;
-      } else {
-        // Order has been verified, allow tracking
-        const order: Order = {
-          id: existingOrder.id,
-          order_number: existingOrder.order_number,
-          venue: selectedVenue,
-          status: existingOrder.status as OrderStatus,
-          eta: null,
-          instructions: "Please collect from the main counter",
-          items: []
-        };
-        setCurrentOrder(order);
-        setStep("tracking");
-        return;
-      }
-    }
-
-    // Calculate initial ETA (will be recalculated by kitchen if needed)
+    // Calculate initial ETA
     const initialEta = new Date();
     initialEta.setMinutes(initialEta.getMinutes() + 15); // Default 15 min
 
@@ -311,13 +278,22 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
       .select()
       .single();
 
-    if (insertError || !newOrder) {
+    if (insertError) {
       console.error('Error creating order:', insertError);
-      toast({
-        title: "Error",
-        description: "Could not create order tracking request",
-        variant: "destructive"
-      });
+      
+      // Handle duplicate order number gracefully
+      if (insertError.code === '23505') {
+        toast({
+          title: "Order Already Submitted",
+          description: "This order number is already being tracked at this venue",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Could not create order tracking request",
+          variant: "destructive"
+        });
+      }
       return;
     }
 
