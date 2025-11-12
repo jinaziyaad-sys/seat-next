@@ -46,7 +46,7 @@ const Index = () => {
       .from('orders')
       .select('*, venues(name)')
       .eq('user_id', user.id)
-      .in('status', ['awaiting_verification', 'placed', 'in_prep', 'ready'])
+      .in('status', ['awaiting_verification', 'placed', 'in_prep', 'ready', 'rejected'])
       .order('created_at', { ascending: false });
 
     const { data: waitlist } = await supabase
@@ -83,24 +83,22 @@ const Index = () => {
             if (payload.new.status === 'rejected') {
               toast({
                 title: "Order Rejected",
-                description: `Order #${payload.new.order_number} was marked as invalid by the kitchen. Please try again.`,
+                description: `Order #${payload.new.order_number} was marked as invalid by the kitchen. Tap the order to retry.`,
                 variant: "destructive",
               });
-              // Remove rejected order from active list
-              setActiveOrders(prevOrders => prevOrders.filter(order => order.id !== payload.new.id));
-            } else {
-              setActiveOrders(prevOrders => {
-                const updatedOrders = prevOrders.map(order => 
-                  order.id === payload.new.id 
-                    ? { ...order, ...payload.new, items: Array.isArray(payload.new.items) ? payload.new.items : [payload.new.items] }
-                    : order
-                );
-                // Remove from list if status is no longer active
-                return updatedOrders.filter(order => 
-                  ['awaiting_verification', 'placed', 'in_prep', 'ready'].includes(order.status)
-                );
-              });
             }
+            
+            setActiveOrders(prevOrders => {
+              const updatedOrders = prevOrders.map(order => 
+                order.id === payload.new.id 
+                  ? { ...order, ...payload.new, items: Array.isArray(payload.new.items) ? payload.new.items : [payload.new.items] }
+                  : order
+              );
+              // Remove from list if status is no longer active (keep rejected)
+              return updatedOrders.filter(order => 
+                ['awaiting_verification', 'placed', 'in_prep', 'ready', 'rejected'].includes(order.status)
+              );
+            });
           } else if (payload.eventType === 'INSERT') {
             fetchActiveTracking(); // Fetch for new orders
           } else if (payload.eventType === 'DELETE') {
@@ -249,11 +247,18 @@ const Index = () => {
               key={order.id} 
               className={cn(
                 "shadow-card cursor-pointer hover:shadow-floating transition-all",
-                order.status === 'ready' && "bg-success/10 border-success animate-pulse-success"
+                order.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
+                order.status === 'rejected' && "bg-destructive/10 border-destructive"
               )}
               onClick={() => {
-                setSelectedOrder(order);
-                setActiveTab("food-ready");
+                // If rejected, clear the order and go to food-ready flow to retry
+                if (order.status === 'rejected') {
+                  setSelectedOrder(null);
+                  setActiveTab("food-ready");
+                } else {
+                  setSelectedOrder(order);
+                  setActiveTab("food-ready");
+                }
               }}
             >
               <CardContent className="p-4">
@@ -261,35 +266,44 @@ const Index = () => {
                   <div className="flex items-center gap-3">
                     <div className={cn(
                       "w-12 h-12 rounded-full flex items-center justify-center",
-                      order.status === 'ready' ? "bg-success/20" : "bg-primary/10"
+                      order.status === 'ready' ? "bg-success/20" : 
+                      order.status === 'rejected' ? "bg-destructive/20" : 
+                      "bg-primary/10"
                     )}>
                       <UtensilsCrossed className={cn(
                         "w-6 h-6",
-                        order.status === 'ready' ? "text-success" : "text-primary"
+                        order.status === 'ready' ? "text-success" : 
+                        order.status === 'rejected' ? "text-destructive" :
+                        "text-primary"
                       )} />
                     </div>
                     <div>
                       <h3 className="font-semibold">{order.venues?.name}</h3>
                       <p className="text-sm text-muted-foreground">Order #{order.order_number}</p>
-                    {order.eta && (order.status === 'placed' || order.status === 'in_prep') && (
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                        <Clock size={12} />
-                        <span>
-                          {Math.ceil((new Date(order.eta).getTime() - new Date().getTime()) / (1000 * 60))} min • ETA {new Date(order.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
-                        </span>
-                      </div>
-                    )}
+                      {order.status === 'rejected' && (
+                        <p className="text-xs text-destructive mt-1">Tap to retry</p>
+                      )}
+                      {order.eta && (order.status === 'placed' || order.status === 'in_prep') && (
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                          <Clock size={12} />
+                          <span>
+                            {Math.ceil((new Date(order.eta).getTime() - new Date().getTime()) / (1000 * 60))} min • ETA {new Date(order.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                   <Badge variant={
                     order.status === 'ready' ? 'default' : 
                     order.status === 'in_prep' ? 'default' : 
                     order.status === 'awaiting_verification' ? 'outline' :
+                    order.status === 'rejected' ? 'destructive' :
                     'secondary'
                   } className={order.status === 'awaiting_verification' ? 'border-orange-500 text-orange-600 dark:text-orange-400' : ''}>
                     {order.status === 'ready' ? 'Ready' : 
                      order.status === 'in_prep' ? 'Preparing' : 
                      order.status === 'awaiting_verification' ? 'Verifying' :
+                     order.status === 'rejected' ? 'Rejected' :
                      'Placed'}
                   </Badge>
                 </div>
