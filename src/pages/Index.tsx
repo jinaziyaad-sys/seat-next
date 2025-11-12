@@ -13,6 +13,7 @@ import type { User, Session } from "@supabase/supabase-js";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import logo from "@/assets/logo.png";
+import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
@@ -22,6 +23,7 @@ const Index = () => {
   const [activeWaitlist, setActiveWaitlist] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -44,7 +46,7 @@ const Index = () => {
       .from('orders')
       .select('*, venues(name)')
       .eq('user_id', user.id)
-      .in('status', ['placed', 'in_prep', 'ready'])
+      .in('status', ['awaiting_verification', 'placed', 'in_prep', 'ready'])
       .order('created_at', { ascending: false });
 
     const { data: waitlist } = await supabase
@@ -77,17 +79,28 @@ const Index = () => {
           
           // Optimistic state update
           if (payload.eventType === 'UPDATE' && payload.new) {
-            setActiveOrders(prevOrders => {
-              const updatedOrders = prevOrders.map(order => 
-                order.id === payload.new.id 
-                  ? { ...order, ...payload.new, items: Array.isArray(payload.new.items) ? payload.new.items : [payload.new.items] }
-                  : order
-              );
-              // Remove from list if status is no longer active
-              return updatedOrders.filter(order => 
-                ['placed', 'in_prep', 'ready'].includes(order.status)
-              );
-            });
+            // Check if order was rejected
+            if (payload.new.status === 'rejected') {
+              toast({
+                title: "Order Rejected",
+                description: `Order #${payload.new.order_number} was marked as invalid by the kitchen. Please try again.`,
+                variant: "destructive",
+              });
+              // Remove rejected order from active list
+              setActiveOrders(prevOrders => prevOrders.filter(order => order.id !== payload.new.id));
+            } else {
+              setActiveOrders(prevOrders => {
+                const updatedOrders = prevOrders.map(order => 
+                  order.id === payload.new.id 
+                    ? { ...order, ...payload.new, items: Array.isArray(payload.new.items) ? payload.new.items : [payload.new.items] }
+                    : order
+                );
+                // Remove from list if status is no longer active
+                return updatedOrders.filter(order => 
+                  ['awaiting_verification', 'placed', 'in_prep', 'ready'].includes(order.status)
+                );
+              });
+            }
           } else if (payload.eventType === 'INSERT') {
             fetchActiveTracking(); // Fetch for new orders
           } else if (payload.eventType === 'DELETE') {
@@ -268,15 +281,17 @@ const Index = () => {
                     )}
                     </div>
                   </div>
-                    <Badge variant={
-                      order.status === 'ready' ? 'default' : 
-                      order.status === 'in_prep' ? 'default' : 
-                      'secondary'
-                    }>
-                      {order.status === 'ready' ? 'Ready' : 
-                       order.status === 'in_prep' ? 'Preparing' : 
-                       'Placed'}
-                    </Badge>
+                  <Badge variant={
+                    order.status === 'ready' ? 'default' : 
+                    order.status === 'in_prep' ? 'default' : 
+                    order.status === 'awaiting_verification' ? 'outline' :
+                    'secondary'
+                  } className={order.status === 'awaiting_verification' ? 'border-orange-500 text-orange-600 dark:text-orange-400' : ''}>
+                    {order.status === 'ready' ? 'Ready' : 
+                     order.status === 'in_prep' ? 'Preparing' : 
+                     order.status === 'awaiting_verification' ? 'Verifying' :
+                     'Placed'}
+                  </Badge>
                 </div>
               </CardContent>
             </Card>
