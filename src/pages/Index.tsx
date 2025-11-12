@@ -251,8 +251,9 @@ const Index = () => {
                 order.status === 'rejected' && "bg-destructive/10 border-destructive"
               )}
               onClick={() => {
-                // If rejected, clear the order and go to food-ready flow to retry
+                // If rejected, remove from list and go to food-ready flow to retry
                 if (order.status === 'rejected') {
+                  setActiveOrders(prevOrders => prevOrders.filter(o => o.id !== order.id));
                   setSelectedOrder(null);
                   setActiveTab("food-ready");
                 } else {
