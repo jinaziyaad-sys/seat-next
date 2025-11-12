@@ -22,6 +22,11 @@ const Index = () => {
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [activeWaitlist, setActiveWaitlist] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [dismissedRejectedOrders, setDismissedRejectedOrders] = useState<string[]>(() => {
+    // Load dismissed orders from localStorage
+    const stored = localStorage.getItem('dismissedRejectedOrders');
+    return stored ? JSON.parse(stored) : [];
+  });
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -59,7 +64,12 @@ const Index = () => {
       .order('reservation_time', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
 
-    setActiveOrders(orders || []);
+    // Filter out dismissed rejected orders
+    const filteredOrders = (orders || []).filter(order => 
+      !(order.status === 'rejected' && dismissedRejectedOrders.includes(order.id))
+    );
+
+    setActiveOrders(filteredOrders);
     setActiveWaitlist(waitlist || []);
   };
 
@@ -94,10 +104,12 @@ const Index = () => {
                   ? { ...order, ...payload.new, items: Array.isArray(payload.new.items) ? payload.new.items : [payload.new.items] }
                   : order
               );
-              // Remove from list if status is no longer active (keep rejected)
-              return updatedOrders.filter(order => 
-                ['awaiting_verification', 'placed', 'in_prep', 'ready', 'rejected'].includes(order.status)
-              );
+              // Remove from list if status is no longer active (keep rejected unless dismissed)
+              return updatedOrders.filter(order => {
+                const isActive = ['awaiting_verification', 'placed', 'in_prep', 'ready', 'rejected'].includes(order.status);
+                const isDismissed = order.status === 'rejected' && dismissedRejectedOrders.includes(order.id);
+                return isActive && !isDismissed;
+              });
             });
           } else if (payload.eventType === 'INSERT') {
             fetchActiveTracking(); // Fetch for new orders
@@ -149,7 +161,7 @@ const Index = () => {
         supabase.removeChannel(waitlistChannel);
       };
     }
-  }, [user]);
+  }, [user, dismissedRejectedOrders]);
 
   if (activeTab === "food-ready") {
     return (
@@ -251,8 +263,11 @@ const Index = () => {
                 order.status === 'rejected' && "bg-destructive/10 border-destructive"
               )}
               onClick={() => {
-                // If rejected, remove from list and go to food-ready flow to retry
+                // If rejected, add to dismissed list and go to food-ready flow to retry
                 if (order.status === 'rejected') {
+                  const updatedDismissed = [...dismissedRejectedOrders, order.id];
+                  setDismissedRejectedOrders(updatedDismissed);
+                  localStorage.setItem('dismissedRejectedOrders', JSON.stringify(updatedDismissed));
                   setActiveOrders(prevOrders => prevOrders.filter(o => o.id !== order.id));
                   setSelectedOrder(null);
                   setActiveTab("food-ready");
