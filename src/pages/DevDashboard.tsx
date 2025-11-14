@@ -17,6 +17,7 @@ import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PatronManagement } from "@/components/dev/PatronManagement";
 import { PlatformAnalytics } from "@/components/dev/PlatformAnalytics";
+import { LocationMap } from "@/components/LocationMap";
 import * as XLSX from 'xlsx';
 import {
   AlertDialog,
@@ -719,17 +720,24 @@ export default function DevDashboard() {
                       </Button>
                     </div>
                     {validatedAddress ? (
-                      <div className="p-3 border rounded-md bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-                        <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-1">
-                          ✓ Address Verified
-                        </p>
-                        <p className="text-sm text-green-700 dark:text-green-300 mb-2">
-                          {validatedAddress.formatted_address}
-                        </p>
-                        <div className="flex gap-4 text-xs text-green-600 dark:text-green-400">
-                          <span>Lat: {validatedAddress.latitude.toFixed(6)}</span>
-                          <span>Lng: {validatedAddress.longitude.toFixed(6)}</span>
+                      <div className="space-y-3">
+                        <div className="p-3 border rounded-md bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+                          <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-1">
+                            ✓ Address Verified
+                          </p>
+                          <p className="text-sm text-green-700 dark:text-green-300 mb-2">
+                            {validatedAddress.formatted_address}
+                          </p>
+                          <div className="flex gap-4 text-xs text-green-600 dark:text-green-400">
+                            <span>Lat: {validatedAddress.latitude.toFixed(6)}</span>
+                            <span>Lng: {validatedAddress.longitude.toFixed(6)}</span>
+                          </div>
                         </div>
+                        <LocationMap
+                          latitude={validatedAddress.latitude}
+                          longitude={validatedAddress.longitude}
+                          address={validatedAddress.formatted_address}
+                        />
                       </div>
                     ) : (
                       <p className="text-xs text-muted-foreground">
