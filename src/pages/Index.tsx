@@ -22,9 +22,12 @@ const Index = () => {
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [activeWaitlist, setActiveWaitlist] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [dismissedRejectedOrders, setDismissedRejectedOrders] = useState<string[]>(() => {
-    // Load dismissed orders from localStorage
-    const stored = localStorage.getItem('dismissedRejectedOrders');
+  const [dismissedOrders, setDismissedOrders] = useState<string[]>(() => {
+    const stored = localStorage.getItem('dismissedOrders');
+    return stored ? JSON.parse(stored) : [];
+  });
+  const [dismissedWaitlist, setDismissedWaitlist] = useState<string[]>(() => {
+    const stored = localStorage.getItem('dismissedWaitlist');
     return stored ? JSON.parse(stored) : [];
   });
   const navigate = useNavigate();
@@ -51,25 +54,27 @@ const Index = () => {
       .from('orders')
       .select('*, venues(name)')
       .eq('user_id', user.id)
-      .in('status', ['awaiting_verification', 'placed', 'in_prep', 'ready', 'rejected'])
+      .in('status', ['awaiting_verification', 'placed', 'in_prep', 'ready', 'collected', 'rejected'])
       .order('created_at', { ascending: false });
 
     const { data: waitlist } = await supabase
       .from('waitlist_entries')
       .select('*, venues(name)')
       .eq('user_id', user.id)
-      .or('status.in.(waiting,ready,cancelled),and(reservation_type.eq.reservation,reservation_time.gte.' + new Date().toISOString() + ')')
-      .neq('status', 'seated')
+      .or('status.in.(waiting,ready,seated,cancelled),and(reservation_type.eq.reservation,reservation_time.gte.' + new Date().toISOString() + ')')
       .order('reservation_time', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
 
-    // Filter out dismissed rejected orders
+    // Filter out dismissed items
     const filteredOrders = (orders || []).filter(order => 
-      !(order.status === 'rejected' && dismissedRejectedOrders.includes(order.id))
+      !dismissedOrders.includes(order.id)
+    );
+    const filteredWaitlist = (waitlist || []).filter(entry => 
+      !dismissedWaitlist.includes(entry.id)
     );
 
     setActiveOrders(filteredOrders);
-    setActiveWaitlist(waitlist || []);
+    setActiveWaitlist(filteredWaitlist);
   };
 
   useEffect(() => {
@@ -103,12 +108,8 @@ const Index = () => {
                   ? { ...order, ...payload.new, items: Array.isArray(payload.new.items) ? payload.new.items : [payload.new.items] }
                   : order
               );
-              // Remove from list if status is no longer active (keep rejected unless dismissed)
-              return updatedOrders.filter(order => {
-                const isActive = ['awaiting_verification', 'placed', 'in_prep', 'ready', 'rejected'].includes(order.status);
-                const isDismissed = order.status === 'rejected' && dismissedRejectedOrders.includes(order.id);
-                return isActive && !isDismissed;
-              });
+              // Filter out dismissed items
+              return updatedOrders.filter(order => !dismissedOrders.includes(order.id));
             });
           } else if (payload.eventType === 'INSERT') {
             fetchActiveTracking(); // Fetch for new orders
@@ -160,7 +161,7 @@ const Index = () => {
         supabase.removeChannel(waitlistChannel);
       };
     }
-  }, [user, dismissedRejectedOrders]);
+  }, [user, dismissedOrders, dismissedWaitlist]);
 
   if (activeTab === "food-ready") {
     return (
@@ -253,78 +254,99 @@ const Index = () => {
         <div className="p-6 space-y-4">
           <h2 className="text-xl font-bold">Active Tracking</h2>
           
-          {activeOrders.map((order) => (
-            <Card 
-              key={order.id} 
-              className={cn(
-                "shadow-card cursor-pointer hover:shadow-floating transition-all",
-                order.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
-                order.status === 'rejected' && "bg-destructive/10 border-destructive"
-              )}
-              onClick={() => {
-                // If rejected, add to dismissed list but pass the order to show cancellation reason
-                if (order.status === 'rejected') {
-                  const updatedDismissed = [...dismissedRejectedOrders, order.id];
-                  setDismissedRejectedOrders(updatedDismissed);
-                  localStorage.setItem('dismissedRejectedOrders', JSON.stringify(updatedDismissed));
-                  setActiveOrders(prevOrders => prevOrders.filter(o => o.id !== order.id));
-                  setSelectedOrder(order);
-                  setActiveTab("food-ready");
-                } else {
-                  setSelectedOrder(order);
-                  setActiveTab("food-ready");
-                }
-              }}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className={cn(
-                      "w-12 h-12 rounded-full flex items-center justify-center",
-                      order.status === 'ready' ? "bg-success/20" : 
-                      order.status === 'rejected' ? "bg-destructive/20" : 
-                      "bg-primary/10"
-                    )}>
-                      <UtensilsCrossed className={cn(
-                        "w-6 h-6",
-                        order.status === 'ready' ? "text-success" : 
-                        order.status === 'rejected' ? "text-destructive" :
-                        "text-primary"
-                      )} />
+          {activeOrders.map((order) => {
+            const canClear = ['collected', 'rejected'].includes(order.status);
+            
+            return (
+              <Card 
+                key={order.id} 
+                className={cn(
+                  "shadow-card transition-all",
+                  !canClear && "cursor-pointer hover:shadow-floating",
+                  order.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
+                  order.status === 'rejected' && "bg-destructive/10 border-destructive",
+                  order.status === 'collected' && "bg-success/10 border-success"
+                )}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div 
+                      className="flex items-center gap-3 flex-1"
+                      onClick={() => {
+                        if (!canClear) {
+                          setSelectedOrder(order);
+                          setActiveTab("food-ready");
+                        }
+                      }}
+                    >
+                      <div className={cn(
+                        "w-12 h-12 rounded-full flex items-center justify-center",
+                        order.status === 'ready' ? "bg-success/20" : 
+                        order.status === 'rejected' ? "bg-destructive/20" :
+                        order.status === 'collected' ? "bg-success/20" :
+                        "bg-primary/10"
+                      )}>
+                        <UtensilsCrossed className={cn(
+                          "w-6 h-6",
+                          order.status === 'ready' ? "text-success" : 
+                          order.status === 'rejected' ? "text-destructive" :
+                          order.status === 'collected' ? "text-success" :
+                          "text-primary"
+                        )} />
+                      </div>
+                      <div>
+                        <h3 className="font-semibold">{order.venues?.name}</h3>
+                        <p className="text-sm text-muted-foreground">Order #{order.order_number}</p>
+                        {order.status === 'rejected' && (
+                          <p className="text-xs text-destructive mt-1">Cancelled by venue</p>
+                        )}
+                        {order.eta && (order.status === 'placed' || order.status === 'in_prep') && (
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                            <Clock size={12} />
+                            <span>
+                              {Math.ceil((new Date(order.eta).getTime() - new Date().getTime()) / (1000 * 60))} min • ETA {new Date(order.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                            </span>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-semibold">{order.venues?.name}</h3>
-                      <p className="text-sm text-muted-foreground">Order #{order.order_number}</p>
-                      {order.status === 'rejected' && (
-                        <p className="text-xs text-destructive mt-1">Tap to retry</p>
-                      )}
-                      {order.eta && (order.status === 'placed' || order.status === 'in_prep') && (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                          <Clock size={12} />
-                          <span>
-                            {Math.ceil((new Date(order.eta).getTime() - new Date().getTime()) / (1000 * 60))} min • ETA {new Date(order.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
-                          </span>
-                        </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={
+                        order.status === 'ready' ? 'default' : 
+                        order.status === 'in_prep' ? 'default' : 
+                        order.status === 'awaiting_verification' ? 'outline' :
+                        order.status === 'rejected' ? 'destructive' :
+                        order.status === 'collected' ? 'default' :
+                        'secondary'
+                      } className={order.status === 'awaiting_verification' ? 'border-orange-500 text-orange-600 dark:text-orange-400' : ''}>
+                        {order.status === 'ready' ? 'Ready' : 
+                         order.status === 'in_prep' ? 'Preparing' : 
+                         order.status === 'awaiting_verification' ? 'Verifying' :
+                         order.status === 'rejected' ? 'Cancelled' :
+                         order.status === 'collected' ? 'Collected' :
+                         'Placed'}
+                      </Badge>
+                      {canClear && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const updated = [...dismissedOrders, order.id];
+                            setDismissedOrders(updated);
+                            localStorage.setItem('dismissedOrders', JSON.stringify(updated));
+                            setActiveOrders(prev => prev.filter(o => o.id !== order.id));
+                          }}
+                        >
+                          Clear
+                        </Button>
                       )}
                     </div>
                   </div>
-                  <Badge variant={
-                    order.status === 'ready' ? 'default' : 
-                    order.status === 'in_prep' ? 'default' : 
-                    order.status === 'awaiting_verification' ? 'outline' :
-                    order.status === 'rejected' ? 'destructive' :
-                    'secondary'
-                  } className={order.status === 'awaiting_verification' ? 'border-orange-500 text-orange-600 dark:text-orange-400' : ''}>
-                    {order.status === 'ready' ? 'Ready' : 
-                     order.status === 'in_prep' ? 'Preparing' : 
-                     order.status === 'awaiting_verification' ? 'Verifying' :
-                     order.status === 'rejected' ? 'Rejected' :
-                     'Placed'}
-                  </Badge>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
 
           {activeWaitlist.map((entry) => {
             const isUpcomingReservation = entry.reservation_type === 'reservation' && 
@@ -334,32 +356,42 @@ const Index = () => {
             const isToday = entry.reservation_time && 
               new Date(entry.reservation_time).toDateString() === new Date().toDateString();
 
+            const canClear = ['seated', 'cancelled'].includes(entry.status);
+
             return (
               <Card 
                 key={entry.id} 
                 className={cn(
-                  "shadow-card cursor-pointer hover:shadow-floating transition-all",
+                  "shadow-card transition-all",
+                  !canClear && "cursor-pointer hover:shadow-floating",
                   entry.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
-                  entry.status === 'cancelled' && "bg-destructive/10 border-destructive"
+                  entry.status === 'cancelled' && "bg-destructive/10 border-destructive",
+                  entry.status === 'seated' && "bg-success/10 border-success"
                 )}
-                onClick={() => {
-                  setSelectedOrder(entry);
-                  setActiveTab("table-ready");
-                }}
               >
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
+                    <div 
+                      className="flex items-center gap-3 flex-1"
+                      onClick={() => {
+                        if (!canClear) {
+                          setSelectedOrder(entry);
+                          setActiveTab("table-ready");
+                        }
+                      }}
+                    >
                       <div className={cn(
                         "w-12 h-12 rounded-full flex items-center justify-center",
                         entry.status === 'ready' ? "bg-success/20" : 
                         entry.status === 'cancelled' ? "bg-destructive/20" :
+                        entry.status === 'seated' ? "bg-success/20" :
                         "bg-accent/10"
                       )}>
                         <Users className={cn(
                           "w-6 h-6",
                           entry.status === 'ready' ? "text-success" : 
                           entry.status === 'cancelled' ? "text-destructive" :
+                          entry.status === 'seated' ? "text-success" :
                           "text-accent"
                         )} />
                       </div>
@@ -399,17 +431,36 @@ const Index = () => {
                         )}
                       </div>
                     </div>
-                    <Badge variant={
-                      isUpcomingReservation ? 'outline' : 
-                      entry.status === 'ready' ? 'default' : 
-                      entry.status === 'cancelled' ? 'destructive' :
-                      'secondary'
-                    }>
-                      {isUpcomingReservation ? 'Reserved' : 
-                       entry.status === 'ready' ? 'Ready' : 
-                       entry.status === 'cancelled' ? 'Cancelled' :
-                       'Waiting'}
-                    </Badge>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={
+                        isUpcomingReservation ? 'outline' : 
+                        entry.status === 'ready' ? 'default' : 
+                        entry.status === 'cancelled' ? 'destructive' :
+                        entry.status === 'seated' ? 'default' :
+                        'secondary'
+                      }>
+                        {isUpcomingReservation ? 'Reserved' : 
+                         entry.status === 'ready' ? 'Ready' : 
+                         entry.status === 'cancelled' ? 'Cancelled' :
+                         entry.status === 'seated' ? 'Seated' :
+                         'Waiting'}
+                      </Badge>
+                      {canClear && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const updated = [...dismissedWaitlist, entry.id];
+                            setDismissedWaitlist(updated);
+                            localStorage.setItem('dismissedWaitlist', JSON.stringify(updated));
+                            setActiveWaitlist(prev => prev.filter(w => w.id !== entry.id));
+                          }}
+                        >
+                          Clear
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>
