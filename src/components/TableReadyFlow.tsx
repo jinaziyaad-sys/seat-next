@@ -812,6 +812,20 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   }
 
   if (step === "party-details") {
+    // Helper function to get today's business hours
+    const getTodayHours = () => {
+      if (!selectedVenueData?.settings?.business_hours) return null;
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const today = dayNames[new Date().getDay()];
+      return selectedVenueData.settings.business_hours[today];
+    };
+
+    // Helper function to get active breaks
+    const getTodayBreaks = () => {
+      const todayHours = getTodayHours();
+      return todayHours?.breaks || [];
+    };
+
     return (
       <div className="space-y-6 p-6">
         <div className="flex items-center gap-4">
@@ -820,6 +834,56 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           </Button>
           <h1 className="text-2xl font-bold">Party Details</h1>
         </div>
+
+        {selectedVenueData?.settings && (
+          <Card className="shadow-card bg-muted/50">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Venue Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {getTodayHours() ? (
+                <>
+                  <div className="flex items-start justify-between">
+                    <span className="text-muted-foreground">Today's Hours:</span>
+                    <span className="font-medium text-right">
+                      {getTodayHours()?.is_closed 
+                        ? "Closed" 
+                        : `${getTodayHours()?.open} - ${getTodayHours()?.close}`}
+                    </span>
+                  </div>
+                  
+                  {getTodayBreaks().length > 0 && (
+                    <div className="flex items-start justify-between">
+                      <span className="text-muted-foreground">Breaks:</span>
+                      <div className="text-right space-y-1">
+                        {getTodayBreaks().map((brk: any, idx: number) => (
+                          <div key={idx} className="font-medium">
+                            {brk.start} - {brk.end}
+                            <span className="text-xs text-muted-foreground ml-1">
+                              ({brk.reason})
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-muted-foreground">Hours not available</div>
+              )}
+              
+              {selectedVenueData.settings.default_wait_time && (
+                <div className="flex items-start justify-between pt-2 border-t">
+                  <span className="text-muted-foreground">Typical Wait:</span>
+                  <span className="font-medium">{selectedVenueData.settings.default_wait_time} min</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="shadow-card">
           <CardHeader>
