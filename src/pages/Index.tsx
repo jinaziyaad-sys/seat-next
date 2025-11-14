@@ -279,14 +279,16 @@ const Index = () => {
           <h2 className="text-xl font-bold">Active Tracking</h2>
           
           {activeOrders.map((order) => {
-            const canClear = ['collected', 'rejected'].includes(order.status);
+            const shouldRate = order.status === 'collected';
+            const shouldClear = order.status === 'rejected';
+            const canInteract = shouldRate || shouldClear;
             
             return (
               <Card 
                 key={order.id} 
                 className={cn(
                   "shadow-card transition-all",
-                  !canClear && "cursor-pointer hover:shadow-floating",
+                  !canInteract && "cursor-pointer hover:shadow-floating",
                   order.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
                   order.status === 'rejected' && "bg-destructive/10 border-destructive",
                   order.status === 'collected' && "bg-success/10 border-success"
@@ -297,7 +299,7 @@ const Index = () => {
                     <div 
                       className="flex items-center gap-3 flex-1"
                       onClick={() => {
-                        if (!canClear) {
+                        if (!canInteract) {
                           setSelectedOrder(order);
                           setActiveTab("food-ready");
                         }
@@ -350,7 +352,7 @@ const Index = () => {
                          order.status === 'collected' ? 'Collected' :
                          'Placed'}
                       </Badge>
-                      {canClear && (
+                      {shouldRate && (
                         <Button
                           variant="default"
                           size="sm"
@@ -369,6 +371,21 @@ const Index = () => {
                           Rate
                         </Button>
                       )}
+                      {shouldClear && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const updated = [...dismissedOrders, order.id];
+                            setDismissedOrders(updated);
+                            localStorage.setItem('dismissedOrders', JSON.stringify(updated));
+                            setActiveOrders(prev => prev.filter(o => o.id !== order.id));
+                          }}
+                        >
+                          Clear
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -384,14 +401,16 @@ const Index = () => {
             const isToday = entry.reservation_time && 
               new Date(entry.reservation_time).toDateString() === new Date().toDateString();
 
-            const canClear = ['seated', 'cancelled'].includes(entry.status);
+            const shouldRate = entry.status === 'seated';
+            const shouldClear = entry.status === 'cancelled';
+            const canInteract = shouldRate || shouldClear;
 
             return (
               <Card 
                 key={entry.id} 
                 className={cn(
                   "shadow-card transition-all",
-                  !canClear && "cursor-pointer hover:shadow-floating",
+                  !canInteract && "cursor-pointer hover:shadow-floating",
                   entry.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
                   entry.status === 'cancelled' && "bg-destructive/10 border-destructive",
                   entry.status === 'seated' && "bg-success/10 border-success"
@@ -402,7 +421,7 @@ const Index = () => {
                     <div 
                       className="flex items-center gap-3 flex-1"
                       onClick={() => {
-                        if (!canClear) {
+                        if (!canInteract) {
                           setSelectedOrder(entry);
                           setActiveTab("table-ready");
                         }
@@ -473,7 +492,7 @@ const Index = () => {
                          entry.status === 'seated' ? 'Seated' :
                          'Waiting'}
                       </Badge>
-                      {canClear && (
+                      {shouldRate && (
                         <Button
                           variant="default"
                           size="sm"
@@ -490,6 +509,21 @@ const Index = () => {
                           className="bg-success hover:bg-success/90"
                         >
                           Rate
+                        </Button>
+                      )}
+                      {shouldClear && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const updated = [...dismissedWaitlist, entry.id];
+                            setDismissedWaitlist(updated);
+                            localStorage.setItem('dismissedWaitlist', JSON.stringify(updated));
+                            setActiveWaitlist(prev => prev.filter(w => w.id !== entry.id));
+                          }}
+                        >
+                          Clear
                         </Button>
                       )}
                     </div>
