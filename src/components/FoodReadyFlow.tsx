@@ -165,10 +165,9 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
             status: 'rejected',
             notes: payload.new.notes,
           } : null);
-          setStep("rejected");
           
           toast({
-            title: "Order Rejected",
+            title: "Order Cancelled",
             description: reason,
             variant: "destructive"
           });
