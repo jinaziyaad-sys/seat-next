@@ -139,11 +139,36 @@ export const MerchantSettings = ({
   }, [venueId]);
 
   const handleSave = async () => {
-    console.log("Saving preferences:", waitlistPreferences);
+    console.log("Saving all venue settings");
+    
+    // Get current settings to merge with
+    const { data: currentVenue } = await supabase
+      .from("venues")
+      .select("settings")
+      .eq("id", venueId)
+      .single();
+    
+    // Build the settings object with all configurations
+    const currentSettings = (currentVenue?.settings as Record<string, any>) || {};
+    const updatedSettings = {
+      // Preserve existing settings (business hours, grace periods, etc.)
+      ...currentSettings,
+      
+      // Kitchen/Food settings
+      default_prep_time: parseInt(settings.defaultPrepTime) || 10,
+      max_extension_time: parseInt(settings.maxExtensionTime) || 45,
+      pickup_instructions: settings.pickupInstructions,
+      
+      // Waitlist/Table settings
+      venue_capacity: parseInt(settings.venueCapacity) || 40,
+      tables_per_interval: parseInt(settings.tablesPerInterval) || 4,
+      auto_no_show_time: parseInt(settings.autoNoShowTime) || 15,
+    };
     
     const { error } = await supabase
       .from("venues")
       .update({
+        settings: updatedSettings as any,
         waitlist_preferences: { options: waitlistPreferences } as any
       })
       .eq("id", venueId);
@@ -160,7 +185,7 @@ export const MerchantSettings = ({
 
     toast({
       title: "Settings Saved",
-      description: "Venue settings have been updated successfully.",
+      description: "All venue settings have been updated successfully.",
     });
   };
 
@@ -202,11 +227,20 @@ export const MerchantSettings = ({
       return;
     }
 
-    // Save to database
+    // Get current settings to merge with
+    const { data: currentVenue } = await supabase
+      .from("venues")
+      .select("settings")
+      .eq("id", venueId)
+      .single();
+    
+    // Save to database - merge with existing settings
+    const currentSettings = (currentVenue?.settings as Record<string, any>) || {};
     const { error } = await supabase
       .from("venues")
       .update({
         settings: {
+          ...currentSettings, // Preserve existing settings like prep times
           business_hours: businessHours,
           holiday_closures: holidayClosures,
           grace_periods: gracePeriods,
@@ -913,9 +947,12 @@ export const MerchantSettings = ({
         </Card>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex gap-4 justify-end">
+        <Button onClick={handleSaveBusinessHours} variant="outline" className="px-8">
+          Save Business Hours
+        </Button>
         <Button onClick={handleSave} className="px-8">
-          Save Settings
+          Save Venue Settings
         </Button>
       </div>
     </div>
