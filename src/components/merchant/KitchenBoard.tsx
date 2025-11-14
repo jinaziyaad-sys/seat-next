@@ -344,7 +344,8 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
         order_number: newOrderNumber.toUpperCase(),
         status: "placed",
         items,
-        eta
+        eta,
+        confidence
       });
 
     if (error) {

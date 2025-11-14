@@ -235,8 +235,8 @@ export const MerchantSettings = ({
     }
 
     toast({
-      title: "Business Hours Saved",
-      description: "Operating hours and closures updated successfully",
+      title: "All Settings Saved",
+      description: "Venue settings have been updated successfully",
     });
   };
 
@@ -401,17 +401,50 @@ export const MerchantSettings = ({
           <CardHeader>
             <CardTitle>Kitchen Settings</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
+            <Card className="bg-muted/50 border-primary/20">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  How Smart ETA Works
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="text-sm space-y-3">
+                <div>
+                  <strong className="text-foreground">1. Historical Data (Primary):</strong>
+                  <p className="text-muted-foreground mt-0.5">System analyzes last 30 days of similar orders (same day/time window) to predict accurate prep times.</p>
+                </div>
+                <div>
+                  <strong className="text-foreground">2. Default Fallback:</strong>
+                  <p className="text-muted-foreground mt-0.5">When you're starting out or have limited data, the system uses your configured default prep time below.</p>
+                </div>
+                <div>
+                  <strong className="text-foreground">3. Real-Time Adjustments:</strong>
+                  <ul className="list-disc pl-5 mt-1 text-xs text-muted-foreground space-y-1">
+                    <li>Kitchen Load: Adds 0-60% based on current order volume</li>
+                    <li>Order Complexity: Adds 0-20% based on number of items</li>
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
+
             <div>
-              <Label htmlFor="prepTime">Default Prep Time (minutes)</Label>
+              <Label htmlFor="prepTime" className="flex items-center gap-2">
+                Default Prep Time (fallback)
+                <Badge variant="outline" className="text-xs font-normal">Used when no historical data</Badge>
+              </Label>
               <Input
                 id="prepTime"
                 type="number"
                 value={settings.defaultPrepTime}
                 onChange={(e) => handleInputChange("defaultPrepTime", e.target.value)}
+                className="mt-2"
               />
-              <p className="text-sm text-muted-foreground mt-1">
-                Default estimated preparation time for orders
+              <p className="text-sm text-muted-foreground mt-1.5">
+                Starting point for new venues. Once you have 30+ completed orders, the system automatically uses real historical averages.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                💡 <strong>Final ETA =</strong> Historical Avg × Kitchen Load (1.0-1.6x) × Order Complexity (1.0-1.2x)
               </p>
             </div>
 
@@ -422,8 +455,9 @@ export const MerchantSettings = ({
                 type="number"
                 value={settings.maxExtensionTime}
                 onChange={(e) => handleInputChange("maxExtensionTime", e.target.value)}
+                className="mt-2"
               />
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-1.5">
                 Maximum time an order ETA can be extended
               </p>
             </div>
@@ -768,9 +802,6 @@ export const MerchantSettings = ({
               </CollapsibleContent>
             </Collapsible>
             
-            <Button onClick={handleSaveAll} className="w-full" size="lg">
-              Save Business Hours & Settings
-            </Button>
           </CardContent>
         </Card>
 
