@@ -105,7 +105,9 @@ export default function AdminCreateMerchant() {
       let longitude = null;
 
       // Validate address and get coordinates if address is provided
-      if (venueAddress) {
+      if (venueAddress && venueAddress.trim()) {
+        console.log('Starting address validation for:', venueAddress);
+        
         toast({
           title: "Validating address...",
           description: "Please wait while we verify the location.",
@@ -115,21 +117,25 @@ export default function AdminCreateMerchant() {
           body: { address: venueAddress },
         });
 
+        console.log('Validation response:', { validationData, validationError });
+
         if (validationError) {
+          console.error('Validation error:', validationError);
           toast({
             variant: "destructive",
             title: "Validation Error",
-            description: "Failed to validate address. Please try again.",
+            description: `Failed to validate address: ${validationError.message || 'Please try again.'}`,
           });
           setLoading(false);
           return;
         }
 
-        if (!validationData.valid) {
+        if (!validationData || !validationData.valid) {
+          console.warn('Address validation failed:', validationData);
           toast({
             variant: "destructive",
             title: "Invalid Address",
-            description: validationData.error || "Address not found. Please check and try again.",
+            description: validationData?.error || "Address not found. Please check and try again.",
           });
           setLoading(false);
           return;
@@ -138,10 +144,14 @@ export default function AdminCreateMerchant() {
         latitude = validationData.latitude;
         longitude = validationData.longitude;
 
+        console.log('Address validated successfully:', { latitude, longitude });
+        
         toast({
           title: "Address Verified!",
           description: `Location: ${validationData.formatted_address}`,
         });
+      } else if (venueAddress) {
+        console.log('Address is empty after trim, skipping validation');
       }
 
       const { data, error } = await supabase
