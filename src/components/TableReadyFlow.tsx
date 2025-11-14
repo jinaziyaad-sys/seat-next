@@ -16,6 +16,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { sendBrowserNotification, vibratePhone, initializePushNotifications } from "@/utils/notifications";
+import { checkVenueStatus, getAvailableReservationTimes } from "@/utils/businessHours";
 
 interface WaitlistEntry {
   id: string;
@@ -41,6 +42,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const { toast } = useToast();
   const [step, setStep] = useState<"venue-select" | "booking-type" | "reservation-details" | "party-details" | "waiting" | "ready" | "awaiting-confirmation" | "delayed-countdown" | "feedback">("venue-select");
   const [selectedVenue, setSelectedVenue] = useState("");
+  const [selectedVenueData, setSelectedVenueData] = useState<any>(null);
   const [bookingType, setBookingType] = useState<"now" | "later">("now");
   const [reservationDate, setReservationDate] = useState<Date | undefined>(undefined);
   const [reservationTime, setReservationTime] = useState<string>("");
@@ -49,7 +51,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [preferences, setPreferences] = useState<string[]>([]);
   const [seatingPreference, setSeatingPreference] = useState<"indoor" | "outdoor" | "no-preference">("no-preference");
   const [waitlistEntry, setWaitlistEntry] = useState<WaitlistEntry | null>(null);
-  const [venues, setVenues] = useState<{id: string; name: string; address?: string; waitTime?: string; tables?: number}[]>([]);
+  const [venues, setVenues] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -178,13 +180,13 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     }
   }, [initialEntry]);
 
-  // Fetch venues on component mount - only show table_ready venues
+  // Fetch venues on component mount - only show table_ready venues with full settings
   useEffect(() => {
     const fetchVenues = async () => {
       setIsLoading(true);
       const { data, error } = await supabase
         .from("venues")
-        .select("id, name, address, service_types")
+        .select("id, name, address, service_types, settings, waitlist_preferences")
         .contains("service_types", ["table_ready"])
         .order("name");
       
@@ -209,15 +211,13 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   );
 
 
-  const preferenceOptions = [
-    "Smoking section",
-    "High chair needed",
-    "Wheelchair accessible"
-  ];
-
-  const handleVenueSelect = (venue: string) => {
-    setSelectedVenue(venue);
-    setStep("booking-type");
+  const handleVenueSelect = (venueId: string) => {
+    const venue = venues.find(v => v.id === venueId);
+    if (venue) {
+      setSelectedVenue(venue.name);
+      setSelectedVenueData(venue);
+      setStep("booking-type");
+    }
   };
 
   const togglePreference = (pref: string) => {
@@ -836,17 +836,19 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             <div className="space-y-3">
               <label className="text-sm font-medium">Additional Preferences (Optional)</label>
               <div className="grid grid-cols-1 gap-2">
-                {preferenceOptions.map((pref) => (
-                  <Button
-                    key={pref}
-                    variant={preferences.includes(pref) ? "default" : "outline"}
-                    size="sm"
-                    className="justify-start"
-                    onClick={() => togglePreference(pref)}
-                  >
-                    {pref}
-                  </Button>
-                ))}
+                {selectedVenueData?.waitlist_preferences?.options
+                  ?.filter((opt: any) => opt.enabled)
+                  ?.map((opt: any) => (
+                    <Button
+                      key={opt.id}
+                      variant={preferences.includes(opt.label) ? "default" : "outline"}
+                      size="sm"
+                      className="justify-start"
+                      onClick={() => togglePreference(opt.label)}
+                    >
+                      {opt.label}
+                    </Button>
+                  ))}
               </div>
             </div>
 
