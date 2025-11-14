@@ -7,13 +7,12 @@ import { useToast } from "@/hooks/use-toast";
 
 interface Rating {
   id: string;
-  order_id: string;
   rating: number;
   feedback_text: string | null;
   created_at: string;
-  orders: {
-    order_number: string;
-  };
+  type: 'order' | 'waitlist';
+  reference_number?: string;
+  party_size?: number;
 }
 
 export const RatingsView = ({ venueId }: { venueId: string }) => {
@@ -24,7 +23,8 @@ export const RatingsView = ({ venueId }: { venueId: string }) => {
 
   useEffect(() => {
     const fetchRatings = async () => {
-      const { data, error } = await supabase
+      // Fetch order ratings
+      const { data: orderRatings, error: orderError } = await supabase
         .from("order_ratings")
         .select(`
           *,
@@ -33,10 +33,21 @@ export const RatingsView = ({ venueId }: { venueId: string }) => {
           )
         `)
         .eq("venue_id", venueId)
-        .order("created_at", { ascending: false })
-        .limit(50);
+        .order("created_at", { ascending: false });
 
-      if (error) {
+      // Fetch waitlist ratings
+      const { data: waitlistRatings, error: waitlistError } = await supabase
+        .from("waitlist_ratings")
+        .select(`
+          *,
+          waitlist_entries (
+            party_size
+          )
+        `)
+        .eq("venue_id", venueId)
+        .order("created_at", { ascending: false });
+
+      if (orderError || waitlistError) {
         toast({
           title: "Error",
           description: "Could not load ratings",
@@ -46,21 +57,40 @@ export const RatingsView = ({ venueId }: { venueId: string }) => {
         return;
       }
 
-      if (data) {
-        setRatings(data as any);
-        const avg = data.length > 0 
-          ? data.reduce((sum, r) => sum + r.rating, 0) / data.length 
-          : 0;
-        setAverageRating(Math.round(avg * 10) / 10);
-      }
+      // Combine and transform ratings
+      const combinedRatings: Rating[] = [
+        ...(orderRatings || []).map(r => ({
+          id: r.id,
+          rating: r.rating,
+          feedback_text: r.feedback_text,
+          created_at: r.created_at,
+          type: 'order' as const,
+          reference_number: (r.orders as any)?.order_number
+        })),
+        ...(waitlistRatings || []).map(r => ({
+          id: r.id,
+          rating: r.rating,
+          feedback_text: r.feedback_text,
+          created_at: r.created_at,
+          type: 'waitlist' as const,
+          party_size: (r.waitlist_entries as any)?.party_size
+        }))
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+       .slice(0, 50);
+
+      setRatings(combinedRatings);
+      const avg = combinedRatings.length > 0 
+        ? combinedRatings.reduce((sum, r) => sum + r.rating, 0) / combinedRatings.length 
+        : 0;
+      setAverageRating(Math.round(avg * 10) / 10);
       setLoading(false);
     };
 
     fetchRatings();
 
-    // Real-time subscription
-    const channel = supabase
-      .channel('ratings-updates')
+    // Real-time subscriptions for both tables
+    const orderChannel = supabase
+      .channel('order-ratings-updates')
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -71,8 +101,21 @@ export const RatingsView = ({ venueId }: { venueId: string }) => {
       })
       .subscribe();
 
+    const waitlistChannel = supabase
+      .channel('waitlist-ratings-updates')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'waitlist_ratings',
+        filter: `venue_id=eq.${venueId}`
+      }, () => {
+        fetchRatings();
+      })
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(orderChannel);
+      supabase.removeChannel(waitlistChannel);
     };
   }, [venueId, toast]);
 
@@ -167,15 +210,17 @@ export const RatingsView = ({ venueId }: { venueId: string }) => {
         <CardContent className="space-y-4">
           {ratings.length === 0 ? (
             <p className="text-center text-muted-foreground py-8">
-              No ratings yet. Encourage customers to rate their orders!
+              No ratings yet. Encourage customers to rate their experience!
             </p>
           ) : (
             ratings.map((rating) => (
               <div key={rating.id} className="p-4 border rounded-lg space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Badge variant="secondary">
-                      #{rating.orders.order_number}
+                    <Badge variant={rating.type === 'order' ? 'secondary' : 'default'}>
+                      {rating.type === 'order' 
+                        ? `Order #${rating.reference_number || 'N/A'}` 
+                        : `Table - Party of ${rating.party_size || 'N/A'}`}
                     </Badge>
                     <div className="flex gap-0.5">
                       {[1, 2, 3, 4, 5].map((star) => (
