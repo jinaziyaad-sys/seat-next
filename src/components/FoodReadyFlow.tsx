@@ -215,7 +215,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
       
       const { data, error } = await supabase
         .from("venues")
-        .select("id, name, address, phone, service_types, settings, latitude, longitude")
+        .select("id, name, address, display_address, phone, service_types, settings, latitude, longitude")
         .contains("service_types", ["food_ready"])
         .order("name");
       
@@ -577,10 +577,10 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
                         <div className="flex justify-between items-start gap-3">
                           <div className="flex flex-col gap-1 flex-1">
                             <span className="font-medium">{venue.name}</span>
-                            {venue.address && (
+                            {(venue.display_address || venue.address) && (
                               <div className="flex items-center gap-1 text-sm text-muted-foreground">
                                 <MapPin size={14} />
-                                <span>{venue.address}</span>
+                                <span>{venue.display_address || venue.address}</span>
                               </div>
                             )}
                           </div>
