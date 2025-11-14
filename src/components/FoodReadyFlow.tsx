@@ -225,6 +225,20 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
     (venue.address && venue.address.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  // Helper function to get today's business hours
+  const getTodayHours = () => {
+    if (!venueSettings?.business_hours) return null;
+    const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+    const today = dayNames[new Date().getDay()];
+    return venueSettings.business_hours[today];
+  };
+
+  // Helper function to get active breaks
+  const getTodayBreaks = () => {
+    const todayHours = getTodayHours();
+    return todayHours?.breaks || [];
+  };
+
   const handleVenueSelect = async (venue: any) => {
     // Check venue status
     const status = checkVenueStatus(
@@ -613,6 +627,63 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
                   <p className="text-sm text-muted-foreground">{venueStatus.message}</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {venueSettings && (
+          <Card className="shadow-card bg-muted/50">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Venue Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {getTodayHours() ? (
+                <>
+                  <div className="flex items-start justify-between">
+                    <span className="text-muted-foreground">Today's Hours:</span>
+                    <span className="font-medium text-right">
+                      {getTodayHours()?.is_closed 
+                        ? "Closed" 
+                        : `${getTodayHours()?.open} - ${getTodayHours()?.close}`}
+                    </span>
+                  </div>
+                  
+                  {getTodayBreaks().length > 0 && (
+                    <div className="flex items-start justify-between">
+                      <span className="text-muted-foreground">Breaks:</span>
+                      <div className="text-right space-y-1">
+                        {getTodayBreaks().map((brk: any, idx: number) => (
+                          <div key={idx} className="font-medium">
+                            {brk.start} - {brk.end}
+                            <span className="text-xs text-muted-foreground ml-1">
+                              ({brk.reason})
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-muted-foreground">Hours not available</div>
+              )}
+              
+              {venueSettings.default_prep_time && (
+                <div className="flex items-start justify-between pt-2 border-t">
+                  <span className="text-muted-foreground">Est. Prep Time:</span>
+                  <span className="font-medium">{venueSettings.default_prep_time} min</span>
+                </div>
+              )}
+              
+              {venueSettings.pickup_instructions && (
+                <div className="pt-2 border-t">
+                  <p className="text-muted-foreground mb-1">Pickup Instructions:</p>
+                  <p className="text-foreground">{venueSettings.pickup_instructions}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
