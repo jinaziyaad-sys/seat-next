@@ -18,8 +18,8 @@ Deno.serve(async (req) => {
 
     console.log('Validating address:', address);
 
-    // Call Nominatim API (OpenStreetMap)
-    const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`;
+    // Call Nominatim API with enhanced parameters for better precision
+    const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=5&addressdetails=1&extratags=1`;
     
     const response = await fetch(nominatimUrl, {
       headers: {
@@ -48,14 +48,62 @@ Deno.serve(async (req) => {
       );
     }
 
-    const result = data[0];
+    // Rank results by precision/specificity
+    const rankedResults = data.map((result: any) => {
+      let precisionScore = 0;
+      let precisionLevel = 'area';
+      
+      // Check for house number in address
+      if (result.address?.house_number) {
+        precisionScore += 100;
+        precisionLevel = 'exact';
+      }
+      
+      // Check for street
+      if (result.address?.road || result.address?.street) {
+        precisionScore += 50;
+        if (precisionLevel === 'area') precisionLevel = 'street';
+      }
+      
+      // Prefer more specific place types
+      if (result.type === 'house' || result.type === 'building') {
+        precisionScore += 30;
+      } else if (result.type === 'road' || result.type === 'street') {
+        precisionScore += 20;
+      }
+      
+      // Check importance score from Nominatim
+      if (result.importance) {
+        precisionScore += result.importance * 10;
+      }
+      
+      return {
+        ...result,
+        precisionScore,
+        precisionLevel,
+      };
+    });
+
+    // Sort by precision score (highest first)
+    rankedResults.sort((a: any, b: any) => b.precisionScore - a.precisionScore);
+    
+    const bestResult = rankedResults[0];
+    
+    console.log('Best result:', {
+      display_name: bestResult.display_name,
+      precision: bestResult.precisionLevel,
+      score: bestResult.precisionScore,
+      address: bestResult.address,
+    });
     
     return new Response(
       JSON.stringify({
         valid: true,
-        latitude: parseFloat(result.lat),
-        longitude: parseFloat(result.lon),
-        formatted_address: result.display_name,
+        latitude: parseFloat(bestResult.lat),
+        longitude: parseFloat(bestResult.lon),
+        formatted_address: bestResult.display_name,
+        precision: bestResult.precisionLevel,
+        address_components: bestResult.address,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

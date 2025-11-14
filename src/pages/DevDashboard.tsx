@@ -19,6 +19,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { PatronManagement } from "@/components/dev/PatronManagement";
 import { PlatformAnalytics } from "@/components/dev/PlatformAnalytics";
 import { LocationMap } from "@/components/LocationMap";
+import { InteractiveLocationMap } from "@/components/InteractiveLocationMap";
 import * as XLSX from 'xlsx';
 import {
   AlertDialog,
@@ -83,12 +84,16 @@ export default function DevDashboard() {
     formatted_address: string;
     latitude: number;
     longitude: number;
+    precision?: string;
   } | null>(null);
   const [validatedAddress, setValidatedAddress] = useState<{
     formatted_address: string;
     latitude: number;
     longitude: number;
+    precision?: string;
   } | null>(null);
+  const [showEditMap, setShowEditMap] = useState(false);
+  const [showCreateMap, setShowCreateMap] = useState(false);
   const [merchantEmail, setMerchantEmail] = useState("");
   const [merchantPassword, setMerchantPassword] = useState("");
   const [merchantFullName, setMerchantFullName] = useState("");
@@ -182,16 +187,20 @@ export default function DevDashboard() {
         return;
       }
 
-      // Store validated address data
+      // Store validated address data with precision
       setValidatedAddress({
         formatted_address: validationData.formatted_address,
         latitude: validationData.latitude,
         longitude: validationData.longitude,
+        precision: validationData.precision || 'area',
       });
 
+      const precisionEmoji = validationData.precision === 'exact' ? '🎯' : validationData.precision === 'street' ? '📍' : '📌';
+      const precisionLabel = validationData.precision === 'exact' ? 'Exact' : validationData.precision === 'street' ? 'Street Level' : 'Area Level';
+
       toast({
-        title: "Address Verified!",
-        description: "Review the details below and create the venue.",
+        title: `${precisionEmoji} Address Verified - ${precisionLabel}`,
+        description: validationData.precision !== 'exact' ? "You can adjust the exact location on the map below." : "Review the details below and create the venue.",
       });
     } catch (error: any) {
       toast({
@@ -254,6 +263,7 @@ export default function DevDashboard() {
       setVenuePhone("");
       setServiceTypes(["food_ready", "table_ready"]);
       setValidatedAddress(null);
+      setShowCreateMap(false);
       fetchVenues();
     } catch (error: any) {
       toast({
@@ -473,11 +483,15 @@ export default function DevDashboard() {
         formatted_address: validationData.formatted_address,
         latitude: validationData.latitude,
         longitude: validationData.longitude,
+        precision: validationData.precision || 'area',
       });
 
+      const precisionEmoji = validationData.precision === 'exact' ? '🎯' : validationData.precision === 'street' ? '📍' : '📌';
+      const precisionLabel = validationData.precision === 'exact' ? 'Exact' : validationData.precision === 'street' ? 'Street Level' : 'Area Level';
+
       toast({
-        title: "Address Verified!",
-        description: "GPS coordinates updated for this address.",
+        title: `${precisionEmoji} Address Verified - ${precisionLabel}`,
+        description: validationData.precision !== 'exact' ? "You can adjust the exact location on the map below." : "GPS coordinates updated for this address.",
       });
     } catch (error: any) {
       toast({
@@ -553,6 +567,7 @@ export default function DevDashboard() {
 
       setEditingVenue(null);
       setEditValidatedAddress(null);
+      setShowEditMap(false);
       fetchVenues();
     } catch (error: any) {
       toast({
@@ -568,6 +583,7 @@ export default function DevDashboard() {
   const handleCancelEditVenue = () => {
     setEditingVenue(null);
     setEditValidatedAddress(null);
+    setShowEditMap(false);
   };
 
   const handleDeleteMerchant = async (userId: string, venueId: string, email: string) => {
@@ -902,9 +918,24 @@ export default function DevDashboard() {
                     {validatedAddress ? (
                       <div className="space-y-3">
                         <div className="p-3 border rounded-md bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-                          <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-1">
-                            ✓ Address Verified
-                          </p>
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                              {validatedAddress.precision === 'exact' ? '🎯' : validatedAddress.precision === 'street' ? '📍' : '📌'} Address Verified
+                              <span className="ml-2 text-xs">
+                                ({validatedAddress.precision === 'exact' ? 'Exact Match' : validatedAddress.precision === 'street' ? 'Street Level' : 'Area Level'})
+                              </span>
+                            </p>
+                            {validatedAddress.precision !== 'exact' && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setShowCreateMap(!showCreateMap)}
+                              >
+                                {showCreateMap ? 'Hide Map' : 'Adjust Location'}
+                              </Button>
+                            )}
+                          </div>
                           <p className="text-sm text-green-700 dark:text-green-300 mb-2">
                             {validatedAddress.formatted_address}
                           </p>
@@ -913,11 +944,31 @@ export default function DevDashboard() {
                             <span>Lng: {validatedAddress.longitude.toFixed(6)}</span>
                           </div>
                         </div>
-                        <LocationMap
-                          latitude={validatedAddress.latitude}
-                          longitude={validatedAddress.longitude}
-                          address={validatedAddress.formatted_address}
-                        />
+                        {showCreateMap ? (
+                          <InteractiveLocationMap
+                            initialLatitude={validatedAddress.latitude}
+                            initialLongitude={validatedAddress.longitude}
+                            address={validatedAddress.formatted_address}
+                            onLocationChange={(lat, lng) => {
+                              setValidatedAddress({
+                                ...validatedAddress,
+                                latitude: lat,
+                                longitude: lng,
+                              });
+                            }}
+                          />
+                        ) : (
+                          <LocationMap
+                            latitude={validatedAddress.latitude}
+                            longitude={validatedAddress.longitude}
+                            address={validatedAddress.formatted_address}
+                          />
+                        )}
+                        {validatedAddress.precision !== 'exact' && !showCreateMap && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400">
+                            💡 Address precision is {validatedAddress.precision === 'street' ? 'street level' : 'approximate'}. Click "Adjust Location" to pinpoint the exact coordinates.
+                          </p>
+                        )}
                       </div>
                     ) : (
                       <p className="text-xs text-muted-foreground">
@@ -1067,17 +1118,59 @@ export default function DevDashboard() {
                               </Button>
                             </div>
                             {editValidatedAddress && (
-                              <div className="p-3 border rounded-md bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
-                                <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-1">
-                                  ✓ Address Verified
-                                </p>
-                                <p className="text-sm text-green-700 dark:text-green-300 mb-2">
-                                  {editValidatedAddress.formatted_address}
-                                </p>
-                                <div className="flex gap-4 text-xs text-green-600 dark:text-green-400">
-                                  <span>Lat: {editValidatedAddress.latitude.toFixed(6)}</span>
-                                  <span>Lng: {editValidatedAddress.longitude.toFixed(6)}</span>
+                              <div className="space-y-3">
+                                <div className="p-3 border rounded-md bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+                                  <div className="flex items-center justify-between mb-1">
+                                    <p className="text-sm font-medium text-green-900 dark:text-green-100">
+                                      {editValidatedAddress.precision === 'exact' ? '🎯' : editValidatedAddress.precision === 'street' ? '📍' : '📌'} Address Verified
+                                      <span className="ml-2 text-xs">
+                                        ({editValidatedAddress.precision === 'exact' ? 'Exact Match' : editValidatedAddress.precision === 'street' ? 'Street Level' : 'Area Level'})
+                                      </span>
+                                    </p>
+                                    {editValidatedAddress.precision !== 'exact' && (
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setShowEditMap(!showEditMap)}
+                                      >
+                                        {showEditMap ? 'Hide Map' : 'Adjust Location'}
+                                      </Button>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-green-700 dark:text-green-300 mb-2">
+                                    {editValidatedAddress.formatted_address}
+                                  </p>
+                                  <div className="flex gap-4 text-xs text-green-600 dark:text-green-400">
+                                    <span>Lat: {editValidatedAddress.latitude.toFixed(6)}</span>
+                                    <span>Lng: {editValidatedAddress.longitude.toFixed(6)}</span>
+                                  </div>
                                 </div>
+                                {showEditMap ? (
+                                  <InteractiveLocationMap
+                                    initialLatitude={editValidatedAddress.latitude}
+                                    initialLongitude={editValidatedAddress.longitude}
+                                    address={editValidatedAddress.formatted_address}
+                                    onLocationChange={(lat, lng) => {
+                                      setEditValidatedAddress({
+                                        ...editValidatedAddress,
+                                        latitude: lat,
+                                        longitude: lng,
+                                      });
+                                    }}
+                                  />
+                                ) : editingVenue?.latitude && editingVenue?.longitude ? (
+                                  <LocationMap
+                                    latitude={editValidatedAddress.latitude}
+                                    longitude={editValidatedAddress.longitude}
+                                    address={editValidatedAddress.formatted_address}
+                                  />
+                                ) : null}
+                                {editValidatedAddress.precision !== 'exact' && !showEditMap && (
+                                  <p className="text-xs text-amber-600 dark:text-amber-400">
+                                    💡 Address precision is {editValidatedAddress.precision === 'street' ? 'street level' : 'approximate'}. Click "Adjust Location" to pinpoint the exact coordinates.
+                                  </p>
+                                )}
                               </div>
                             )}
                             <p className="text-xs text-muted-foreground">
