@@ -150,7 +150,16 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         cancellation_reason: initialEntry.cancellation_reason || undefined
       };
       setWaitlistEntry(entry);
-      setStep(initialEntry.status === "ready" ? "ready" : "waiting");
+      
+      // Set appropriate step based on status
+      if (initialEntry.status === "ready") {
+        setStep("ready");
+      } else if (initialEntry.status === "cancelled" || initialEntry.status === "no_show") {
+        // Don't set step - let the component render based on status check
+        // The cancelled screen is shown via: if (waitlistEntry?.status === "cancelled")
+      } else {
+        setStep("waiting");
+      }
 
       // Set up real-time subscription
       const channel = supabase

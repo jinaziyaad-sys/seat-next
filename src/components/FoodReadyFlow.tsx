@@ -103,6 +103,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
               status: payload.new.status,
               eta: payload.new.eta,
               notes: payload.new.notes,
+              // Preserve instructions field during updates
             } : null);
             
             // Send notification when order is ready
