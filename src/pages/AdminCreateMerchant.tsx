@@ -101,12 +101,57 @@ export default function AdminCreateMerchant() {
     setLoading(true);
 
     try {
+      let latitude = null;
+      let longitude = null;
+
+      // Validate address and get coordinates if address is provided
+      if (venueAddress) {
+        toast({
+          title: "Validating address...",
+          description: "Please wait while we verify the location.",
+        });
+
+        const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-address', {
+          body: { address: venueAddress },
+        });
+
+        if (validationError) {
+          toast({
+            variant: "destructive",
+            title: "Validation Error",
+            description: "Failed to validate address. Please try again.",
+          });
+          setLoading(false);
+          return;
+        }
+
+        if (!validationData.valid) {
+          toast({
+            variant: "destructive",
+            title: "Invalid Address",
+            description: validationData.error || "Address not found. Please check and try again.",
+          });
+          setLoading(false);
+          return;
+        }
+
+        latitude = validationData.latitude;
+        longitude = validationData.longitude;
+
+        toast({
+          title: "Address Verified!",
+          description: `Location: ${validationData.formatted_address}`,
+        });
+      }
+
       const { data, error } = await supabase
         .from("venues")
         .insert({
           name: venueName,
           address: venueAddress || null,
           phone: venuePhone || null,
+          latitude,
+          longitude,
         })
         .select()
         .single();
@@ -115,7 +160,7 @@ export default function AdminCreateMerchant() {
 
       toast({
         title: "Success!",
-        description: `Venue "${venueName}" created successfully`,
+        description: `Venue "${venueName}" created successfully${latitude ? ' with GPS coordinates!' : ''}`,
       });
 
       // Reset form and refresh venues
@@ -263,14 +308,17 @@ export default function AdminCreateMerchant() {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="venue-address">Address</Label>
+                  <Label htmlFor="venue-address">Address (for GPS tracking)</Label>
                   <Textarea
                     id="venue-address"
-                    placeholder="123 Main St, Downtown"
+                    placeholder="123 Main St, City, State/Province, Country"
                     value={venueAddress}
                     onChange={(e) => setVenueAddress(e.target.value)}
                     rows={2}
                   />
+                  <p className="text-xs text-muted-foreground">
+                    Address will be validated and GPS coordinates will be stored automatically
+                  </p>
                 </div>
 
                 <div className="space-y-2">

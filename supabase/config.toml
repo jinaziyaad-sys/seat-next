@@ -1,5 +1,8 @@
 project_id = "cuoqjgahpfymxqrdlzlf"
 
+[functions.validate-address]
+verify_jwt = false
+
 [functions.create-merchant]
 verify_jwt = false
 
