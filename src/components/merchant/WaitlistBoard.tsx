@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { Clock, Users, Plus, MapPin, Calendar as CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,7 @@ interface WaitlistEntry {
   delayed_until?: string | null;
   reservation_type?: string;
   reservation_time?: string | null;
+  cancellation_reason?: string;
 }
 
 export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
@@ -35,6 +37,9 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newPartySize, setNewPartySize] = useState("2");
   const [newPreferences, setNewPreferences] = useState("");
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelEntryId, setCancelEntryId] = useState<string>("");
+  const [cancelReason, setCancelReason] = useState("");
   const { toast } = useToast();
 
   // Fetch today's reservations
@@ -134,7 +139,78 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     });
   };
 
+  const openCancelDialog = (entryId: string) => {
+    setCancelEntryId(entryId);
+    setCancelReason("");
+    setCancelDialogOpen(true);
+  };
+
+  const cancelWaitlistEntry = async () => {
+    if (!cancelEntryId || !cancelReason.trim()) {
+      toast({
+        title: "Cancellation Reason Required",
+        description: "Please provide a reason for cancelling this reservation",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Optimistic update
+    setWaitlist(prevWaitlist => 
+      prevWaitlist.map(entry => 
+        entry.id === cancelEntryId 
+          ? { ...entry, status: "cancelled" as const, cancellation_reason: cancelReason } 
+          : entry
+      )
+    );
+
+    const { error } = await supabase
+      .from("waitlist_entries")
+      .update({ 
+        status: "cancelled",
+        cancellation_reason: cancelReason,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", cancelEntryId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not cancel waitlist entry",
+        variant: "destructive"
+      });
+      // Revert by refetching
+      const { data } = await supabase
+        .from("waitlist_entries")
+        .select("*")
+        .eq("venue_id", venueId)
+        .or("status.neq.seated,awaiting_merchant_confirmation.eq.true")
+        .neq("status", "cancelled")
+        .order("created_at", { ascending: true });
+      if (data) {
+        setWaitlist(data);
+      }
+      return;
+    }
+
+    toast({
+      title: "Reservation Cancelled",
+      description: `Cancelled: ${cancelReason}`,
+    });
+
+    // Reset dialog state
+    setCancelDialogOpen(false);
+    setCancelEntryId("");
+    setCancelReason("");
+  };
+
   const updateEntryStatus = async (entryId: string, newStatus: WaitlistEntry["status"]) => {
+    // If cancelled, show dialog
+    if (newStatus === "cancelled") {
+      openCancelDialog(entryId);
+      return;
+    }
+
     // Optimistic update
     setWaitlist(prevWaitlist => 
       prevWaitlist.map(entry => 
@@ -542,6 +618,52 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
           </CardContent>
         </Card>
       )}
+
+      {/* Cancel Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Reservation</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Please provide a reason for cancelling this reservation. The customer will see this reason.
+            </p>
+            <div>
+              <Label htmlFor="cancelReason">Cancellation Reason *</Label>
+              <Textarea
+                id="cancelReason"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="e.g., No tables available, Kitchen closed, Customer no-show..."
+                className="mt-2"
+                rows={4}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCancelDialogOpen(false);
+                  setCancelEntryId("");
+                  setCancelReason("");
+                }}
+                className="flex-1"
+              >
+                Keep Reservation
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={cancelWaitlistEntry}
+                disabled={!cancelReason.trim()}
+                className="flex-1"
+              >
+                Cancel Reservation
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

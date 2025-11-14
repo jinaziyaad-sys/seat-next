@@ -25,12 +25,13 @@ interface WaitlistEntry {
   position: number;
   eta: string | null;
   preferences?: string[];
-  status: "waiting" | "ready" | "seated" | "cancelled" | "no_show";
+  status: "waiting" | "ready" | "seated" | "cancelled";
   awaiting_merchant_confirmation?: boolean;
   patron_delayed?: boolean;
   delayed_until?: string | null;
   reservation_type?: string;
   reservation_time?: string | null;
+  cancellation_reason?: string;
 }
 
 const partyDetailsSchema = z.object({

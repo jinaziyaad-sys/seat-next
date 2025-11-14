@@ -565,6 +565,7 @@ export type Database = {
       waitlist_entries: {
         Row: {
           awaiting_merchant_confirmation: boolean | null
+          cancellation_reason: string | null
           created_at: string
           customer_name: string
           customer_phone: string | null
@@ -584,6 +585,7 @@ export type Database = {
         }
         Insert: {
           awaiting_merchant_confirmation?: boolean | null
+          cancellation_reason?: string | null
           created_at?: string
           customer_name: string
           customer_phone?: string | null
@@ -603,6 +605,7 @@ export type Database = {
         }
         Update: {
           awaiting_merchant_confirmation?: boolean | null
+          cancellation_reason?: string | null
           created_at?: string
           customer_name?: string
           customer_phone?: string | null
