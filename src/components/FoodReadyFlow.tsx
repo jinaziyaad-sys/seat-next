@@ -47,6 +47,8 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
   const [orderNumber, setOrderNumber] = useState("");
   const [selectedVenue, setSelectedVenue] = useState("");
   const [selectedVenueData, setSelectedVenueData] = useState<any>(null);
+  const [venueSettings, setVenueSettings] = useState<any>(null);
+  const [venueStatus, setVenueStatus] = useState<any>(null);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [rejectedOrderNumber, setRejectedOrderNumber] = useState<string>("");
   const [venues, setVenues] = useState<any[]>([]);
@@ -83,7 +85,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
         venue: initialOrder.venues?.name || "",
         status: initialOrder.status,
         eta: initialOrder.eta,
-        instructions: "Please collect from the main counter",
+        instructions: initialOrder.venues?.settings?.pickup_instructions || "Please collect from the main counter",
         items: Array.isArray(initialOrder.items) ? initialOrder.items : [initialOrder.items],
         notes: initialOrder.notes,
       };
@@ -223,6 +225,41 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
     (venue.address && venue.address.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  const handleVenueSelect = async (venue: any) => {
+    // Check venue status
+    const status = checkVenueStatus(
+      venue.settings?.business_hours || {},
+      venue.settings?.holiday_closures || [],
+      venue.settings?.grace_periods || { last_order: 15, last_reservation: 0, last_waitlist_join: 30 },
+      'order'
+    );
+    
+    setVenueStatus(status);
+    setVenueSettings(venue.settings);
+    
+    if (!status.is_open) {
+      toast({
+        title: "Venue Closed",
+        description: status.message,
+        variant: "destructive"
+      });
+      setSelectedVenue(venue.name);
+      setSelectedVenueData(venue);
+      return;
+    }
+    
+    if (status.message.includes('Closing soon')) {
+      toast({
+        title: "Notice",
+        description: status.message,
+      });
+    }
+    
+    setSelectedVenue(venue.name);
+    setSelectedVenueData(venue);
+    setStep("order-entry");
+  };
+
 
   const handleOrderSubmit = async () => {
     if (!orderNumber.trim() || !selectedVenue) {
@@ -308,7 +345,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
       venue: selectedVenue,
       status: 'awaiting_verification',
       eta: newOrder.eta,
-      instructions: "Please collect from the main counter",
+      instructions: venueSettings?.pickup_instructions || "Please collect from the main counter",
       items: []
     };
     
@@ -518,11 +555,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
                     <Card 
                       key={venue.id}
                       className="cursor-pointer hover:bg-accent transition-colors"
-                      onClick={() => {
-                        setSelectedVenue(venue.name);
-                        setSelectedVenueData(venue);
-                        setStep("order-entry");
-                      }}
+                      onClick={() => handleVenueSelect(venue)}
                     >
                       <CardContent className="p-4">
                         <div className="flex flex-col gap-1">
@@ -556,6 +589,34 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
           <h1 className="text-2xl font-bold">Enter Order Number</h1>
         </div>
 
+        {venueStatus && !venueStatus.is_open && (
+          <Card className="shadow-card border-destructive">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <XCircle className="h-5 w-5 text-destructive mt-0.5" />
+                <div>
+                  <p className="font-semibold text-destructive">Venue Closed</p>
+                  <p className="text-sm text-muted-foreground">{venueStatus.message}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {venueStatus?.is_on_break && (
+          <Card className="shadow-card border-warning">
+            <CardContent className="p-4">
+              <div className="flex items-start gap-3">
+                <Clock className="h-5 w-5 text-warning mt-0.5" />
+                <div>
+                  <p className="font-semibold text-warning">On Break</p>
+                  <p className="text-sm text-muted-foreground">{venueStatus.message}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="shadow-card">
           <CardHeader>
             <CardTitle>{selectedVenue}</CardTitle>
@@ -571,7 +632,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
             />
             <Button 
               onClick={handleOrderSubmit}
-              disabled={!orderNumber.trim()}
+              disabled={!orderNumber.trim() || (venueStatus && !venueStatus.is_open)}
               className="w-full h-12"
             >
               Track My Order
