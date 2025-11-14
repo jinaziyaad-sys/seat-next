@@ -35,6 +35,7 @@ interface Venue {
   id: string;
   name: string;
   address: string | null;
+  display_address?: string | null;
   phone: string | null;
   service_types?: string[];
   orders_count?: number;
@@ -58,6 +59,7 @@ export default function DevDashboard() {
   const [merchantUsers, setMerchantUsers] = useState<MerchantUser[]>([]);
   const [venueName, setVenueName] = useState("");
   const [venueAddress, setVenueAddress] = useState("");
+  const [venueDisplayAddress, setVenueDisplayAddress] = useState("");
   const [venuePhone, setVenuePhone] = useState("");
   const [serviceTypes, setServiceTypes] = useState<string[]>(["food_ready", "table_ready"]);
   const [editingVenueId, setEditingVenueId] = useState<string | null>(null);
@@ -212,6 +214,7 @@ export default function DevDashboard() {
         .insert({
           name: venueName,
           address: validatedAddress?.formatted_address || venueAddress || null,
+          display_address: venueDisplayAddress || null,
           phone: venuePhone || null,
           service_types: serviceTypes,
           latitude: validatedAddress?.latitude || null,
@@ -227,6 +230,7 @@ export default function DevDashboard() {
 
       setVenueName("");
       setVenueAddress("");
+      setVenueDisplayAddress("");
       setVenuePhone("");
       setServiceTypes(["food_ready", "table_ready"]);
       setValidatedAddress(null);
@@ -719,6 +723,24 @@ export default function DevDashboard() {
                         Validate
                       </Button>
                     </div>
+                    <p className="text-xs text-muted-foreground">
+                      Used for GPS tracking and distance calculations
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="venue-display-address">Display Address (Optional)</Label>
+                    <Textarea
+                      id="venue-display-address"
+                      value={venueDisplayAddress}
+                      onChange={(e) => setVenueDisplayAddress(e.target.value)}
+                      placeholder="e.g. 123 Main Street, Downtown"
+                      rows={2}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Override address shown to patrons (if different from GPS address)
+                    </p>
+                  </div>
+                  <div className="space-y-2">
                     {validatedAddress ? (
                       <div className="space-y-3">
                         <div className="p-3 border rounded-md bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
@@ -827,8 +849,18 @@ export default function DevDashboard() {
                               </div>
                             )}
                           </div>
-                          {venue.address && (
-                            <p className="text-sm text-muted-foreground">{venue.address}</p>
+                          {(venue.display_address || venue.address) && (
+                            <div className="space-y-1">
+                              <p className="text-sm text-muted-foreground">
+                                {venue.display_address || venue.address}
+                                {venue.display_address && venue.address && venue.display_address !== venue.address && (
+                                  <span className="text-xs ml-2 text-muted-foreground/70">(Display Override)</span>
+                                )}
+                              </p>
+                              {venue.display_address && venue.address && venue.display_address !== venue.address && (
+                                <p className="text-xs text-muted-foreground/70">GPS: {venue.address}</p>
+                              )}
+                            </div>
                           )}
                           {venue.phone && (
                             <p className="text-sm text-muted-foreground">{venue.phone}</p>
