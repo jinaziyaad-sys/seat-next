@@ -34,6 +34,9 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   const [newOrderNumber, setNewOrderNumber] = useState("");
   const [newOrderItems, setNewOrderItems] = useState("");
   const [showRejected, setShowRejected] = useState(false);
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelOrderId, setCancelOrderId] = useState<string>("");
+  const [cancelReason, setCancelReason] = useState("");
   const { toast } = useToast();
 
   // Fetch orders function (defined outside useEffect so subscription can use it)
@@ -164,6 +167,96 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
       title: "Order Updated",
       description: `Order status changed to ${newStatus.replace("_", " ")}`,
     });
+  };
+
+  const getNextStatus = (currentStatus: Order["status"]): Order["status"] | null => {
+    switch (currentStatus) {
+      case "placed":
+        return "in_prep";
+      case "in_prep":
+        return "ready";
+      case "ready":
+        return "collected";
+      case "collected":
+        return null; // No next status, order complete
+      case "awaiting_verification":
+        return null; // Special handling
+      case "no_show":
+        return null;
+      case "rejected":
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  const getNextStatusLabel = (currentStatus: Order["status"]): string => {
+    switch (currentStatus) {
+      case "placed":
+        return "In Prep";
+      case "in_prep":
+        return "Ready";
+      case "ready":
+        return "Collected";
+      default:
+        return "";
+    }
+  };
+
+  const openCancelDialog = (orderId: string) => {
+    setCancelOrderId(orderId);
+    setCancelReason("");
+    setCancelDialogOpen(true);
+  };
+
+  const cancelOrder = async () => {
+    if (!cancelOrderId || !cancelReason.trim()) {
+      toast({
+        title: "Cancellation Reason Required",
+        description: "Please provide a reason for cancelling this order",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Optimistic update
+    setOrders(prevOrders => 
+      prevOrders.map(order => 
+        order.id === cancelOrderId 
+          ? { ...order, status: "rejected", notes: `Cancelled: ${cancelReason}` } 
+          : order
+      )
+    );
+
+    const { error } = await supabase
+      .from("orders")
+      .update({ 
+        status: "rejected",
+        eta: null, // Clear ETA for rejected orders
+        notes: `Cancelled: ${cancelReason}`,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", cancelOrderId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not cancel order",
+        variant: "destructive"
+      });
+      fetchOrders(); // Revert
+      return;
+    }
+
+    toast({
+      title: "Order Cancelled",
+      description: `Order cancelled: ${cancelReason}`,
+    });
+
+    // Reset dialog state
+    setCancelDialogOpen(false);
+    setCancelOrderId("");
+    setCancelReason("");
   };
 
   const extendETA = async (orderId: string, minutes: number, reason?: string) => {
@@ -498,6 +591,52 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
         </div>
       </div>
 
+      {/* Cancel Order Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Order</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Please provide a reason for cancelling this order. This will be recorded for accountability.
+            </p>
+            <div>
+              <Label htmlFor="cancelReason">Cancellation Reason *</Label>
+              <Textarea
+                id="cancelReason"
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="e.g., Customer requested cancellation, Wrong order entered, Customer no-show..."
+                className="mt-2"
+                rows={4}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setCancelDialogOpen(false);
+                  setCancelOrderId("");
+                  setCancelReason("");
+                }}
+                className="flex-1"
+              >
+                Keep Order
+              </Button>
+              <Button
+                variant="destructive"
+                onClick={cancelOrder}
+                disabled={!cancelReason.trim()}
+                className="flex-1"
+              >
+                Cancel Order
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {showRejected && orders.length > 0 && (
         <p className="text-sm text-muted-foreground mb-4">
           {orders.length} rejected {orders.length === 1 ? 'order' : 'orders'} to review
@@ -641,48 +780,64 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
                 </Button>
               ) : (
                 <div className="space-y-2">
-                  <Select
-                    value={order.status}
-                    onValueChange={(value) => updateOrderStatus(order.id, value as Order["status"])}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="bg-background z-50">
-                      <SelectItem value="placed">Placed</SelectItem>
-                      <SelectItem value="in_prep">In Prep</SelectItem>
-                      <SelectItem value="ready">Ready</SelectItem>
-                      <SelectItem value="collected">Collected</SelectItem>
-                      <SelectItem value="no_show">No Show</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  {/* Primary Action: Move to Next Stage */}
+                  {getNextStatus(order.status) ? (
+                    <Button
+                      onClick={() => updateOrderStatus(order.id, getNextStatus(order.status)!)}
+                      className="w-full bg-primary hover:bg-primary/90"
+                      size="lg"
+                    >
+                      Move to: {getNextStatusLabel(order.status)} →
+                    </Button>
+                  ) : order.status === "collected" ? (
+                    <div className="w-full p-3 bg-green-100 dark:bg-green-900 rounded-lg text-center">
+                      <span className="text-green-700 dark:text-green-100 font-semibold">
+                        ✓ Order Completed
+                      </span>
+                    </div>
+                  ) : null}
 
-                  <div className="flex gap-2">
+                  {/* Cancel Order Button - Always Visible for Active Orders */}
+                  {order.status !== "collected" && order.status !== "rejected" && order.status !== "no_show" && (
                     <Button
+                      onClick={() => openCancelDialog(order.id)}
+                      variant="destructive"
+                      className="w-full"
                       size="sm"
-                      variant="outline"
-                      onClick={() => extendETA(order.id, 5, "Kitchen delay")}
-                      className="flex-1"
                     >
-                      +5m
+                      Cancel Order
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => extendETA(order.id, 10, "Extra prep time")}
-                      className="flex-1"
-                    >
-                      +10m
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => extendETA(order.id, 15, "Busy period")}
-                      className="flex-1"
-                    >
-                      +15m
-                    </Button>
-                  </div>
+                  )}
+
+                  {/* ETA Extension Buttons - Only show for in_prep and ready */}
+                  {(order.status === "in_prep" || order.status === "ready") && (
+                    <div className="flex gap-2 pt-2 border-t">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => extendETA(order.id, 5, "Kitchen delay")}
+                        className="flex-1"
+                      >
+                        +5m
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => extendETA(order.id, 10, "Extra prep time")}
+                        className="flex-1"
+                      >
+                        +10m
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => extendETA(order.id, 15, "Busy period")}
+                        className="flex-1"
+                      >
+                        +15m
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>
