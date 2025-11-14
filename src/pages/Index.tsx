@@ -327,11 +327,27 @@ const Index = () => {
                           <p className="text-xs text-destructive mt-1">Cancelled by venue</p>
                         )}
                         {order.eta && (order.status === 'placed' || order.status === 'in_prep') && (
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                            <Clock size={12} />
-                            <span>
-                              {Math.ceil((new Date(order.eta).getTime() - new Date().getTime()) / (1000 * 60))} min • ETA {new Date(order.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
-                            </span>
+                          <div className="space-y-1 mt-1">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Clock size={12} />
+                              <span>
+                                {Math.ceil((new Date(order.eta).getTime() - new Date().getTime()) / (1000 * 60))} min • ETA {new Date(order.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                              </span>
+                            </div>
+                            {order.confidence && (
+                              <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <Badge variant={order.confidence === 'high' ? 'default' : order.confidence === 'medium' ? 'secondary' : 'outline'} className="h-4 text-[9px] px-1">
+                                  {order.confidence === 'high' ? 'High Confidence' : order.confidence === 'medium' ? 'Medium' : 'Estimate'}
+                                </Badge>
+                                <span>
+                                  {order.confidence === 'high' 
+                                    ? 'Based on historical data' 
+                                    : order.confidence === 'medium' 
+                                    ? 'Some historical data' 
+                                    : 'Venue default time'}
+                                </span>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
@@ -467,11 +483,27 @@ const Index = () => {
                               <p className="text-xs text-destructive mt-1">Tap to view details</p>
                             )}
                             {entry.eta && entry.status === 'waiting' && (
-                              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                                <Clock size={12} />
-                                <span>
-                                  {Math.ceil((new Date(entry.eta).getTime() - new Date().getTime()) / (1000 * 60))} min • ETA {new Date(entry.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
-                                </span>
+                              <div className="space-y-1 mt-1">
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                  <Clock size={12} />
+                                  <span>
+                                    {Math.ceil((new Date(entry.eta).getTime() - new Date().getTime()) / (1000 * 60))} min • ETA {new Date(entry.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                                  </span>
+                                </div>
+                                {entry.confidence && (
+                                  <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                    <Badge variant={entry.confidence === 'high' ? 'default' : entry.confidence === 'medium' ? 'secondary' : 'outline'} className="h-4 text-[9px] px-1">
+                                      {entry.confidence === 'high' ? 'High Confidence' : entry.confidence === 'medium' ? 'Medium' : 'Estimate'}
+                                    </Badge>
+                                    <span>
+                                      {entry.confidence === 'high' 
+                                        ? 'Based on historical data' 
+                                        : entry.confidence === 'medium' 
+                                        ? 'Some historical data' 
+                                        : 'Venue default time'}
+                                    </span>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </>
