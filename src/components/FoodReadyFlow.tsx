@@ -6,12 +6,13 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Clock, CheckCircle, Package, Truck, Search, MapPin, Star, XCircle } from "lucide-react";
+import { ArrowLeft, Clock, CheckCircle, Package, Truck, Search, MapPin, Star, XCircle, Navigation } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { sendBrowserNotification, vibratePhone, initializePushNotifications } from "@/utils/notifications";
 import { checkVenueStatus } from "@/utils/businessHours";
+import { calculateDistance, formatDistance, getUserLocation, type UserLocation } from "@/utils/geolocation";
 
 type OrderStatus = "awaiting_verification" | "placed" | "in_prep" | "ready" | "collected" | "rejected";
 
@@ -55,6 +56,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const { toast } = useToast();
 
   // Get authenticated user and initialize notifications
@@ -202,9 +204,18 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
   useEffect(() => {
     const fetchVenues = async () => {
       setIsLoading(true);
+      
+      // Try to get user location
+      try {
+        const location = await getUserLocation();
+        setUserLocation(location);
+      } catch (error) {
+        console.log('Location access not granted, showing all venues');
+      }
+      
       const { data, error } = await supabase
         .from("venues")
-        .select("id, name, address, phone, service_types, settings")
+        .select("id, name, address, phone, service_types, settings, latitude, longitude")
         .contains("service_types", ["food_ready"])
         .order("name");
       
@@ -217,10 +228,31 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
     fetchVenues();
   }, []);
 
-  const filteredVenues = venues.filter(venue => 
-    venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (venue.address && venue.address.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredVenues = venues
+    .filter(venue => 
+      venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (venue.address && venue.address.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+    .map(venue => ({
+      ...venue,
+      distance: userLocation && venue.latitude && venue.longitude
+        ? calculateDistance(
+            userLocation.latitude,
+            userLocation.longitude,
+            venue.latitude,
+            venue.longitude
+          )
+        : undefined
+    }))
+    .sort((a, b) => {
+      // Sort by distance if available, otherwise keep original order
+      if (a.distance !== undefined && b.distance !== undefined) {
+        return a.distance - b.distance;
+      }
+      if (a.distance !== undefined) return -1;
+      if (b.distance !== undefined) return 1;
+      return 0;
+    });
 
   // Helper function to get today's business hours
   const getTodayHours = () => {
@@ -542,13 +574,21 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
                       onClick={() => handleVenueSelect(venue)}
                     >
                       <CardContent className="p-4">
-                        <div className="flex flex-col gap-1">
-                          <span className="font-medium">{venue.name}</span>
-                          {venue.address && (
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                              <MapPin size={14} />
-                              <span>{venue.address}</span>
-                            </div>
+                        <div className="flex justify-between items-start gap-3">
+                          <div className="flex flex-col gap-1 flex-1">
+                            <span className="font-medium">{venue.name}</span>
+                            {venue.address && (
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <MapPin size={14} />
+                                <span>{venue.address}</span>
+                              </div>
+                            )}
+                          </div>
+                          {venue.distance !== undefined && (
+                            <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
+                              <Navigation size={12} />
+                              {formatDistance(venue.distance)}
+                            </Badge>
                           )}
                         </div>
                       </CardContent>

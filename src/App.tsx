@@ -14,7 +14,6 @@ import DevAuth from "./pages/DevAuth";
 import DevDashboard from "./pages/DevDashboard";
 import AdminCreateMerchant from "./pages/AdminCreateMerchant";
 import WaitlistJoin from "./pages/WaitlistJoin";
-import FindVenues from "./pages/FindVenues";
 
 const queryClient = new QueryClient();
 
@@ -30,7 +29,6 @@ const App = () => (
             {/* Patron App Routes */}
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/venues" element={<FindVenues />} />
             <Route path="/waitlist/:venueId" element={<WaitlistJoin />} />
             
             {/* Merchant App Routes */}
