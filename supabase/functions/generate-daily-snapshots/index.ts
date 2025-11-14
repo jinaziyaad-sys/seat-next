@@ -44,11 +44,12 @@ serve(async (req) => {
     for (const venue of venues || []) {
       console.log(`Processing venue ${venue.id}...`);
 
-      // Get orders for yesterday
+      // Get orders for yesterday (exclude rejected orders)
       const { data: orders, error: ordersError } = await supabase
         .from('orders')
         .select('id, status, user_id')
         .eq('venue_id', venue.id)
+        .neq('status', 'rejected')
         .gte('created_at', startOfYesterday.toISOString())
         .lte('created_at', endOfYesterday.toISOString());
 
@@ -120,11 +121,16 @@ serve(async (req) => {
         ? ratings.reduce((sum, r) => sum + r.rating, 0) / ratings.length
         : null;
 
-      // Get order analytics for yesterday
+      // Get order analytics for yesterday (exclude rejected orders)
       const { data: orderAnalytics, error: orderAnalyticsError } = await supabase
         .from('order_analytics')
-        .select('actual_prep_time, quoted_prep_time')
+        .select(`
+          actual_prep_time,
+          quoted_prep_time,
+          orders!inner(status)
+        `)
         .eq('venue_id', venue.id)
+        .neq('orders.status', 'rejected')
         .gte('placed_at', startOfYesterday.toISOString())
         .lte('placed_at', endOfYesterday.toISOString())
         .not('actual_prep_time', 'is', null);

@@ -47,3 +47,9 @@ verify_jwt = false
 
 [[functions.activate-upcoming-reservations.cron]]
 schedule = "*/5 * * * *"
+
+[functions.cleanup-rejected-orders]
+verify_jwt = false
+
+[[functions.cleanup-rejected-orders.cron]]
+schedule = "*/15 * * * *"
