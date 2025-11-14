@@ -225,6 +225,27 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const handleVenueSelect = (venueId: string) => {
     const venue = venues.find(v => v.id === venueId);
     if (venue) {
+      // Check venue status for walk-in (we'll check again for reservations after date selection)
+      const status = checkVenueStatus(
+        venue.settings?.business_hours || {},
+        venue.settings?.holiday_closures || [],
+        venue.settings?.grace_periods || { last_order: 15, last_reservation: 0, last_waitlist_join: 30 },
+        'waitlist'
+      );
+      
+      if (!status.is_open && bookingType === 'now') {
+        toast({
+          title: "Venue Closed",
+          description: status.message,
+          variant: "destructive"
+        });
+      } else if (status.message.includes('Closing soon') && bookingType === 'now') {
+        toast({
+          title: "Notice",
+          description: status.message,
+        });
+      }
+      
       setSelectedVenue(venue.name);
       setSelectedVenueData(venue);
       setStep("booking-type");
@@ -690,13 +711,17 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   }
 
   if (step === "reservation-details") {
-    const timeSlots: string[] = [];
-    for (let hour = 0; hour < 24; hour++) {
-      for (let minute of [0, 15, 30, 45]) {
-        const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        timeSlots.push(time);
-      }
-    }
+    // Get available times from venue settings
+    const timeSlots = selectedVenueData?.settings?.business_hours && reservationDate
+      ? getAvailableReservationTimes(
+          reservationDate,
+          selectedVenueData.settings.business_hours,
+          selectedVenueData.settings.holiday_closures || [],
+          15
+        )
+      : [];
+    
+    const hasNoAvailability = reservationDate && timeSlots.length === 0;
 
     return (
       <div className="space-y-6 p-6">
@@ -713,6 +738,22 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             <p className="text-muted-foreground">Select your preferred date and time</p>
           </CardHeader>
           <CardContent className="space-y-6">
+            {hasNoAvailability && (
+              <Card className="shadow-card border-destructive">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <XCircle className="h-5 w-5 text-destructive mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-destructive">No Availability</p>
+                      <p className="text-sm text-muted-foreground">
+                        This venue is not accepting reservations on the selected date.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
             <div>
               <Label>Select Date</Label>
               <Popover>
@@ -759,7 +800,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
             <Button 
               onClick={() => setStep("party-details")}
-              disabled={!reservationDate || !reservationTime}
+              disabled={!reservationDate || !reservationTime || hasNoAvailability}
               className="w-full"
             >
               Continue to Party Details
