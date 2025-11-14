@@ -118,6 +118,16 @@ export const MerchantSettings = ({
         if (settings.auto_cleanup_rejected !== undefined) {
           setAutoCleanupRejected(settings.auto_cleanup_rejected);
         }
+        
+        // Load kitchen/food and waitlist/table settings
+        setSettings({
+          venueCapacity: settings.venue_capacity?.toString() || "40",
+          tablesPerInterval: settings.tables_per_interval?.toString() || "4",
+          defaultPrepTime: settings.default_prep_time?.toString() || "10",
+          maxExtensionTime: settings.max_extension_time?.toString() || "45",
+          pickupInstructions: settings.pickup_instructions || "Please collect your order from the main counter. Show your order number to staff.",
+          autoNoShowTime: settings.auto_no_show_time?.toString() || "15"
+        });
       }
 
       if (data?.waitlist_preferences) {
@@ -138,59 +148,10 @@ export const MerchantSettings = ({
     fetchVenueSettings();
   }, [venueId]);
 
-  const handleSave = async () => {
+  const handleSaveAll = async () => {
     console.log("Saving all venue settings");
     
-    // Get current settings to merge with
-    const { data: currentVenue } = await supabase
-      .from("venues")
-      .select("settings")
-      .eq("id", venueId)
-      .single();
-    
-    // Build the settings object with all configurations
-    const currentSettings = (currentVenue?.settings as Record<string, any>) || {};
-    const updatedSettings = {
-      // Preserve existing settings (business hours, grace periods, etc.)
-      ...currentSettings,
-      
-      // Kitchen/Food settings
-      default_prep_time: parseInt(settings.defaultPrepTime) || 10,
-      max_extension_time: parseInt(settings.maxExtensionTime) || 45,
-      pickup_instructions: settings.pickupInstructions,
-      
-      // Waitlist/Table settings
-      venue_capacity: parseInt(settings.venueCapacity) || 40,
-      tables_per_interval: parseInt(settings.tablesPerInterval) || 4,
-      auto_no_show_time: parseInt(settings.autoNoShowTime) || 15,
-    };
-    
-    const { error } = await supabase
-      .from("venues")
-      .update({
-        settings: updatedSettings as any,
-        waitlist_preferences: { options: waitlistPreferences } as any
-      })
-      .eq("id", venueId);
-
-    if (error) {
-      console.error("Error saving settings:", error);
-      toast({
-        title: "Error",
-        description: "Could not save settings: " + error.message,
-        variant: "destructive"
-      });
-      return;
-    }
-
-    toast({
-      title: "Settings Saved",
-      description: "All venue settings have been updated successfully.",
-    });
-  };
-
-  const handleSaveBusinessHours = async () => {
-    // Validation
+    // Validation for business hours
     for (const [day, hours] of Object.entries(businessHours)) {
       if (!hours.is_closed) {
         if (hours.open >= hours.close && !(hours.open > "12:00" && hours.close < "12:00")) {
@@ -234,19 +195,33 @@ export const MerchantSettings = ({
       .eq("id", venueId)
       .single();
     
-    // Save to database - merge with existing settings
+    // Build complete settings object with all configurations
     const currentSettings = (currentVenue?.settings as Record<string, any>) || {};
+    const updatedSettings = {
+      // Business hours & scheduling
+      business_hours: businessHours,
+      holiday_closures: holidayClosures,
+      grace_periods: gracePeriods,
+      auto_cleanup_rejected: autoCleanupRejected,
+      timezone: "America/New_York",
+      
+      // Kitchen/Food settings
+      default_prep_time: parseInt(settings.defaultPrepTime) || 10,
+      max_extension_time: parseInt(settings.maxExtensionTime) || 45,
+      pickup_instructions: settings.pickupInstructions,
+      
+      // Waitlist/Table settings
+      venue_capacity: parseInt(settings.venueCapacity) || 40,
+      tables_per_interval: parseInt(settings.tablesPerInterval) || 4,
+      auto_no_show_time: parseInt(settings.autoNoShowTime) || 15,
+    };
+    
+    // Save everything in one transaction
     const { error } = await supabase
       .from("venues")
       .update({
-        settings: {
-          ...currentSettings, // Preserve existing settings like prep times
-          business_hours: businessHours,
-          holiday_closures: holidayClosures,
-          grace_periods: gracePeriods,
-          auto_cleanup_rejected: autoCleanupRejected,
-          timezone: "America/New_York"
-        } as any
+        settings: updatedSettings as any,
+        waitlist_preferences: { options: waitlistPreferences } as any
       })
       .eq("id", venueId);
 
@@ -793,7 +768,7 @@ export const MerchantSettings = ({
               </CollapsibleContent>
             </Collapsible>
             
-            <Button onClick={handleSaveBusinessHours} className="w-full" size="lg">
+            <Button onClick={handleSaveAll} className="w-full" size="lg">
               Save Business Hours & Settings
             </Button>
           </CardContent>
@@ -947,12 +922,9 @@ export const MerchantSettings = ({
         </Card>
       </div>
 
-      <div className="flex gap-4 justify-end">
-        <Button onClick={handleSaveBusinessHours} variant="outline" className="px-8">
-          Save Business Hours
-        </Button>
-        <Button onClick={handleSave} className="px-8">
-          Save Venue Settings
+      <div className="flex justify-end">
+        <Button onClick={handleSaveAll} className="px-8 py-6 text-lg">
+          Save All Settings
         </Button>
       </div>
     </div>

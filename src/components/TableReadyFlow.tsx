@@ -253,11 +253,28 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   };
 
   const togglePreference = (pref: string) => {
-    setPreferences(prev => 
-      prev.includes(pref) 
-        ? prev.filter(p => p !== pref)
-        : [...prev, pref]
-    );
+    const mutuallyExclusiveGroups = [
+      ['Indoor Seating', 'Outdoor Seating']
+    ];
+    
+    setPreferences(prev => {
+      if (prev.includes(pref)) {
+        // Deselect
+        return prev.filter(p => p !== pref);
+      } else {
+        // Select - but first check if it's mutually exclusive
+        let newPrefs = [...prev, pref];
+        
+        for (const group of mutuallyExclusiveGroups) {
+          if (group.includes(pref)) {
+            // Remove other options in the same group
+            newPrefs = newPrefs.filter(p => !group.includes(p) || p === pref);
+          }
+        }
+        
+        return newPrefs;
+      }
+    });
   };
 
   const handleJoinWaitlist = async () => {
