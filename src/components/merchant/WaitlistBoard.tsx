@@ -40,6 +40,9 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelEntryId, setCancelEntryId] = useState<string>("");
   const [cancelReason, setCancelReason] = useState("");
+  const [noShowDialogOpen, setNoShowDialogOpen] = useState(false);
+  const [noShowEntryId, setNoShowEntryId] = useState<string>("");
+  const [noShowReason, setNoShowReason] = useState("");
   const { toast } = useToast();
 
   // Fetch today's reservations
@@ -204,6 +207,71 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     setCancelReason("");
   };
 
+  const openNoShowDialog = (entryId: string) => {
+    setNoShowEntryId(entryId);
+    setNoShowReason("");
+    setNoShowDialogOpen(true);
+  };
+
+  const markAsNoShow = async () => {
+    if (!noShowEntryId || !noShowReason.trim()) {
+      toast({
+        title: "Reason Required",
+        description: "Please provide a reason for marking as no show",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Optimistic update
+    setWaitlist(prevWaitlist => 
+      prevWaitlist.map(entry => 
+        entry.id === noShowEntryId 
+          ? { ...entry, status: "no_show", cancellation_reason: `No show: ${noShowReason}` } 
+          : entry
+      )
+    );
+
+    const { error } = await supabase
+      .from("waitlist_entries")
+      .update({ 
+        status: "no_show",
+        cancellation_reason: `No show: ${noShowReason}`,
+        updated_at: new Date().toISOString()
+      })
+      .eq("id", noShowEntryId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not mark as no show",
+        variant: "destructive"
+      });
+      // Revert optimistic update
+      const { data } = await supabase
+        .from("waitlist_entries")
+        .select("*")
+        .eq("venue_id", venueId)
+        .or("status.neq.seated,awaiting_merchant_confirmation.eq.true")
+        .neq("status", "cancelled")
+        .order("created_at", { ascending: true });
+      if (data) {
+        setWaitlist(data);
+      }
+      return;
+    }
+
+    toast({
+      title: "Marked as No Show",
+      description: "Customer marked as no show",
+    });
+
+    // Reset dialog state
+    setNoShowDialogOpen(false);
+    setNoShowEntryId("");
+    setNoShowReason("");
+  };
+
   const updateEntryStatus = async (entryId: string, newStatus: WaitlistEntry["status"]) => {
     // If cancelled, show dialog
     if (newStatus === "cancelled") {
@@ -247,6 +315,58 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       title: "Waitlist Updated",
       description: `Entry status changed to ${newStatus.replace("_", " ")}`,
     });
+  };
+
+  const getNextStatus = (currentStatus: WaitlistEntry["status"], isReservation: boolean): WaitlistEntry["status"] | null => {
+    if (isReservation) {
+      // Reservations: waiting → ready → seated
+      switch (currentStatus) {
+        case "waiting":
+          return "ready";
+        case "ready":
+          return "seated";
+        case "seated":
+          return null; // Complete
+        default:
+          return null;
+      }
+    } else {
+      // Walk-in waitlist: waiting → ready → seated
+      switch (currentStatus) {
+        case "waiting":
+          return "ready";
+        case "ready":
+          return "seated";
+        case "seated":
+          return null; // Complete
+        default:
+          return null;
+      }
+    }
+  };
+
+  const getNextStatusLabel = (currentStatus: WaitlistEntry["status"]): string => {
+    switch (currentStatus) {
+      case "waiting":
+        return "Table Ready";
+      case "ready":
+        return "Mark Seated";
+      case "seated":
+        return "Seated";
+      default:
+        return "";
+    }
+  };
+
+  const getNextStatusButtonVariant = (currentStatus: WaitlistEntry["status"]) => {
+    switch (currentStatus) {
+      case "waiting":
+        return "default";
+      case "ready":
+        return "default";
+      default:
+        return "secondary";
+    }
   };
 
   const setETA = async (entryId: string, minutes: number) => {
@@ -590,21 +710,50 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                   </Button>
                 </div>
 
-                <Select
-                  value={entry.status}
-                  onValueChange={(value) => updateEntryStatus(entry.id, value as WaitlistEntry["status"])}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background z-50">
-                    <SelectItem value="waiting">Waiting</SelectItem>
-                    <SelectItem value="ready">Table Ready</SelectItem>
-                    <SelectItem value="seated">Seated</SelectItem>
-                    <SelectItem value="cancelled">Cancelled</SelectItem>
-                    <SelectItem value="no_show">No Show</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="space-y-2">
+                  {/* Main action button - progressive status flow */}
+                  {getNextStatus(entry.status, entry.reservation_type === 'reservation') && (
+                    <Button
+                      onClick={() => {
+                        const nextStatus = getNextStatus(entry.status, entry.reservation_type === 'reservation');
+                        if (nextStatus) {
+                          updateEntryStatus(entry.id, nextStatus);
+                        }
+                      }}
+                      className="w-full"
+                      variant={getNextStatusButtonVariant(entry.status) as any}
+                    >
+                      {getNextStatusLabel(entry.status)}
+                    </Button>
+                  )}
+                  
+                  {/* Secondary actions row */}
+                  <div className="flex gap-2">
+                    {/* Cancel button - always available except for completed statuses */}
+                    {!['seated', 'cancelled', 'no_show'].includes(entry.status) && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openCancelDialog(entry.id)}
+                        className="flex-1 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                      >
+                        Cancel
+                      </Button>
+                    )}
+                    
+                    {/* No Show button - only for ready status (customer should be arriving) */}
+                    {entry.status === 'ready' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => openNoShowDialog(entry.id)}
+                        className="flex-1 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      >
+                        No Show
+                      </Button>
+                    )}
+                  </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -659,6 +808,52 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                 className="flex-1"
               >
                 Cancel Reservation
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* No Show Dialog */}
+      <Dialog open={noShowDialogOpen} onOpenChange={setNoShowDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mark as No Show</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Please provide details about the no-show. This helps improve future wait time estimates.
+            </p>
+            <div>
+              <Label htmlFor="noShowReason">No Show Details *</Label>
+              <Textarea
+                id="noShowReason"
+                value={noShowReason}
+                onChange={(e) => setNoShowReason(e.target.value)}
+                placeholder="e.g., Called and couldn't reach, Waited 15 mins past ready time, Left before seating..."
+                className="mt-2"
+                rows={4}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setNoShowDialogOpen(false);
+                  setNoShowEntryId("");
+                  setNoShowReason("");
+                }}
+                className="flex-1"
+              >
+                Go Back
+              </Button>
+              <Button
+                onClick={markAsNoShow}
+                disabled={!noShowReason.trim()}
+                variant="destructive"
+                className="flex-1"
+              >
+                Confirm No Show
               </Button>
             </div>
           </div>

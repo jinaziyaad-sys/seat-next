@@ -626,11 +626,11 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2"
                      style={{ scrollbarGutter: 'stable' }}>
                   {filteredVenues.map((venue) => (
-                    <Card 
-                      key={venue.id}
-                      className="cursor-pointer hover:bg-accent transition-colors"
-                      onClick={() => handleVenueSelect(venue.name)}
-                    >
+            <Card 
+              key={venue.id}
+              className="cursor-pointer hover:bg-accent transition-colors"
+              onClick={() => handleVenueSelect(venue.id)}
+            >
                       <CardContent className="p-4">
                         <div className="flex justify-between items-center gap-4">
                           <div className="flex flex-col gap-1 flex-1">
