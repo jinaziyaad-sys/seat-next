@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useDevAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
+import { z } from "zod";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,7 +42,16 @@ interface Venue {
   orders_count?: number;
   waitlist_count?: number;
   staff_count?: number;
+  latitude?: number | null;
+  longitude?: number | null;
 }
+
+// Validation schema for venue editing
+const venueEditSchema = z.object({
+  name: z.string().trim().min(1, "Venue name is required").max(100, "Name must be less than 100 characters"),
+  phone: z.string().trim().max(20, "Phone must be less than 20 characters").optional(),
+  display_address: z.string().trim().max(500, "Display address must be less than 500 characters").optional(),
+});
 
 interface MerchantUser {
   id: string;
@@ -64,6 +74,16 @@ export default function DevDashboard() {
   const [serviceTypes, setServiceTypes] = useState<string[]>(["food_ready", "table_ready"]);
   const [editingVenueId, setEditingVenueId] = useState<string | null>(null);
   const [editingServiceTypes, setEditingServiceTypes] = useState<string[]>([]);
+  const [editingVenue, setEditingVenue] = useState<Venue | null>(null);
+  const [editVenueName, setEditVenueName] = useState("");
+  const [editVenuePhone, setEditVenuePhone] = useState("");
+  const [editVenueDisplayAddress, setEditVenueDisplayAddress] = useState("");
+  const [editVenueAddress, setEditVenueAddress] = useState("");
+  const [editValidatedAddress, setEditValidatedAddress] = useState<{
+    formatted_address: string;
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [validatedAddress, setValidatedAddress] = useState<{
     formatted_address: string;
     latitude: number;
@@ -410,6 +430,144 @@ export default function DevDashboard() {
   const handleCancelEdit = () => {
     setEditingVenueId(null);
     setEditingServiceTypes([]);
+  };
+
+  const handleEditVenue = (venue: Venue) => {
+    setEditingVenue(venue);
+    setEditVenueName(venue.name);
+    setEditVenuePhone(venue.phone || "");
+    setEditVenueDisplayAddress(venue.display_address || "");
+    setEditVenueAddress(venue.address || "");
+    setEditValidatedAddress(null);
+    setEditingServiceTypes(venue.service_types || []);
+  };
+
+  const handleValidateEditAddress = async () => {
+    if (!editVenueAddress || !editVenueAddress.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Address Required",
+        description: "Please enter an address to validate.",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-address', {
+        body: { address: editVenueAddress },
+      });
+
+      if (validationError || !validationData || !validationData.valid) {
+        toast({
+          variant: "destructive",
+          title: "Invalid Address",
+          description: validationData?.error || "Address not found. Please check and try again.",
+        });
+        setLoading(false);
+        return;
+      }
+
+      setEditValidatedAddress({
+        formatted_address: validationData.formatted_address,
+        latitude: validationData.latitude,
+        longitude: validationData.longitude,
+      });
+
+      toast({
+        title: "Address Verified!",
+        description: "GPS coordinates updated for this address.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to validate address",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSaveVenue = async () => {
+    if (!editingVenue) return;
+
+    // Validate inputs
+    try {
+      venueEditSchema.parse({
+        name: editVenueName,
+        phone: editVenuePhone || undefined,
+        display_address: editVenueDisplayAddress || undefined,
+      });
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        toast({
+          title: "Validation Error",
+          description: error.errors[0].message,
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    if (editingServiceTypes.length === 0) {
+      toast({
+        title: "Validation Error",
+        description: "Please select at least one service type",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const updateData: any = {
+        name: editVenueName.trim(),
+        phone: editVenuePhone.trim() || null,
+        display_address: editVenueDisplayAddress.trim() || null,
+        service_types: editingServiceTypes,
+      };
+
+      // If address was validated, update GPS coordinates
+      if (editValidatedAddress) {
+        updateData.address = editValidatedAddress.formatted_address;
+        updateData.latitude = editValidatedAddress.latitude;
+        updateData.longitude = editValidatedAddress.longitude;
+      } else if (editVenueAddress.trim() !== editingVenue.address) {
+        // If address was changed but not validated
+        updateData.address = editVenueAddress.trim() || null;
+      }
+
+      const { error } = await supabase
+        .from("venues")
+        .update(updateData)
+        .eq("id", editingVenue.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success!",
+        description: `Venue "${editVenueName}" updated successfully`,
+      });
+
+      setEditingVenue(null);
+      setEditValidatedAddress(null);
+      fetchVenues();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to update venue",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancelEditVenue = () => {
+    setEditingVenue(null);
+    setEditValidatedAddress(null);
   };
 
   const handleDeleteMerchant = async (userId: string, venueId: string, email: string) => {
@@ -834,11 +992,158 @@ export default function DevDashboard() {
                 <div className="space-y-4">
                   {venues.map((venue) => (
                     <div key={venue.id} className="border rounded-lg p-4">
-                      <div className="flex items-start justify-between gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 mb-2">
-                            <h3 className="font-semibold text-lg">{venue.name}</h3>
-                            {editingVenueId !== venue.id && (
+                      {editingVenue?.id === venue.id ? (
+                        // Edit Mode
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between mb-4">
+                            <h3 className="font-semibold text-lg">Edit Venue</h3>
+                            <div className="flex gap-2">
+                              <Button 
+                                variant="default" 
+                                size="sm" 
+                                onClick={handleSaveVenue}
+                                disabled={loading}
+                              >
+                                <Save className="w-4 h-4 mr-2" />
+                                Save
+                              </Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={handleCancelEditVenue}
+                                disabled={loading}
+                              >
+                                <X className="w-4 h-4 mr-2" />
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-name-${venue.id}`}>Venue Name *</Label>
+                              <Input
+                                id={`edit-name-${venue.id}`}
+                                value={editVenueName}
+                                onChange={(e) => setEditVenueName(e.target.value)}
+                                placeholder="e.g. The Gourmet Corner"
+                                maxLength={100}
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label htmlFor={`edit-phone-${venue.id}`}>Phone</Label>
+                              <Input
+                                id={`edit-phone-${venue.id}`}
+                                value={editVenuePhone}
+                                onChange={(e) => setEditVenuePhone(e.target.value)}
+                                placeholder="(555) 123-4567"
+                                maxLength={20}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor={`edit-address-${venue.id}`}>GPS Address</Label>
+                            <div className="flex gap-2">
+                              <Textarea
+                                id={`edit-address-${venue.id}`}
+                                value={editVenueAddress}
+                                onChange={(e) => {
+                                  setEditVenueAddress(e.target.value);
+                                  setEditValidatedAddress(null);
+                                }}
+                                placeholder="123 Main St, City, State/Province, Country"
+                                rows={2}
+                                className="flex-1"
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                onClick={handleValidateEditAddress}
+                                disabled={loading || !editVenueAddress.trim()}
+                                className="self-end"
+                              >
+                                Validate
+                              </Button>
+                            </div>
+                            {editValidatedAddress && (
+                              <div className="p-3 border rounded-md bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+                                <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-1">
+                                  ✓ Address Verified
+                                </p>
+                                <p className="text-sm text-green-700 dark:text-green-300 mb-2">
+                                  {editValidatedAddress.formatted_address}
+                                </p>
+                                <div className="flex gap-4 text-xs text-green-600 dark:text-green-400">
+                                  <span>Lat: {editValidatedAddress.latitude.toFixed(6)}</span>
+                                  <span>Lng: {editValidatedAddress.longitude.toFixed(6)}</span>
+                                </div>
+                              </div>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              Used for GPS tracking and distance calculations
+                            </p>
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor={`edit-display-${venue.id}`}>Display Address (Optional)</Label>
+                            <Textarea
+                              id={`edit-display-${venue.id}`}
+                              value={editVenueDisplayAddress}
+                              onChange={(e) => setEditVenueDisplayAddress(e.target.value)}
+                              placeholder="e.g. 123 Main Street, Downtown"
+                              rows={2}
+                              maxLength={500}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Override address shown to patrons (if different from GPS address)
+                            </p>
+                          </div>
+
+                          <div className="space-y-3">
+                            <Label>Service Types *</Label>
+                            <div className="space-y-2">
+                              <div className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`edit-food-${venue.id}`}
+                                  checked={editingServiceTypes.includes("food_ready")}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setEditingServiceTypes([...editingServiceTypes, "food_ready"]);
+                                    } else {
+                                      setEditingServiceTypes(editingServiceTypes.filter(t => t !== "food_ready"));
+                                    }
+                                  }}
+                                />
+                                <label htmlFor={`edit-food-${venue.id}`} className="text-sm cursor-pointer">
+                                  🍔 Food Ready (Pickup/Takeout)
+                                </label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <Checkbox
+                                  id={`edit-table-${venue.id}`}
+                                  checked={editingServiceTypes.includes("table_ready")}
+                                  onCheckedChange={(checked) => {
+                                    if (checked) {
+                                      setEditingServiceTypes([...editingServiceTypes, "table_ready"]);
+                                    } else {
+                                      setEditingServiceTypes(editingServiceTypes.filter(t => t !== "table_ready"));
+                                    }
+                                  }}
+                                />
+                                <label htmlFor={`edit-table-${venue.id}`} className="text-sm cursor-pointer">
+                                  🍽️ Table Ready (Dine-in Waitlist)
+                                </label>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        // View Mode
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              <h3 className="font-semibold text-lg">{venue.name}</h3>
                               <div className="flex gap-1">
                                 {venue.service_types?.includes("food_ready") && (
                                   <Badge variant="secondary" className="text-xs">🍔 Pickup</Badge>
@@ -847,126 +1152,63 @@ export default function DevDashboard() {
                                   <Badge variant="secondary" className="text-xs">🍽️ Dine-in</Badge>
                                 )}
                               </div>
-                            )}
-                          </div>
-                          {(venue.display_address || venue.address) && (
-                            <div className="space-y-1">
-                              <p className="text-sm text-muted-foreground">
-                                {venue.display_address || venue.address}
+                            </div>
+                            {(venue.display_address || venue.address) && (
+                              <div className="space-y-1">
+                                <p className="text-sm text-muted-foreground">
+                                  {venue.display_address || venue.address}
+                                  {venue.display_address && venue.address && venue.display_address !== venue.address && (
+                                    <span className="text-xs ml-2 text-muted-foreground/70">(Display Override)</span>
+                                  )}
+                                </p>
                                 {venue.display_address && venue.address && venue.display_address !== venue.address && (
-                                  <span className="text-xs ml-2 text-muted-foreground/70">(Display Override)</span>
+                                  <p className="text-xs text-muted-foreground/70">GPS: {venue.address}</p>
                                 )}
-                              </p>
-                              {venue.display_address && venue.address && venue.display_address !== venue.address && (
-                                <p className="text-xs text-muted-foreground/70">GPS: {venue.address}</p>
-                              )}
-                            </div>
-                          )}
-                          {venue.phone && (
-                            <p className="text-sm text-muted-foreground">{venue.phone}</p>
-                          )}
-                          <div className="text-sm text-muted-foreground mt-2">
-                            {venue.staff_count} staff • {venue.orders_count} orders • {venue.waitlist_count} waitlist
-                          </div>
-
-                          {editingVenueId === venue.id && (
-                            <div className="mt-3 p-3 bg-muted rounded-md space-y-2">
-                              <p className="text-sm font-medium">Edit Service Types:</p>
-                              <div className="space-y-2">
-                                <div className="flex items-center space-x-2">
-                                  <Checkbox
-                                    id={`edit-food-${venue.id}`}
-                                    checked={editingServiceTypes.includes("food_ready")}
-                                    onCheckedChange={(checked) => {
-                                      if (checked) {
-                                        setEditingServiceTypes([...editingServiceTypes, "food_ready"]);
-                                      } else {
-                                        setEditingServiceTypes(editingServiceTypes.filter(t => t !== "food_ready"));
-                                      }
-                                    }}
-                                  />
-                                  <label htmlFor={`edit-food-${venue.id}`} className="text-sm cursor-pointer">
-                                    🍔 Food Ready (Pickup/Takeout)
-                                  </label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                  <Checkbox
-                                    id={`edit-table-${venue.id}`}
-                                    checked={editingServiceTypes.includes("table_ready")}
-                                    onCheckedChange={(checked) => {
-                                      if (checked) {
-                                        setEditingServiceTypes([...editingServiceTypes, "table_ready"]);
-                                      } else {
-                                        setEditingServiceTypes(editingServiceTypes.filter(t => t !== "table_ready"));
-                                      }
-                                    }}
-                                  />
-                                  <label htmlFor={`edit-table-${venue.id}`} className="text-sm cursor-pointer">
-                                    🍽️ Table Ready (Dine-in Waitlist)
-                                  </label>
-                                </div>
                               </div>
+                            )}
+                            {venue.phone && (
+                              <p className="text-sm text-muted-foreground">{venue.phone}</p>
+                            )}
+                            <div className="text-sm text-muted-foreground mt-2">
+                              {venue.staff_count} staff • {venue.orders_count} orders • {venue.waitlist_count} waitlist
                             </div>
-                          )}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => handleEditVenue(venue)}
+                              disabled={loading}
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button variant="destructive" size="sm" disabled={loading}>
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Venue?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Are you sure you want to delete "{venue.name}"? This will remove all associated orders, waitlist entries, and staff assignments. This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteVenue(venue.id, venue.name)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete Venue
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </div>
-                        <div className="flex gap-2">
-                          {editingVenueId === venue.id ? (
-                            <>
-                              <Button 
-                                variant="default" 
-                                size="sm" 
-                                onClick={() => handleSaveServiceTypes(venue.id, venue.name)}
-                                disabled={loading}
-                              >
-                                <Save className="w-4 h-4" />
-                              </Button>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={handleCancelEdit}
-                                disabled={loading}
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </>
-                          ) : (
-                            <>
-                              <Button 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => handleEditServiceTypes(venue.id, venue.service_types || [])}
-                                disabled={loading}
-                              >
-                                <Edit2 className="w-4 h-4" />
-                              </Button>
-                              <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                  <Button variant="destructive" size="sm" disabled={loading}>
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                  <AlertDialogHeader>
-                                    <AlertDialogTitle>Delete Venue?</AlertDialogTitle>
-                                    <AlertDialogDescription>
-                                      Are you sure you want to delete "{venue.name}"? This will remove all associated orders, waitlist entries, and staff assignments. This action cannot be undone.
-                                    </AlertDialogDescription>
-                                  </AlertDialogHeader>
-                                  <AlertDialogFooter>
-                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                    <AlertDialogAction
-                                      onClick={() => handleDeleteVenue(venue.id, venue.name)}
-                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                    >
-                                      Delete
-                                    </AlertDialogAction>
-                                  </AlertDialogFooter>
-                                </AlertDialogContent>
-                              </AlertDialog>
-                            </>
-                          )}
-                        </div>
-                      </div>
+                      )}
                     </div>
                   ))}
                   {venues.length === 0 && (
