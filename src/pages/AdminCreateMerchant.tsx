@@ -25,6 +25,12 @@ export default function AdminCreateMerchant() {
   const [venueName, setVenueName] = useState("");
   const [venueAddress, setVenueAddress] = useState("");
   const [venuePhone, setVenuePhone] = useState("");
+  const [validatedAddress, setValidatedAddress] = useState<{
+    formatted_address: string;
+    latitude: number;
+    longitude: number;
+  } | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   
   const { toast } = useToast();
   const navigate = useNavigate();
@@ -86,6 +92,77 @@ export default function AdminCreateMerchant() {
     }
   };
 
+  const handleValidateAddress = async () => {
+    if (!venueAddress || !venueAddress.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Address Required",
+        description: "Please enter an address to validate.",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      console.log('Starting address validation for:', venueAddress);
+      
+      toast({
+        title: "Validating address...",
+        description: "Please wait while we verify the location.",
+      });
+
+      const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-address', {
+        body: { address: venueAddress },
+      });
+
+      console.log('Validation response:', { validationData, validationError });
+
+      if (validationError) {
+        console.error('Validation error:', validationError);
+        toast({
+          variant: "destructive",
+          title: "Validation Error",
+          description: `Failed to validate address: ${validationError.message || 'Please try again.'}`,
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!validationData || !validationData.valid) {
+        console.warn('Address validation failed:', validationData);
+        toast({
+          variant: "destructive",
+          title: "Invalid Address",
+          description: validationData?.error || "Address not found. Please check and try again.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      console.log('Address validated successfully:', validationData);
+      
+      setValidatedAddress({
+        formatted_address: validationData.formatted_address,
+        latitude: validationData.latitude,
+        longitude: validationData.longitude,
+      });
+
+      toast({
+        title: "Address Verified!",
+        description: "Review the details below and create the venue.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to validate address",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleCreateVenue = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -98,70 +175,27 @@ export default function AdminCreateMerchant() {
       return;
     }
 
+    // If address is provided but not validated yet
+    if (venueAddress && venueAddress.trim() && !validatedAddress) {
+      toast({
+        title: "Address Validation Required",
+        description: "Please validate the address before creating the venue.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
-      let latitude = null;
-      let longitude = null;
-
-      // Validate address and get coordinates if address is provided
-      if (venueAddress && venueAddress.trim()) {
-        console.log('Starting address validation for:', venueAddress);
-        
-        toast({
-          title: "Validating address...",
-          description: "Please wait while we verify the location.",
-        });
-
-        const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-address', {
-          body: { address: venueAddress },
-        });
-
-        console.log('Validation response:', { validationData, validationError });
-
-        if (validationError) {
-          console.error('Validation error:', validationError);
-          toast({
-            variant: "destructive",
-            title: "Validation Error",
-            description: `Failed to validate address: ${validationError.message || 'Please try again.'}`,
-          });
-          setLoading(false);
-          return;
-        }
-
-        if (!validationData || !validationData.valid) {
-          console.warn('Address validation failed:', validationData);
-          toast({
-            variant: "destructive",
-            title: "Invalid Address",
-            description: validationData?.error || "Address not found. Please check and try again.",
-          });
-          setLoading(false);
-          return;
-        }
-
-        latitude = validationData.latitude;
-        longitude = validationData.longitude;
-
-        console.log('Address validated successfully:', { latitude, longitude });
-        
-        toast({
-          title: "Address Verified!",
-          description: `Location: ${validationData.formatted_address}`,
-        });
-      } else if (venueAddress) {
-        console.log('Address is empty after trim, skipping validation');
-      }
-
       const { data, error } = await supabase
         .from("venues")
         .insert({
           name: venueName,
-          address: venueAddress || null,
+          address: validatedAddress?.formatted_address || venueAddress || null,
           phone: venuePhone || null,
-          latitude,
-          longitude,
+          latitude: validatedAddress?.latitude || null,
+          longitude: validatedAddress?.longitude || null,
         })
         .select()
         .single();
@@ -170,13 +204,14 @@ export default function AdminCreateMerchant() {
 
       toast({
         title: "Success!",
-        description: `Venue "${venueName}" created successfully${latitude ? ' with GPS coordinates!' : ''}`,
+        description: `Venue "${venueName}" created successfully${validatedAddress ? ' with GPS coordinates!' : ''}`,
       });
 
       // Reset form and refresh venues
       setVenueName("");
       setVenueAddress("");
       setVenuePhone("");
+      setValidatedAddress(null);
       fetchVenues();
     } catch (error: any) {
       console.error('Error creating venue:', error);
@@ -319,16 +354,46 @@ export default function AdminCreateMerchant() {
 
                 <div className="space-y-2">
                   <Label htmlFor="venue-address">Address (for GPS tracking)</Label>
-                  <Textarea
-                    id="venue-address"
-                    placeholder="123 Main St, City, State/Province, Country"
-                    value={venueAddress}
-                    onChange={(e) => setVenueAddress(e.target.value)}
-                    rows={2}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Address will be validated and GPS coordinates will be stored automatically
-                  </p>
+                  <div className="flex gap-2">
+                    <Textarea
+                      id="venue-address"
+                      placeholder="123 Main St, City, State/Province, Country"
+                      value={venueAddress}
+                      onChange={(e) => {
+                        setVenueAddress(e.target.value);
+                        setValidatedAddress(null); // Reset validation when address changes
+                      }}
+                      rows={2}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleValidateAddress}
+                      disabled={isLoading || !venueAddress.trim()}
+                      className="self-end"
+                    >
+                      Validate
+                    </Button>
+                  </div>
+                  {validatedAddress ? (
+                    <div className="p-3 border rounded-md bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+                      <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-1">
+                        ✓ Address Verified
+                      </p>
+                      <p className="text-sm text-green-700 dark:text-green-300 mb-2">
+                        {validatedAddress.formatted_address}
+                      </p>
+                      <div className="flex gap-4 text-xs text-green-600 dark:text-green-400">
+                        <span>Lat: {validatedAddress.latitude.toFixed(6)}</span>
+                        <span>Lng: {validatedAddress.longitude.toFixed(6)}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      Click "Validate" to verify the address and get GPS coordinates
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">

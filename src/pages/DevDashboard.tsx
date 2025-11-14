@@ -61,6 +61,11 @@ export default function DevDashboard() {
   const [serviceTypes, setServiceTypes] = useState<string[]>(["food_ready", "table_ready"]);
   const [editingVenueId, setEditingVenueId] = useState<string | null>(null);
   const [editingServiceTypes, setEditingServiceTypes] = useState<string[]>([]);
+  const [validatedAddress, setValidatedAddress] = useState<{
+    formatted_address: string;
+    latitude: number;
+    longitude: number;
+  } | null>(null);
   const [merchantEmail, setMerchantEmail] = useState("");
   const [merchantPassword, setMerchantPassword] = useState("");
   const [merchantFullName, setMerchantFullName] = useState("");
@@ -106,6 +111,76 @@ export default function DevDashboard() {
     }
   };
 
+  const handleValidateAddress = async () => {
+    if (!venueAddress || !venueAddress.trim()) {
+      toast({
+        variant: "destructive",
+        title: "Address Required",
+        description: "Please enter an address to validate.",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      console.log('Starting address validation for:', venueAddress);
+      
+      toast({
+        title: "Validating address...",
+        description: "Please wait while we verify the location.",
+      });
+
+      const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-address', {
+        body: { address: venueAddress },
+      });
+
+      console.log('Validation response:', { validationData, validationError });
+
+      if (validationError) {
+        console.error('Validation error:', validationError);
+        toast({
+          variant: "destructive",
+          title: "Validation Error",
+          description: `Failed to validate address: ${validationError.message || 'Please try again.'}`,
+        });
+        setLoading(false);
+        return;
+      }
+
+      if (!validationData || !validationData.valid) {
+        console.warn('Address validation failed:', validationData);
+        toast({
+          variant: "destructive",
+          title: "Invalid Address",
+          description: validationData?.error || "Address not found. Please check and try again.",
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Store validated address data
+      setValidatedAddress({
+        formatted_address: validationData.formatted_address,
+        latitude: validationData.latitude,
+        longitude: validationData.longitude,
+      });
+
+      toast({
+        title: "Address Verified!",
+        description: "Review the details below and create the venue.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to validate address",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleCreateVenue = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -117,83 +192,43 @@ export default function DevDashboard() {
       });
       return;
     }
+
+    // If address is provided but not validated yet
+    if (venueAddress && venueAddress.trim() && !validatedAddress) {
+      toast({
+        title: "Address Validation Required",
+        description: "Please validate the address before creating the venue.",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setLoading(true);
 
     try {
-      let latitude = null;
-      let longitude = null;
-
-      // Validate address and get coordinates if address is provided
-      if (venueAddress && venueAddress.trim()) {
-        console.log('Starting address validation for:', venueAddress);
-        
-        toast({
-          title: "Validating address...",
-          description: "Please wait while we verify the location.",
-        });
-
-        const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-address', {
-          body: { address: venueAddress },
-        });
-
-        console.log('Validation response:', { validationData, validationError });
-
-        if (validationError) {
-          console.error('Validation error:', validationError);
-          toast({
-            variant: "destructive",
-            title: "Validation Error",
-            description: `Failed to validate address: ${validationError.message || 'Please try again.'}`,
-          });
-          setLoading(false);
-          return;
-        }
-
-        if (!validationData || !validationData.valid) {
-          console.warn('Address validation failed:', validationData);
-          toast({
-            variant: "destructive",
-            title: "Invalid Address",
-            description: validationData?.error || "Address not found. Please check and try again.",
-          });
-          setLoading(false);
-          return;
-        }
-
-        latitude = validationData.latitude;
-        longitude = validationData.longitude;
-
-        console.log('Address validated successfully:', { latitude, longitude });
-        
-        toast({
-          title: "Address Verified!",
-          description: `Location: ${validationData.formatted_address}`,
-        });
-      }
-
       const { error } = await supabase
         .from("venues")
         .insert({
           name: venueName,
-          address: venueAddress || null,
+          address: validatedAddress?.formatted_address || venueAddress || null,
           phone: venuePhone || null,
           service_types: serviceTypes,
-          latitude,
-          longitude,
+          latitude: validatedAddress?.latitude || null,
+          longitude: validatedAddress?.longitude || null,
         });
 
       if (error) throw error;
 
       toast({
         title: "Success!",
-        description: `Venue "${venueName}" created successfully${latitude ? ' with GPS coordinates!' : ''}`,
+        description: `Venue "${venueName}" created successfully${validatedAddress ? ' with GPS coordinates!' : ''}`,
       });
 
       setVenueName("");
       setVenueAddress("");
       setVenuePhone("");
       setServiceTypes(["food_ready", "table_ready"]);
+      setValidatedAddress(null);
       fetchVenues();
     } catch (error: any) {
       toast({
@@ -661,16 +696,46 @@ export default function DevDashboard() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="venue-address">Address (for GPS tracking)</Label>
-                    <Textarea
-                      id="venue-address"
-                      value={venueAddress}
-                      onChange={(e) => setVenueAddress(e.target.value)}
-                      placeholder="123 Main St, City, State/Province, Country"
-                      rows={2}
-                    />
-                    <p className="text-xs text-muted-foreground">
-                      Address will be validated and GPS coordinates will be stored automatically
-                    </p>
+                    <div className="flex gap-2">
+                      <Textarea
+                        id="venue-address"
+                        value={venueAddress}
+                        onChange={(e) => {
+                          setVenueAddress(e.target.value);
+                          setValidatedAddress(null); // Reset validation when address changes
+                        }}
+                        placeholder="123 Main St, City, State/Province, Country"
+                        rows={2}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={handleValidateAddress}
+                        disabled={loading || !venueAddress.trim()}
+                        className="self-end"
+                      >
+                        Validate
+                      </Button>
+                    </div>
+                    {validatedAddress ? (
+                      <div className="p-3 border rounded-md bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+                        <p className="text-sm font-medium text-green-900 dark:text-green-100 mb-1">
+                          ✓ Address Verified
+                        </p>
+                        <p className="text-sm text-green-700 dark:text-green-300 mb-2">
+                          {validatedAddress.formatted_address}
+                        </p>
+                        <div className="flex gap-4 text-xs text-green-600 dark:text-green-400">
+                          <span>Lat: {validatedAddress.latitude.toFixed(6)}</span>
+                          <span>Lng: {validatedAddress.longitude.toFixed(6)}</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Click "Validate" to verify the address and get GPS coordinates
+                      </p>
+                    )}
                   </div>
                   <div className="space-y-3">
                     <Label>Service Types *</Label>
