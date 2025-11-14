@@ -263,7 +263,37 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return;
 
+    // Fetch venue settings to check max extension time
+    const { data: venueData } = await supabase
+      .from('venues')
+      .select('settings')
+      .eq('id', venueId)
+      .single();
+
+    const settings = venueData?.settings as any || {};
+    const maxExtensionTime = settings.max_extension_time || 45;
+    
+    // Calculate original ETA (when order was placed)
+    const createdAt = new Date(order.created_at);
     const currentETA = order.eta ? new Date(order.eta) : new Date();
+    
+    // Calculate total extension so far (in minutes)
+    const currentExtension = Math.floor((currentETA.getTime() - createdAt.getTime()) / 60000);
+    
+    // Calculate what the new total extension would be
+    const newTotalExtension = currentExtension + minutes;
+    
+    // Check if we would exceed the maximum
+    if (newTotalExtension > maxExtensionTime) {
+      const remainingExtension = maxExtensionTime - currentExtension;
+      toast({
+        title: "Extension Limit Reached",
+        description: `Maximum extension time is ${maxExtensionTime} minutes. You can only add ${remainingExtension} more minutes.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     const newETA = new Date(currentETA.getTime() + minutes * 60000);
     const newNotes = reason ? `Extended: ${reason}` : order.notes;
 

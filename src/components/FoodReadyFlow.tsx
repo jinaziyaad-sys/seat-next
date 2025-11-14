@@ -309,9 +309,28 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
       return;
     }
 
-    // Calculate initial ETA
-    const initialEta = new Date();
-    initialEta.setMinutes(initialEta.getMinutes() + 15); // Default 15 min
+    // Calculate dynamic ETA using edge function
+    let calculatedEta = new Date();
+    let confidence = 'low';
+    
+    const { data: etaData, error: etaError } = await supabase.functions.invoke('calculate-order-eta', {
+      body: {
+        venue_id: venue.id,
+        items: [], // Empty items for patron-created orders
+        order_number: orderNumber.toUpperCase()
+      }
+    });
+
+    if (etaError || !etaData) {
+      console.error('Error calculating ETA:', etaError);
+      // Fallback to venue's default prep time
+      const defaultPrepTime = venue.settings?.default_prep_time || 15;
+      calculatedEta.setMinutes(calculatedEta.getMinutes() + defaultPrepTime);
+    } else {
+      calculatedEta.setMinutes(calculatedEta.getMinutes() + etaData.eta_minutes);
+      confidence = etaData.confidence;
+      console.log('Dynamic ETA calculated for patron order:', etaData);
+    }
 
     // Create new order with awaiting_verification status
     const { data: newOrder, error: insertError } = await supabase
@@ -322,7 +341,8 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
         user_id: userId,
         status: 'awaiting_verification',
         items: [], // Empty initially, kitchen will see it
-        eta: initialEta.toISOString(),
+        eta: calculatedEta.toISOString(),
+        confidence: confidence,
         awaiting_patron_confirmation: false,
         awaiting_merchant_confirmation: false
       })
