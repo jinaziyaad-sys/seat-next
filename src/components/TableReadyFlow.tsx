@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin, Loader2, Star, Calendar as CalendarIcon } from "lucide-react";
+import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin, Loader2, Star, Calendar as CalendarIcon, XCircle } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -18,6 +18,14 @@ import { z } from "zod";
 import { sendBrowserNotification, vibratePhone, initializePushNotifications } from "@/utils/notifications";
 import { checkVenueStatus, getAvailableReservationTimes } from "@/utils/businessHours";
 
+type WaitlistStatus = "waiting" | "ready" | "seated" | "cancelled";
+type DatabaseWaitlistStatus = "waiting" | "ready" | "seated" | "cancelled" | "no_show";
+
+// Map database status to frontend status (no_show becomes cancelled on patron side)
+const mapDatabaseStatus = (status: DatabaseWaitlistStatus): WaitlistStatus => {
+  return status === "no_show" ? "cancelled" : status;
+};
+
 interface WaitlistEntry {
   id: string;
   venue: string;
@@ -25,7 +33,7 @@ interface WaitlistEntry {
   position: number;
   eta: string | null;
   preferences?: string[];
-  status: "waiting" | "ready" | "seated" | "cancelled";
+  status: WaitlistStatus;
   awaiting_merchant_confirmation?: boolean;
   patron_delayed?: boolean;
   delayed_until?: string | null;
@@ -137,8 +145,9 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         position: initialEntry.position || 3,
         eta: initialEntry.eta,
         preferences: initialEntry.preferences || [],
-        status: initialEntry.status,
-        awaiting_merchant_confirmation: initialEntry.awaiting_merchant_confirmation
+        status: mapDatabaseStatus(initialEntry.status),
+        awaiting_merchant_confirmation: initialEntry.awaiting_merchant_confirmation,
+        cancellation_reason: initialEntry.cancellation_reason || undefined
       };
       setWaitlistEntry(entry);
       setStep(initialEntry.status === "ready" ? "ready" : "waiting");
@@ -155,9 +164,10 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           if (payload.new) {
             setWaitlistEntry(prev => prev ? {
               ...prev,
-              status: payload.new.status,
+              status: mapDatabaseStatus(payload.new.status),
               eta: payload.new.eta,
-              position: payload.new.position
+              position: payload.new.position,
+              cancellation_reason: payload.new.cancellation_reason || undefined
             } : null);
             
             if (payload.new.status === "ready") {
@@ -327,7 +337,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           position: 3, // Could be calculated from actual waitlist
           eta: newEntry.eta,
           preferences: newEntry.preferences || [],
-          status: newEntry.status
+          status: mapDatabaseStatus(newEntry.status),
+          cancellation_reason: newEntry.cancellation_reason || undefined
         };
         setWaitlistEntry(entry);
         
@@ -347,11 +358,12 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             table: 'waitlist_entries', 
             filter: `id=eq.${newEntry.id}`
           }, (payload) => {
-            if (payload.new) {
+          if (payload.new) {
               setWaitlistEntry(prev => prev ? {
                 ...prev,
-                status: payload.new.status,
-                eta: payload.new.eta
+                status: mapDatabaseStatus(payload.new.status),
+                eta: payload.new.eta,
+                cancellation_reason: payload.new.cancellation_reason || undefined
               } : null);
               
               if (payload.new.status === "ready") {
@@ -953,6 +965,50 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               onClick={handleCancelBooking}
             >
               Cancel Booking
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show cancellation screen if entry is cancelled
+  if (waitlistEntry?.status === "cancelled") {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Reservation Cancelled</h1>
+        </div>
+
+        <Card className="shadow-card border-destructive">
+          <CardContent className="p-8 text-center space-y-6">
+            <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+              <XCircle className="w-8 h-8 text-destructive" />
+            </div>
+            
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-destructive">Reservation Cancelled</h2>
+              <p className="text-muted-foreground">{waitlistEntry.venue}</p>
+            </div>
+
+            {waitlistEntry.cancellation_reason && (
+              <div className="p-4 bg-muted rounded-lg text-left">
+                <p className="font-semibold text-sm mb-1">Reason:</p>
+                <p className="text-muted-foreground">{waitlistEntry.cancellation_reason}</p>
+              </div>
+            )}
+
+            {!waitlistEntry.cancellation_reason && (
+              <p className="text-muted-foreground">
+                This reservation has been cancelled by the restaurant.
+              </p>
+            )}
+
+            <Button onClick={onBack} className="w-full">
+              Back to Home
             </Button>
           </CardContent>
         </Card>
