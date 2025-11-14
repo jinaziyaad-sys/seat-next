@@ -6,14 +6,14 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Clock, CheckCircle, Package, Truck, Search, MapPin, Star } from "lucide-react";
+import { ArrowLeft, Clock, CheckCircle, Package, Truck, Search, MapPin, Star, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { sendBrowserNotification, vibratePhone, initializePushNotifications } from "@/utils/notifications";
 import { checkVenueStatus } from "@/utils/businessHours";
 
-type OrderStatus = "awaiting_verification" | "placed" | "in_prep" | "ready" | "collected" | "no_show";
+type OrderStatus = "awaiting_verification" | "placed" | "in_prep" | "ready" | "collected" | "rejected";
 
 interface Order {
   id: string;
@@ -23,6 +23,7 @@ interface Order {
   eta: string | null;
   instructions?: string;
   items: any[];
+  notes?: string;
 }
 
 const statusConfig = {
@@ -31,7 +32,14 @@ const statusConfig = {
   "in_prep": { label: "In Preparation", icon: Clock, color: "bg-warning text-white", progress: 60 },
   ready: { label: "Ready for Pickup", icon: CheckCircle, color: "bg-primary text-primary-foreground", progress: 90 },
   collected: { label: "Collected", icon: Truck, color: "bg-success text-white", progress: 100 },
-  no_show: { label: "No Show", icon: Truck, color: "bg-destructive text-white", progress: 100 },
+  rejected: { label: "Cancelled", icon: XCircle, color: "bg-destructive text-white", progress: 0 },
+};
+
+// Helper to extract cancellation reason from notes
+const extractCancellationReason = (notes: string | null | undefined): string | null => {
+  if (!notes) return null;
+  const match = notes.match(/^Cancelled:\s*(.+)$/i);
+  return match ? match[1].trim() : null;
 };
 
 export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; initialOrder?: any }) {
@@ -76,7 +84,8 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
         status: initialOrder.status,
         eta: initialOrder.eta,
         instructions: "Please collect from the main counter",
-        items: Array.isArray(initialOrder.items) ? initialOrder.items : [initialOrder.items]
+        items: Array.isArray(initialOrder.items) ? initialOrder.items : [initialOrder.items],
+        notes: initialOrder.notes,
       };
       setCurrentOrder(order);
       setStep("tracking");
@@ -94,7 +103,8 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
             setCurrentOrder(prev => prev ? {
               ...prev,
               status: payload.new.status,
-              eta: payload.new.eta
+              eta: payload.new.eta,
+              notes: payload.new.notes,
             } : null);
             
             // Send notification when order is ready
@@ -135,7 +145,8 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
           setCurrentOrder(prev => prev ? {
             ...prev,
             status: 'placed',
-            eta: payload.new.eta
+            eta: payload.new.eta,
+            notes: payload.new.notes,
           } : null);
           
           toast({
@@ -146,13 +157,19 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
         
         // Kitchen rejected - status changed to rejected
         if (payload.new.status === 'rejected') {
+          const reason = payload.new.notes?.match(/^Cancelled:\s*(.+)$/i)?.[1] || 'No reason provided';
+          
           setRejectedOrderNumber(currentOrder.order_number);
-          setCurrentOrder(null);
+          setCurrentOrder(prev => prev ? {
+            ...prev,
+            status: 'rejected',
+            notes: payload.new.notes,
+          } : null);
           setStep("rejected");
           
           toast({
             title: "Order Rejected",
-            description: "The kitchen could not verify this order",
+            description: reason,
             variant: "destructive"
           });
         }
@@ -162,7 +179,8 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
           setCurrentOrder(prev => prev ? {
             ...prev,
             status: payload.new.status,
-            eta: payload.new.eta
+            eta: payload.new.eta,
+            notes: payload.new.notes,
           } : null);
           
           if (payload.new.status === 'ready') {
@@ -611,6 +629,17 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
                 <Button onClick={handleFeedback} className="w-full h-12">
                   Mark as Collected
                 </Button>
+              </div>
+            )}
+
+            {currentOrder.status === "rejected" && (
+              <div className="space-y-4 pt-4 border-t border-destructive">
+                <div className="text-left">
+                  <h3 className="font-semibold mb-2 text-destructive">Order Cancelled</h3>
+                  <p className="text-muted-foreground">
+                    {extractCancellationReason(currentOrder.notes) || "This order has been cancelled by the restaurant."}
+                  </p>
+                </div>
               </div>
             )}
           </CardContent>
