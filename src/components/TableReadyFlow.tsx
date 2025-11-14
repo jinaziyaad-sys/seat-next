@@ -931,44 +931,40 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               </div>
             </div>
 
-            <div className="space-y-3">
-              <label className="text-sm font-medium">Seating Preference</label>
-              <ToggleGroup 
-                type="single" 
-                value={seatingPreference} 
-                onValueChange={(value) => value && setSeatingPreference(value as "indoor" | "outdoor" | "no-preference")}
-                className="grid grid-cols-3 gap-2 w-full"
-              >
-                <ToggleGroupItem value="indoor" className="w-full">
-                  Indoor
-                </ToggleGroupItem>
-                <ToggleGroupItem value="no-preference" className="w-full">
-                  No Preference
-                </ToggleGroupItem>
-                <ToggleGroupItem value="outdoor" className="w-full">
-                  Outdoor
-                </ToggleGroupItem>
-              </ToggleGroup>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-sm font-medium">Additional Preferences (Optional)</label>
-              <div className="grid grid-cols-1 gap-2">
-                {selectedVenueData?.waitlist_preferences?.options
-                  ?.filter((opt: any) => opt.enabled)
-                  ?.map((opt: any) => (
-                    <Button
-                      key={opt.id}
-                      variant={preferences.includes(opt.label) ? "default" : "outline"}
-                      size="sm"
-                      className="justify-start"
-                      onClick={() => togglePreference(opt.label)}
-                    >
-                      {opt.label}
-                    </Button>
-                  ))}
+            {/* Dynamic Seating Preferences - Based on Merchant Configuration */}
+            {selectedVenueData?.waitlist_preferences?.options && 
+             selectedVenueData.waitlist_preferences.options.filter((opt: any) => opt.enabled).length > 0 && (
+              <div className="space-y-3">
+                <label className="text-sm font-medium">Seating Preferences</label>
+                
+                {/* Show enabled preferences as a grid of buttons */}
+                <div className="grid grid-cols-1 gap-2">
+                  {selectedVenueData.waitlist_preferences.options
+                    .filter((opt: any) => opt.enabled) // Only show enabled preferences
+                    .map((opt: any) => {
+                      const isSelected = preferences.includes(opt.label);
+                      return (
+                        <Button
+                          key={opt.id}
+                          variant={isSelected ? "default" : "outline"}
+                          size="lg"
+                          className="justify-start h-auto py-3"
+                          onClick={() => togglePreference(opt.label)}
+                        >
+                          <div className="flex items-center gap-2">
+                            {isSelected && <CheckCircle size={16} />}
+                            <span>{opt.label}</span>
+                          </div>
+                        </Button>
+                      );
+                    })}
+                </div>
+                
+                <p className="text-xs text-muted-foreground">
+                  Select any preferences that apply (optional)
+                </p>
               </div>
-            </div>
+            )}
 
             <Button 
               onClick={handleJoinWaitlist} 
