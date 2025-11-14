@@ -43,7 +43,7 @@ const extractCancellationReason = (notes: string | null | undefined): string | n
 };
 
 export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; initialOrder?: any }) {
-  const [step, setStep] = useState<"scan" | "order-entry" | "rejected" | "tracking" | "feedback">("scan");
+  const [step, setStep] = useState<"scan" | "order-entry" | "rejected" | "tracking">("scan");
   const [orderNumber, setOrderNumber] = useState("");
   const [selectedVenue, setSelectedVenue] = useState("");
   const [selectedVenueData, setSelectedVenueData] = useState<any>(null);
@@ -55,10 +55,6 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
-  const [rating, setRating] = useState(0);
-  const [hoveredRating, setHoveredRating] = useState(0);
-  const [feedbackText, setFeedbackText] = useState("");
-  const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const { toast } = useToast();
 
   // Get authenticated user and initialize notifications
@@ -372,62 +368,10 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
     });
   };
 
-  const handleFeedback = () => {
-    setStep("feedback");
-  };
-
-  const handleRatingSubmit = async () => {
-    if (!rating || !currentOrder) return;
-    
-    setIsSubmittingRating(true);
-    
-    try {
-      // Insert rating
-      const { error: ratingError } = await supabase
-        .from('order_ratings')
-        .insert({
-          order_id: currentOrder.id,
-          venue_id: venues.find(v => v.name === currentOrder.venue)?.id,
-          user_id: userId,
-          rating,
-          feedback_text: feedbackText.trim() || null
-        });
-
-      if (ratingError) throw ratingError;
-
-      // Update order status
-      const { error: orderError } = await supabase
-        .from('orders')
-        .update({
-          status: 'collected',
-          awaiting_merchant_confirmation: true
-        })
-        .eq('id', currentOrder.id);
-
-      if (orderError) throw orderError;
-
-      toast({
-        title: "Thank you for your feedback!",
-        description: "Your rating has been submitted successfully."
-      });
-      
-      onBack();
-    } catch (error) {
-      console.error('Error submitting rating:', error);
-      toast({
-        title: "Error",
-        description: "Could not submit rating. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setIsSubmittingRating(false);
-    }
-  };
-
-  const handleSkipRating = async () => {
+  const handleMarkAsCollected = async () => {
     if (!currentOrder) return;
     
-    // Just mark as collected without rating
+    // Mark as collected and return to home page where user can rate
     await supabase
       .from('orders')
       .update({
@@ -435,6 +379,11 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
         awaiting_merchant_confirmation: true
       })
       .eq('id', currentOrder.id);
+    
+    toast({
+      title: "Order Marked as Collected",
+      description: "You can rate your experience from the home screen.",
+    });
     
     onBack();
   };
@@ -757,7 +706,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
                   <h3 className="font-semibold mb-2">Pickup Instructions</h3>
                   <p className="text-muted-foreground">{currentOrder.instructions}</p>
                 </div>
-                <Button onClick={handleFeedback} className="w-full h-12">
+                <Button onClick={handleMarkAsCollected} className="w-full h-12">
                   Mark as Collected
                 </Button>
               </div>
@@ -811,88 +760,6 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
     );
   }
 
-  return (
-    <div className="space-y-6 p-6 max-w-lg mx-auto">
-      <Card className="shadow-card text-center">
-        <CardContent className="p-8 space-y-6">
-          <div className="w-16 h-16 mx-auto mb-2 rounded-full bg-success/10 flex items-center justify-center animate-scale-in">
-            <CheckCircle className="w-10 h-10 text-success" />
-          </div>
-          <h2 className="text-3xl font-bold">Thank You!</h2>
-          <p className="text-lg text-muted-foreground">Rate Your Experience</p>
-          
-          <div className="flex justify-center gap-2">
-            {[1, 2, 3, 4, 5].map((star) => (
-              <button 
-                key={star} 
-                onClick={() => setRating(star)}
-                onMouseEnter={() => setHoveredRating(star)}
-                onMouseLeave={() => setHoveredRating(0)}
-                className="transition-all duration-200 hover:scale-110 active:scale-95"
-                disabled={isSubmittingRating}
-              >
-                <Star
-                  size={48}
-                  className={
-                    hoveredRating > 0 && star <= hoveredRating
-                      ? "fill-success/70 stroke-success transition-all duration-200"
-                    : star <= rating
-                      ? "fill-success stroke-success transition-all duration-200"
-                    : "fill-none stroke-slate-400 stroke-2 transition-all duration-200"
-                  }
-                />
-              </button>
-            ))}
-          </div>
-          
-          {rating > 0 && (
-            <div className="text-sm font-medium text-primary animate-fade-in">
-              {rating === 5 && "Exceptional"}
-              {rating === 4 && "Very Good"}
-              {rating === 3 && "Satisfactory"}
-              {rating === 2 && "Needs Improvement"}
-              {rating === 1 && "Below Expectations"}
-            </div>
-          )}
-          
-          <div className="space-y-2 animate-fade-in">
-            <Label htmlFor="feedback" className="text-sm text-muted-foreground">
-              Tell us more (optional)
-            </Label>
-            <Textarea
-              id="feedback"
-              placeholder="What did you like? Any suggestions?"
-              value={feedbackText}
-              onChange={(e) => setFeedbackText(e.target.value.slice(0, 500))}
-              maxLength={500}
-              rows={4}
-              className="resize-none"
-              disabled={isSubmittingRating}
-            />
-            <div className="text-xs text-muted-foreground text-right">
-              {feedbackText.length}/500
-            </div>
-          </div>
-          
-          <div className="flex gap-3">
-            <Button 
-              variant="outline" 
-              onClick={handleSkipRating} 
-              className="flex-1 h-12"
-              disabled={isSubmittingRating}
-            >
-              Skip
-            </Button>
-            <Button 
-              onClick={handleRatingSubmit}
-              disabled={!rating || isSubmittingRating}
-              className="flex-1 h-12"
-            >
-              {isSubmittingRating ? "Submitting..." : "Submit Rating"}
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
-  );
+  // Removed feedback step - users rate from home page Active Tracking
+  return null;
 }
