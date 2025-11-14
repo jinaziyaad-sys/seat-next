@@ -121,6 +121,57 @@ export default function DevDashboard() {
     setLoading(true);
 
     try {
+      let latitude = null;
+      let longitude = null;
+
+      // Validate address and get coordinates if address is provided
+      if (venueAddress && venueAddress.trim()) {
+        console.log('Starting address validation for:', venueAddress);
+        
+        toast({
+          title: "Validating address...",
+          description: "Please wait while we verify the location.",
+        });
+
+        const { data: validationData, error: validationError } = await supabase.functions.invoke('validate-address', {
+          body: { address: venueAddress },
+        });
+
+        console.log('Validation response:', { validationData, validationError });
+
+        if (validationError) {
+          console.error('Validation error:', validationError);
+          toast({
+            variant: "destructive",
+            title: "Validation Error",
+            description: `Failed to validate address: ${validationError.message || 'Please try again.'}`,
+          });
+          setLoading(false);
+          return;
+        }
+
+        if (!validationData || !validationData.valid) {
+          console.warn('Address validation failed:', validationData);
+          toast({
+            variant: "destructive",
+            title: "Invalid Address",
+            description: validationData?.error || "Address not found. Please check and try again.",
+          });
+          setLoading(false);
+          return;
+        }
+
+        latitude = validationData.latitude;
+        longitude = validationData.longitude;
+
+        console.log('Address validated successfully:', { latitude, longitude });
+        
+        toast({
+          title: "Address Verified!",
+          description: `Location: ${validationData.formatted_address}`,
+        });
+      }
+
       const { error } = await supabase
         .from("venues")
         .insert({
@@ -128,13 +179,15 @@ export default function DevDashboard() {
           address: venueAddress || null,
           phone: venuePhone || null,
           service_types: serviceTypes,
+          latitude,
+          longitude,
         });
 
       if (error) throw error;
 
       toast({
         title: "Success!",
-        description: `Venue "${venueName}" created successfully`,
+        description: `Venue "${venueName}" created successfully${latitude ? ' with GPS coordinates!' : ''}`,
       });
 
       setVenueName("");
@@ -607,14 +660,17 @@ export default function DevDashboard() {
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="venue-address">Address</Label>
+                    <Label htmlFor="venue-address">Address (for GPS tracking)</Label>
                     <Textarea
                       id="venue-address"
                       value={venueAddress}
                       onChange={(e) => setVenueAddress(e.target.value)}
-                      placeholder="123 Main St, Downtown"
+                      placeholder="123 Main St, City, State/Province, Country"
                       rows={2}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Address will be validated and GPS coordinates will be stored automatically
+                    </p>
                   </div>
                   <div className="space-y-3">
                     <Label>Service Types *</Label>
