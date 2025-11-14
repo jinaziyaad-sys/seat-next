@@ -58,8 +58,7 @@ const Index = () => {
       .from('waitlist_entries')
       .select('*, venues(name)')
       .eq('user_id', user.id)
-      .or('status.in.(waiting,ready),and(reservation_type.eq.reservation,reservation_time.gte.' + new Date().toISOString() + ')')
-      .neq('status', 'cancelled')
+      .or('status.in.(waiting,ready,cancelled),and(reservation_type.eq.reservation,reservation_time.gte.' + new Date().toISOString() + ')')
       .neq('status', 'seated')
       .order('reservation_time', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
@@ -142,7 +141,7 @@ const Index = () => {
               );
               // Remove from list if status is no longer active
               return updatedEntries.filter(entry => 
-                ['waiting', 'ready'].includes(entry.status)
+                ['waiting', 'ready', 'cancelled'].includes(entry.status)
               );
             });
           } else if (payload.eventType === 'INSERT') {
@@ -263,13 +262,13 @@ const Index = () => {
                 order.status === 'rejected' && "bg-destructive/10 border-destructive"
               )}
               onClick={() => {
-                // If rejected, add to dismissed list and go to food-ready flow to retry
+                // If rejected, add to dismissed list but pass the order to show cancellation reason
                 if (order.status === 'rejected') {
                   const updatedDismissed = [...dismissedRejectedOrders, order.id];
                   setDismissedRejectedOrders(updatedDismissed);
                   localStorage.setItem('dismissedRejectedOrders', JSON.stringify(updatedDismissed));
                   setActiveOrders(prevOrders => prevOrders.filter(o => o.id !== order.id));
-                  setSelectedOrder(null);
+                  setSelectedOrder(order);
                   setActiveTab("food-ready");
                 } else {
                   setSelectedOrder(order);
@@ -340,7 +339,8 @@ const Index = () => {
                 key={entry.id} 
                 className={cn(
                   "shadow-card cursor-pointer hover:shadow-floating transition-all",
-                  entry.status === 'ready' && "bg-success/10 border-success animate-pulse-success"
+                  entry.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
+                  entry.status === 'cancelled' && "bg-destructive/10 border-destructive"
                 )}
                 onClick={() => {
                   setSelectedOrder(entry);
@@ -352,11 +352,15 @@ const Index = () => {
                     <div className="flex items-center gap-3">
                       <div className={cn(
                         "w-12 h-12 rounded-full flex items-center justify-center",
-                        entry.status === 'ready' ? "bg-success/20" : "bg-accent/10"
+                        entry.status === 'ready' ? "bg-success/20" : 
+                        entry.status === 'cancelled' ? "bg-destructive/20" :
+                        "bg-accent/10"
                       )}>
                         <Users className={cn(
                           "w-6 h-6",
-                          entry.status === 'ready' ? "text-success" : "text-accent"
+                          entry.status === 'ready' ? "text-success" : 
+                          entry.status === 'cancelled' ? "text-destructive" :
+                          "text-accent"
                         )} />
                       </div>
                       <div>
@@ -380,6 +384,9 @@ const Index = () => {
                             <p className="text-sm text-muted-foreground">
                               Party of {entry.party_size} • Position {entry.position || '—'}
                             </p>
+                            {entry.status === 'cancelled' && (
+                              <p className="text-xs text-destructive mt-1">Tap to view details</p>
+                            )}
                             {entry.eta && entry.status === 'waiting' && (
                               <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                                 <Clock size={12} />
@@ -394,10 +401,14 @@ const Index = () => {
                     </div>
                     <Badge variant={
                       isUpcomingReservation ? 'outline' : 
-                      entry.status === 'ready' ? 'default' : 'secondary'
+                      entry.status === 'ready' ? 'default' : 
+                      entry.status === 'cancelled' ? 'destructive' :
+                      'secondary'
                     }>
                       {isUpcomingReservation ? 'Reserved' : 
-                       entry.status === 'ready' ? 'Ready' : 'Waiting'}
+                       entry.status === 'ready' ? 'Ready' : 
+                       entry.status === 'cancelled' ? 'Cancelled' :
+                       'Waiting'}
                     </Badge>
                   </div>
                 </CardContent>
