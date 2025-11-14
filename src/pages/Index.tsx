@@ -419,7 +419,7 @@ const Index = () => {
 
             const shouldRate = entry.status === 'seated';
             const shouldClear = entry.status === 'cancelled';
-            const canInteract = shouldRate || shouldClear;
+            const canInteract = shouldRate; // Removed shouldClear - allow clicking cancelled to view details
 
             return (
               <Card 
@@ -555,7 +555,7 @@ const Index = () => {
                             setActiveWaitlist(prev => prev.filter(w => w.id !== entry.id));
                           }}
                         >
-                          Clear
+                          Dismiss
                         </Button>
                       )}
                     </div>
