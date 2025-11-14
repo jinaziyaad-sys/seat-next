@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { sendBrowserNotification, vibratePhone, initializePushNotifications } from "@/utils/notifications";
+import { checkVenueStatus } from "@/utils/businessHours";
 
 type OrderStatus = "awaiting_verification" | "placed" | "in_prep" | "ready" | "collected" | "no_show";
 
@@ -37,9 +38,10 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
   const [step, setStep] = useState<"scan" | "order-entry" | "rejected" | "tracking" | "feedback">("scan");
   const [orderNumber, setOrderNumber] = useState("");
   const [selectedVenue, setSelectedVenue] = useState("");
+  const [selectedVenueData, setSelectedVenueData] = useState<any>(null);
   const [currentOrder, setCurrentOrder] = useState<Order | null>(null);
   const [rejectedOrderNumber, setRejectedOrderNumber] = useState<string>("");
-  const [venues, setVenues] = useState<{id: string; name: string; address?: string; phone?: string}[]>([]);
+  const [venues, setVenues] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
@@ -180,13 +182,13 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
     };
   }, [currentOrder, userId]);
 
-  // Fetch venues on component mount - only show food_ready venues
+  // Fetch venues on component mount - only show food_ready venues with full settings
   useEffect(() => {
     const fetchVenues = async () => {
       setIsLoading(true);
       const { data, error } = await supabase
         .from("venues")
-        .select("id, name, address, phone, service_types")
+        .select("id, name, address, phone, service_types, settings")
         .contains("service_types", ["food_ready"])
         .order("name");
       
@@ -501,6 +503,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
                       className="cursor-pointer hover:bg-accent transition-colors"
                       onClick={() => {
                         setSelectedVenue(venue.name);
+                        setSelectedVenueData(venue);
                         setStep("order-entry");
                       }}
                     >
