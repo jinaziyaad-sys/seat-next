@@ -585,21 +585,6 @@ const Index = () => {
           </Card>
         )}
 
-        <Card 
-          className="cursor-pointer shadow-card transition-all hover:scale-[1.02] hover:shadow-floating active:scale-95 border-2 border-primary/30"
-          onClick={() => navigate("/venues")}
-        >
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground flex-shrink-0">
-              <MapPin size={28} />
-            </div>
-            <div className="flex-1">
-              <h3 className="font-semibold text-lg">Find Venues Near Me</h3>
-              <p className="text-sm text-muted-foreground">Discover restaurants and cafes nearby using GPS</p>
-            </div>
-          </CardContent>
-        </Card>
-
         <div className="grid grid-cols-2 gap-4">
           <Card 
             className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"

@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin, Loader2, Star, Calendar as CalendarIcon, XCircle } from "lucide-react";
+import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin, Loader2, Star, Calendar as CalendarIcon, XCircle, Navigation } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
 import { sendBrowserNotification, vibratePhone, initializePushNotifications } from "@/utils/notifications";
 import { checkVenueStatus, getAvailableReservationTimes } from "@/utils/businessHours";
+import { calculateDistance, formatDistance, getUserLocation, type UserLocation } from "@/utils/geolocation";
 
 type WaitlistStatus = "waiting" | "ready" | "seated" | "cancelled";
 type DatabaseWaitlistStatus = "waiting" | "ready" | "seated" | "cancelled" | "no_show";
@@ -64,6 +65,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
@@ -204,9 +206,18 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   useEffect(() => {
     const fetchVenues = async () => {
       setIsLoading(true);
+      
+      // Try to get user location
+      try {
+        const location = await getUserLocation();
+        setUserLocation(location);
+      } catch (error) {
+        console.log('Location access not granted, showing all venues');
+      }
+      
       const { data, error } = await supabase
         .from("venues")
-        .select("id, name, address, service_types, settings, waitlist_preferences")
+        .select("id, name, address, service_types, settings, waitlist_preferences, latitude, longitude")
         .contains("service_types", ["table_ready"])
         .order("name");
       
@@ -225,10 +236,31 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     fetchVenues();
   }, []);
 
-  const filteredVenues = venues.filter(venue => 
-    venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (venue.address && venue.address.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredVenues = venues
+    .filter(venue => 
+      venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (venue.address && venue.address.toLowerCase().includes(searchQuery.toLowerCase()))
+    )
+    .map(venue => ({
+      ...venue,
+      distance: userLocation && venue.latitude && venue.longitude
+        ? calculateDistance(
+            userLocation.latitude,
+            userLocation.longitude,
+            venue.latitude,
+            venue.longitude
+          )
+        : undefined
+    }))
+    .sort((a, b) => {
+      // Sort by distance if available, otherwise keep original order
+      if (a.distance !== undefined && b.distance !== undefined) {
+        return a.distance - b.distance;
+      }
+      if (a.distance !== undefined) return -1;
+      if (b.distance !== undefined) return 1;
+      return 0;
+    });
 
 
   const handleVenueSelect = (venueId: string) => {
@@ -658,7 +690,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               onClick={() => handleVenueSelect(venue.id)}
             >
                       <CardContent className="p-4">
-                        <div className="flex justify-between items-center gap-4">
+                        <div className="flex justify-between items-start gap-3">
                           <div className="flex flex-col gap-1 flex-1">
                             <span className="font-medium">{venue.name}</span>
                             {venue.address && (
@@ -672,9 +704,17 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                               <span>Wait: {venue.waitTime}</span>
                             </div>
                           </div>
-                          <Badge variant={venue.tables && venue.tables > 0 ? "secondary" : "default"} className="shrink-0">
-                            {venue.tables || 0} ahead
-                          </Badge>
+                          <div className="flex flex-col items-end gap-2 shrink-0">
+                            {venue.distance !== undefined && (
+                              <Badge variant="secondary" className="flex items-center gap-1">
+                                <Navigation size={12} />
+                                {formatDistance(venue.distance)}
+                              </Badge>
+                            )}
+                            <Badge variant={venue.tables && venue.tables > 0 ? "secondary" : "default"}>
+                              {venue.tables || 0} ahead
+                            </Badge>
+                          </div>
                         </div>
                       </CardContent>
                     </Card>
