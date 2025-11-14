@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { FoodReadyFlow } from "@/components/FoodReadyFlow";
 import { TableReadyFlow } from "@/components/TableReadyFlow";
 import { ProfileSection } from "@/components/ProfileSection";
+import { RatingDialog } from "@/components/RatingDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,8 +31,31 @@ const Index = () => {
     const stored = localStorage.getItem('dismissedWaitlist');
     return stored ? JSON.parse(stored) : [];
   });
+  const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
+  const [ratingItem, setRatingItem] = useState<{
+    type: 'order' | 'waitlist';
+    id: string;
+    venueId: string;
+    venueName: string;
+  } | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const handleRatingComplete = (itemId: string, type: 'order' | 'waitlist') => {
+    if (type === 'order') {
+      const updated = [...dismissedOrders, itemId];
+      setDismissedOrders(updated);
+      localStorage.setItem('dismissedOrders', JSON.stringify(updated));
+      setActiveOrders(prev => prev.filter(o => o.id !== itemId));
+    } else {
+      const updated = [...dismissedWaitlist, itemId];
+      setDismissedWaitlist(updated);
+      localStorage.setItem('dismissedWaitlist', JSON.stringify(updated));
+      setActiveWaitlist(prev => prev.filter(w => w.id !== itemId));
+    }
+    setRatingDialogOpen(false);
+    setRatingItem(null);
+  };
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -328,17 +352,21 @@ const Index = () => {
                       </Badge>
                       {canClear && (
                         <Button
-                          variant="ghost"
+                          variant="default"
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const updated = [...dismissedOrders, order.id];
-                            setDismissedOrders(updated);
-                            localStorage.setItem('dismissedOrders', JSON.stringify(updated));
-                            setActiveOrders(prev => prev.filter(o => o.id !== order.id));
+                            setRatingItem({
+                              type: 'order',
+                              id: order.id,
+                              venueId: order.venue_id,
+                              venueName: order.venues?.name || ''
+                            });
+                            setRatingDialogOpen(true);
                           }}
+                          className="bg-success hover:bg-success/90"
                         >
-                          Clear
+                          Rate
                         </Button>
                       )}
                     </div>
@@ -447,17 +475,21 @@ const Index = () => {
                       </Badge>
                       {canClear && (
                         <Button
-                          variant="ghost"
+                          variant="default"
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const updated = [...dismissedWaitlist, entry.id];
-                            setDismissedWaitlist(updated);
-                            localStorage.setItem('dismissedWaitlist', JSON.stringify(updated));
-                            setActiveWaitlist(prev => prev.filter(w => w.id !== entry.id));
+                            setRatingItem({
+                              type: 'waitlist',
+                              id: entry.id,
+                              venueId: entry.venue_id,
+                              venueName: entry.venues?.name || ''
+                            });
+                            setRatingDialogOpen(true);
                           }}
+                          className="bg-success hover:bg-success/90"
                         >
-                          Clear
+                          Rate
                         </Button>
                       )}
                     </div>
@@ -520,6 +552,22 @@ const Index = () => {
         </div>
 
       </div>
+
+      {/* Rating Dialog */}
+      <RatingDialog
+        open={ratingDialogOpen}
+        onOpenChange={setRatingDialogOpen}
+        type={ratingItem?.type || 'order'}
+        itemId={ratingItem?.id || ''}
+        venueId={ratingItem?.venueId || ''}
+        venueName={ratingItem?.venueName || ''}
+        userId={user?.id || null}
+        onComplete={() => {
+          if (ratingItem) {
+            handleRatingComplete(ratingItem.id, ratingItem.type);
+          }
+        }}
+      />
     </div>
   );
 };
