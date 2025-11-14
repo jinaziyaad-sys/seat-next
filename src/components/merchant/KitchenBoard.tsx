@@ -359,11 +359,11 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   };
 
   const rejectPatronOrder = async (orderId: string) => {
-    // Update status to 'rejected' instead of deleting
     const { error } = await supabase
       .from("orders")
       .update({ 
         status: 'rejected',
+        eta: null, // Clear ETA so it doesn't affect analytics
         updated_at: new Date().toISOString()
       })
       .eq("id", orderId);
@@ -383,6 +383,60 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
     });
   };
 
+  const clearAllRejectedOrders = async () => {
+    // Get all rejected order IDs first
+    const { data: rejectedOrders } = await supabase
+      .from("orders")
+      .select("id")
+      .eq("venue_id", venueId)
+      .eq("status", "rejected");
+
+    if (!rejectedOrders || rejectedOrders.length === 0) {
+      toast({
+        title: "No Orders",
+        description: "No rejected orders to clear",
+      });
+      return;
+    }
+
+    // Delete the orders
+    const { error } = await supabase
+      .from("orders")
+      .delete()
+      .eq("venue_id", venueId)
+      .eq("status", "rejected");
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not clear rejected orders",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Delete their analytics records
+    const orderIds = rejectedOrders.map(o => o.id);
+    await supabase
+      .from("order_analytics")
+      .delete()
+      .in("order_id", orderIds);
+
+    setOrders(prevOrders => prevOrders.filter(o => o.status !== 'rejected'));
+    setShowRejected(false); // Switch back to active view
+
+    toast({
+      title: "Rejected Orders Cleared",
+      description: `${rejectedOrders.length} invalid ${rejectedOrders.length === 1 ? 'order' : 'orders'} removed`,
+    });
+  };
+
+  const handleClearAllRejected = () => {
+    if (window.confirm('Are you sure you want to permanently delete all rejected orders? This cannot be undone.')) {
+      clearAllRejectedOrders();
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -390,6 +444,14 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
           {showRejected ? "Rejected Orders" : "Kitchen Orders"}
         </h2>
         <div className="flex gap-2">
+          {showRejected && (
+            <Button
+              variant="destructive"
+              onClick={handleClearAllRejected}
+            >
+              Clear All Rejected
+            </Button>
+          )}
           <Button
             variant={showRejected ? "default" : "outline"}
             onClick={() => setShowRejected(!showRejected)}
@@ -432,9 +494,15 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
               </Button>
             </div>
           </DialogContent>
-        </Dialog>
+          </Dialog>
         </div>
       </div>
+
+      {showRejected && orders.length > 0 && (
+        <p className="text-sm text-muted-foreground mb-4">
+          {orders.length} rejected {orders.length === 1 ? 'order' : 'orders'} to review
+        </p>
+      )}
 
       <style>{`
         @keyframes flash-green {

@@ -40,6 +40,8 @@ export const MerchantSettings = ({
 
   const [waitlistPreferences, setWaitlistPreferences] = useState<WaitlistPreference[]>([]);
   const [newPreferenceLabel, setNewPreferenceLabel] = useState("");
+  const [cobTime, setCobTime] = useState("23:00");
+  const [autoCleanupRejected, setAutoCleanupRejected] = useState(true);
 
   const { toast } = useToast();
 
@@ -47,13 +49,21 @@ export const MerchantSettings = ({
     const fetchVenueSettings = async () => {
       const { data, error } = await supabase
         .from("venues")
-        .select("waitlist_preferences")
+        .select("waitlist_preferences, settings")
         .eq("id", venueId)
         .single();
 
       if (error) {
         console.error("Error fetching venue settings:", error);
         return;
+      }
+
+      if (data?.settings) {
+        const settings = data.settings as any || {};
+        if (settings.cob_time) setCobTime(settings.cob_time);
+        if (settings.auto_cleanup_rejected !== undefined) {
+          setAutoCleanupRejected(settings.auto_cleanup_rejected);
+        }
       }
 
       if (data?.waitlist_preferences) {
@@ -97,6 +107,32 @@ export const MerchantSettings = ({
     toast({
       title: "Settings Saved",
       description: "Venue settings have been updated successfully.",
+    });
+  };
+
+  const handleSaveOperationalSettings = async () => {
+    const { error } = await supabase
+      .from("venues")
+      .update({
+        settings: { 
+          cob_time: cobTime,
+          auto_cleanup_rejected: autoCleanupRejected
+        } as any
+      })
+      .eq("id", venueId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not save operational settings",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    toast({
+      title: "Operational Settings Saved",
+      description: "COB time and cleanup preferences updated",
     });
   };
 
@@ -301,6 +337,46 @@ export const MerchantSettings = ({
           </CardContent>
         </Card>
         )}
+
+        {/* Operational Settings */}
+        <Card className="mt-6">
+          <CardHeader>
+            <CardTitle>Operational Settings</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="cob-time">Close of Business (COB) Time</Label>
+              <Input
+                id="cob-time"
+                type="time"
+                value={cobTime}
+                onChange={(e) => setCobTime(e.target.value)}
+                className="mt-2"
+              />
+              <p className="text-sm text-muted-foreground mt-1">
+                Invalid orders and no-shows will be automatically cleaned up at this time
+              </p>
+            </div>
+            
+            <div className="flex items-center justify-between">
+              <div>
+                <Label htmlFor="auto-cleanup">Auto-cleanup rejected orders</Label>
+                <p className="text-sm text-muted-foreground">
+                  Automatically discard invalid orders at COB
+                </p>
+              </div>
+              <Switch
+                id="auto-cleanup"
+                checked={autoCleanupRejected}
+                onCheckedChange={setAutoCleanupRejected}
+              />
+            </div>
+            
+            <Button onClick={handleSaveOperationalSettings} className="w-full">
+              Save Operational Settings
+            </Button>
+          </CardContent>
+        </Card>
 
         {/* Auto No-Show Settings */}
         <Card className="shadow-card lg:col-span-2">

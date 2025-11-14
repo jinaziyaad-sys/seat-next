@@ -45,11 +45,15 @@ serve(async (req) => {
         break;
     }
 
-    // Fetch order analytics
+    // Fetch order analytics (exclude rejected orders)
     const { data: orderAnalytics, error: orderError } = await supabase
       .from('order_analytics')
-      .select('*')
+      .select(`
+        *,
+        orders!inner(status)
+      `)
       .eq('venue_id', venue_id)
+      .neq('orders.status', 'rejected')
       .gte('placed_at', startDate.toISOString());
 
     if (orderError) {
