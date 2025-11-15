@@ -716,7 +716,7 @@ export const MerchantSettings = ({
                     {holidayClosures.map((holiday) => (
                       <div key={holiday.date} className="flex items-center justify-between p-3 border rounded-lg">
                         <div>
-                          <div className="font-medium">{format(new Date(holiday.date), "EEEE, MMMM d, yyyy")}</div>
+                          <div className="font-medium">{format(new Date(holiday.date + 'T12:00:00'), "EEEE, MMMM d, yyyy")}</div>
                           <div className="text-sm text-muted-foreground">{holiday.reason}</div>
                           {!holiday.is_closed && holiday.special_hours && (
                             <div className="text-xs text-primary mt-1">

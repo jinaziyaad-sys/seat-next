@@ -37,7 +37,8 @@ export function checkVenueStatus(
   const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const currentDay = dayNames[now.getDay()];
   const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  const currentDate = now.toISOString().split('T')[0];
+  // Use local date to match how holidays are stored (avoiding UTC timezone shifts)
+  const currentDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   
   // Check for holiday closure first
   const holidayClosure = holidayClosures.find(h => h.date === currentDate);
@@ -202,7 +203,8 @@ function findNextOpening(
     checkDate.setDate(checkDate.getDate() + i);
     const checkDayIndex = checkDate.getDay();
     const checkDayKey = dayKeys[checkDayIndex];
-    const checkDateStr = checkDate.toISOString().split('T')[0];
+    // Use local date to match how holidays are stored
+    const checkDateStr = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, '0')}-${String(checkDate.getDate()).padStart(2, '0')}`;
     
     // Check if it's a holiday
     const holiday = holidayClosures.find(h => h.date === checkDateStr);
@@ -237,7 +239,8 @@ export function getAvailableReservationTimes(
 ): string[] {
   const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const dayKey = dayNames[date.getDay()];
-  const dateStr = date.toISOString().split('T')[0];
+  // Use local date to match how holidays are stored
+  const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
   
   // Check holiday first
   const holiday = holidayClosures.find(h => h.date === dateStr);
