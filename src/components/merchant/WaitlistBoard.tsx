@@ -7,6 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Clock, Users, Plus, MapPin, Calendar as CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
@@ -45,31 +46,29 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   const [noShowReason, setNoShowReason] = useState("");
   const { toast } = useToast();
 
-  // Fetch today's reservations
+  // Fetch upcoming reservations (within 1 hour window)
   useEffect(() => {
-    const fetchTodaysReservations = async () => {
-      const startOfToday = new Date();
-      startOfToday.setHours(0, 0, 0, 0);
-      
-      const endOfToday = new Date();
-      endOfToday.setHours(23, 59, 59, 999);
+    const fetchUpcomingReservations = async () => {
+      const now = new Date();
+      const oneHourBefore = new Date(now.getTime() - 60 * 60 * 1000);
+      const futureTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
       const { data } = await supabase
         .from('waitlist_entries')
         .select('*')
         .eq('venue_id', venueId)
         .eq('reservation_type', 'reservation')
-        .gte('reservation_time', startOfToday.toISOString())
-        .lte('reservation_time', endOfToday.toISOString())
+        .gte('reservation_time', oneHourBefore.toISOString())
+        .lte('reservation_time', futureTime.toISOString())
         .in('status', ['waiting', 'ready'])
         .order('reservation_time', { ascending: true });
 
       setTodaysReservations(data || []);
     };
 
-    fetchTodaysReservations();
+    fetchUpcomingReservations();
     
-    const interval = setInterval(fetchTodaysReservations, 60000);
+    const interval = setInterval(fetchUpcomingReservations, 60000);
     return () => clearInterval(interval);
   }, [venueId]);
 
@@ -532,56 +531,67 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
 
   return (
     <div className="space-y-6">
-      {/* Today's Reservations Section */}
+      {/* Upcoming Reservations Table */}
       {todaysReservations.length > 0 && (
         <Card className="shadow-card">
           <CardHeader>
-            <CardTitle>Today's Reservations</CardTitle>
+            <CardTitle>Upcoming Reservations (Next Hour)</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {todaysReservations.map((reservation) => {
-              const timeUntil = differenceInMinutes(
-                new Date(reservation.reservation_time!),
-                new Date()
-              );
-              const isNear = timeUntil <= 30 && timeUntil >= -15;
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Time</TableHead>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Party Size</TableHead>
+                  <TableHead>Preferences</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {todaysReservations.map((reservation) => {
+                  const timeUntil = differenceInMinutes(
+                    new Date(reservation.reservation_time!),
+                    new Date()
+                  );
+                  const isNear = timeUntil <= 30 && timeUntil >= -15;
 
-              return (
-                <div 
-                  key={reservation.id}
-                  className={cn(
-                    "p-4 rounded-lg border",
-                    isNear && "bg-yellow-50 border-yellow-300 dark:bg-yellow-950 dark:border-yellow-700"
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="font-semibold">{reservation.customer_name}</p>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                  return (
+                    <TableRow 
+                      key={reservation.id}
+                      className={cn(
+                        isNear && "bg-yellow-50 dark:bg-yellow-950/30"
+                      )}
+                    >
+                      <TableCell className="font-medium">
+                        {format(new Date(reservation.reservation_time!), 'HH:mm')}
+                      </TableCell>
+                      <TableCell>{reservation.customer_name}</TableCell>
+                      <TableCell>
                         <span className="flex items-center gap-1">
                           <Users size={14} />
-                          Party of {reservation.party_size}
+                          {reservation.party_size}
                         </span>
-                        <span className="flex items-center gap-1">
-                          <CalendarIcon size={14} />
-                          {format(new Date(reservation.reservation_time!), 'HH:mm')}
-                          {isNear && timeUntil > 0 && ` • In ${timeUntil} min`}
-                          {isNear && timeUntil <= 0 && ` • ${Math.abs(timeUntil)} min ago`}
-                        </span>
-                      </div>
-                      {reservation.preferences && reservation.preferences.length > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {reservation.preferences.join(", ")}
-                        </p>
-                      )}
-                    </div>
-                    {isNear && (
-                      <Badge className="bg-yellow-500 text-white">ARRIVING SOON</Badge>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {reservation.preferences && reservation.preferences.length > 0
+                          ? reservation.preferences.join(", ")
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {isNear ? (
+                          <Badge className="bg-yellow-500 text-white">
+                            {timeUntil > 0 ? `In ${timeUntil}m` : `${Math.abs(timeUntil)}m ago`}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline">Scheduled</Badge>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}
@@ -643,7 +653,9 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {sortedWaitlist.map((entry) => (
+        {sortedWaitlist
+          .filter(entry => entry.reservation_type !== 'reservation')
+          .map((entry) => (
           <Card key={entry.id} className="shadow-card">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
