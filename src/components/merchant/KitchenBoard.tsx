@@ -59,9 +59,9 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
         .eq("status", "rejected")
         .order("created_at", { ascending: false });
     } else {
-      // Show all orders except rejected
+      // Show all orders except rejected and no_show
       query
-        .neq("status", "rejected")
+        .not("status", "in", "(rejected,no_show)")
         .or('status.neq.collected,and(status.eq.collected,awaiting_merchant_confirmation.eq.true)')
         .order("status", { ascending: true }) // awaiting_verification first
         .order("awaiting_merchant_confirmation", { ascending: false, nullsFirst: false })

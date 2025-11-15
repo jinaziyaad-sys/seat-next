@@ -342,6 +342,32 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
       return;
     }
 
+    // Check for duplicate orders within the refresh window
+    const refreshMinutes = venue.settings?.order_number_refresh_minutes || 15;
+    const refreshTime = new Date(Date.now() - refreshMinutes * 60 * 1000);
+
+    const { data: existingOrders, error: duplicateError } = await supabase
+      .from('orders')
+      .select('id, created_at, status')
+      .eq('venue_id', venue.id)
+      .eq('order_number', orderNumber.toUpperCase())
+      .gte('created_at', refreshTime.toISOString())
+      .not('status', 'in', '(collected,no_show,rejected)');
+
+    if (duplicateError) {
+      console.error('Error checking for duplicates:', duplicateError);
+    }
+
+    if (existingOrders && existingOrders.length > 0) {
+      const minutesAgo = Math.round((Date.now() - new Date(existingOrders[0].created_at).getTime()) / 60000);
+      toast({
+        title: "Duplicate Order",
+        description: `Order #${orderNumber.toUpperCase()} was submitted ${minutesAgo} minute${minutesAgo !== 1 ? 's' : ''} ago and is still active. Please verify this is a new order or wait ${refreshMinutes} minutes to reuse this number.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     // Calculate dynamic ETA using edge function
     let calculatedEta = new Date();
     let confidence = 'low';
