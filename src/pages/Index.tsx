@@ -74,6 +74,13 @@ const Index = () => {
   const fetchActiveTracking = async () => {
     if (!user) return;
 
+    // Read dismissed items directly from localStorage to avoid stale closure values
+    const storedDismissedOrders = localStorage.getItem('dismissedOrders');
+    const currentDismissedOrders = storedDismissedOrders ? JSON.parse(storedDismissedOrders) : [];
+    
+    const storedDismissedWaitlist = localStorage.getItem('dismissedWaitlist');
+    const currentDismissedWaitlist = storedDismissedWaitlist ? JSON.parse(storedDismissedWaitlist) : [];
+
     const { data: orders } = await supabase
       .from('orders')
       .select('*, venues(name)')
@@ -89,12 +96,12 @@ const Index = () => {
       .order('reservation_time', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
 
-    // Filter out dismissed items
+    // Filter out dismissed items using current localStorage values
     const filteredOrders = (orders || []).filter(order => 
-      !dismissedOrders.includes(order.id)
+      !currentDismissedOrders.includes(order.id)
     );
     const filteredWaitlist = (waitlist || []).filter(entry => 
-      !dismissedWaitlist.includes(entry.id)
+      !currentDismissedWaitlist.includes(entry.id)
     );
 
     setActiveOrders(filteredOrders);
@@ -132,8 +139,10 @@ const Index = () => {
                   ? { ...order, ...payload.new, items: Array.isArray(payload.new.items) ? payload.new.items : [payload.new.items] }
                   : order
               );
-              // Filter out dismissed items
-              return updatedOrders.filter(order => !dismissedOrders.includes(order.id));
+              // Filter out dismissed items - read from localStorage for current values
+              const storedDismissed = localStorage.getItem('dismissedOrders');
+              const currentDismissed = storedDismissed ? JSON.parse(storedDismissed) : [];
+              return updatedOrders.filter(order => !currentDismissed.includes(order.id));
             });
           } else if (payload.eventType === 'INSERT') {
             fetchActiveTracking(); // Fetch for new orders
@@ -164,10 +173,14 @@ const Index = () => {
                   ? { ...entry, ...payload.new }
                   : entry
               );
-              // Remove from list if status is no longer active
-              return updatedEntries.filter(entry => 
-                ['waiting', 'ready', 'cancelled'].includes(entry.status)
+              // Filter out dismissed items - read from localStorage for current values
+              const storedDismissed = localStorage.getItem('dismissedWaitlist');
+              const currentDismissed = storedDismissed ? JSON.parse(storedDismissed) : [];
+              const activeFiltered = updatedEntries.filter(entry => 
+                ['waiting', 'ready', 'cancelled', 'seated'].includes(entry.status) &&
+                !currentDismissed.includes(entry.id)
               );
+              return activeFiltered;
             });
           } else if (payload.eventType === 'INSERT') {
             fetchActiveTracking(); // Fetch for new entries
@@ -185,7 +198,7 @@ const Index = () => {
         supabase.removeChannel(waitlistChannel);
       };
     }
-  }, [user, dismissedOrders, dismissedWaitlist]);
+  }, [user]);
 
   if (activeTab === "food-ready") {
     return (
