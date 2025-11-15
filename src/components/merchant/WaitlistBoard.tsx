@@ -279,16 +279,28 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       return;
     }
 
+    // Prepare update object
+    const updateData: any = { status: newStatus };
+    
+    // If marking as ready, set ready_at and ready_deadline (5 minutes from now)
+    if (newStatus === "ready") {
+      const now = new Date();
+      const deadline = new Date(now.getTime() + 5 * 60000); // 5 minutes from now
+      updateData.ready_at = now.toISOString();
+      updateData.ready_deadline = deadline.toISOString();
+      updateData.patron_delayed = false; // Reset delay flag
+    }
+
     // Optimistic update
     setWaitlist(prevWaitlist => 
       prevWaitlist.map(entry => 
-        entry.id === entryId ? { ...entry, status: newStatus } : entry
+        entry.id === entryId ? { ...entry, ...updateData } : entry
       )
     );
 
     const { error } = await supabase
       .from("waitlist_entries")
-      .update({ status: newStatus })
+      .update(updateData)
       .eq("id", entryId);
 
     if (error) {
@@ -313,7 +325,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
 
     toast({
       title: "Waitlist Updated",
-      description: `Entry status changed to ${newStatus.replace("_", " ")}`,
+      description: `Entry status changed to ${newStatus.replace("_", " ")}${newStatus === "ready" ? " - patron has 5 minutes" : ""}`,
     });
   };
 

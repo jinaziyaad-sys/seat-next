@@ -589,6 +589,8 @@ export type Database = {
           patron_delayed: boolean | null
           position: number | null
           preferences: string[] | null
+          ready_at: string | null
+          ready_deadline: string | null
           reservation_time: string | null
           reservation_type: string | null
           status: Database["public"]["Enums"]["waitlist_status"]
@@ -610,6 +612,8 @@ export type Database = {
           patron_delayed?: boolean | null
           position?: number | null
           preferences?: string[] | null
+          ready_at?: string | null
+          ready_deadline?: string | null
           reservation_time?: string | null
           reservation_type?: string | null
           status?: Database["public"]["Enums"]["waitlist_status"]
@@ -631,6 +635,8 @@ export type Database = {
           patron_delayed?: boolean | null
           position?: number | null
           preferences?: string[] | null
+          ready_at?: string | null
+          ready_deadline?: string | null
           reservation_time?: string | null
           reservation_type?: string | null
           status?: Database["public"]["Enums"]["waitlist_status"]
@@ -740,6 +746,7 @@ export type Database = {
           position_multiplier: number
         }[]
       }
+      cancel_expired_ready_entries: { Args: never; Returns: undefined }
       cleanup_expired_otps: { Args: never; Returns: undefined }
       get_user_role: {
         Args: { _user_id: string }

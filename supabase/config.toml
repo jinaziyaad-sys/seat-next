@@ -45,6 +45,12 @@ verify_jwt = false
 [functions.get-platform-analytics]
 verify_jwt = true
 
+[functions.auto-cancel-expired-waitlist]
+verify_jwt = false
+
+[[functions.auto-cancel-expired-waitlist.cron]]
+schedule = "* * * * *"
+
 [functions.activate-upcoming-reservations]
 verify_jwt = false
 
