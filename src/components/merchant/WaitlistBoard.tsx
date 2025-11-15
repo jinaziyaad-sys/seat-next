@@ -68,8 +68,25 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
 
     fetchUpcomingReservations();
     
+    // Set up real-time subscription for reservations
+    const reservationChannel = supabase
+      .channel('reservation-updates')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'waitlist_entries',
+        filter: `venue_id=eq.${venueId},reservation_type=eq.reservation`
+      }, () => {
+        fetchUpcomingReservations();
+      })
+      .subscribe();
+    
     const interval = setInterval(fetchUpcomingReservations, 60000);
-    return () => clearInterval(interval);
+    
+    return () => {
+      clearInterval(interval);
+      supabase.removeChannel(reservationChannel);
+    };
   }, [venueId]);
 
   // Fetch waitlist and set up real-time subscription
@@ -535,7 +552,17 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       {todaysReservations.length > 0 && (
         <Card className="shadow-card">
           <CardHeader>
-            <CardTitle>Upcoming Reservations (Next Hour)</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Upcoming Reservations (Next Hour)
+              {todaysReservations.some(r => {
+                const timeUntil = differenceInMinutes(new Date(r.reservation_time!), new Date());
+                return timeUntil <= 10 && timeUntil >= 0;
+              }) && (
+                <Badge className="bg-red-500 text-white animate-pulse">
+                  ARRIVING SOON
+                </Badge>
+              )}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <Table>
@@ -546,6 +573,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                   <TableHead>Party Size</TableHead>
                   <TableHead>Preferences</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -555,18 +583,24 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                     new Date()
                   );
                   const isNear = timeUntil <= 30 && timeUntil >= -15;
+                  const isVeryNear = timeUntil <= 10 && timeUntil >= 0;
+                  const nextStatus = getNextStatus(reservation.status, true);
 
                   return (
                     <TableRow 
                       key={reservation.id}
                       className={cn(
-                        isNear && "bg-yellow-50 dark:bg-yellow-950/30"
+                        isVeryNear && "bg-red-50 dark:bg-red-950/30 animate-pulse",
+                        isNear && !isVeryNear && "bg-yellow-50 dark:bg-yellow-950/30"
                       )}
                     >
                       <TableCell className="font-medium">
-                        {format(new Date(reservation.reservation_time!), 'HH:mm')}
+                        <div className="flex items-center gap-2">
+                          <CalendarIcon size={14} className="text-muted-foreground" />
+                          {format(new Date(reservation.reservation_time!), 'HH:mm')}
+                        </div>
                       </TableCell>
-                      <TableCell>{reservation.customer_name}</TableCell>
+                      <TableCell className="font-semibold">{reservation.customer_name}</TableCell>
                       <TableCell>
                         <span className="flex items-center gap-1">
                           <Users size={14} />
@@ -579,13 +613,45 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                           : "—"}
                       </TableCell>
                       <TableCell>
-                        {isNear ? (
-                          <Badge className="bg-yellow-500 text-white">
-                            {timeUntil > 0 ? `In ${timeUntil}m` : `${Math.abs(timeUntil)}m ago`}
+                        <div className="flex flex-col gap-1">
+                          <Badge className={getStatusColor(reservation.status)}>
+                            {reservation.status.replace("_", " ").toUpperCase()}
                           </Badge>
-                        ) : (
-                          <Badge variant="outline">Scheduled</Badge>
-                        )}
+                          {isVeryNear && reservation.status === "waiting" && (
+                            <Badge className="bg-red-500 text-white text-xs">
+                              {timeUntil > 0 ? `${timeUntil}m left` : "NOW"}
+                            </Badge>
+                          )}
+                          {isNear && !isVeryNear && reservation.status === "waiting" && (
+                            <Badge className="bg-yellow-500 text-white text-xs">
+                              In {timeUntil}m
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          {reservation.status !== "seated" && (
+                            <Button
+                              size="sm"
+                              onClick={() => updateEntryStatus(reservation.id, nextStatus)}
+                              className="text-xs"
+                            >
+                              {nextStatus === "ready" ? "Mark Ready" : "Mark Seated"}
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setCancelEntryId(reservation.id);
+                              setCancelDialogOpen(true);
+                            }}
+                            className="text-xs"
+                          >
+                            Cancel
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   );
