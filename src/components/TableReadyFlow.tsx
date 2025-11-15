@@ -41,6 +41,8 @@ interface WaitlistEntry {
   reservation_type?: string;
   reservation_time?: string | null;
   cancellation_reason?: string;
+  ready_at?: string | null;
+  ready_deadline?: string | null;
 }
 
 const partyDetailsSchema = z.object({
@@ -115,27 +117,53 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     };
   }, [waitlistEntry, step]);
 
-  // Countdown timer for delayed patrons
+  // Countdown timer - calculate from server-side deadline
   useEffect(() => {
-    if (step !== "delayed-countdown" || !waitlistEntry) return;
+    if ((step !== "ready" && step !== "delayed-countdown") || !waitlistEntry?.ready_deadline) return;
 
-    const timer = setInterval(() => {
-      setCountdownSeconds((prevSeconds) => {
-        if (prevSeconds === 0) {
-          if (countdownMinutes === 0) {
-            // Time's up - auto-cancel
-            handleAutoCancelAfterDelay();
-            return 0;
+    const updateCountdown = () => {
+      const now = new Date().getTime();
+      const deadline = new Date(waitlistEntry.ready_deadline!).getTime();
+      const timeLeft = deadline - now;
+
+      if (timeLeft <= 0) {
+        // Time's up - entry should be auto-cancelled by server
+        setCountdownMinutes(0);
+        setCountdownSeconds(0);
+        // Refresh data to check if cancelled
+        const checkStatus = async () => {
+          const { data } = await supabase
+            .from("waitlist_entries")
+            .select("status, cancellation_reason")
+            .eq("id", waitlistEntry.id)
+            .single();
+          
+          if (data && data.status === 'no_show') {
+            setWaitlistEntry(prev => prev ? {
+              ...prev,
+              status: 'cancelled',
+              cancellation_reason: data.cancellation_reason || 'Time expired'
+            } : null);
           }
-          setCountdownMinutes((prevMinutes) => prevMinutes - 1);
-          return 59;
-        }
-        return prevSeconds - 1;
-      });
-    }, 1000);
+        };
+        checkStatus();
+        return;
+      }
+
+      const minutes = Math.floor(timeLeft / 60000);
+      const seconds = Math.floor((timeLeft % 60000) / 1000);
+      setCountdownMinutes(minutes);
+      setCountdownSeconds(seconds);
+    };
+
+    // Update immediately
+    updateCountdown();
+    
+    // Then update every second
+    const timer = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(timer);
-  }, [step, countdownMinutes, waitlistEntry]);
+  }, [step, waitlistEntry?.ready_deadline, waitlistEntry?.id]);
 
   // Handle initial entry from home page
   useEffect(() => {
@@ -144,12 +172,15 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         id: initialEntry.id,
         venue: initialEntry.venues?.name || "",
         party_size: initialEntry.party_size,
-        position: initialEntry.position || 3,
+        position: initialEntry.position || 0,
         eta: initialEntry.eta,
         preferences: initialEntry.preferences || [],
         status: mapDatabaseStatus(initialEntry.status),
         awaiting_merchant_confirmation: initialEntry.awaiting_merchant_confirmation,
-        cancellation_reason: initialEntry.cancellation_reason || undefined
+        cancellation_reason: initialEntry.cancellation_reason || undefined,
+        ready_at: initialEntry.ready_at,
+        ready_deadline: initialEntry.ready_deadline,
+        patron_delayed: initialEntry.patron_delayed,
       };
       setWaitlistEntry(entry);
       
@@ -178,7 +209,10 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               status: mapDatabaseStatus(payload.new.status),
               eta: payload.new.eta,
               position: payload.new.position,
-              cancellation_reason: payload.new.cancellation_reason || undefined
+              cancellation_reason: payload.new.cancellation_reason || undefined,
+              ready_at: payload.new.ready_at,
+              ready_deadline: payload.new.ready_deadline,
+              patron_delayed: payload.new.patron_delayed,
             } : null);
             
             if (payload.new.status === "ready") {
@@ -513,13 +547,27 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const handleWait5Minutes = async () => {
     if (!waitlistEntry) return;
 
-    const delayedUntil = new Date(Date.now() + 5 * 60000); // 5 minutes from now
+    // Check if already used the extension
+    if (waitlistEntry.patron_delayed) {
+      toast({
+        title: "Extension Already Used",
+        description: "You've already used your 5-minute extension. Please arrive soon or cancel your booking.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Extend deadline by 5 minutes from current deadline (or now if no deadline exists)
+    const currentDeadline = waitlistEntry.ready_deadline 
+      ? new Date(waitlistEntry.ready_deadline)
+      : new Date();
+    const newDeadline = new Date(currentDeadline.getTime() + 5 * 60000);
 
     const { error } = await supabase
       .from("waitlist_entries")
       .update({ 
         patron_delayed: true,
-        delayed_until: delayedUntil.toISOString()
+        ready_deadline: newDeadline.toISOString()
       })
       .eq("id", waitlistEntry.id);
 
@@ -527,22 +575,19 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       setWaitlistEntry(prev => prev ? { 
         ...prev, 
         patron_delayed: true,
-        delayed_until: delayedUntil.toISOString()
+        ready_deadline: newDeadline.toISOString()
       } : null);
       
-      // Reset countdown
-      setCountdownMinutes(5);
-      setCountdownSeconds(0);
       setStep("delayed-countdown");
       
       toast({
-        title: "Delay Confirmed",
-        description: "The restaurant has been notified. You have 5 minutes.",
+        title: "5 More Minutes Granted",
+        description: "The restaurant has been notified. This is your final extension.",
       });
     } else {
       toast({
         title: "Error",
-        description: "Could not update your wait time. Please try again.",
+        description: "Could not extend your time. Please try again.",
         variant: "destructive"
       });
     }
@@ -572,12 +617,10 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const handleConfirmArrivalAfterDelay = async () => {
     if (!waitlistEntry) return;
     
-    // Clear delay flag and set awaiting confirmation
+    // Set awaiting confirmation
     const { error } = await supabase
       .from('waitlist_entries')
       .update({ 
-        patron_delayed: false,
-        delayed_until: null,
         awaiting_merchant_confirmation: true 
       })
       .eq('id', waitlistEntry.id);
@@ -585,7 +628,6 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     if (!error) {
       setWaitlistEntry(prev => prev ? { 
         ...prev, 
-        patron_delayed: false,
         awaiting_merchant_confirmation: true 
       } : null);
       setStep("awaiting-confirmation");
@@ -1205,6 +1247,19 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             <div className="p-6 bg-primary/10 rounded-xl border border-primary/20">
               <p className="font-semibold text-primary">Please head to the host stand now</p>
               <p className="text-sm text-muted-foreground mt-1">Party of {waitlistEntry.party_size}</p>
+              {waitlistEntry.ready_deadline && (
+                <div className="mt-4 p-3 bg-background rounded-lg">
+                  <p className="text-sm font-medium mb-1">Time Remaining:</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {String(countdownMinutes).padStart(2, '0')}:{String(countdownSeconds).padStart(2, '0')}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {waitlistEntry.patron_delayed 
+                      ? "Final extension - please arrive soon" 
+                      : "Your table will be released if you don't arrive"}
+                  </p>
+                </div>
+              )}
             </div>
 
             <div className="space-y-3">
@@ -1215,8 +1270,9 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 variant="outline" 
                 className="w-full h-12"
                 onClick={handleWait5Minutes}
+                disabled={waitlistEntry.patron_delayed}
               >
-                Need 5 More Minutes
+                {waitlistEntry.patron_delayed ? "Extension Already Used" : "Need 5 More Minutes"}
               </Button>
               <Button 
                 variant="outline" 
