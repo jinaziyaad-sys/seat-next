@@ -44,7 +44,8 @@ export const MerchantSettings = ({
     defaultPrepTime: "10",
     maxExtensionTime: "45",
     pickupInstructions: "Please collect your order from the main counter. Show your order number to staff.",
-    autoNoShowTime: "15"
+    autoNoShowTime: "15",
+    orderNumberRefreshMinutes: "15"
   });
 
   const [waitlistPreferences, setWaitlistPreferences] = useState<WaitlistPreference[]>([]);
@@ -126,7 +127,8 @@ export const MerchantSettings = ({
           defaultPrepTime: settings.default_prep_time?.toString() || "10",
           maxExtensionTime: settings.max_extension_time?.toString() || "45",
           pickupInstructions: settings.pickup_instructions || "Please collect your order from the main counter. Show your order number to staff.",
-          autoNoShowTime: settings.auto_no_show_time?.toString() || "15"
+          autoNoShowTime: settings.auto_no_show_time?.toString() || "15",
+          orderNumberRefreshMinutes: settings.order_number_refresh_minutes?.toString() || "15"
         });
       }
 
@@ -209,6 +211,7 @@ export const MerchantSettings = ({
       default_prep_time: parseInt(settings.defaultPrepTime) || 10,
       max_extension_time: parseInt(settings.maxExtensionTime) || 45,
       pickup_instructions: settings.pickupInstructions,
+      order_number_refresh_minutes: parseInt(settings.orderNumberRefreshMinutes) || 15,
       
       // Waitlist/Table settings
       venue_capacity: parseInt(settings.venueCapacity) || 40,
@@ -459,6 +462,26 @@ export const MerchantSettings = ({
               />
               <p className="text-sm text-muted-foreground mt-1.5">
                 Maximum time an order ETA can be extended
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="orderRefresh" className="flex items-center gap-2">
+                Order Number Refresh Time
+                <Badge variant="outline" className="text-xs font-normal">Duplicate prevention</Badge>
+              </Label>
+              <Input
+                id="orderRefresh"
+                type="number"
+                value={settings.orderNumberRefreshMinutes}
+                onChange={(e) => handleInputChange("orderNumberRefreshMinutes", e.target.value)}
+                className="mt-2"
+              />
+              <p className="text-sm text-muted-foreground mt-1.5">
+                After this many minutes, the same order number can be used again. Prevents duplicate tracking while allowing number reuse.
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                💡 Set to 15-30 minutes for busy restaurants, or 60+ for venues that reset daily
               </p>
             </div>
           </CardContent>
