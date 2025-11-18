@@ -12,7 +12,7 @@ import MerchantAuth from "./pages/MerchantAuth";
 import MerchantDashboard from "./pages/MerchantDashboard";
 import DevAuth from "./pages/DevAuth";
 import DevDashboard from "./pages/DevDashboard";
-import AdminCreateMerchant from "./pages/AdminCreateMerchant";
+
 import WaitlistJoin from "./pages/WaitlistJoin";
 
 const queryClient = new QueryClient();
@@ -39,8 +39,6 @@ const App = () => (
             <Route path="/dev/auth" element={<DevAuth />} />
             <Route path="/dev/dashboard" element={<DevDashboard />} />
             
-            {/* Legacy route - redirect to dev dashboard */}
-            <Route path="/admin/create-merchant" element={<AdminCreateMerchant />} />
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
