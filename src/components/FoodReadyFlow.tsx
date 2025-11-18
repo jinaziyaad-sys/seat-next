@@ -351,8 +351,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
       .select('id, created_at, status')
       .eq('venue_id', venue.id)
       .eq('order_number', orderNumber.toUpperCase())
-      .gte('created_at', refreshTime.toISOString())
-      .not('status', 'in', '(collected,no_show,rejected)');
+      .gte('created_at', refreshTime.toISOString());
 
     if (duplicateError) {
       console.error('Error checking for duplicates:', duplicateError);
@@ -360,9 +359,10 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
 
     if (existingOrders && existingOrders.length > 0) {
       const minutesAgo = Math.round((Date.now() - new Date(existingOrders[0].created_at).getTime()) / 60000);
+      const minutesRemaining = refreshMinutes - minutesAgo;
       toast({
         title: "Duplicate Order",
-        description: `Order #${orderNumber.toUpperCase()} was submitted ${minutesAgo} minute${minutesAgo !== 1 ? 's' : ''} ago and is still active. Please verify this is a new order or wait ${refreshMinutes} minutes to reuse this number.`,
+        description: `Order #${orderNumber.toUpperCase()} was already used ${minutesAgo} minute${minutesAgo !== 1 ? 's' : ''} ago. Please wait ${minutesRemaining} more minute${minutesRemaining !== 1 ? 's' : ''} before reusing this number.`,
         variant: "destructive"
       });
       return;
