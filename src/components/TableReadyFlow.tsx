@@ -1111,7 +1111,9 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
         <Card className="shadow-card">
           <CardContent className="p-8 text-center space-y-6">
-            <div className="text-6xl">⏰</div>
+                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Clock className="w-10 h-10 text-primary" />
+                </div>
             
             <div className="space-y-2">
               <h2 className="text-3xl font-bold text-primary">#{waitlistEntry.position}</h2>

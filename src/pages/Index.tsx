@@ -490,7 +490,7 @@ const Index = () => {
                         ) : (
                           <>
                             <p className="text-sm text-muted-foreground">
-                              Party of {entry.party_size} • Position {entry.position || '—'}
+                              Party of {entry.party_size}{entry.position ? ` • #${entry.position}` : ''}
                             </p>
                             {entry.status === 'cancelled' && (
                               <p className="text-xs text-destructive mt-1">Tap to view details</p>
