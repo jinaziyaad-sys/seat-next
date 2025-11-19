@@ -433,6 +433,9 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       return;
     }
 
+    // Get current entry to preserve important flags
+    const currentEntry = waitlist.find(e => e.id === entryId);
+
     // Prepare update object
     const updateData: any = { status: newStatus };
     
@@ -443,6 +446,10 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       updateData.ready_at = now.toISOString();
       updateData.ready_deadline = deadline.toISOString();
       updateData.patron_delayed = false; // Reset delay flag
+      // IMPORTANT: Preserve awaiting_merchant_confirmation if patron already clicked "I'm Here"
+      if (currentEntry?.awaiting_merchant_confirmation) {
+        updateData.awaiting_merchant_confirmation = true;
+      }
     }
 
     // Optimistic update
