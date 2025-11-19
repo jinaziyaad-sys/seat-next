@@ -47,6 +47,13 @@ const extractCancellationReason = (notes: string | null | undefined): string | n
   return match ? match[1].trim() : null;
 };
 
+// Helper to extract extension reason from notes
+const extractExtensionReason = (notes: string | null | undefined): string | null => {
+  if (!notes) return null;
+  const match = notes.match(/^Extended:\s*(.+)$/i);
+  return match ? match[1].trim() : null;
+};
+
 export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; initialOrder?: any }) {
   const [step, setStep] = useState<"scan" | "order-entry" | "rejected" | "tracking" | "cancelled-details">("scan");
   const [orderNumber, setOrderNumber] = useState("");
@@ -883,12 +890,31 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
             </div>
 
             {currentOrder.eta && new Date(currentOrder.eta) > new Date() && (
-              <div className="flex items-center justify-center gap-2 text-lg">
-                <Clock size={20} />
-                <span className="font-semibold">
-                  {Math.ceil((new Date(currentOrder.eta).getTime() - new Date().getTime()) / (1000 * 60))} minutes • ETA {new Date(currentOrder.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
-                </span>
-              </div>
+              <>
+                <div className="flex items-center justify-center gap-2 text-lg">
+                  <Clock size={20} />
+                  <span className="font-semibold">
+                    {Math.ceil((new Date(currentOrder.eta).getTime() - new Date().getTime()) / (1000 * 60))} minutes • ETA {new Date(currentOrder.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                  </span>
+                </div>
+
+                {/* Show extension reason if present */}
+                {extractExtensionReason(currentOrder.notes) && (
+                  <div className="p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
+                    <div className="flex items-start gap-2">
+                      <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5" />
+                      <div>
+                        <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                          Preparation Update
+                        </p>
+                        <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                          {extractExtensionReason(currentOrder.notes)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             {currentOrder.status === "ready" && (
