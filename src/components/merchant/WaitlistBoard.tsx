@@ -30,6 +30,8 @@ interface WaitlistEntry {
   reservation_type?: string;
   reservation_time?: string | null;
   cancellation_reason?: string;
+  cancelled_by?: string;
+  ready_at?: string | null;
 }
 
 export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
@@ -93,13 +95,27 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   useEffect(() => {
     const fetchWaitlist = async () => {
       // Fetch waitlist entries for this venue (exclude seated unless awaiting confirmation)
+      // Include patron-cancelled entries that were ready (so merchant can acknowledge them)
       const { data: waitlistData, error: waitlistError } = await supabase
         .from("waitlist_entries")
         .select("*")
         .eq("venue_id", venueId)
         .or("status.neq.seated,awaiting_merchant_confirmation.eq.true")
-        .neq("status", "cancelled")
+        .not("status", "eq", "cancelled")
+        .or("cancelled_by.neq.patron,ready_at.is.null")
         .order("created_at", { ascending: true });
+      
+      // Include patron-cancelled entries that were previously ready
+      const { data: patronCancelledData } = await supabase
+        .from("waitlist_entries")
+        .select("*")
+        .eq("venue_id", venueId)
+        .eq("status", "cancelled")
+        .eq("cancelled_by", "patron")
+        .not("ready_at", "is", null)
+        .order("created_at", { ascending: true });
+
+      const combinedData = [...(waitlistData || []), ...(patronCancelledData || [])];
 
       if (waitlistError) {
         toast({
@@ -110,7 +126,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
         return;
       }
 
-      setWaitlist(waitlistData || []);
+      setWaitlist(combinedData);
     };
 
     fetchWaitlist();
@@ -176,6 +192,16 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     toast({
       title: "Seating Confirmed",
       description: "Patron will now be asked to rate their experience",
+    });
+  };
+
+  const acknowledgeCancellation = async (entryId: string) => {
+    // Remove from local state immediately
+    setWaitlist(prevWaitlist => prevWaitlist.filter(entry => entry.id !== entryId));
+    
+    toast({
+      title: "Acknowledged",
+      description: "Patron cancellation has been acknowledged",
     });
   };
 
@@ -763,6 +789,11 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                       NEEDS 5 MIN
                     </Badge>
                   )}
+                  {entry.status === "cancelled" && entry.cancelled_by === "patron" && (
+                    <Badge className="bg-destructive text-white animate-pulse text-xs">
+                      PATRON CANCELLED
+                    </Badge>
+                  )}
                 </div>
               </div>
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
@@ -787,14 +818,36 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
               )}
 
               <div className="space-y-2">
-                {entry.awaiting_merchant_confirmation && entry.status === "ready" && (
-                  <Button
-                    onClick={() => confirmSeating(entry.id)}
-                    className="w-full bg-green-600 hover:bg-green-700"
-                  >
-                    ✓ Confirm Patron Seated
-                  </Button>
+                {/* Patron cancelled - show acknowledge button */}
+                {entry.status === "cancelled" && entry.cancelled_by === "patron" && (
+                  <div className="space-y-3">
+                    {entry.cancellation_reason && (
+                      <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                        <p className="text-sm text-destructive font-semibold">Patron cancelled:</p>
+                        <p className="text-sm text-foreground mt-1">{entry.cancellation_reason}</p>
+                      </div>
+                    )}
+                    <Button
+                      onClick={() => acknowledgeCancellation(entry.id)}
+                      className="w-full"
+                      variant="outline"
+                    >
+                      ✓ Acknowledge & Dismiss
+                    </Button>
+                  </div>
                 )}
+                
+                {/* Normal entry actions - hide for cancelled entries */}
+                {entry.status !== "cancelled" && (
+                  <>
+                    {entry.awaiting_merchant_confirmation && entry.status === "ready" && (
+                      <Button
+                        onClick={() => confirmSeating(entry.id)}
+                        className="w-full bg-green-600 hover:bg-green-700"
+                      >
+                        ✓ Confirm Patron Seated
+                      </Button>
+                    )}
                 
                 <div className="flex gap-2">
                   <Button
@@ -867,6 +920,8 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                     )}
                   </div>
                 </div>
+                </>
+                )}
               </div>
             </CardContent>
           </Card>

@@ -246,6 +246,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               ready_at: payload.new.ready_at,
               ready_deadline: payload.new.ready_deadline,
               patron_delayed: payload.new.patron_delayed,
+              cancelled_by: payload.new.cancelled_by,
+              updated_at: payload.new.updated_at,
             } : null);
             
             if (payload.new.status === "ready") {
@@ -258,6 +260,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 { tag: 'table-ready', requireInteraction: true }
               );
               vibratePhone([200, 100, 200, 100, 200]);
+            } else if (payload.new.status === "cancelled" || payload.new.status === "no_show") {
+              setStep("cancelled-details");
             }
           }
         })
@@ -601,7 +605,9 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 status: mapDatabaseStatus(payload.new.status),
                 eta: payload.new.eta,
                 position: payload.new.position,
-                cancellation_reason: payload.new.cancellation_reason || undefined
+                cancellation_reason: payload.new.cancellation_reason || undefined,
+                cancelled_by: payload.new.cancelled_by,
+                updated_at: payload.new.updated_at,
               } : null);
               
               if (payload.new.status === "ready") {
@@ -614,6 +620,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                   { tag: 'table-ready', requireInteraction: true }
                 );
                 vibratePhone([200, 100, 200, 100, 200]);
+              } else if (payload.new.status === "cancelled" || payload.new.status === "no_show") {
+                setStep("cancelled-details");
               }
             }
           })
