@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { sendBrowserNotification, vibratePhone, initializePushNotifications } from "@/utils/notifications";
 import { checkVenueStatus } from "@/utils/businessHours";
 import { calculateDistance, formatDistance, getUserLocation, type UserLocation } from "@/utils/geolocation";
+import { format } from "date-fns";
 
 type OrderStatus = "awaiting_verification" | "placed" | "in_prep" | "ready" | "collected" | "rejected";
 
@@ -117,7 +118,9 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
               status: payload.new.status,
               eta: payload.new.eta,
               notes: payload.new.notes,
-              // Preserve instructions field during updates
+              cancelled_by: payload.new.cancelled_by,
+              updated_at: payload.new.updated_at,
+              // Preserve instructions and venue fields during updates
             } : null);
             
             // Send notification when order is ready
@@ -128,6 +131,16 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
                 { tag: 'order-ready', requireInteraction: true }
               );
               vibratePhone([200, 100, 200, 100, 200]);
+            }
+            
+            // Switch to cancelled-details view if order is rejected
+            if (payload.new.status === 'rejected') {
+              setStep('cancelled-details');
+              sendBrowserNotification(
+                "Order Cancelled",
+                `Order #${payload.new.order_number} has been cancelled`,
+                { tag: 'order-cancelled' }
+              );
             }
           }
         })
@@ -481,6 +494,49 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
     
     onBack();
   };
+
+  // Cancelled Order Details View
+  if (step === "cancelled-details" && currentOrder) {
+    return (
+      <Card className="max-w-md mx-auto shadow-card m-6">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Order Cancelled</CardTitle>
+            <Badge variant="destructive">
+              Cancelled by {currentOrder.cancelled_by === 'patron' ? 'You' : currentOrder.cancelled_by === 'system' ? 'System' : 'Venue'}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Order Number</p>
+            <p className="font-semibold">#{currentOrder.order_number}</p>
+          </div>
+          
+          {currentOrder.venue && (
+            <div>
+              <p className="text-sm text-muted-foreground">Venue</p>
+              <p className="font-semibold">{currentOrder.venue}</p>
+            </div>
+          )}
+          
+          {currentOrder.notes && extractCancellationReason(currentOrder.notes) && (
+            <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/20">
+              <p className="text-sm font-semibold mb-1">Cancellation Reason:</p>
+              <p className="text-sm">{extractCancellationReason(currentOrder.notes)}</p>
+            </div>
+          )}
+          
+          <div>
+            <p className="text-sm text-muted-foreground">Cancelled on</p>
+            <p className="text-sm">{format(new Date(currentOrder.updated_at), 'MMM dd, yyyy @ h:mm a')}</p>
+          </div>
+          
+          <Button onClick={onBack} className="w-full">Close</Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (step === "rejected") {
     return (
