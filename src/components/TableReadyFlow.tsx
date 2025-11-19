@@ -55,6 +55,13 @@ const partyDetailsSchema = z.object({
   partySize: z.number().int().min(1, "Party size must be at least 1").max(12, "Party size cannot exceed 12"),
 });
 
+// Helper to extract extension reason from notes (for future use if notes field is added)
+const extractExtensionReason = (notes: string | null | undefined): string | null => {
+  if (!notes) return null;
+  const match = notes.match(/^Extended:\s*(.+)$/i);
+  return match ? match[1].trim() : null;
+};
+
 export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; initialEntry?: any }) {
   const { toast } = useToast();
   const [step, setStep] = useState<"venue-select" | "booking-type" | "reservation-details" | "party-details" | "waiting" | "ready" | "awaiting-confirmation" | "delayed-countdown" | "feedback" | "cancelled-details">("venue-select");
@@ -1314,6 +1321,9 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 {waitlistEntry.eta ? Math.ceil((new Date(waitlistEntry.eta).getTime() - new Date().getTime()) / (1000 * 60)) : 0} minutes • ETA {waitlistEntry.eta ? new Date(waitlistEntry.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }) : "--:--"}
               </span>
             </div>
+
+            {/* Note: Extension reason display would require adding a notes field to waitlist_entries table */}
+            {/* Keeping structure similar to FoodReadyFlow for future implementation */}
 
             <div className="p-4 bg-muted rounded-xl">
               <div className="text-sm text-muted-foreground space-y-1">

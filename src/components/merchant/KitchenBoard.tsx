@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Clock, Plus, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { ExtensionReasonDialog } from "./ExtensionReasonDialog";
 
 interface Order {
   id: string;
@@ -37,6 +38,8 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelOrderId, setCancelOrderId] = useState<string>("");
   const [cancelReason, setCancelReason] = useState("");
+  const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
+  const [extensionOrderId, setExtensionOrderId] = useState<string>("");
   const { toast } = useToast();
 
   // Fetch orders function (defined outside useEffect so subscription can use it)
@@ -279,9 +282,9 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
     setCancelReason("");
   };
 
-  const extendETA = async (orderId: string, minutes: number, reason?: string) => {
+  const extendETA = async (orderId: string, minutes: number, reason: string) => {
     const order = orders.find(o => o.id === orderId);
-    if (!order) return;
+    if (!order || !order.eta) return;
 
     // Fetch venue settings to check max extension time
     const { data: venueData } = await supabase
@@ -315,12 +318,11 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
     }
 
     const newETA = new Date(currentETA.getTime() + minutes * 60000);
-    const newNotes = reason ? `Extended: ${reason}` : order.notes;
 
     // Optimistic update
     setOrders(prevOrders => 
       prevOrders.map(o => 
-        o.id === orderId ? { ...o, eta: newETA.toISOString(), notes: newNotes } : o
+        o.id === orderId ? { ...o, eta: newETA.toISOString(), notes: `Extended: ${reason}` } : o
       )
     );
 
@@ -328,7 +330,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
       .from("orders")
       .update({ 
         eta: newETA.toISOString(),
-        notes: newNotes
+        notes: `Extended: ${reason}`
       })
       .eq("id", orderId);
 
@@ -338,26 +340,23 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
         description: "Could not update ETA",
         variant: "destructive"
       });
-      // Revert optimistic update on error by refetching
-      const { data } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("venue_id", venueId)
-        .neq("status", "collected")
-        .order("created_at", { ascending: true });
-      if (data) {
-        setOrders(data.map(order => ({
-          ...order,
-          items: Array.isArray(order.items) ? order.items : [order.items]
-        })));
-      }
+      fetchOrders(); // Revert
       return;
     }
 
     toast({
       title: "ETA Extended",
-      description: `Order ETA extended by ${minutes} minutes`,
+      description: `Order will be ready ${minutes} minutes later - ${reason}`,
     });
+  };
+
+  const openExtensionDialog = (orderId: string) => {
+    setExtensionOrderId(orderId);
+    setExtensionDialogOpen(true);
+  };
+
+  const handleExtensionConfirm = (minutes: number, reason: string) => {
+    extendETA(extensionOrderId, minutes, reason);
   };
 
   const addOrder = async () => {
@@ -860,34 +859,16 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
                     </Button>
                   )}
 
-                  {/* ETA Extension Buttons - Only show for in_prep and ready */}
-                  {(order.status === "in_prep" || order.status === "ready") && (
-                    <div className="flex gap-2 pt-2 border-t">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => extendETA(order.id, 5, "Kitchen delay")}
-                        className="flex-1"
-                      >
-                        +5m
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => extendETA(order.id, 10, "Extra prep time")}
-                        className="flex-1"
-                      >
-                        +10m
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => extendETA(order.id, 15, "Busy period")}
-                        className="flex-1"
-                      >
-                        +15m
-                      </Button>
-                    </div>
+                  {/* ETA Extension Button - Only show for in_prep and placed */}
+                  {(order.status === "in_prep" || order.status === "placed") && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => openExtensionDialog(order.id)}
+                    >
+                      <Clock className="h-4 w-4 mr-1" />
+                      Extend ETA
+                    </Button>
                   )}
                 </div>
               )}
@@ -904,6 +885,54 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Order</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="cancel-reason">Reason for Cancellation</Label>
+              <Textarea
+                id="cancel-reason"
+                placeholder="Enter reason for cancelling this order..."
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                className="resize-none"
+                rows={3}
+              />
+            </div>
+          </div>
+          <div className="flex gap-2 justify-end">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCancelDialogOpen(false);
+                setCancelOrderId("");
+                setCancelReason("");
+              }}
+            >
+              Keep Order
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={cancelOrder}
+              disabled={!cancelReason.trim()}
+            >
+              Cancel Order
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <ExtensionReasonDialog
+        open={extensionDialogOpen}
+        onOpenChange={setExtensionDialogOpen}
+        onConfirm={handleExtensionConfirm}
+        title="Extend Order ETA"
+        description="Select extension time and provide a reason for the customer"
+      />
     </div>
   );
 };

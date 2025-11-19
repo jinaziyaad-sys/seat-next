@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInMinutes, format } from "date-fns";
 import { cn } from "@/lib/utils";
+import { ExtensionReasonDialog } from "./ExtensionReasonDialog";
 
 interface WaitlistEntry {
   id: string;
@@ -46,6 +47,8 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   const [noShowDialogOpen, setNoShowDialogOpen] = useState(false);
   const [noShowEntryId, setNoShowEntryId] = useState<string>("");
   const [noShowReason, setNoShowReason] = useState("");
+  const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
+  const [extensionEntryId, setExtensionEntryId] = useState<string>("");
   const { toast } = useToast();
 
   // Fetch upcoming reservations (within 1 hour window)
@@ -337,6 +340,61 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     setNoShowReason("");
   };
 
+  const setETA = async (entryId: string, minutes: number, reason: string) => {
+    const entry = waitlist.find(e => e.id === entryId);
+    if (!entry || !entry.eta) return;
+
+    const currentEta = new Date(entry.eta);
+    const newEta = new Date(currentEta.getTime() + minutes * 60000);
+
+    // Optimistic update
+    setWaitlist(prevWaitlist => 
+      prevWaitlist.map(e => 
+        e.id === entryId ? { ...e, eta: newEta.toISOString() } : e
+      )
+    );
+
+    const { error } = await supabase
+      .from("waitlist_entries")
+      .update({ 
+        eta: newEta.toISOString()
+      })
+      .eq("id", entryId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Could not update wait time",
+        variant: "destructive"
+      });
+      // Revert optimistic update on error
+      const { data } = await supabase
+        .from("waitlist_entries")
+        .select("*")
+        .eq("venue_id", venueId)
+        .neq("status", "seated")
+        .order("created_at", { ascending: true });
+      if (data) {
+        setWaitlist(data);
+      }
+      return;
+    }
+
+    toast({
+      title: "Wait Time Extended",
+      description: `Customer will be notified of ${minutes} minute delay - ${reason}`,
+    });
+  };
+
+  const openExtensionDialog = (entryId: string) => {
+    setExtensionEntryId(entryId);
+    setExtensionDialogOpen(true);
+  };
+
+  const handleExtensionConfirm = (minutes: number, reason: string) => {
+    setETA(extensionEntryId, minutes, reason);
+  };
+
   const updateEntryStatus = async (entryId: string, newStatus: WaitlistEntry["status"]) => {
     // If cancelled, show dialog
     if (newStatus === "cancelled") {
@@ -444,51 +502,6 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       default:
         return "secondary";
     }
-  };
-
-  const setETA = async (entryId: string, minutes: number) => {
-    const entry = waitlist.find(e => e.id === entryId);
-    if (!entry) return;
-
-    const currentETA = entry.eta ? new Date(entry.eta) : new Date();
-    const newETA = new Date(currentETA.getTime() + minutes * 60000);
-
-    // Optimistic update
-    setWaitlist(prevWaitlist => 
-      prevWaitlist.map(e => 
-        e.id === entryId ? { ...e, eta: newETA.toISOString() } : e
-      )
-    );
-
-    const { error } = await supabase
-      .from("waitlist_entries")
-      .update({ eta: newETA.toISOString() })
-      .eq("id", entryId);
-
-    if (error) {
-      toast({
-        title: "Error",
-        description: "Could not update ETA",
-        variant: "destructive"
-      });
-      // Revert optimistic update on error by refetching
-      const { data } = await supabase
-        .from("waitlist_entries")
-        .select("*")
-        .eq("venue_id", venueId)
-        .or("status.neq.seated,awaiting_merchant_confirmation.eq.true")
-        .neq("status", "cancelled")
-        .order("created_at", { ascending: true });
-      if (data) {
-        setWaitlist(data);
-      }
-      return;
-    }
-
-    toast({
-      title: "ETA Extended",
-      description: `Wait time extended by ${minutes} minutes`,
-    });
   };
 
   const addToWaitlist = async () => {
@@ -849,32 +862,17 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                       </Button>
                     )}
                 
-                <div className="flex gap-2">
+                {/* Extension button - only for waiting status */}
+                {entry.status === "waiting" && (
                   <Button
-                    size="sm"
                     variant="outline"
-                    onClick={() => setETA(entry.id, 5)}
-                    className="flex-1"
-                  >
-                    +5m
-                  </Button>
-                  <Button
                     size="sm"
-                    variant="outline"
-                    onClick={() => setETA(entry.id, 10)}
-                    className="flex-1"
+                    onClick={() => openExtensionDialog(entry.id)}
                   >
-                    +10m
+                    <Clock className="h-4 w-4 mr-1" />
+                    Extend Wait
                   </Button>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => setETA(entry.id, 15)}
-                    className="flex-1"
-                  >
-                    +15m
-                  </Button>
-                </div>
+                )}
 
                 <div className="space-y-2">
                   {/* Main action button - progressive status flow */}
@@ -1027,6 +1025,14 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ExtensionReasonDialog
+        open={extensionDialogOpen}
+        onOpenChange={setExtensionDialogOpen}
+        onConfirm={handleExtensionConfirm}
+        title="Extend Wait Time"
+        description="Select extension time and provide a reason for the customer"
+      />
     </div>
   );
 };
