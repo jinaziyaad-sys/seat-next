@@ -234,6 +234,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
         status: "rejected",
         eta: null, // Clear ETA for rejected orders
         notes: `Cancelled: ${cancelReason}`,
+        cancelled_by: "venue",
         updated_at: new Date().toISOString()
       })
       .eq("id", cancelOrderId);
