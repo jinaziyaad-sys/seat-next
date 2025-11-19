@@ -508,6 +508,20 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         .select()
         .single();
 
+      // Wait a moment for trigger to complete, then refetch to get updated position
+      if (newEntry && !error) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        const { data: updatedEntry } = await supabase
+          .from("waitlist_entries")
+          .select('position')
+          .eq('id', newEntry.id)
+          .single();
+        
+        if (updatedEntry) {
+          newEntry.position = updatedEntry.position;
+        }
+      }
+
       if (error) {
         console.error("Error joining waitlist:", error);
         toast({
