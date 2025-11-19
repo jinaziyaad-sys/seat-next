@@ -121,9 +121,30 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
-        table: 'waitlist_entries'
+        table: 'waitlist_entries',
+        filter: `venue_id=eq.${venueId}`
       }, (payload) => {
         console.log('Waitlist change:', payload);
+        
+        // Check if patron cancelled a ready table
+        if (payload.eventType === 'UPDATE' && 
+            payload.new.status === 'cancelled' && 
+            payload.new.cancelled_by === 'patron' &&
+            payload.old.status === 'ready') {
+          
+          toast({
+            title: "⚠️ Patron Cancelled",
+            description: `${payload.new.customer_name} cancelled their ready table (Party of ${payload.new.party_size})`,
+            variant: "destructive",
+          });
+          
+          // Play audio notification if supported
+          if ('Audio' in window) {
+            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS56+adUw4OTqPh77BgGgU7ldny0oIwBSd6yu/glUULElyx6OyrWBUIQ5zd8sFuHwQ5jdXvxXQmBTB+zO/glUULElyx6OyrWBUIQ5zd8sFuHwQ5jdXvxXQmBTB+zO/glUULElyx6OyrWBUIQ5zd8sFuHwQ5jdXvxXQmBTB+zO/glUULElyx6OyrWBUIQ5zd8sFuHwQ5jdXvxXQmBTB+zO/glUULElyx6OyrWBUIQ5zd8sFuHwQ5jdXvxXQmBQ==');
+            audio.play().catch(() => {}); // Ignore errors if audio fails
+          }
+        }
+        
         // Refresh waitlist when any entry changes
         fetchWaitlist();
       })

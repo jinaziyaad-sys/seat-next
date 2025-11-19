@@ -103,6 +103,25 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
       }, (payload) => {
         console.log('Order change for venue:', payload);
         
+        // Check if patron cancelled a ready order
+        if (payload.eventType === 'UPDATE' && 
+            payload.new.status === 'rejected' && 
+            payload.new.cancelled_by === 'patron' &&
+            (payload.old.status === 'ready' || payload.old.status === 'in_prep' || payload.old.status === 'placed')) {
+          
+          toast({
+            title: "⚠️ Patron Cancelled Order",
+            description: `Order #${payload.new.order_number} was cancelled by the patron`,
+            variant: "destructive",
+          });
+          
+          // Play audio notification if supported
+          if ('Audio' in window) {
+            const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS56+adUw4OTqPh77BgGgU7ldny0oIwBSd6yu/glUULElyx6OyrWBUIQ5zd8sFuHwQ5jdXvxXQmBTB+zO/glUULElyx6OyrWBUIQ5zd8sFuHwQ5jdXvxXQmBTB+zO/glUULElyx6OyrWBUIQ5zd8sFuHwQ5jdXvxXQmBTB+zO/glUULElyx6OyrWBUIQ5zd8sFuHwQ5jdXvxXQmBTB+zO/glUULElyx6OyrWBUIQ5zd8sFuHwQ5jdXvxXQmBQ==');
+            audio.play().catch(() => {}); // Ignore errors if audio fails
+          }
+        }
+        
         // Handle the update directly in state for instant UI update
         if (payload.eventType === 'INSERT') {
           fetchOrders(); // Fetch fresh data for new orders
