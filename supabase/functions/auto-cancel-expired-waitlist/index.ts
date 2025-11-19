@@ -22,12 +22,22 @@ Deno.serve(async (req) => {
 
     console.log('Starting auto-cancel check for expired waitlist entries...');
 
-    // Call the database function to cancel expired entries
-    const { error: functionError } = await supabaseAdmin.rpc('cancel_expired_ready_entries');
+    // Update expired entries directly to include cancelled_by field
+    const { error: updateError } = await supabaseAdmin
+      .from('waitlist_entries')
+      .update({
+        status: 'no_show',
+        cancellation_reason: 'Automatic cancellation - patron did not arrive within time limit',
+        cancelled_by: 'system',
+        updated_at: new Date().toISOString()
+      })
+      .eq('status', 'ready')
+      .not('ready_deadline', 'is', null)
+      .lt('ready_deadline', new Date().toISOString());
 
-    if (functionError) {
-      console.error('Error calling cancel_expired_ready_entries:', functionError);
-      throw functionError;
+    if (updateError) {
+      console.error('Error updating expired entries:', updateError);
+      throw updateError;
     }
 
     // Query to see how many were cancelled and send notifications

@@ -257,6 +257,7 @@ export type Database = {
         Row: {
           awaiting_merchant_confirmation: boolean | null
           awaiting_patron_confirmation: boolean | null
+          cancelled_by: string | null
           confidence: string | null
           created_at: string
           customer_name: string | null
@@ -276,6 +277,7 @@ export type Database = {
         Insert: {
           awaiting_merchant_confirmation?: boolean | null
           awaiting_patron_confirmation?: boolean | null
+          cancelled_by?: string | null
           confidence?: string | null
           created_at?: string
           customer_name?: string | null
@@ -295,6 +297,7 @@ export type Database = {
         Update: {
           awaiting_merchant_confirmation?: boolean | null
           awaiting_patron_confirmation?: boolean | null
+          cancelled_by?: string | null
           confidence?: string | null
           created_at?: string
           customer_name?: string | null
@@ -578,6 +581,7 @@ export type Database = {
         Row: {
           awaiting_merchant_confirmation: boolean | null
           cancellation_reason: string | null
+          cancelled_by: string | null
           confidence: string | null
           created_at: string
           customer_name: string
@@ -601,6 +605,7 @@ export type Database = {
         Insert: {
           awaiting_merchant_confirmation?: boolean | null
           cancellation_reason?: string | null
+          cancelled_by?: string | null
           confidence?: string | null
           created_at?: string
           customer_name: string
@@ -624,6 +629,7 @@ export type Database = {
         Update: {
           awaiting_merchant_confirmation?: boolean | null
           cancellation_reason?: string | null
+          cancelled_by?: string | null
           confidence?: string | null
           created_at?: string
           customer_name?: string

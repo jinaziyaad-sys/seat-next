@@ -187,7 +187,8 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       .from("waitlist_entries")
       .update({ 
         status: "cancelled",
-        cancellation_reason: cancelReason,
+        cancellation_reason: `Cancelled: ${cancelReason}`,
+        cancelled_by: "venue",
         updated_at: new Date().toISOString()
       })
       .eq("id", cancelEntryId);
@@ -253,6 +254,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       .update({ 
         status: "no_show",
         cancellation_reason: `No show: ${noShowReason}`,
+        cancelled_by: "venue",
         updated_at: new Date().toISOString()
       })
       .eq("id", noShowEntryId);

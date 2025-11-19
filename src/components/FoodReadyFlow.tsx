@@ -20,11 +20,14 @@ interface Order {
   id: string;
   order_number: string;
   venue: string;
+  venue_id: string;
   status: OrderStatus;
   eta: string | null;
   instructions?: string;
   items: any[];
   notes?: string;
+  cancelled_by?: string;
+  updated_at: string;
 }
 
 const statusConfig = {
@@ -44,7 +47,7 @@ const extractCancellationReason = (notes: string | null | undefined): string | n
 };
 
 export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; initialOrder?: any }) {
-  const [step, setStep] = useState<"scan" | "order-entry" | "rejected" | "tracking">("scan");
+  const [step, setStep] = useState<"scan" | "order-entry" | "rejected" | "tracking" | "cancelled-details">("scan");
   const [orderNumber, setOrderNumber] = useState("");
   const [selectedVenue, setSelectedVenue] = useState("");
   const [selectedVenueData, setSelectedVenueData] = useState<any>(null);
@@ -81,14 +84,23 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
         id: initialOrder.id,
         order_number: initialOrder.order_number,
         venue: initialOrder.venues?.name || "",
+        venue_id: initialOrder.venue_id,
         status: initialOrder.status,
         eta: initialOrder.eta,
         instructions: initialOrder.venues?.settings?.pickup_instructions || "Please collect from the main counter",
         items: Array.isArray(initialOrder.items) ? initialOrder.items : [initialOrder.items],
         notes: initialOrder.notes,
+        cancelled_by: initialOrder.cancelled_by,
+        updated_at: initialOrder.updated_at,
       };
       setCurrentOrder(order);
-      setStep("tracking");
+      
+      // Check if order is cancelled/rejected and show details view
+      if (order.status === 'rejected') {
+        setStep("cancelled-details");
+      } else {
+        setStep("tracking");
+      }
 
       // Set up real-time subscription
       const channel = supabase
@@ -432,10 +444,13 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
       id: newOrder.id,
       order_number: newOrder.order_number,
       venue: selectedVenue,
+      venue_id: newOrder.venue_id,
       status: 'awaiting_verification',
       eta: newOrder.eta,
       instructions: venueSettings?.pickup_instructions || "Please collect from the main counter",
-      items: []
+      items: [],
+      notes: "",
+      updated_at: newOrder.created_at,
     };
     
     setCurrentOrder(order);

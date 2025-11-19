@@ -300,8 +300,7 @@ const Index = () => {
               <Card 
                 key={order.id} 
                 className={cn(
-                  "shadow-card transition-all",
-                  !canInteract && "cursor-pointer hover:shadow-floating",
+                  "shadow-card transition-all cursor-pointer hover:shadow-floating",
                   order.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
                   order.status === 'rejected' && "bg-destructive/10 border-destructive",
                   order.status === 'collected' && "bg-success/10 border-success"
@@ -312,10 +311,8 @@ const Index = () => {
                     <div 
                       className="flex items-center gap-3 flex-1"
                       onClick={() => {
-                        if (!canInteract) {
-                          setSelectedOrder(order);
-                          setActiveTab("food-ready");
-                        }
+                        setSelectedOrder(order);
+                        setActiveTab("food-ready");
                       }}
                     >
                       <div className={cn(
@@ -337,7 +334,9 @@ const Index = () => {
                         <h3 className="font-semibold">{order.venues?.name}</h3>
                         <p className="text-sm text-muted-foreground">Order #{order.order_number}</p>
                         {order.status === 'rejected' && (
-                          <p className="text-xs text-destructive mt-1">Cancelled by venue</p>
+                          <p className="text-xs text-destructive mt-1">
+                            Cancelled by {order.cancelled_by === 'patron' ? 'you' : order.cancelled_by === 'system' ? 'system' : 'venue'}
+                          </p>
                         )}
                         {order.eta && (order.status === 'placed' || order.status === 'in_prep') && (
                           <div className="space-y-1 mt-1">
@@ -438,8 +437,7 @@ const Index = () => {
               <Card 
                 key={entry.id} 
                 className={cn(
-                  "shadow-card transition-all",
-                  !canInteract && "cursor-pointer hover:shadow-floating",
+                  "shadow-card transition-all cursor-pointer hover:shadow-floating",
                   entry.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
                   entry.status === 'cancelled' && "bg-destructive/10 border-destructive",
                   entry.status === 'seated' && "bg-success/10 border-success"
@@ -450,10 +448,8 @@ const Index = () => {
                     <div 
                       className="flex items-center gap-3 flex-1"
                       onClick={() => {
-                        if (!canInteract) {
-                          setSelectedOrder(entry);
-                          setActiveTab("table-ready");
-                        }
+                        setSelectedOrder(entry);
+                        setActiveTab("table-ready");
                       }}
                     >
                       <div className={cn(
@@ -492,9 +488,11 @@ const Index = () => {
                             <p className="text-sm text-muted-foreground">
                               Party of {entry.party_size}{entry.position ? ` • #${entry.position}` : ''}
                             </p>
-                            {entry.status === 'cancelled' && (
-                              <p className="text-xs text-destructive mt-1">Tap to view details</p>
-                            )}
+                        {entry.status === 'cancelled' && (
+                          <p className="text-xs text-destructive mt-1">
+                            Cancelled by {entry.cancelled_by === 'patron' ? 'you' : entry.cancelled_by === 'system' ? 'system' : 'venue'}
+                          </p>
+                        )}
                             {entry.eta && entry.status === 'waiting' && (
                               <div className="space-y-1 mt-1">
                                 <div className="flex items-center gap-1 text-xs text-muted-foreground">

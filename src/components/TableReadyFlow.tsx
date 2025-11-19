@@ -31,6 +31,7 @@ const mapDatabaseStatus = (status: DatabaseWaitlistStatus): WaitlistStatus => {
 interface WaitlistEntry {
   id: string;
   venue: string;
+  venue_id: string;
   party_size: number;
   position: number;
   eta: string | null;
@@ -44,6 +45,9 @@ interface WaitlistEntry {
   cancellation_reason?: string;
   ready_at?: string | null;
   ready_deadline?: string | null;
+  customer_name: string;
+  cancelled_by?: string;
+  updated_at: string;
 }
 
 const partyDetailsSchema = z.object({
@@ -53,7 +57,7 @@ const partyDetailsSchema = z.object({
 
 export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; initialEntry?: any }) {
   const { toast } = useToast();
-  const [step, setStep] = useState<"venue-select" | "booking-type" | "reservation-details" | "party-details" | "waiting" | "ready" | "awaiting-confirmation" | "delayed-countdown" | "feedback">("venue-select");
+  const [step, setStep] = useState<"venue-select" | "booking-type" | "reservation-details" | "party-details" | "waiting" | "ready" | "awaiting-confirmation" | "delayed-countdown" | "feedback" | "cancelled-details">("venue-select");
   const [selectedVenue, setSelectedVenue] = useState("");
   const [selectedVenueData, setSelectedVenueData] = useState<any>(null);
   const [bookingType, setBookingType] = useState<"now" | "later">("now");
@@ -137,13 +141,14 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
       if (timeLeft <= 0) {
         // Time expired - auto cancel the entry
-        const { error } = await supabase
-          .from('waitlist_entries')
-          .update({
-            status: 'no_show',
-            cancellation_reason: 'Time expired - patron did not arrive within allocated time'
-          })
-          .eq('id', waitlistEntry.id);
+      const { error } = await supabase
+        .from('waitlist_entries')
+        .update({
+          status: 'no_show',
+          cancellation_reason: 'Time expired - patron did not arrive within allocated time',
+          cancelled_by: 'system'
+        })
+        .eq('id', waitlistEntry.id);
 
         if (!error) {
           setWaitlistEntry(prev => prev ? {
@@ -190,6 +195,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       const entry: WaitlistEntry = {
         id: initialEntry.id,
         venue: initialEntry.venues?.name || "",
+        venue_id: initialEntry.venue_id,
         party_size: initialEntry.party_size,
         position: initialEntry.position || 0,
         eta: initialEntry.eta,
@@ -200,17 +206,25 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         ready_at: initialEntry.ready_at,
         ready_deadline: initialEntry.ready_deadline,
         patron_delayed: initialEntry.patron_delayed,
+        customer_name: initialEntry.customer_name,
+        cancelled_by: initialEntry.cancelled_by,
+        updated_at: initialEntry.updated_at,
       };
       setWaitlistEntry(entry);
       
-      // Set appropriate step based on status
-      if (initialEntry.status === "ready") {
-        setStep("ready");
-      } else if (initialEntry.status === "cancelled" || initialEntry.status === "no_show") {
-        // Don't set step - let the component render based on status check
-        // The cancelled screen is shown via: if (waitlistEntry?.status === "cancelled")
+      // Check if entry is cancelled and show details view
+      if (entry.status === 'cancelled') {
+        setStep("cancelled-details");
       } else {
-        setStep("waiting");
+        // Set appropriate step based on status
+        if (initialEntry.status === "ready") {
+          setStep("ready");
+        } else if (initialEntry.status === "cancelled" || initialEntry.status === "no_show") {
+          // Don't set step - let the component render based on status check
+          // The cancelled screen is shown via: if (waitlistEntry?.status === "cancelled")
+        } else {
+          setStep("waiting");
+        }
       }
 
       // Set up real-time subscription
@@ -553,12 +567,15 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         const entry: WaitlistEntry = {
           id: newEntry.id,
           venue: selectedVenue,
+          venue_id: newEntry.venue_id,
           party_size: newEntry.party_size,
           position: newEntry.position || 0,
           eta: newEntry.eta,
           preferences: newEntry.preferences || [],
           status: mapDatabaseStatus(newEntry.status),
-          cancellation_reason: newEntry.cancellation_reason || undefined
+          cancellation_reason: newEntry.cancellation_reason || undefined,
+          customer_name: newEntry.customer_name,
+          updated_at: newEntry.created_at,
         };
         setWaitlistEntry(entry);
         
@@ -616,16 +633,64 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     }
   };
 
+  // Cancelled Waitlist Details View
+  if (step === "cancelled-details" && waitlistEntry) {
+    return (
+      <Card className="max-w-md mx-auto shadow-card">
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Table Booking Cancelled</CardTitle>
+            <Badge variant="destructive">
+              Cancelled by {waitlistEntry.cancelled_by === 'patron' ? 'You' : waitlistEntry.cancelled_by === 'system' ? 'System' : 'Venue'}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <p className="text-sm text-muted-foreground">Customer Name</p>
+            <p className="font-semibold">{waitlistEntry.customer_name}</p>
+          </div>
+          
+          <div>
+            <p className="text-sm text-muted-foreground">Party Size</p>
+            <p className="font-semibold">{waitlistEntry.party_size} {waitlistEntry.party_size === 1 ? 'person' : 'people'}</p>
+          </div>
+          
+          {waitlistEntry.cancellation_reason && (
+            <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/20">
+              <p className="text-sm font-semibold mb-1">Cancellation Reason:</p>
+              <p className="text-sm">{waitlistEntry.cancellation_reason}</p>
+            </div>
+          )}
+          
+          <div>
+            <p className="text-sm text-muted-foreground">Cancelled on</p>
+            <p className="text-sm">{format(new Date(waitlistEntry.updated_at), 'MMM dd, yyyy @ h:mm a')}</p>
+          </div>
+          
+          <Button onClick={onBack} className="w-full">Close</Button>
+        </CardContent>
+      </Card>
+    );
+  }
+
   const handleCancelBooking = async () => {
     if (!waitlistEntry) return;
 
     const { error } = await supabase
       .from("waitlist_entries")
-      .update({ status: "cancelled" })
+      .update({ 
+        status: "cancelled",
+        cancelled_by: "patron"
+      })
       .eq("id", waitlistEntry.id);
 
     if (!error) {
-      setWaitlistEntry(prev => prev ? { ...prev, status: "cancelled" } : null);
+      setWaitlistEntry(prev => prev ? { 
+        ...prev, 
+        status: "cancelled",
+        cancelled_by: "patron"
+      } : null);
       setTimeout(() => {
         onBack();
       }, 1500);
