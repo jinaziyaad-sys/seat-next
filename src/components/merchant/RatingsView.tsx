@@ -224,12 +224,11 @@ export const RatingsView = ({ venueId }: { venueId: string }) => {
                     </Badge>
                     <div className="flex gap-0.5">
                       {[1, 2, 3, 4, 5].map((star) => (
-                        <span 
+                        <Star 
                           key={star} 
-                          className={star <= rating.rating ? "text-yellow-400" : "text-gray-300"}
-                        >
-                          ⭐
-                        </span>
+                          size={16}
+                          className={star <= rating.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}
+                        />
                       ))}
                     </div>
                   </div>
