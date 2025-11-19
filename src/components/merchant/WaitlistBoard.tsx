@@ -22,6 +22,7 @@ interface WaitlistEntry {
   preferences?: string[];
   created_at: string;
   eta: string | null;
+  original_eta?: string;
   status: "waiting" | "ready" | "seated" | "cancelled" | "no_show";
   position: number | null;
   venue_id: string;
@@ -344,7 +345,36 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     const entry = waitlist.find(e => e.id === entryId);
     if (!entry || !entry.eta) return;
 
+    // Fetch venue settings to check max extension time
+    const { data: venueData } = await supabase
+      .from('venues')
+      .select('settings')
+      .eq('id', venueId)
+      .single();
+
+    const settings = venueData?.settings as any || {};
+    const maxExtensionTime = settings.max_extension_time || 45;
+    
     const currentEta = new Date(entry.eta);
+    const originalEta = entry.original_eta ? new Date(entry.original_eta) : new Date(entry.eta);
+    
+    // Calculate total extension so far
+    const currentExtension = Math.floor((currentEta.getTime() - originalEta.getTime()) / 60000);
+    const newTotalExtension = currentExtension + minutes;
+    
+    // Check if we would exceed the maximum
+    if (newTotalExtension > maxExtensionTime) {
+      const remainingExtension = maxExtensionTime - currentExtension;
+      toast({
+        title: "Extension Limit Reached",
+        description: remainingExtension > 0
+          ? `Maximum extension time is ${maxExtensionTime} minutes. You can only add ${remainingExtension} more minutes.`
+          : `Maximum extension time of ${maxExtensionTime} minutes has been reached.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
     const newEta = new Date(currentEta.getTime() + minutes * 60000);
 
     // Optimistic update
@@ -539,6 +569,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
         party_size: parseInt(newPartySize),
         preferences,
         eta,
+        original_eta: eta,
         status: "waiting",
         position: etaData?.position || null
       });

@@ -19,6 +19,7 @@ interface Order {
   items: any[];
   created_at: string;
   eta: string | null;
+  original_eta?: string;
   notes?: string | null;
   customer_name?: string | null;
   venue_id: string;
@@ -296,12 +297,11 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
     const settings = venueData?.settings as any || {};
     const maxExtensionTime = settings.max_extension_time || 45;
     
-    // Calculate original ETA (when order was placed)
-    const createdAt = new Date(order.created_at);
-    const currentETA = order.eta ? new Date(order.eta) : new Date();
+    const currentETA = new Date(order.eta);
+    const originalETA = order.original_eta ? new Date(order.original_eta) : new Date(order.eta);
     
     // Calculate total extension so far (in minutes)
-    const currentExtension = Math.floor((currentETA.getTime() - createdAt.getTime()) / 60000);
+    const currentExtension = Math.floor((currentETA.getTime() - originalETA.getTime()) / 60000);
     
     // Calculate what the new total extension would be
     const newTotalExtension = currentExtension + minutes;
@@ -394,6 +394,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
         status: "placed",
         items,
         eta,
+        original_eta: eta,
         confidence
       });
 
