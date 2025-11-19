@@ -508,7 +508,9 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
 
         <Card className="shadow-card border-2 border-destructive">
           <CardContent className="p-8 text-center space-y-6">
-            <div className="text-6xl">❌</div>
+            <div className="mx-auto w-24 h-24 rounded-full bg-destructive/10 flex items-center justify-center">
+              <XCircle className="w-16 h-16 text-destructive" />
+            </div>
             
             <div className="space-y-3">
               <h2 className="text-2xl font-bold text-destructive">Order Cancelled</h2>
