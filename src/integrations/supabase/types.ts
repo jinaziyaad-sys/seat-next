@@ -592,6 +592,7 @@ export type Database = {
           delayed_until: string | null
           eta: string | null
           id: string
+          notes: string | null
           original_eta: string | null
           party_size: number
           patron_delayed: boolean | null
@@ -617,6 +618,7 @@ export type Database = {
           delayed_until?: string | null
           eta?: string | null
           id?: string
+          notes?: string | null
           original_eta?: string | null
           party_size?: number
           patron_delayed?: boolean | null
@@ -642,6 +644,7 @@ export type Database = {
           delayed_until?: string | null
           eta?: string | null
           id?: string
+          notes?: string | null
           original_eta?: string | null
           party_size?: number
           patron_delayed?: boolean | null

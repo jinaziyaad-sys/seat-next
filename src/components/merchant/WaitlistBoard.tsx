@@ -13,7 +13,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { differenceInMinutes, format } from "date-fns";
 import { cn } from "@/lib/utils";
-import { ExtensionReasonDialog } from "./ExtensionReasonDialog";
+import { TableExtensionReasonDialog } from "./TableExtensionReasonDialog";
 
 interface WaitlistEntry {
   id: string;
@@ -387,7 +387,8 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     const { error } = await supabase
       .from("waitlist_entries")
       .update({ 
-        eta: newEta.toISOString()
+        eta: newEta.toISOString(),
+        notes: `Extended: ${reason}`
       })
       .eq("id", entryId);
 
@@ -824,8 +825,8 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                     {entry.status === "waiting" ? `#${entry.position || '?'}` : entry.status.replace("_", " ").toUpperCase()}
                   </Badge>
                   {entry.awaiting_merchant_confirmation && entry.status === "ready" && (
-                    <Badge className="bg-orange-500 text-white animate-pulse text-xs">
-                      PATRON HERE
+                    <Badge className="bg-orange-500 text-white animate-pulse text-xs font-bold shadow-lg">
+                      🔔 PATRON HERE - ACTION REQUIRED
                     </Badge>
                   )}
                   {entry.patron_delayed && entry.status === "ready" && (
@@ -1057,7 +1058,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
         </DialogContent>
       </Dialog>
 
-      <ExtensionReasonDialog
+      <TableExtensionReasonDialog
         open={extensionDialogOpen}
         onOpenChange={setExtensionDialogOpen}
         onConfirm={handleExtensionConfirm}
