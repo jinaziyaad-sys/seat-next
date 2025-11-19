@@ -83,7 +83,7 @@ const Index = () => {
 
     const { data: orders } = await supabase
       .from('orders')
-      .select('*, venues(name)')
+      .select('*, venues(name, settings)')
       .eq('user_id', user.id)
       .in('status', ['awaiting_verification', 'placed', 'in_prep', 'ready', 'collected', 'rejected'])
       .order('created_at', { ascending: false });
