@@ -7,6 +7,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin, Loader2, Star, Calendar as CalendarIcon, XCircle, Navigation } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -75,6 +76,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [isSubmittingRating, setIsSubmittingRating] = useState(false);
   const [countdownMinutes, setCountdownMinutes] = useState(5);
   const [countdownSeconds, setCountdownSeconds] = useState(0);
+  const [partiesAhead, setPartiesAhead] = useState<any[]>([]);
 
   // Get authenticated user and initialize notifications
   useEffect(() => {
@@ -270,6 +272,80 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     fetchVenues();
   }, []);
 
+  // Subscribe to venue-wide waitlist changes to update position in real-time
+  useEffect(() => {
+    if (!waitlistEntry || !selectedVenueData?.id) return;
+
+    const channel = supabase
+      .channel('venue-waitlist-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'waitlist_entries',
+          filter: `venue_id=eq.${selectedVenueData.id}`
+        },
+        async () => {
+          // Refetch the current entry to get updated position
+          const { data } = await supabase
+            .from('waitlist_entries')
+            .select('position')
+            .eq('id', waitlistEntry.id)
+            .single();
+          
+          if (data) {
+            setWaitlistEntry(prev => prev ? { ...prev, position: data.position } : null);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [waitlistEntry?.id, selectedVenueData?.id]);
+
+  // Fetch and subscribe to parties ahead in the queue
+  useEffect(() => {
+    if (!waitlistEntry || !selectedVenueData?.id || waitlistEntry.status !== 'waiting') {
+      setPartiesAhead([]);
+      return;
+    }
+
+    const fetchPartiesAhead = async () => {
+      const { data } = await supabase
+        .from('waitlist_entries')
+        .select('id, customer_name, party_size, position, eta, created_at')
+        .eq('venue_id', selectedVenueData.id)
+        .eq('status', 'waiting')
+        .lt('position', waitlistEntry.position)
+        .order('position', { ascending: true });
+      
+      if (data) setPartiesAhead(data);
+    };
+
+    fetchPartiesAhead();
+
+    const channel = supabase
+      .channel('parties-ahead-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'waitlist_entries',
+          filter: `venue_id=eq.${selectedVenueData.id}`
+        },
+        () => fetchPartiesAhead()
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [waitlistEntry?.position, waitlistEntry?.status, selectedVenueData?.id]);
+
   const filteredVenues = venues
     .filter(venue => 
       venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -447,7 +523,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           id: newEntry.id,
           venue: selectedVenue,
           party_size: newEntry.party_size,
-          position: 3, // Could be calculated from actual waitlist
+          position: newEntry.position || 0,
           eta: newEntry.eta,
           preferences: newEntry.preferences || [],
           status: mapDatabaseStatus(newEntry.status),
@@ -476,6 +552,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 ...prev,
                 status: mapDatabaseStatus(payload.new.status),
                 eta: payload.new.eta,
+                position: payload.new.position,
                 cancellation_reason: payload.new.cancellation_reason || undefined
               } : null);
               
@@ -1111,7 +1188,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
         <Card className="shadow-card">
           <CardContent className="p-8 text-center space-y-6">
-                <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
                   <Clock className="w-10 h-10 text-primary" />
                 </div>
             
@@ -1138,6 +1215,45 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             </div>
           </CardContent>
         </Card>
+
+        {partiesAhead.length > 0 && (
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle>Parties Ahead of You</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {partiesAhead.length} {partiesAhead.length === 1 ? 'party' : 'parties'} waiting
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {partiesAhead.map((party, index) => {
+                  const estimatedWait = party.eta 
+                    ? Math.ceil((new Date(party.eta).getTime() - new Date().getTime()) / (1000 * 60))
+                    : 15;
+                  
+                  return (
+                    <div key={party.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm">
+                        #{party.position}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Users size={14} className="text-muted-foreground" />
+                          <span className="text-sm font-medium">Party of {party.party_size}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                          <Clock size={12} />
+                          <span>~{estimatedWait} min</span>
+                        </div>
+                      </div>
+                      <Progress value={((index + 1) / (partiesAhead.length + 1)) * 100} className="w-16 h-2" />
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <Card className="shadow-card">
           <CardHeader>
