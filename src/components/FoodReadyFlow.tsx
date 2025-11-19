@@ -498,43 +498,74 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
   // Cancelled Order Details View
   if (step === "cancelled-details" && currentOrder) {
     return (
-      <Card className="max-w-md mx-auto shadow-card m-6">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Order Cancelled</CardTitle>
-            <Badge variant="destructive">
-              Cancelled by {currentOrder.cancelled_by === 'patron' ? 'You' : currentOrder.cancelled_by === 'system' ? 'System' : 'Venue'}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <p className="text-sm text-muted-foreground">Order Number</p>
-            <p className="font-semibold">#{currentOrder.order_number}</p>
-          </div>
-          
-          {currentOrder.venue && (
-            <div>
-              <p className="text-sm text-muted-foreground">Venue</p>
-              <p className="font-semibold">{currentOrder.venue}</p>
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Order Cancelled</h1>
+        </div>
+
+        <Card className="shadow-card border-2 border-destructive">
+          <CardContent className="p-8 text-center space-y-6">
+            <div className="text-6xl">❌</div>
+            
+            <div className="space-y-3">
+              <h2 className="text-2xl font-bold text-destructive">Order Cancelled</h2>
+              <Badge variant="destructive" className="text-sm px-3 py-1">
+                Cancelled by {currentOrder.cancelled_by === 'patron' ? 'You' : currentOrder.cancelled_by === 'system' ? 'System' : 'Venue'}
+              </Badge>
             </div>
-          )}
-          
-          {currentOrder.notes && extractCancellationReason(currentOrder.notes) && (
-            <div className="p-4 bg-destructive/10 rounded-lg border border-destructive/20">
-              <p className="text-sm font-semibold mb-1">Cancellation Reason:</p>
-              <p className="text-sm">{extractCancellationReason(currentOrder.notes)}</p>
+
+            <div className="p-6 bg-muted rounded-xl">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-sm text-muted-foreground">Order Number</span>
+                <span className="font-mono text-xl font-bold">#{currentOrder.order_number}</span>
+              </div>
+              
+              {currentOrder.venue && (
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-muted-foreground">Venue</span>
+                  <span className="font-semibold">{currentOrder.venue}</span>
+                </div>
+              )}
             </div>
-          )}
-          
-          <div>
-            <p className="text-sm text-muted-foreground">Cancelled on</p>
-            <p className="text-sm">{format(new Date(currentOrder.updated_at), 'MMM dd, yyyy @ h:mm a')}</p>
-          </div>
-          
-          <Button onClick={onBack} className="w-full">Close</Button>
-        </CardContent>
-      </Card>
+            
+            {currentOrder.notes && extractCancellationReason(currentOrder.notes) && (
+              <div className="p-6 bg-destructive/10 rounded-xl border-2 border-destructive/30">
+                <p className="font-semibold mb-3 text-destructive">Cancellation Reason</p>
+                <p className="text-foreground">{extractCancellationReason(currentOrder.notes)}</p>
+              </div>
+            )}
+            
+            <div className="text-sm text-muted-foreground">
+              Cancelled on {format(new Date(currentOrder.updated_at), 'MMM dd, yyyy @ h:mm a')}
+            </div>
+            
+            <div className="space-y-3 pt-4">
+              <Button 
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setOrderNumber("");
+                  setSelectedVenue("");
+                  setStep("scan");
+                }}
+              >
+                Track Another Order
+              </Button>
+
+              <Button 
+                variant="ghost"
+                className="w-full text-muted-foreground"
+                onClick={onBack}
+              >
+                Back to Home
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
