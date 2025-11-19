@@ -121,34 +121,51 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
   // Countdown timer - calculate from server-side deadline
   useEffect(() => {
+    // Stop timer if patron confirmed arrival
+    if (waitlistEntry?.awaiting_merchant_confirmation) {
+      setCountdownMinutes(0);
+      setCountdownSeconds(0);
+      return;
+    }
+
     if ((step !== "ready" && step !== "delayed-countdown") || !waitlistEntry?.ready_deadline) return;
 
-    const updateCountdown = () => {
+    const updateCountdown = async () => {
       const now = new Date().getTime();
       const deadline = new Date(waitlistEntry.ready_deadline!).getTime();
       const timeLeft = deadline - now;
 
       if (timeLeft <= 0) {
-        // Time's up - entry should be auto-cancelled by server
+        // Time expired - auto cancel the entry
+        const { error } = await supabase
+          .from('waitlist_entries')
+          .update({
+            status: 'no_show',
+            cancellation_reason: 'Time expired - patron did not arrive within allocated time'
+          })
+          .eq('id', waitlistEntry.id);
+
+        if (!error) {
+          setWaitlistEntry(prev => prev ? {
+            ...prev,
+            status: 'cancelled',
+            cancellation_reason: 'Time expired - patron did not arrive within allocated time'
+          } : null);
+
+          toast({
+            title: "Booking Cancelled",
+            description: "Your table reservation has been cancelled because you didn't arrive in time.",
+            variant: "destructive"
+          });
+
+          sendBrowserNotification(
+            "Waitlist Cancelled",
+            "Your table was released because you didn't arrive in time. Please join the waitlist again if needed."
+          );
+        }
+        
         setCountdownMinutes(0);
         setCountdownSeconds(0);
-        // Refresh data to check if cancelled
-        const checkStatus = async () => {
-          const { data } = await supabase
-            .from("waitlist_entries")
-            .select("status, cancellation_reason")
-            .eq("id", waitlistEntry.id)
-            .single();
-          
-          if (data && data.status === 'no_show') {
-            setWaitlistEntry(prev => prev ? {
-              ...prev,
-              status: 'cancelled',
-              cancellation_reason: data.cancellation_reason || 'Time expired'
-            } : null);
-          }
-        };
-        checkStatus();
         return;
       }
 
@@ -165,7 +182,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     const timer = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(timer);
-  }, [step, waitlistEntry?.ready_deadline, waitlistEntry?.id]);
+  }, [step, waitlistEntry?.ready_deadline, waitlistEntry?.id, waitlistEntry?.awaiting_merchant_confirmation, toast]);
 
   // Handle initial entry from home page
   useEffect(() => {
@@ -618,14 +635,21 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const handleConfirmSeat = async () => {
     if (!waitlistEntry) return;
     
-    // Set flag for merchant to confirm
+    // Set flag for merchant to confirm and clear deadline since patron is here
     const { error } = await supabase
       .from('waitlist_entries')
-      .update({ awaiting_merchant_confirmation: true })
+      .update({ 
+        awaiting_merchant_confirmation: true,
+        ready_deadline: null
+      })
       .eq('id', waitlistEntry.id);
 
     if (!error) {
-      setWaitlistEntry(prev => prev ? { ...prev, awaiting_merchant_confirmation: true } : null);
+      setWaitlistEntry(prev => prev ? { 
+        ...prev, 
+        awaiting_merchant_confirmation: true,
+        ready_deadline: null
+      } : null);
       setStep("awaiting-confirmation");
       
       toast({

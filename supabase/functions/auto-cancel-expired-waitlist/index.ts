@@ -30,10 +30,10 @@ Deno.serve(async (req) => {
       throw functionError;
     }
 
-    // Query to see how many were cancelled
+    // Query to see how many were cancelled and send notifications
     const { data: cancelledEntries, error: queryError } = await supabaseAdmin
       .from('waitlist_entries')
-      .select('id, customer_name, venue_id')
+      .select('id, customer_name, venue_id, user_id')
       .eq('status', 'no_show')
       .eq('cancellation_reason', 'Automatic cancellation - patron did not arrive within time limit')
       .gte('updated_at', new Date(Date.now() - 5000).toISOString()); // Updated in last 5 seconds
@@ -44,6 +44,36 @@ Deno.serve(async (req) => {
       console.log(`Auto-cancelled ${cancelledEntries?.length || 0} expired waitlist entries`);
       if (cancelledEntries && cancelledEntries.length > 0) {
         console.log('Cancelled entries:', cancelledEntries);
+        
+        // Send push notifications to affected patrons
+        for (const entry of cancelledEntries) {
+          if (entry.user_id) {
+            try {
+              const { data: profile } = await supabaseAdmin
+                .from('profiles')
+                .select('fcm_token')
+                .eq('id', entry.user_id)
+                .single();
+
+              if (profile?.fcm_token) {
+                await supabaseAdmin.functions.invoke('send-push-notification', {
+                  body: {
+                    fcmToken: profile.fcm_token,
+                    title: 'Table Released',
+                    body: 'Your table was released due to time expiration. Please join the waitlist again if needed.',
+                    data: {
+                      type: 'waitlist_cancelled',
+                      entry_id: entry.id
+                    }
+                  }
+                });
+                console.log(`Sent cancellation notification to user ${entry.user_id}`);
+              }
+            } catch (notificationError) {
+              console.error(`Failed to send notification for entry ${entry.id}:`, notificationError);
+            }
+          }
+        }
       }
     }
 
