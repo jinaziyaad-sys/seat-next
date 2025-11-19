@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Clock, Plus, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { ExtensionReasonDialog } from "./ExtensionReasonDialog";
+import { FoodExtensionReasonDialog } from "./FoodExtensionReasonDialog";
 
 interface Order {
   id: string;
@@ -927,7 +927,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
         </DialogContent>
       </Dialog>
 
-      <ExtensionReasonDialog
+      <FoodExtensionReasonDialog
         open={extensionDialogOpen}
         onOpenChange={setExtensionDialogOpen}
         onConfirm={handleExtensionConfirm}

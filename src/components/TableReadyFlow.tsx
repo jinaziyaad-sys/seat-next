@@ -48,6 +48,7 @@ interface WaitlistEntry {
   customer_name: string;
   cancelled_by?: string;
   updated_at: string;
+  notes?: string;
 }
 
 const partyDetailsSchema = z.object({
@@ -216,6 +217,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         customer_name: initialEntry.customer_name,
         cancelled_by: initialEntry.cancelled_by,
         updated_at: initialEntry.updated_at,
+        notes: initialEntry.notes,
       };
       setWaitlistEntry(entry);
       
@@ -255,6 +257,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               patron_delayed: payload.new.patron_delayed,
               cancelled_by: payload.new.cancelled_by,
               updated_at: payload.new.updated_at,
+              notes: payload.new.notes,
             } : null);
             
             if (payload.new.status === "ready") {
@@ -615,6 +618,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 cancellation_reason: payload.new.cancellation_reason || undefined,
                 cancelled_by: payload.new.cancelled_by,
                 updated_at: payload.new.updated_at,
+                notes: payload.new.notes,
               } : null);
               
               if (payload.new.status === "ready") {
@@ -1322,8 +1326,21 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               </span>
             </div>
 
-            {/* Note: Extension reason display would require adding a notes field to waitlist_entries table */}
-            {/* Keeping structure similar to FoodReadyFlow for future implementation */}
+            {waitlistEntry.notes && extractExtensionReason(waitlistEntry.notes) && (
+              <div className="p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
+                <div className="flex items-start gap-2">
+                  <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                      Wait Time Updated
+                    </p>
+                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                      {extractExtensionReason(waitlistEntry.notes)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <div className="p-4 bg-muted rounded-xl">
               <div className="text-sm text-muted-foreground space-y-1">
