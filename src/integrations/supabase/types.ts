@@ -582,6 +582,7 @@ export type Database = {
       }
       waitlist_entries: {
         Row: {
+          assigned_table_id: string | null
           awaiting_merchant_confirmation: boolean | null
           cancellation_reason: string | null
           cancelled_by: string | null
@@ -608,6 +609,7 @@ export type Database = {
           venue_id: string
         }
         Insert: {
+          assigned_table_id?: string | null
           awaiting_merchant_confirmation?: boolean | null
           cancellation_reason?: string | null
           cancelled_by?: string | null
@@ -634,6 +636,7 @@ export type Database = {
           venue_id: string
         }
         Update: {
+          assigned_table_id?: string | null
           awaiting_merchant_confirmation?: boolean | null
           cancellation_reason?: string | null
           cancelled_by?: string | null
@@ -763,6 +766,19 @@ export type Database = {
       }
       cancel_expired_ready_entries: { Args: never; Returns: undefined }
       cleanup_expired_otps: { Args: never; Returns: undefined }
+      get_occupied_tables: {
+        Args: {
+          p_buffer_minutes?: number
+          p_time_slot: string
+          p_venue_id: string
+        }
+        Returns: {
+          customer_name: string
+          party_size: number
+          reservation_time: string
+          table_id: string
+        }[]
+      }
       get_user_role: {
         Args: { _user_id: string }
         Returns: Database["public"]["Enums"]["app_role"]

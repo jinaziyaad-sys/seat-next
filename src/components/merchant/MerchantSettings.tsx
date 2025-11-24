@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, X, ChevronDown, Clock, Calendar, AlertCircle } from "lucide-react";
+import { TableConfigurationManager } from "./TableConfigurationManager";
 import { BusinessHours, HolidayClosure } from "@/utils/businessHours";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -25,6 +26,12 @@ interface WaitlistPreference {
   label: string;
   enabled: boolean;
   custom?: boolean;
+}
+
+interface TableConfig {
+  id: string;
+  capacity: number;
+  name: string;
 }
 
 export const MerchantSettings = ({ 
@@ -51,6 +58,7 @@ export const MerchantSettings = ({
   const [waitlistPreferences, setWaitlistPreferences] = useState<WaitlistPreference[]>([]);
   const [newPreferenceLabel, setNewPreferenceLabel] = useState("");
   const [autoCleanupRejected, setAutoCleanupRejected] = useState(true);
+  const [tableConfiguration, setTableConfiguration] = useState<TableConfig[]>([]);
   
   // Business Hours State
   const [businessHours, setBusinessHours] = useState<BusinessHours>({
@@ -118,6 +126,11 @@ export const MerchantSettings = ({
         // Load auto cleanup setting
         if (settings.auto_cleanup_rejected !== undefined) {
           setAutoCleanupRejected(settings.auto_cleanup_rejected);
+        }
+        
+        // Load table configuration
+        if (settings.table_configuration) {
+          setTableConfiguration(settings.table_configuration);
         }
         
         // Load kitchen/food and waitlist/table settings
@@ -217,6 +230,9 @@ export const MerchantSettings = ({
       venue_capacity: parseInt(settings.venueCapacity) || 40,
       tables_per_interval: parseInt(settings.tablesPerInterval) || 4,
       auto_no_show_time: parseInt(settings.autoNoShowTime) || 15,
+      
+      // Table configuration
+      table_configuration: tableConfiguration,
     };
     
     // Save everything in one transaction
@@ -361,41 +377,13 @@ export const MerchantSettings = ({
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Venue Settings</h2>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Capacity Settings - Only for table_ready */}
+      <div className="space-y-6">
+        {/* Table Configuration - Only for table_ready */}
         {hasTableReady && (
-          <Card className="shadow-card">
-            <CardHeader>
-              <CardTitle>Capacity & Pacing</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="capacity">Total Venue Capacity</Label>
-                <Input
-                  id="capacity"
-                  type="number"
-                  value={settings.venueCapacity}
-                  onChange={(e) => handleInputChange("venueCapacity", e.target.value)}
-                />
-                <p className="text-sm text-muted-foreground mt-1">
-                  Maximum number of guests the venue can accommodate
-                </p>
-              </div>
-
-              <div>
-                <Label htmlFor="pacing">Tables per 15-minute Interval</Label>
-                <Input
-                  id="pacing"
-                  type="number"
-                  value={settings.tablesPerInterval}
-                  onChange={(e) => handleInputChange("tablesPerInterval", e.target.value)}
-                />
-                <p className="text-sm text-muted-foreground mt-1">
-                  How many tables can be seated every 15 minutes
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          <TableConfigurationManager 
+            tables={tableConfiguration}
+            onChange={setTableConfiguration}
+          />
         )}
 
         {/* Kitchen Settings - Only for food_ready */}
