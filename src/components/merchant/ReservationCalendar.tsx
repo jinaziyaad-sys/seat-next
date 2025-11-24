@@ -14,6 +14,7 @@ interface Reservation {
   status: string;
   preferences?: string[];
   assigned_table_id?: string;
+  linked_reservation_id?: string;
 }
 
 interface TableOccupancy {
@@ -139,39 +140,108 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
                 No reservations for this date
               </p>
             ) : (
-              reservations.map((reservation) => (
-                <Card key={reservation.id} className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="font-semibold">{reservation.customer_name}</p>
-                      <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                        <span className="flex items-center gap-1">
-                          <Users size={14} />
-                          Party of {reservation.party_size}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock size={14} />
-                          {format(new Date(reservation.reservation_time), 'HH:mm')}
-                        </span>
-                        {reservation.assigned_table_id && (
-                          <span className="flex items-center gap-1">
-                            <Utensils size={14} />
-                            {tableConfiguration.find(t => t.id === reservation.assigned_table_id)?.name || reservation.assigned_table_id}
-                          </span>
-                        )}
-                      </div>
-                      {reservation.preferences && reservation.preferences.length > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {reservation.preferences.join(", ")}
-                        </p>
-                      )}
-                    </div>
-                    <Badge variant={getStatusColor(reservation.status)}>
-                      {reservation.status}
-                    </Badge>
-                  </div>
-                </Card>
-              ))
+              (() => {
+                // Group reservations by linked_reservation_id
+                const groupedReservations: { [key: string]: Reservation[] } = {};
+                const standaloneReservations: Reservation[] = [];
+                
+                reservations.forEach(reservation => {
+                  if (reservation.linked_reservation_id) {
+                    if (!groupedReservations[reservation.linked_reservation_id]) {
+                      groupedReservations[reservation.linked_reservation_id] = [];
+                    }
+                    groupedReservations[reservation.linked_reservation_id].push(reservation);
+                  } else {
+                    standaloneReservations.push(reservation);
+                  }
+                });
+
+                return (
+                  <>
+                    {/* Render linked reservations as groups */}
+                    {Object.entries(groupedReservations).map(([linkedId, linkedReservations]) => {
+                      const firstRes = linkedReservations[0];
+                      const tableNames = linkedReservations
+                        .map(r => tableConfiguration.find(t => t.id === r.assigned_table_id)?.name || r.assigned_table_id)
+                        .filter(Boolean)
+                        .join(' + ');
+                      
+                      return (
+                        <Card key={linkedId} className="p-4 border-2 border-primary/30">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant="outline" className="text-xs">🔗 Multi-Table Booking</Badge>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <p className="font-semibold">{firstRes.customer_name}</p>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                                <span className="flex items-center gap-1">
+                                  <Users size={14} />
+                                  Party of {firstRes.party_size}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Clock size={14} />
+                                  {format(new Date(firstRes.reservation_time), 'HH:mm')}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <Utensils size={14} />
+                                  {tableNames}
+                                </span>
+                              </div>
+                              {firstRes.preferences && firstRes.preferences.length > 0 && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {firstRes.preferences.join(", ")}
+                                </p>
+                              )}
+                              <p className="text-xs text-primary mt-1">
+                                ℹ️ {linkedReservations.length} tables reserved together
+                              </p>
+                            </div>
+                            <Badge variant={getStatusColor(firstRes.status)}>
+                              {firstRes.status}
+                            </Badge>
+                          </div>
+                        </Card>
+                      );
+                    })}
+
+                    {/* Render standalone reservations */}
+                    {standaloneReservations.map((reservation) => (
+                      <Card key={reservation.id} className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <p className="font-semibold">{reservation.customer_name}</p>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                              <span className="flex items-center gap-1">
+                                <Users size={14} />
+                                Party of {reservation.party_size}
+                              </span>
+                              <span className="flex items-center gap-1">
+                                <Clock size={14} />
+                                {format(new Date(reservation.reservation_time), 'HH:mm')}
+                              </span>
+                              {reservation.assigned_table_id && (
+                                <span className="flex items-center gap-1">
+                                  <Utensils size={14} />
+                                  {tableConfiguration.find(t => t.id === reservation.assigned_table_id)?.name || reservation.assigned_table_id}
+                                </span>
+                              )}
+                            </div>
+                            {reservation.preferences && reservation.preferences.length > 0 && (
+                              <p className="text-xs text-muted-foreground mt-1">
+                                {reservation.preferences.join(", ")}
+                              </p>
+                            )}
+                          </div>
+                          <Badge variant={getStatusColor(reservation.status)}>
+                            {reservation.status}
+                          </Badge>
+                        </div>
+                      </Card>
+                    ))}
+                  </>
+                );
+              })()
             )}
           </CardContent>
         </Card>

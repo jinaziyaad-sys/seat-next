@@ -89,6 +89,9 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [countdownMinutes, setCountdownMinutes] = useState(5);
   const [countdownSeconds, setCountdownSeconds] = useState(0);
   const [partiesAhead, setPartiesAhead] = useState<any[]>([]);
+  const [requiresMultipleTables, setRequiresMultipleTables] = useState(false);
+  const [tablesNeeded, setTablesNeeded] = useState<any[]>([]);
+  const [pendingReservationData, setPendingReservationData] = useState<any>(null);
 
   // Get authenticated user and initialize notifications
   useEffect(() => {
@@ -539,6 +542,31 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         const reservationDateTime = new Date(reservationDate);
         reservationDateTime.setHours(hours, minutes, 0, 0);
 
+        // Check for existing reservations (duplicate prevention)
+        const bufferMinutes = 30;
+        const startTime = new Date(reservationDateTime.getTime() - bufferMinutes * 60000).toISOString();
+        const endTime = new Date(reservationDateTime.getTime() + bufferMinutes * 60000).toISOString();
+        
+        const { data: existingReservations } = await supabase
+          .from('waitlist_entries')
+          .select('id, reservation_time, customer_name, party_size')
+          .eq('user_id', userId)
+          .eq('venue_id', venue.id)
+          .eq('reservation_type', 'reservation')
+          .in('status', ['waiting', 'ready'])
+          .gte('reservation_time', startTime)
+          .lte('reservation_time', endTime);
+
+        if (existingReservations && existingReservations.length > 0) {
+          const existingTime = format(new Date(existingReservations[0].reservation_time), 'h:mm a');
+          toast({
+            title: "Duplicate Booking Detected",
+            description: `You already have a reservation at ${existingTime} for ${existingReservations[0].party_size} people.`,
+            variant: "destructive"
+          });
+          return;
+        }
+
         // Check table availability for reservations
         const { data: availabilityData, error: availError } = await supabase.functions.invoke(
           'find-available-table',
@@ -572,6 +600,20 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             variant: "destructive"
           });
           return;
+        }
+
+        // Handle multi-table bookings
+        if (availabilityData.requires_multiple_tables) {
+          setTablesNeeded(availabilityData.tables_needed);
+          setPendingReservationData({
+            venue,
+            reservationDateTime,
+            finalPreferences,
+            partyName: partyName.trim(),
+            partySize
+          });
+          setRequiresMultipleTables(true);
+          return; // Stop here and show confirmation dialog
         }
 
         // Show utilization warning if inefficient
@@ -695,6 +737,90 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleConfirmMultiTableBooking = async () => {
+    if (!pendingReservationData) return;
+    
+    setIsSubmitting(true);
+    try {
+      const { venue, reservationDateTime, finalPreferences, partyName, partySize } = pendingReservationData;
+      const linkedId = crypto.randomUUID();
+      
+      // Create multiple reservation entries for all required tables
+      const reservations = tablesNeeded.map(table => ({
+        venue_id: venue.id,
+        customer_name: partyName,
+        party_size: partySize,
+        preferences: finalPreferences,
+        status: "waiting" as const,
+        user_id: userId,
+        reservation_type: 'reservation',
+        reservation_time: reservationDateTime.toISOString(),
+        eta: reservationDateTime.toISOString(),
+        assigned_table_id: table.id,
+        linked_reservation_id: linkedId
+      }));
+
+      const { data: newEntries, error } = await supabase
+        .from("waitlist_entries")
+        .insert(reservations)
+        .select();
+
+      if (error) {
+        console.error("Error creating multi-table booking:", error);
+        toast({
+          title: "Booking Failed",
+          description: error.message || "Unable to create your reservation. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (newEntries && newEntries.length > 0) {
+        const entry: WaitlistEntry = {
+          id: newEntries[0].id,
+          venue: venue.name,
+          venue_id: newEntries[0].venue_id,
+          party_size: newEntries[0].party_size,
+          position: 0,
+          eta: newEntries[0].eta,
+          preferences: newEntries[0].preferences || [],
+          status: mapDatabaseStatus(newEntries[0].status),
+          customer_name: newEntries[0].customer_name,
+          updated_at: newEntries[0].created_at,
+          reservation_type: 'reservation',
+          reservation_time: newEntries[0].reservation_time
+        };
+        setWaitlistEntry(entry);
+        
+        const tableNames = tablesNeeded.map(t => t.name).join(' + ');
+        toast({
+          title: "Reservation Confirmed!",
+          description: `Your party of ${partySize} has been booked at ${tableNames}.`
+        });
+        
+        setRequiresMultipleTables(false);
+        setTablesNeeded([]);
+        setPendingReservationData(null);
+        setStep("waiting");
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelMultiTableBooking = () => {
+    setRequiresMultipleTables(false);
+    setTablesNeeded([]);
+    setPendingReservationData(null);
   };
 
   // Cancelled Waitlist Details View
@@ -1756,6 +1882,94 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 className="w-full"
               >
                 Skip for now
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (requiresMultipleTables && tablesNeeded.length > 0) {
+    const totalCapacity = tablesNeeded.reduce((sum, t) => sum + t.capacity, 0);
+    const reservationTimeStr = pendingReservationData 
+      ? format(new Date(pendingReservationData.reservationDateTime), 'h:mm a, MMM d, yyyy')
+      : '';
+    
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={handleCancelMultiTableBooking}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Multiple Tables Required</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              🪑 Your party needs to be split across multiple tables
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Your party of {pendingReservationData?.partySize} people requires:
+              </p>
+              
+              <div className="space-y-2">
+                {tablesNeeded.map((table, index) => (
+                  <div 
+                    key={table.id}
+                    className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/20"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-primary" />
+                      <span className="font-medium">{table.name}</span>
+                      {index === 0 && (
+                        <Badge variant="secondary" className="text-xs">Main table</Badge>
+                      )}
+                    </div>
+                    <span className="text-sm text-muted-foreground">{table.capacity} seats</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  ℹ️ Both tables will be reserved together at {reservationTimeStr}
+                </p>
+              </div>
+
+              <div className="p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                  ⚠️ Important: Cancelling one table will automatically cancel all linked tables
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Button 
+                onClick={handleConfirmMultiTableBooking}
+                disabled={isSubmitting}
+                className="w-full h-12"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Confirming...
+                  </>
+                ) : (
+                  "Confirm Booking"
+                )}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={handleCancelMultiTableBooking}
+                disabled={isSubmitting}
+                className="w-full"
+              >
+                Go Back
               </Button>
             </div>
           </CardContent>
