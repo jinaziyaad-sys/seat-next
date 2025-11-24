@@ -114,11 +114,23 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
       const channel = supabase
         .channel(`order-${initialOrder.id}`)
         .on('postgres_changes', {
-          event: 'UPDATE',
+          event: '*', // Listen to all events including DELETE
           schema: 'public',
           table: 'orders',
           filter: `id=eq.${initialOrder.id}`
         }, (payload) => {
+          // Handle order deletion
+          if (payload.eventType === 'DELETE') {
+            setCurrentOrder(null);
+            setStep('scan');
+            toast({
+              title: "Order Removed",
+              description: "This order has been removed by the merchant",
+              variant: "destructive"
+            });
+            return;
+          }
+          
           if (payload.new) {
             setCurrentOrder(prev => prev ? {
               ...prev,
@@ -166,12 +178,24 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
     const channel = supabase
       .channel(`order-verification-${currentOrder.id}`)
       .on('postgres_changes', {
-        event: 'UPDATE',
+        event: '*', // Listen to all events including DELETE
         schema: 'public',
         table: 'orders',
         filter: `id=eq.${currentOrder.id}`
       }, (payload) => {
         console.log('Order update:', payload);
+        
+        // Handle order deletion
+        if (payload.eventType === 'DELETE') {
+          setCurrentOrder(null);
+          setStep('scan');
+          toast({
+            title: "Order Removed",
+            description: "This order has been removed by the merchant",
+            variant: "destructive"
+          });
+          return;
+        }
         
         // Kitchen verified - status changed to placed
         if (payload.new.status === 'placed') {
