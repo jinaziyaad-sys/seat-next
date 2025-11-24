@@ -539,9 +539,54 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         const reservationDateTime = new Date(reservationDate);
         reservationDateTime.setHours(hours, minutes, 0, 0);
 
+        // Check table availability for reservations
+        const { data: availabilityData, error: availError } = await supabase.functions.invoke(
+          'find-available-table',
+          {
+            body: {
+              venue_id: venue.id,
+              reservation_time: reservationDateTime.toISOString(),
+              party_size: partySize
+            }
+          }
+        );
+
+        if (availError) {
+          console.error('Error checking availability:', availError);
+          toast({
+            title: "Availability Check Failed",
+            description: "Unable to verify table availability. Please try again.",
+            variant: "destructive"
+          });
+          return;
+        }
+
+        if (!availabilityData.available) {
+          const nextSlotMessage = availabilityData.next_available_slot 
+            ? `Next available: ${format(new Date(availabilityData.next_available_slot), 'h:mm a')}`
+            : "No tables available today";
+          
+          toast({
+            title: "No Tables Available",
+            description: `${availabilityData.reason}. ${nextSlotMessage}`,
+            variant: "destructive"
+          });
+          return;
+        }
+
+        // Show utilization warning if inefficient
+        if (availabilityData.warning) {
+          toast({
+            title: "Table Assignment",
+            description: availabilityData.warning,
+            variant: "default"
+          });
+        }
+
         insertData.reservation_type = 'reservation';
         insertData.reservation_time = reservationDateTime.toISOString();
         insertData.eta = reservationDateTime.toISOString();
+        insertData.assigned_table_id = availabilityData.matched_table.id;
       } else {
         insertData.reservation_type = 'walk_in';
         insertData.eta = new Date(Date.now() + 18 * 60000).toISOString();
