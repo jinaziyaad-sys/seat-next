@@ -92,6 +92,26 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Get occupied tables in this time slot (±30 min buffer) - MUST happen before multi-table check
+    const { data: occupiedTables, error: occupiedError } = await supabaseClient
+      .rpc('get_occupied_tables', {
+        p_venue_id: venue_id,
+        p_time_slot: reservation_time,
+        p_buffer_minutes: 30
+      });
+
+    if (occupiedError) {
+      console.error('Error fetching occupied tables:', occupiedError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to check table availability' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const occupiedTableIds = new Set((occupiedTables || []).map((t: any) => t.table_id));
+
+    console.log('Occupied tables:', Array.from(occupiedTableIds));
+
     // Check if party size exceeds maximum table capacity
     const maxCapacity = Math.max(...tableConfiguration.map(t => t.capacity));
     if (party_size > maxCapacity) {
@@ -122,25 +142,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Get occupied tables in this time slot (±30 min buffer)
-    const { data: occupiedTables, error: occupiedError } = await supabaseClient
-      .rpc('get_occupied_tables', {
-        p_venue_id: venue_id,
-        p_time_slot: reservation_time,
-        p_buffer_minutes: 30
-      });
-
-    if (occupiedError) {
-      console.error('Error fetching occupied tables:', occupiedError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to check table availability' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    const occupiedTableIds = new Set((occupiedTables || []).map((t: any) => t.table_id));
-
-    console.log('Occupied tables:', Array.from(occupiedTableIds));
 
     // Find available tables that fit the party size
     const availableTables = tableConfiguration
