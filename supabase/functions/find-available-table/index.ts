@@ -7,6 +7,37 @@ interface TableConfig {
   name: string;
 }
 
+// Find the best combination of tables to accommodate a party
+// Uses a greedy algorithm to minimize the number of tables used
+function findTableCombination(
+  partySize: number,
+  allTables: TableConfig[],
+  occupiedTableIds: Set<string>
+): TableConfig[] {
+  // Filter to only available tables and sort by capacity (largest first)
+  const availableTables = allTables
+    .filter(t => !occupiedTableIds.has(t.id))
+    .sort((a, b) => b.capacity - a.capacity);
+  
+  // Try to find the minimum number of tables that can seat the party
+  const result: TableConfig[] = [];
+  let remainingCapacity = partySize;
+  
+  for (const table of availableTables) {
+    if (remainingCapacity <= 0) break;
+    
+    result.push(table);
+    remainingCapacity -= table.capacity;
+  }
+  
+  // Only return if we found enough capacity
+  if (remainingCapacity <= 0) {
+    return result;
+  }
+  
+  return []; // Not enough tables available
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -64,10 +95,27 @@ Deno.serve(async (req) => {
     // Check if party size exceeds maximum table capacity
     const maxCapacity = Math.max(...tableConfiguration.map(t => t.capacity));
     if (party_size > maxCapacity) {
+      // Try to find a combination of tables that can accommodate the party
+      const tableCombination = findTableCombination(party_size, tableConfiguration, occupiedTableIds);
+      
+      if (tableCombination.length > 0) {
+        return new Response(
+          JSON.stringify({ 
+            available: true,
+            requires_multiple_tables: true,
+            tables_needed: tableCombination,
+            total_tables: tableCombination.length,
+            total_capacity: tableCombination.reduce((sum, t) => sum + t.capacity, 0),
+            message: `Your party of ${party_size} requires ${tableCombination.length} tables`
+          }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ 
           available: false,
-          reason: `Party size (${party_size}) exceeds maximum table capacity (${maxCapacity})`,
+          reason: `Unable to accommodate party of ${party_size}. Not enough available tables.`,
           max_capacity: maxCapacity
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

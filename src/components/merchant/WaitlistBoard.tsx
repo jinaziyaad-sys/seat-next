@@ -34,6 +34,7 @@ interface WaitlistEntry {
   cancellation_reason?: string;
   cancelled_by?: string;
   ready_at?: string | null;
+  linked_reservation_id?: string;
 }
 
 export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
@@ -238,10 +239,19 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       return;
     }
 
-    // Optimistic update
+    // Find the entry being cancelled to check for linked reservations
+    const entryToCancel = waitlist.find(e => e.id === cancelEntryId);
+    const linkedReservationId = entryToCancel?.linked_reservation_id;
+
+    // Find all linked entries if this is a multi-table booking
+    const linkedEntryIds = linkedReservationId
+      ? waitlist.filter(e => e.linked_reservation_id === linkedReservationId).map(e => e.id)
+      : [cancelEntryId];
+
+    // Optimistic update for all linked entries
     setWaitlist(prevWaitlist => 
       prevWaitlist.map(entry => 
-        entry.id === cancelEntryId 
+        linkedEntryIds.includes(entry.id)
           ? { ...entry, status: "cancelled" as const, cancellation_reason: cancelReason } 
           : entry
       )
@@ -251,11 +261,13 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       .from("waitlist_entries")
       .update({ 
         status: "cancelled",
-        cancellation_reason: `Cancelled: ${cancelReason}`,
+        cancellation_reason: linkedReservationId 
+          ? `Linked reservation cancelled: ${cancelReason}`
+          : `Cancelled: ${cancelReason}`,
         cancelled_by: "venue",
         updated_at: new Date().toISOString()
       })
-      .eq("id", cancelEntryId);
+      .in("id", linkedEntryIds);
 
     if (error) {
       toast({
@@ -278,11 +290,12 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     }
 
     toast({
-      title: "Reservation Cancelled",
-      description: `Cancelled: ${cancelReason}`,
+      title: linkedReservationId ? "Linked Reservations Cancelled" : "Entry Cancelled",
+      description: linkedReservationId 
+        ? `Cancelled all ${linkedEntryIds.length} linked tables for this booking`
+        : "Waitlist entry has been cancelled",
     });
 
-    // Reset dialog state
     setCancelDialogOpen(false);
     setCancelEntryId("");
     setCancelReason("");
