@@ -14,6 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { playNotificationSound, initializeAudio } from "@/utils/notificationSound";
+import { toast } from "sonner";
 
 const MerchantDashboard = () => {
   const { userRole, loading } = useMerchantAuth();
@@ -44,6 +46,56 @@ const MerchantDashboard = () => {
     if (userRole?.venue_id) {
       fetchVenueData();
     }
+  }, [userRole?.venue_id]);
+
+  // Global real-time subscriptions for sounds (works across ALL tabs)
+  useEffect(() => {
+    if (!userRole?.venue_id) return;
+    
+    initializeAudio();
+    
+    // Subscribe to new orders (INSERT events)
+    const ordersChannel = supabase
+      .channel('global-orders-alert')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'orders',
+          filter: `venue_id=eq.${userRole.venue_id}`
+        },
+        () => {
+          console.log('🍽️ New order received - playing sound');
+          playNotificationSound('newOrder', 2);
+          toast.success("🍽️ New order received!");
+        }
+      )
+      .subscribe();
+
+    // Subscribe to new waitlist entries (INSERT events)
+    const waitlistChannel = supabase
+      .channel('global-waitlist-alert')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'waitlist_entries',
+          filter: `venue_id=eq.${userRole.venue_id}`
+        },
+        () => {
+          console.log('👥 New waitlist entry - playing sound');
+          playNotificationSound('newWaitlist', 1);
+          toast.success("👥 New waitlist entry!");
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ordersChannel);
+      supabase.removeChannel(waitlistChannel);
+    };
   }, [userRole?.venue_id]);
 
   const handleLogout = async () => {
