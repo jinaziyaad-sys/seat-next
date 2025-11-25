@@ -51,6 +51,14 @@ serve(async (req) => {
       .gte('placed_at', startDate.toISOString())
       .order('placed_at', { ascending: false });
 
+    // Get count of rejected orders in time range
+    const { count: rejectedCount } = await supabase
+      .from('orders')
+      .select('*', { count: 'exact', head: true })
+      .eq('venue_id', venue_id)
+      .eq('status', 'rejected')
+      .gte('created_at', startDate.toISOString());
+
     if (orderError) throw orderError;
 
     // Get waitlist analytics
@@ -260,6 +268,7 @@ serve(async (req) => {
           total: totalOrders,
           completed: completedOrders.length,
           avg_prep_time: avgPrepTime,
+          rejected_count: rejectedCount || 0,
           performance: {
             early_rate: earlyRate,
             early_count: earlyOrders.length,
