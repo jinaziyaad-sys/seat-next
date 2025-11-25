@@ -836,13 +836,6 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     setPendingReservationData(null);
   };
 
-  // Debug render state
-  console.log('🔍 Render state:', { 
-    step, 
-    requiresMultipleTables, 
-    tablesNeededLength: tablesNeeded.length 
-  });
-
   // Cancelled Waitlist Details View
   if (step === "cancelled-details" && waitlistEntry) {
     return (
@@ -878,103 +871,9 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             <p className="text-sm">{format(new Date(waitlistEntry.updated_at), 'MMM dd, yyyy @ h:mm a')}</p>
           </div>
           
-      <Button onClick={onBack} className="w-full">Close</Button>
+          <Button onClick={onBack} className="w-full">Close</Button>
         </CardContent>
       </Card>
-    );
-  }
-
-  // Multi-table confirmation dialog - MUST render before other steps
-  if (requiresMultipleTables && tablesNeeded.length > 0) {
-    console.log('🖼️ Rendering multi-table confirmation dialog', {
-      requiresMultipleTables,
-      tablesNeeded,
-      pendingReservationData
-    });
-    const totalCapacity = tablesNeeded.reduce((sum, t) => sum + t.capacity, 0);
-    const reservationTimeStr = pendingReservationData 
-      ? format(new Date(pendingReservationData.reservationDateTime), 'h:mm a, MMM d, yyyy')
-      : '';
-    
-    return (
-      <div className="space-y-6 p-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={handleCancelMultiTableBooking}>
-            <ArrowLeft size={20} />
-          </Button>
-          <h1 className="text-2xl font-bold">Multiple Tables Required</h1>
-        </div>
-
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              🪑 Your party needs to be split across multiple tables
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Your party of {pendingReservationData?.partySize} people requires:
-              </p>
-              
-              <div className="space-y-2">
-                {tablesNeeded.map((table, index) => (
-                  <div 
-                    key={table.id}
-                    className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/20"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-primary" />
-                      <span className="font-medium">{table.name}</span>
-                      {index === 0 && (
-                        <Badge variant="secondary" className="text-xs">Main table</Badge>
-                      )}
-                    </div>
-                    <span className="text-sm text-muted-foreground">{table.capacity} seats</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  ℹ️ Both tables will be reserved together at {reservationTimeStr}
-                </p>
-              </div>
-
-              <div className="p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
-                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                  ⚠️ Important: Cancelling one table will automatically cancel all linked tables
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Button 
-                onClick={handleConfirmMultiTableBooking}
-                disabled={isSubmitting}
-                className="w-full h-12"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Confirming...
-                  </>
-                ) : (
-                  "Confirm Booking"
-                )}
-              </Button>
-              <Button 
-                variant="outline"
-                onClick={handleCancelMultiTableBooking}
-                disabled={isSubmitting}
-                className="w-full"
-              >
-                Go Back
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     );
   }
 
@@ -1302,6 +1201,800 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     );
   }
 
-  // ... keep existing code for other steps (reservation-details, party-details, waiting, ready, etc.)
+  if (step === "reservation-details") {
+    // Get available times from venue settings
+    const timeSlots = selectedVenueData?.settings?.business_hours && reservationDate
+      ? getAvailableReservationTimes(
+          reservationDate,
+          selectedVenueData.settings.business_hours,
+          selectedVenueData.settings.holiday_closures || [],
+          15
+        )
+      : [];
+    
+    const hasNoAvailability = reservationDate && timeSlots.length === 0;
+
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => setStep("booking-type")}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Choose Date & Time</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>{selectedVenue}</CardTitle>
+            <p className="text-muted-foreground">Select your preferred date and time</p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {hasNoAvailability && (
+              <Card className="shadow-card border-destructive">
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <XCircle className="h-5 w-5 text-destructive mt-0.5" />
+                    <div>
+                      <p className="font-semibold text-destructive">No Availability</p>
+                      <p className="text-sm text-muted-foreground">
+                        This venue is not accepting reservations on the selected date.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+            
+            <div>
+              <Label>Select Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal mt-2",
+                      !reservationDate && "text-muted-foreground"
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {reservationDate ? format(reservationDate, "PPP") : <span>Pick a date</span>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={reservationDate}
+                    onSelect={setReservationDate}
+                    disabled={(date) => date < new Date() || date > addDays(new Date(), 30)}
+                    initialFocus
+                    className="pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div>
+              <Label>Select Time</Label>
+              <Select value={reservationTime} onValueChange={setReservationTime}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Choose time slot" />
+                </SelectTrigger>
+                <SelectContent className="max-h-[300px]">
+                  {timeSlots.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Button 
+              onClick={() => setStep("party-details")}
+              disabled={!reservationDate || !reservationTime || hasNoAvailability}
+              className="w-full"
+            >
+              Continue to Party Details
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (step === "party-details") {
+    // Helper function to get today's business hours
+    const getTodayHours = () => {
+      if (!selectedVenueData?.settings?.business_hours) return null;
+      const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+      const today = dayNames[new Date().getDay()];
+      return selectedVenueData.settings.business_hours[today];
+    };
+
+    // Helper function to get active breaks
+    const getTodayBreaks = () => {
+      const todayHours = getTodayHours();
+      return todayHours?.breaks || [];
+    };
+
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => setStep("venue-select")}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Party Details</h1>
+        </div>
+
+        {selectedVenueData?.settings && (
+          <Card className="shadow-card bg-muted/50">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Venue Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3 text-sm">
+              {getTodayHours() ? (
+                <>
+                  <div className="flex items-start justify-between">
+                    <span className="text-muted-foreground">Today's Hours:</span>
+                    <span className="font-medium text-right">
+                      {getTodayHours()?.is_closed 
+                        ? "Closed" 
+                        : `${getTodayHours()?.open} - ${getTodayHours()?.close}`}
+                    </span>
+                  </div>
+                  
+                  {getTodayBreaks().length > 0 && (
+                    <div className="flex items-start justify-between">
+                      <span className="text-muted-foreground">Breaks:</span>
+                      <div className="text-right space-y-1">
+                        {getTodayBreaks().map((brk: any, idx: number) => (
+                          <div key={idx} className="font-medium">
+                            {brk.start} - {brk.end}
+                            <span className="text-xs text-muted-foreground ml-1">
+                              ({brk.reason})
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="text-muted-foreground">Hours not available</div>
+              )}
+              
+              {selectedVenueData.settings.default_wait_time && (
+                <div className="flex items-start justify-between pt-2 border-t">
+                  <span className="text-muted-foreground">Typical Wait:</span>
+                  <span className="font-medium">{selectedVenueData.settings.default_wait_time} min</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>{selectedVenue}</CardTitle>
+            <p className="text-muted-foreground">Tell us about your party</p>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Party Name</label>
+              <Input
+                placeholder="e.g. Smith, John, Party of 4..."
+                value={partyName}
+                onChange={(e) => setPartyName(e.target.value)}
+                className="h-12"
+                maxLength={50}
+              />
+              <p className="text-xs text-muted-foreground">
+                We'll use this name to call your party when your table is ready
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Party Size</label>
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPartySize(Math.max(1, partySize - 1))}
+                  disabled={partySize <= 1}
+                >
+                  -
+                </Button>
+                <div className="flex items-center gap-2 text-lg font-semibold">
+                  <Users size={20} />
+                  <span>{partySize}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPartySize(Math.min(12, partySize + 1))}
+                  disabled={partySize >= 12}
+                >
+                  +
+                </Button>
+              </div>
+            </div>
+
+            {/* Dynamic Seating Preferences - Based on Merchant Configuration */}
+            {selectedVenueData?.waitlist_preferences?.options && 
+             selectedVenueData.waitlist_preferences.options.filter((opt: any) => opt.enabled).length > 0 && (
+              <div className="space-y-3">
+                <label className="text-sm font-medium">Seating Preferences</label>
+                
+                {/* Show enabled preferences as a grid of buttons */}
+                <div className="grid grid-cols-1 gap-2">
+                  {selectedVenueData.waitlist_preferences.options
+                    .filter((opt: any) => opt.enabled) // Only show enabled preferences
+                    .map((opt: any) => {
+                      const isSelected = preferences.includes(opt.label);
+                      return (
+                        <Button
+                          key={opt.id}
+                          variant={isSelected ? "default" : "outline"}
+                          size="lg"
+                          className="justify-start h-auto py-3"
+                          onClick={() => togglePreference(opt.label)}
+                        >
+                          <div className="flex items-center gap-2">
+                            {isSelected && <CheckCircle size={16} />}
+                            <span>{opt.label}</span>
+                          </div>
+                        </Button>
+                      );
+                    })}
+                </div>
+                
+                <p className="text-xs text-muted-foreground">
+                  Select any preferences that apply (optional)
+                </p>
+              </div>
+            )}
+
+            <Button 
+              onClick={handleJoinWaitlist} 
+              disabled={!partyName.trim() || isSubmitting}
+              className="w-full h-12"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Joining...
+                </>
+              ) : (
+                "Join Waitlist"
+              )}
+            </Button>
+            {!partyName.trim() && (
+              <p className="text-xs text-muted-foreground text-center">
+                Please enter your party name to continue
+              </p>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (step === "waiting" && waitlistEntry) {
+    return (
+      <div className="space-y-6 p-6 pb-24">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Waitlist Status</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardContent className="p-8 text-center space-y-6">
+                <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                  <Clock className="w-10 h-10 text-primary" />
+                </div>
+            
+            <div className="space-y-2">
+              <h2 className="text-3xl font-bold text-primary">#{waitlistEntry.position}</h2>
+              <p className="text-lg text-muted-foreground">in line</p>
+            </div>
+
+            <div className="flex items-center justify-center gap-2 text-lg">
+              <Clock size={20} />
+              <span className="font-semibold">
+                {waitlistEntry.eta ? Math.ceil((new Date(waitlistEntry.eta).getTime() - new Date().getTime()) / (1000 * 60)) : 0} minutes • ETA {waitlistEntry.eta ? new Date(waitlistEntry.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }) : "--:--"}
+              </span>
+            </div>
+
+            {waitlistEntry.notes && extractExtensionReason(waitlistEntry.notes) && (
+              <div className="p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
+                <div className="flex items-start gap-2">
+                  <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900 dark:text-amber-100">
+                      Wait Time Updated
+                    </p>
+                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                      {extractExtensionReason(waitlistEntry.notes)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="p-4 bg-muted rounded-xl">
+              <div className="text-sm text-muted-foreground space-y-1">
+                <div>📍 {waitlistEntry.venue}</div>
+                <div>👥 Party of {waitlistEntry.party_size}</div>
+                {waitlistEntry.preferences && waitlistEntry.preferences.length > 0 && (
+                  <div>✨ {waitlistEntry.preferences.join(", ")}</div>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {partiesAhead.length > 0 && (
+          <Card className="shadow-card">
+            <CardHeader>
+              <CardTitle>Parties Ahead of You</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                {partiesAhead.length} {partiesAhead.length === 1 ? 'party' : 'parties'} waiting
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {partiesAhead.map((party, index) => {
+                  const estimatedWait = party.eta 
+                    ? Math.ceil((new Date(party.eta).getTime() - new Date().getTime()) / (1000 * 60))
+                    : 15;
+                  
+                  return (
+                    <div key={party.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
+                      <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm">
+                        #{party.position}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <Users size={14} className="text-muted-foreground" />
+                          <span className="text-sm font-medium">Party of {party.party_size}</span>
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                          <Clock size={12} />
+                          <span>~{estimatedWait} min</span>
+                        </div>
+                      </div>
+                      <Progress value={((index + 1) / (partiesAhead.length + 1)) * 100} className="w-16 h-2" />
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>Live Updates</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 text-sm">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-primary"></div>
+                <span>You joined the waitlist</span>
+                <span className="text-muted-foreground ml-auto">Just now</span>
+              </div>
+              {waitlistEntry.position <= 2 && (
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-success"></div>
+                  <span>Moved up in line</span>
+                  <span className="text-muted-foreground ml-auto">2 min ago</span>
+                </div>
+              )}
+              {waitlistEntry.position === 1 && (
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-warning"></div>
+                  <span>Get ready! You're next</span>
+                  <span className="text-muted-foreground ml-auto">Just now</span>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-card">
+          <CardContent className="p-4">
+            <Button 
+              variant="outline" 
+              className="w-full h-12 text-destructive hover:bg-destructive/10"
+              onClick={handleCancelBooking}
+            >
+              Cancel Booking
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Show cancellation screen if entry is cancelled
+  if (waitlistEntry?.status === "cancelled") {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Reservation Cancelled</h1>
+        </div>
+
+        <Card className="shadow-card border-destructive">
+          <CardContent className="p-8 text-center space-y-6">
+            <div className="mx-auto w-16 h-16 rounded-full bg-destructive/10 flex items-center justify-center">
+              <XCircle className="w-8 h-8 text-destructive" />
+            </div>
+            
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-destructive">Reservation Cancelled</h2>
+              <p className="text-muted-foreground">{waitlistEntry.venue}</p>
+            </div>
+
+            {waitlistEntry.cancellation_reason && (
+              <div className="p-4 bg-muted rounded-lg text-left">
+                <p className="font-semibold text-sm mb-1">Reason:</p>
+                <p className="text-muted-foreground">{waitlistEntry.cancellation_reason}</p>
+              </div>
+            )}
+
+            {!waitlistEntry.cancellation_reason && (
+              <p className="text-muted-foreground">
+                This reservation has been cancelled by the restaurant.
+              </p>
+            )}
+
+            <Button onClick={onBack} className="w-full">
+              Back to Home
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (step === "ready" && waitlistEntry) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Table Ready!</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardContent className="p-8 text-center space-y-6">
+            <div className="text-6xl">🎉</div>
+            
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-primary">Your Table is Ready!</h2>
+              <p className="text-muted-foreground">{waitlistEntry.venue}</p>
+            </div>
+
+            <div className="p-6 bg-primary/10 rounded-xl border border-primary/20">
+              <p className="font-semibold text-primary">Please head to the host stand now</p>
+              <p className="text-sm text-muted-foreground mt-1">Party of {waitlistEntry.party_size}</p>
+              {waitlistEntry.ready_deadline && (
+                <div className="mt-4 p-3 bg-background rounded-lg">
+                  <p className="text-sm font-medium mb-1">Time Remaining:</p>
+                  <p className="text-2xl font-bold text-primary">
+                    {String(countdownMinutes).padStart(2, '0')}:{String(countdownSeconds).padStart(2, '0')}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {waitlistEntry.patron_delayed 
+                      ? "Final extension - please arrive soon" 
+                      : "Your table will be released if you don't arrive"}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <Button onClick={handleConfirmSeat} className="w-full h-12">
+                I'm Here - Get Seated
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full h-12"
+                onClick={handleWait5Minutes}
+                disabled={waitlistEntry.patron_delayed}
+              >
+                {waitlistEntry.patron_delayed ? "Extension Already Used" : "Need 5 More Minutes"}
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full h-12 text-destructive hover:bg-destructive/10"
+                onClick={handleCancelBooking}
+              >
+                Cancel Booking
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (step === "delayed-countdown" && waitlistEntry) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => setStep("ready")}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Delay Countdown</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardContent className="p-8 text-center space-y-6">
+            <div className="text-6xl">⏱️</div>
+            
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-primary">Time Remaining</h2>
+              <p className="text-muted-foreground">{waitlistEntry.venue}</p>
+            </div>
+
+            <div className="p-8 bg-orange-50 dark:bg-orange-950 rounded-xl border border-orange-200 dark:border-orange-800">
+              <p className="text-5xl font-bold text-orange-600 dark:text-orange-400">
+                {String(countdownMinutes).padStart(2, '0')}:{String(countdownSeconds).padStart(2, '0')}
+              </p>
+              <p className="text-sm text-orange-700 dark:text-orange-300 mt-2">
+                Your table will be released if you don't arrive
+              </p>
+            </div>
+
+            <div className="p-4 bg-muted rounded-xl">
+              <p className="text-sm text-muted-foreground">
+                📍 The restaurant has been notified you need 5 more minutes
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Button onClick={handleConfirmArrivalAfterDelay} className="w-full h-12">
+                I'm Here Now - Get Seated
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full h-12 text-destructive hover:bg-destructive/10"
+                onClick={handleCancelBooking}
+              >
+                Cancel Booking
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (step === "awaiting-confirmation" && waitlistEntry) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => setStep("ready")}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Confirmation Pending</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardContent className="p-8 text-center space-y-6">
+            <div className="text-6xl animate-pulse">⏳</div>
+            
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-primary">Host Notified</h2>
+              <p className="text-muted-foreground">{waitlistEntry.venue}</p>
+            </div>
+
+            <div className="p-6 bg-blue-50 dark:bg-blue-950 rounded-xl border border-blue-200 dark:border-blue-800">
+              <p className="font-semibold text-blue-900 dark:text-blue-100">
+                Please wait at the host stand
+              </p>
+              <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                The host will confirm your seating in just a moment
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Button 
+                variant="outline" 
+                className="w-full h-12 text-destructive hover:bg-destructive/10"
+                onClick={handleCancelBooking}
+              >
+                Cancel Booking
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (step === "feedback" && waitlistEntry) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={handleSkipRating}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Rate Your Experience</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardContent className="p-8 space-y-6">
+            <div className="text-center space-y-2">
+              <h3 className="text-lg font-semibold">How was your experience at {waitlistEntry.venue}?</h3>
+              <p className="text-sm text-muted-foreground">Your feedback helps improve the service</p>
+            </div>
+
+            <div className="flex justify-center gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setRating(star)}
+                  onMouseEnter={() => setHoveredRating(star)}
+                  onMouseLeave={() => setHoveredRating(0)}
+                  className="transition-transform hover:scale-110"
+                >
+                  <Star
+                    size={40}
+                    className={cn(
+                      "transition-colors",
+                      (hoveredRating || rating) >= star
+                        ? "fill-yellow-400 text-yellow-400"
+                        : "text-gray-300"
+                    )}
+                  />
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="feedback">Additional Comments (Optional)</Label>
+              <Textarea
+                id="feedback"
+                placeholder="Tell us more about your experience..."
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                rows={4}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Button 
+                onClick={handleRatingSubmit}
+                disabled={!rating || isSubmittingRating}
+                className="w-full h-12"
+              >
+                {isSubmittingRating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Submitting...
+                  </>
+                ) : (
+                  "Submit Rating"
+                )}
+              </Button>
+              <Button 
+                variant="ghost"
+                onClick={handleSkipRating}
+                disabled={isSubmittingRating}
+                className="w-full"
+              >
+                Skip for now
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (requiresMultipleTables && tablesNeeded.length > 0) {
+    console.log('🖼️ Rendering multi-table confirmation dialog', {
+      requiresMultipleTables,
+      tablesNeeded,
+      pendingReservationData
+    });
+    const totalCapacity = tablesNeeded.reduce((sum, t) => sum + t.capacity, 0);
+    const reservationTimeStr = pendingReservationData 
+      ? format(new Date(pendingReservationData.reservationDateTime), 'h:mm a, MMM d, yyyy')
+      : '';
+    
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={handleCancelMultiTableBooking}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Multiple Tables Required</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              🪑 Your party needs to be split across multiple tables
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Your party of {pendingReservationData?.partySize} people requires:
+              </p>
+              
+              <div className="space-y-2">
+                {tablesNeeded.map((table, index) => (
+                  <div 
+                    key={table.id}
+                    className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/20"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-primary" />
+                      <span className="font-medium">{table.name}</span>
+                      {index === 0 && (
+                        <Badge variant="secondary" className="text-xs">Main table</Badge>
+                      )}
+                    </div>
+                    <span className="text-sm text-muted-foreground">{table.capacity} seats</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  ℹ️ Both tables will be reserved together at {reservationTimeStr}
+                </p>
+              </div>
+
+              <div className="p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                  ⚠️ Important: Cancelling one table will automatically cancel all linked tables
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Button 
+                onClick={handleConfirmMultiTableBooking}
+                disabled={isSubmitting}
+                className="w-full h-12"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Confirming...
+                  </>
+                ) : (
+                  "Confirm Booking"
+                )}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={handleCancelMultiTableBooking}
+                disabled={isSubmitting}
+                className="w-full"
+              >
+                Go Back
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return null;
 }
