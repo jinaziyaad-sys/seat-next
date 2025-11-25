@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import logo from "@/assets/logo.png";
 import { useToast } from "@/hooks/use-toast";
+import { playNotificationSound, initializeAudio } from "@/utils/notificationSound";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
@@ -110,6 +111,9 @@ const Index = () => {
 
   useEffect(() => {
     if (user) {
+      // Initialize audio on first user interaction
+      initializeAudio();
+      
       fetchActiveTracking();
       
       const ordersChannel = supabase
@@ -124,6 +128,15 @@ const Index = () => {
           
           // Optimistic state update
           if (payload.eventType === 'UPDATE' && payload.new) {
+            // Check if order became ready - PLAY SOUND!
+            if (payload.new.status === 'ready' && payload.old?.status !== 'ready') {
+              playNotificationSound('orderReady', 2);
+              toast({
+                title: "🎉 Order Ready!",
+                description: `Order #${payload.new.order_number} is ready for pickup!`,
+              });
+            }
+            
             // Check if order was rejected
             if (payload.new.status === 'rejected') {
               toast({
@@ -167,6 +180,15 @@ const Index = () => {
           
           // Optimistic state update
           if (payload.eventType === 'UPDATE' && payload.new) {
+            // Check if table became ready - PLAY SOUND!
+            if (payload.new.status === 'ready' && payload.old?.status !== 'ready') {
+              playNotificationSound('tableReady', 2);
+              toast({
+                title: "🎉 Table Ready!",
+                description: `Your table for ${payload.new.party_size} is ready!`,
+              });
+            }
+            
             setActiveWaitlist(prevEntries => {
               const updatedEntries = prevEntries.map(entry => 
                 entry.id === payload.new.id 

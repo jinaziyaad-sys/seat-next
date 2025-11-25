@@ -14,6 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { differenceInMinutes, format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { TableExtensionReasonDialog } from "./TableExtensionReasonDialog";
+import { playNotificationSound, initializeAudio } from "@/utils/notificationSound";
 
 interface WaitlistEntry {
   id: string;
@@ -98,6 +99,9 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
 
   // Fetch waitlist and set up real-time subscription
   useEffect(() => {
+    // Initialize audio on mount
+    initializeAudio();
+    
     const fetchWaitlist = async () => {
       // Fetch waitlist entries for this venue (exclude seated unless awaiting confirmation)
       // Include patron-cancelled entries that were ready (so merchant can acknowledge them)
@@ -148,6 +152,12 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
         console.log('Waitlist change:', payload);
         
         if (payload.eventType === 'INSERT') {
+          // NEW WAITLIST ENTRY - PLAY SOUND!
+          playNotificationSound('newWaitlist', 2);
+          toast({
+            title: "🔔 New Customer!",
+            description: `${payload.new.customer_name} joined the waitlist (Party of ${payload.new.party_size})`,
+          });
           // Add new entry to local state
           setWaitlist(prev => [...prev, payload.new as WaitlistEntry]);
           
