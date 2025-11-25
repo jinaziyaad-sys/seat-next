@@ -885,8 +885,6 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   }
 
   // Multi-table confirmation dialog - MUST render before other steps
-  // Multi-table dialog moved earlier in render chain (see line ~880)
-
   if (requiresMultipleTables && tablesNeeded.length > 0) {
     console.log('🖼️ Rendering multi-table confirmation dialog', {
       requiresMultipleTables,
@@ -980,5 +978,330 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     );
   }
 
+  const handleCancelBooking = async () => {
+    if (!waitlistEntry) return;
+
+    const { error } = await supabase
+      .from("waitlist_entries")
+      .update({ 
+        status: "cancelled",
+        cancelled_by: "patron"
+      })
+      .eq("id", waitlistEntry.id);
+
+    if (!error) {
+      setWaitlistEntry(prev => prev ? { 
+        ...prev, 
+        status: "cancelled",
+        cancelled_by: "patron"
+      } : null);
+      setTimeout(() => {
+        onBack();
+      }, 1500);
+    }
+  };
+
+  const handleConfirmSeat = async () => {
+    if (!waitlistEntry) return;
+    
+    // Set flag for merchant to confirm and clear deadline since patron is here
+    const { error } = await supabase
+      .from('waitlist_entries')
+      .update({ 
+        awaiting_merchant_confirmation: true,
+        ready_deadline: null
+      })
+      .eq('id', waitlistEntry.id);
+
+    if (!error) {
+      setWaitlistEntry(prev => prev ? { 
+        ...prev, 
+        awaiting_merchant_confirmation: true,
+        ready_deadline: null
+      } : null);
+      setStep("awaiting-confirmation");
+      
+      toast({
+        title: "Notified Host",
+        description: "The host has been notified you're here. Please wait to be seated.",
+      });
+    }
+  };
+
+  const handleWait5Minutes = async () => {
+    if (!waitlistEntry) return;
+
+    // Check if already used the extension
+    if (waitlistEntry.patron_delayed) {
+      toast({
+        title: "Extension Already Used",
+        description: "You've already used your 5-minute extension. Please arrive soon or cancel your booking.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    // Extend deadline by 5 minutes from current deadline (or now if no deadline exists)
+    const currentDeadline = waitlistEntry.ready_deadline 
+      ? new Date(waitlistEntry.ready_deadline)
+      : new Date();
+    const newDeadline = new Date(currentDeadline.getTime() + 5 * 60000);
+
+    const { error } = await supabase
+      .from("waitlist_entries")
+      .update({ 
+        patron_delayed: true,
+        ready_deadline: newDeadline.toISOString()
+      })
+      .eq("id", waitlistEntry.id);
+
+    if (!error) {
+      setWaitlistEntry(prev => prev ? { 
+        ...prev, 
+        patron_delayed: true,
+        ready_deadline: newDeadline.toISOString()
+      } : null);
+      
+      setStep("delayed-countdown");
+      
+      toast({
+        title: "5 More Minutes Granted",
+        description: "The restaurant has been notified. This is your final extension.",
+      });
+    } else {
+      toast({
+        title: "Error",
+        description: "Could not extend your time. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const handleAutoCancelAfterDelay = async () => {
+    if (!waitlistEntry) return;
+
+    const { error } = await supabase
+      .from("waitlist_entries")
+      .update({ status: "cancelled" })
+      .eq("id", waitlistEntry.id);
+
+    if (!error) {
+      toast({
+        title: "Booking Cancelled",
+        description: "Your table has been released due to no arrival.",
+        variant: "destructive"
+      });
+      
+      setTimeout(() => {
+        onBack();
+      }, 2000);
+    }
+  };
+
+  const handleConfirmArrivalAfterDelay = async () => {
+    if (!waitlistEntry) return;
+    
+    // Set awaiting confirmation
+    const { error } = await supabase
+      .from('waitlist_entries')
+      .update({ 
+        awaiting_merchant_confirmation: true 
+      })
+      .eq('id', waitlistEntry.id);
+
+    if (!error) {
+      setWaitlistEntry(prev => prev ? { 
+        ...prev, 
+        awaiting_merchant_confirmation: true 
+      } : null);
+      setStep("awaiting-confirmation");
+      
+      toast({
+        title: "Notified Host",
+        description: "The host has been notified you're here. Please wait to be seated.",
+      });
+    }
+  };
+
+  const handleRatingSubmit = async () => {
+    if (!rating || !waitlistEntry) return;
+    
+    setIsSubmittingRating(true);
+    
+    try {
+      const venue = venues.find(v => v.name === waitlistEntry.venue);
+      
+      // Insert rating
+      const { error: ratingError } = await supabase
+        .from('waitlist_ratings')
+        .insert({
+          waitlist_entry_id: waitlistEntry.id,
+          venue_id: venue?.id,
+          user_id: userId,
+          rating,
+          feedback_text: feedbackText.trim() || null
+        });
+
+      if (ratingError) throw ratingError;
+
+      toast({
+        title: "Thank you for your feedback!",
+        description: "Your rating has been submitted successfully."
+      });
+      
+      setTimeout(() => {
+        onBack();
+      }, 1500);
+    } catch (error) {
+      console.error('Error submitting rating:', error);
+      toast({
+        title: "Error",
+        description: "Could not submit rating. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmittingRating(false);
+    }
+  };
+
+  const handleSkipRating = async () => {
+    setTimeout(() => {
+      onBack();
+    }, 500);
+  };
+
+  if (step === "venue-select") {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Join Waitlist</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>Select Restaurant</CardTitle>
+            <p className="text-muted-foreground">Search and choose where you'd like to dine</p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+              <Input
+                placeholder="Search restaurants..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+
+            {isLoading ? (
+              <div className="text-center py-8 text-muted-foreground">Loading venues...</div>
+            ) : filteredVenues.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {searchQuery ? "No venues found matching your search" : "No venues available"}
+              </div>
+            ) : (
+              <div className="space-y-2 mt-4">
+                <div className="text-sm text-muted-foreground">
+                  {filteredVenues.length} {filteredVenues.length === 1 ? 'restaurant' : 'restaurants'} found
+                </div>
+                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2"
+                     style={{ scrollbarGutter: 'stable' }}>
+                  {filteredVenues.map((venue) => (
+            <Card 
+              key={venue.id}
+              className="cursor-pointer hover:bg-accent transition-colors"
+              onClick={() => handleVenueSelect(venue.id)}
+            >
+                      <CardContent className="p-4">
+                        <div className="flex justify-between items-start gap-3">
+                          <div className="flex flex-col gap-1 flex-1">
+                            <span className="font-medium">{venue.name}</span>
+                            {(venue.display_address || venue.address) && (
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                                <MapPin size={14} />
+                                <span>{venue.display_address || venue.address}</span>
+                              </div>
+                            )}
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <Clock size={14} />
+                              <span>Wait: {venue.waitTime}</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2 shrink-0">
+                            {venue.distance !== undefined && (
+                              <Badge variant="secondary" className="flex items-center gap-1">
+                                <Navigation size={12} />
+                                {formatDistance(venue.distance)}
+                              </Badge>
+                            )}
+                            <Badge variant={venue.tables && venue.tables > 0 ? "secondary" : "default"}>
+                              {venue.tables || 0} ahead
+                            </Badge>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (step === "booking-type") {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={() => setStep("venue-select")}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">When would you like to dine?</h1>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Card 
+            className={cn(
+              "cursor-pointer transition-all hover:shadow-floating",
+              bookingType === "now" && "border-2 border-primary"
+            )}
+            onClick={() => {
+              setBookingType("now");
+              setStep("party-details");
+            }}
+          >
+            <CardContent className="p-6 text-center">
+              <Clock className="mx-auto mb-2" size={32} />
+              <h3 className="font-semibold">Join Waitlist Now</h3>
+              <p className="text-sm text-muted-foreground">Get seated today</p>
+            </CardContent>
+          </Card>
+          
+          <Card 
+            className={cn(
+              "cursor-pointer transition-all hover:shadow-floating",
+              bookingType === "later" && "border-2 border-primary"
+            )}
+            onClick={() => {
+              setBookingType("later");
+              setStep("reservation-details");
+            }}
+          >
+            <CardContent className="p-6 text-center">
+              <CalendarIcon className="mx-auto mb-2" size={32} />
+              <h3 className="font-semibold">Book for Later</h3>
+              <p className="text-sm text-muted-foreground">Reserve in advance</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  // ... keep existing code for other steps (reservation-details, party-details, waiting, ready, etc.)
   return null;
 }
