@@ -11,6 +11,7 @@ import { Clock, Plus, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { FoodExtensionReasonDialog } from "./FoodExtensionReasonDialog";
+import { playNotificationSound, initializeAudio } from "@/utils/notificationSound";
 
 interface Order {
   id: string;
@@ -94,6 +95,9 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
 
   // Fetch orders when showRejected changes
   useEffect(() => {
+    // Initialize audio on mount
+    initializeAudio();
+    
     fetchOrders();
 
     // Set up real-time subscription with venue filter
@@ -128,6 +132,12 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
         
         // Handle the update directly in state for instant UI update
         if (payload.eventType === 'INSERT') {
+          // NEW ORDER - PLAY LOUD SOUND!
+          playNotificationSound('newOrder', 3);
+          toast({
+            title: "🔔 New Order!",
+            description: `Order #${payload.new.order_number} received`,
+          });
           fetchOrders(); // Fetch fresh data for new orders
         } else if (payload.eventType === 'UPDATE' && payload.new) {
           // Optimistically update the specific order in state
