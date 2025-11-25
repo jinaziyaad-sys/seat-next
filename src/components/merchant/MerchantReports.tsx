@@ -22,6 +22,7 @@ interface AnalyticsData {
     total: number;
     completed: number;
     avg_prep_time: number;
+    rejected_count: number;
     performance: {
       early_rate: number;
       early_count: number;
@@ -381,11 +382,11 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
               color="text-green-500"
             />
             <MetricCard
-              title="Peak Hour"
-              value={`${analytics.order_metrics.peak_hour}:00`}
+              title="Rejected Orders"
+              value={analytics.order_metrics.rejected_count}
               unit=""
-              icon={TrendingUp}
-              color="text-purple-500"
+              icon={AlertTriangle}
+              color="text-red-500"
             />
           </div>
 
