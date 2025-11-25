@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
-import { TrendingUp, TrendingDown, Clock, Users, UtensilsCrossed, AlertTriangle, Loader2, Info, Download } from "lucide-react";
+import { TrendingUp, TrendingDown, Clock, Users, UtensilsCrossed, AlertTriangle, Loader2, Info, Download, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { RatingsView } from "./RatingsView";
@@ -23,6 +23,14 @@ interface AnalyticsData {
     completed: number;
     avg_prep_time: number;
     rejected_count: number;
+    cancelled_count: number;
+    cancelled_orders: Array<{
+      order_number: string;
+      cancellation_type: string;
+      reason: string;
+      cancelled_at: string;
+      cancelled_by: string;
+    }>;
     performance: {
       early_rate: number;
       early_count: number;
@@ -360,19 +368,12 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
           )}
 
           {/* Food Ready Metrics */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <MetricCard
               title="Total Orders"
               value={analytics.order_metrics.total}
               unit=""
               icon={UtensilsCrossed}
-            />
-            <MetricCard
-              title="Avg Prep Time"
-              value={analytics.order_metrics.avg_prep_time}
-              unit="m"
-              icon={Clock}
-              color="text-blue-500"
             />
             <MetricCard
               title="Completed"
@@ -382,7 +383,21 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
               color="text-green-500"
             />
             <MetricCard
-              title="Rejected Orders"
+              title="Avg Prep Time"
+              value={analytics.order_metrics.avg_prep_time}
+              unit="m"
+              icon={Clock}
+              color="text-blue-500"
+            />
+            <MetricCard
+              title="Cancelled"
+              value={analytics.order_metrics.cancelled_count}
+              unit=""
+              icon={XCircle}
+              color="text-orange-500"
+            />
+            <MetricCard
+              title="Rejected"
               value={analytics.order_metrics.rejected_count}
               unit=""
               icon={AlertTriangle}
@@ -445,6 +460,39 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
               </div>
             </CardContent>
           </Card>
+
+          {/* Cancelled Orders Section */}
+          {analytics.order_metrics.cancelled_count > 0 && (
+            <Card className="shadow-card">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle>Cancelled Orders ({analytics.order_metrics.cancelled_count})</CardTitle>
+                  <Badge variant="destructive">{analytics.order_metrics.cancelled_count}</Badge>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {analytics.order_metrics.cancelled_orders.map((order, idx) => (
+                    <div key={idx} className="border-l-4 border-destructive pl-4 py-2">
+                      <div className="flex items-start justify-between">
+                        <div>
+                          <p className="font-semibold">Order #{order.order_number}</p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            <span className="font-medium">Reason:</span> {order.reason}
+                          </p>
+                          <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                            <span>Type: <span className="font-medium">{order.cancellation_type?.replace('_', ' ')}</span></span>
+                            <span>By: <span className="font-medium">{order.cancelled_by}</span></span>
+                            <span>At: <span className="font-medium">{new Date(order.cancelled_at).toLocaleString()}</span></span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Hourly Orders Chart */}
           {hourlyOrderData.length > 0 ? (
@@ -665,6 +713,8 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
                       avgPrepTime: analytics.order_metrics.avg_prep_time,
                       onTimeRate: analytics.order_metrics.performance.on_time_rate,
                       totalOrders: analytics.order_metrics.total,
+                      cancelledCount: analytics.order_metrics.cancelled_count,
+                      rejectedCount: analytics.order_metrics.rejected_count,
                     },
                     efficiencyMetrics: {
                       avgWaitTime: analytics.waitlist_metrics.avg_wait_time,

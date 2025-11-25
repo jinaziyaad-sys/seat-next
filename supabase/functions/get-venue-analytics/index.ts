@@ -59,6 +59,15 @@ serve(async (req) => {
       .eq('status', 'rejected')
       .gte('created_at', startDate.toISOString());
 
+    // Get cancelled orders with details (for reporting)
+    const { data: cancelledOrders } = await supabase
+      .from('orders')
+      .select('id, order_number, cancellation_type, notes, created_at, cancelled_by')
+      .eq('venue_id', venue_id)
+      .eq('status', 'cancelled')
+      .gte('created_at', startDate.toISOString())
+      .order('created_at', { ascending: false });
+
     if (orderError) throw orderError;
 
     // Get waitlist analytics
@@ -72,8 +81,23 @@ serve(async (req) => {
     if (waitlistError) throw waitlistError;
 
     // Calculate order metrics
-    const completedOrders = orderAnalytics?.filter(o => o.actual_prep_time !== null) || [];
+    const completedOrders = orderAnalytics?.filter(o => o.actual_prep_time !== null && o.orders.status !== 'cancelled') || [];
     const totalOrders = orderAnalytics?.length || 0;
+    
+    // Extract cancellation reasons
+    const cancelledOrderDetails = (cancelledOrders || []).map(order => {
+      // Extract reason from notes (format: "Cancelled: [reason]")
+      const reasonMatch = order.notes?.match(/^Cancelled:\s*(.+)$/i);
+      const reason = reasonMatch ? reasonMatch[1].trim() : 'No reason provided';
+      
+      return {
+        order_number: order.order_number,
+        cancellation_type: order.cancellation_type || 'unknown',
+        reason: reason,
+        cancelled_at: order.created_at,
+        cancelled_by: order.cancelled_by || 'unknown'
+      };
+    });
     
     const avgPrepTime = completedOrders.length > 0
       ? Math.round(completedOrders.reduce((sum, o) => sum + (o.actual_prep_time || 0), 0) / completedOrders.length)
@@ -269,6 +293,8 @@ serve(async (req) => {
           completed: completedOrders.length,
           avg_prep_time: avgPrepTime,
           rejected_count: rejectedCount || 0,
+          cancelled_count: cancelledOrders?.length || 0,
+          cancelled_orders: cancelledOrderDetails,
           performance: {
             early_rate: earlyRate,
             early_count: earlyOrders.length,

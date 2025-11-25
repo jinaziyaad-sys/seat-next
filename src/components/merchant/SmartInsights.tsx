@@ -6,6 +6,8 @@ interface InsightData {
     avgPrepTime?: number;
     onTimeRate?: number;
     totalOrders?: number;
+    cancelledCount?: number;
+    rejectedCount?: number;
   };
   customerMetrics?: {
     returnRate?: number;
@@ -99,6 +101,39 @@ export const SmartInsights = ({ data, type }: SmartInsightsProps) => {
             title: "Limited Data Available",
             message: "More order data is needed for accurate insights. Insights will improve as you process more orders.",
             icon: Info,
+          });
+        }
+
+        // Cancellation insights
+        const { cancelledCount, rejectedCount } = data.orderMetrics;
+        
+        if (cancelledCount !== undefined && totalOrders !== undefined && totalOrders > 0) {
+          const cancelRate = (cancelledCount / totalOrders) * 100;
+          
+          if (cancelRate > 15) {
+            insights.push({
+              type: "error",
+              title: "High Cancellation Rate",
+              message: `${cancelRate.toFixed(1)}% of orders are being cancelled (${cancelledCount} orders). Review cancellation reasons to identify and address recurring issues.`,
+              icon: AlertTriangle,
+            });
+          } else if (cancelRate > 8) {
+            insights.push({
+              type: "warning",
+              title: "Elevated Cancellations",
+              message: `${cancelledCount} orders cancelled (${cancelRate.toFixed(1)}%). Monitor cancellation reasons and consider process improvements.`,
+              icon: Info,
+            });
+          }
+        }
+
+        // Rejection insights (invalid order numbers)
+        if (rejectedCount !== undefined && rejectedCount > 5) {
+          insights.push({
+            type: "warning",
+            title: "High Invalid Order Submissions",
+            message: `${rejectedCount} rejected orders detected. This may indicate customer confusion with order numbering or menu board visibility issues.`,
+            icon: AlertTriangle,
           });
         }
       }
