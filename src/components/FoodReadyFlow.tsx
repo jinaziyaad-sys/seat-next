@@ -15,7 +15,7 @@ import { checkVenueStatus } from "@/utils/businessHours";
 import { calculateDistance, formatDistance, getUserLocation, type UserLocation } from "@/utils/geolocation";
 import { format } from "date-fns";
 
-type OrderStatus = "awaiting_verification" | "placed" | "in_prep" | "ready" | "collected" | "rejected";
+type OrderStatus = "awaiting_verification" | "placed" | "in_prep" | "ready" | "collected" | "rejected" | "cancelled";
 
 interface Order {
   id: string;
@@ -37,7 +37,8 @@ const statusConfig = {
   "in_prep": { label: "In Preparation", icon: Clock, color: "bg-warning text-white", progress: 60 },
   ready: { label: "Ready for Pickup", icon: CheckCircle, color: "bg-primary text-primary-foreground", progress: 90 },
   collected: { label: "Collected", icon: Truck, color: "bg-success text-white", progress: 100 },
-  rejected: { label: "Cancelled", icon: XCircle, color: "bg-destructive text-white", progress: 0 },
+  rejected: { label: "Order Not Found", icon: XCircle, color: "bg-destructive text-white", progress: 0 },
+  cancelled: { label: "Order Cancelled", icon: XCircle, color: "bg-destructive text-white", progress: 0 },
 };
 
 // Helper to extract cancellation reason from notes
