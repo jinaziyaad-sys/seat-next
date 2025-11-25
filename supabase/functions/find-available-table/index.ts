@@ -7,35 +7,55 @@ interface TableConfig {
   name: string;
 }
 
-// Find the best combination of tables to accommodate a party
-// Uses a greedy algorithm to minimize the number of tables used
+// Find the optimal combination of tables to accommodate a party
+// Uses an exhaustive search to minimize wasted seats, then minimize table count
 function findTableCombination(
   partySize: number,
   allTables: TableConfig[],
   occupiedTableIds: Set<string>
 ): TableConfig[] {
-  // Filter to only available tables and sort by capacity (largest first)
-  const availableTables = allTables
-    .filter(t => !occupiedTableIds.has(t.id))
-    .sort((a, b) => b.capacity - a.capacity);
+  const availableTables = allTables.filter(t => !occupiedTableIds.has(t.id));
   
-  // Try to find the minimum number of tables that can seat the party
-  const result: TableConfig[] = [];
-  let remainingCapacity = partySize;
+  if (availableTables.length === 0) return [];
   
-  for (const table of availableTables) {
-    if (remainingCapacity <= 0) break;
+  const validCombinations: TableConfig[][] = [];
+  
+  // Generate all possible combinations recursively
+  function generateCombinations(
+    index: number, 
+    current: TableConfig[], 
+    currentCapacity: number
+  ) {
+    // If we have enough capacity, this is a valid combination
+    if (currentCapacity >= partySize && current.length > 0) {
+      validCombinations.push([...current]);
+    }
     
-    result.push(table);
-    remainingCapacity -= table.capacity;
+    // Try adding more tables
+    for (let i = index; i < availableTables.length; i++) {
+      current.push(availableTables[i]);
+      generateCombinations(i + 1, current, currentCapacity + availableTables[i].capacity);
+      current.pop();
+    }
   }
   
-  // Only return if we found enough capacity
-  if (remainingCapacity <= 0) {
-    return result;
-  }
+  generateCombinations(0, [], 0);
   
-  return []; // Not enough tables available
+  if (validCombinations.length === 0) return [];
+  
+  // Sort by: 1) Minimum wasted seats (primary), 2) Fewest tables (secondary)
+  validCombinations.sort((a, b) => {
+    const wasteA = a.reduce((sum, t) => sum + t.capacity, 0) - partySize;
+    const wasteB = b.reduce((sum, t) => sum + t.capacity, 0) - partySize;
+    
+    // Prefer combination with less wasted seats
+    if (wasteA !== wasteB) return wasteA - wasteB;
+    
+    // If same waste, prefer fewer tables
+    return a.length - b.length;
+  });
+  
+  return validCombinations[0];
 }
 
 Deno.serve(async (req) => {
