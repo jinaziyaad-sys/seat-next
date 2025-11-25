@@ -589,6 +589,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           return;
         }
 
+        console.log('📊 Availability response:', availabilityData);
+
         if (!availabilityData.available) {
           const nextSlotMessage = availabilityData.next_available_slot 
             ? `Next available: ${format(new Date(availabilityData.next_available_slot), 'h:mm a')}`
@@ -604,6 +606,11 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
         // Handle multi-table bookings
         if (availabilityData.requires_multiple_tables) {
+          console.log('🪑 Multi-table booking required:', {
+            tablesNeeded: availabilityData.tables_needed,
+            totalTables: availabilityData.total_tables,
+            totalCapacity: availabilityData.total_capacity
+          });
           setTablesNeeded(availabilityData.tables_needed);
           setPendingReservationData({
             venue,
@@ -612,6 +619,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             partyName: partyName.trim(),
             partySize
           });
+          console.log('✅ Setting requiresMultipleTables to true');
           setRequiresMultipleTables(true);
           return; // Stop here and show confirmation dialog
         }
@@ -735,6 +743,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         variant: "destructive"
       });
     } finally {
+      console.log('🔄 Resetting isSubmitting to false');
       setIsSubmitting(false);
     }
   };
@@ -1891,6 +1900,11 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   }
 
   if (requiresMultipleTables && tablesNeeded.length > 0) {
+    console.log('🖼️ Rendering multi-table confirmation dialog', {
+      requiresMultipleTables,
+      tablesNeeded,
+      pendingReservationData
+    });
     const totalCapacity = tablesNeeded.reduce((sum, t) => sum + t.capacity, 0);
     const reservationTimeStr = pendingReservationData 
       ? format(new Date(pendingReservationData.reservationDateTime), 'h:mm a, MMM d, yyyy')
