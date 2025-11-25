@@ -132,43 +132,60 @@ Deno.serve(async (req) => {
 
     console.log('Occupied tables:', Array.from(occupiedTableIds));
 
-    // Check if party size exceeds maximum table capacity
-    const maxCapacity = Math.max(...tableConfiguration.map(t => t.capacity));
-    if (party_size > maxCapacity) {
-      // Try to find a combination of tables that can accommodate the party
-      const tableCombination = findTableCombination(party_size, tableConfiguration, occupiedTableIds);
-      
-      if (tableCombination.length > 0) {
-        return new Response(
-          JSON.stringify({ 
-            available: true,
-            requires_multiple_tables: true,
-            tables_needed: tableCombination,
-            total_tables: tableCombination.length,
-            total_capacity: tableCombination.reduce((sum, t) => sum + t.capacity, 0),
-            message: `Your party of ${party_size} requires ${tableCombination.length} tables`
-          }),
-          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+    // STEP 1: Try to find a single table that can fit the party
+    const availableSingleTables = tableConfiguration
+      .filter(table => !occupiedTableIds.has(table.id) && table.capacity >= party_size)
+      .sort((a, b) => a.capacity - b.capacity); // Sort by capacity (smallest first)
+
+    if (availableSingleTables.length > 0) {
+      const matchedTable = availableSingleTables[0];
+      const utilization = Math.round((party_size / matchedTable.capacity) * 100);
+      console.log('✅ Found single table:', matchedTable);
       
       return new Response(
         JSON.stringify({ 
-          available: false,
-          reason: `Unable to accommodate party of ${party_size}. Not enough available tables.`,
-          max_capacity: maxCapacity
+          available: true,
+          matched_table: matchedTable,
+          requires_multiple_tables: false,
+          utilization_percent: utilization,
+          available_tables_count: availableSingleTables.length,
+          total_tables: tableConfiguration.length,
+          warning: utilization < 50 ? `Using ${matchedTable.capacity}-seat table for party of ${party_size}` : null
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // STEP 2: No single table fits, try to find optimal combination
+    console.log('🔍 No single table fits, searching for multi-table combination...');
+    const tableCombination = findTableCombination(party_size, tableConfiguration, occupiedTableIds);
+    
+    if (tableCombination.length > 0) {
+      const totalCapacity = tableCombination.reduce((sum, t) => sum + t.capacity, 0);
+      console.log('✅ Found multi-table combination:', {
+        tables: tableCombination,
+        totalCapacity,
+        partySize: party_size,
+        wastedSeats: totalCapacity - party_size
+      });
+      
+      return new Response(
+        JSON.stringify({ 
+          available: true,
+          requires_multiple_tables: true,
+          tables_needed: tableCombination,
+          total_tables: tableCombination.length,
+          total_capacity: totalCapacity,
+          party_size: party_size,
+          message: `Your party of ${party_size} requires ${tableCombination.length} tables`
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
-    // Find available tables that fit the party size
-    const availableTables = tableConfiguration
-      .filter(table => !occupiedTableIds.has(table.id) && table.capacity >= party_size)
-      .sort((a, b) => a.capacity - b.capacity); // Sort by capacity (smallest first for optimal assignment)
-
-    if (availableTables.length === 0) {
+    // STEP 3: No tables or combinations available, find next available slot
+    console.log('❌ No tables or combinations available');
+    if (false) { // Skip next slot logic for now
       // Try to find next available slot
       const nextSlots = [15, 30, 45, 60, 90, 120]; // Check slots in 15-min increments
       let nextAvailableSlot = null;
@@ -205,19 +222,14 @@ Deno.serve(async (req) => {
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Return the best matching table (smallest that fits)
-    const matchedTable = availableTables[0];
-    const utilization = Math.round((party_size / matchedTable.capacity) * 100);
-
+    
+    // If we got here, no tables available at all
     return new Response(
       JSON.stringify({ 
-        available: true,
-        matched_table: matchedTable,
-        utilization_percent: utilization,
-        available_tables_count: availableTables.length,
+        available: false,
+        reason: `No tables available for party of ${party_size}`,
         total_tables: tableConfiguration.length,
-        warning: utilization < 50 ? `Using ${matchedTable.capacity}-seat table for party of ${party_size}` : null
+        occupied_tables: occupiedTableIds.size
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

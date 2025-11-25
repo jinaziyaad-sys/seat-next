@@ -599,6 +599,7 @@ export type Database = {
           delayed_until: string | null
           eta: string | null
           id: string
+          linked_reservation_id: string | null
           merchant_acknowledged: boolean | null
           notes: string | null
           original_eta: string | null
@@ -627,6 +628,7 @@ export type Database = {
           delayed_until?: string | null
           eta?: string | null
           id?: string
+          linked_reservation_id?: string | null
           merchant_acknowledged?: boolean | null
           notes?: string | null
           original_eta?: string | null
@@ -655,6 +657,7 @@ export type Database = {
           delayed_until?: string | null
           eta?: string | null
           id?: string
+          linked_reservation_id?: string | null
           merchant_acknowledged?: boolean | null
           notes?: string | null
           original_eta?: string | null
