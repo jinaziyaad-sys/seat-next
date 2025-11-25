@@ -1069,6 +1069,109 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     }, 500);
   };
 
+  // Debug render state
+  console.log('🔍 TableReadyFlow render state:', {
+    step,
+    requiresMultipleTables,
+    tablesNeededLength: tablesNeeded.length,
+    hasWaitlistEntry: !!waitlistEntry,
+    venueId: selectedVenue
+  });
+
+  // PRIORITY: Multi-table confirmation dialog (must render first)
+  if (requiresMultipleTables && tablesNeeded.length > 0) {
+    console.log('🖼️ Rendering multi-table confirmation dialog', {
+      requiresMultipleTables,
+      tablesNeeded,
+      pendingReservationData
+    });
+    const totalCapacity = tablesNeeded.reduce((sum, t) => sum + t.capacity, 0);
+    const reservationTimeStr = pendingReservationData 
+      ? format(new Date(pendingReservationData.reservationDateTime), 'h:mm a, MMM d, yyyy')
+      : '';
+    
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={handleCancelMultiTableBooking}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Multiple Tables Required</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              🪑 Your party needs to be split across multiple tables
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Your party of {pendingReservationData?.partySize} people requires:
+              </p>
+              
+              <div className="space-y-2">
+                {tablesNeeded.map((table, index) => (
+                  <div 
+                    key={table.id}
+                    className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/20"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-primary" />
+                      <span className="font-medium">{table.name}</span>
+                      {index === 0 && (
+                        <Badge variant="secondary" className="text-xs">Main table</Badge>
+                      )}
+                    </div>
+                    <span className="text-sm text-muted-foreground">{table.capacity} seats</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
+                  ℹ️ Both tables will be reserved together at {reservationTimeStr}
+                </p>
+              </div>
+
+              <div className="p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
+                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
+                  ⚠️ Important: Cancelling one table will automatically cancel all linked tables
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Button 
+                onClick={handleConfirmMultiTableBooking}
+                disabled={isSubmitting}
+                className="w-full h-12"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Confirming...
+                  </>
+                ) : (
+                  "Confirm Booking"
+                )}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={handleCancelMultiTableBooking}
+                disabled={isSubmitting}
+                className="w-full"
+              >
+                Go Back
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (step === "venue-select") {
     return (
       <div className="space-y-6 p-6">
@@ -1895,99 +1998,6 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 className="w-full"
               >
                 Skip for now
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (requiresMultipleTables && tablesNeeded.length > 0) {
-    console.log('🖼️ Rendering multi-table confirmation dialog', {
-      requiresMultipleTables,
-      tablesNeeded,
-      pendingReservationData
-    });
-    const totalCapacity = tablesNeeded.reduce((sum, t) => sum + t.capacity, 0);
-    const reservationTimeStr = pendingReservationData 
-      ? format(new Date(pendingReservationData.reservationDateTime), 'h:mm a, MMM d, yyyy')
-      : '';
-    
-    return (
-      <div className="space-y-6 p-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={handleCancelMultiTableBooking}>
-            <ArrowLeft size={20} />
-          </Button>
-          <h1 className="text-2xl font-bold">Multiple Tables Required</h1>
-        </div>
-
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              🪑 Your party needs to be split across multiple tables
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-3">
-              <p className="text-sm text-muted-foreground">
-                Your party of {pendingReservationData?.partySize} people requires:
-              </p>
-              
-              <div className="space-y-2">
-                {tablesNeeded.map((table, index) => (
-                  <div 
-                    key={table.id}
-                    className="flex items-center justify-between p-3 bg-primary/5 rounded-lg border border-primary/20"
-                  >
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-primary" />
-                      <span className="font-medium">{table.name}</span>
-                      {index === 0 && (
-                        <Badge variant="secondary" className="text-xs">Main table</Badge>
-                      )}
-                    </div>
-                    <span className="text-sm text-muted-foreground">{table.capacity} seats</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-lg border border-blue-200 dark:border-blue-800">
-                <p className="text-sm font-medium text-blue-900 dark:text-blue-100">
-                  ℹ️ Both tables will be reserved together at {reservationTimeStr}
-                </p>
-              </div>
-
-              <div className="p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
-                <p className="text-sm font-medium text-amber-900 dark:text-amber-100">
-                  ⚠️ Important: Cancelling one table will automatically cancel all linked tables
-                </p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Button 
-                onClick={handleConfirmMultiTableBooking}
-                disabled={isSubmitting}
-                className="w-full h-12"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Confirming...
-                  </>
-                ) : (
-                  "Confirm Booking"
-                )}
-              </Button>
-              <Button 
-                variant="outline"
-                onClick={handleCancelMultiTableBooking}
-                disabled={isSubmitting}
-                className="w-full"
-              >
-                Go Back
               </Button>
             </div>
           </CardContent>
