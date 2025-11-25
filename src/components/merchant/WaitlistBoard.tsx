@@ -103,28 +103,17 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     initializeAudio();
     
     const fetchWaitlist = async () => {
-      // Fetch waitlist entries for this venue (exclude seated unless awaiting confirmation)
-      // Include patron-cancelled entries that were ready (so merchant can acknowledge them)
+      // Fetch waitlist entries for this venue
+      // Exclude: seated (unless awaiting confirmation), no_show, and merchant-acknowledged entries
       const { data: waitlistData, error: waitlistError } = await supabase
         .from("waitlist_entries")
         .select("*")
         .eq("venue_id", venueId)
+        .eq("merchant_acknowledged", false)
+        .not("status", "eq", "no_show")
         .or("status.neq.seated,awaiting_merchant_confirmation.eq.true")
-        .not("status", "eq", "cancelled")
-        .or("cancelled_by.neq.patron,ready_at.is.null")
+        .or("status.neq.cancelled,and(status.eq.cancelled,cancelled_by.eq.patron,ready_at.not.is.null)")
         .order("created_at", { ascending: true });
-      
-      // Include patron-cancelled entries that were previously ready
-      const { data: patronCancelledData } = await supabase
-        .from("waitlist_entries")
-        .select("*")
-        .eq("venue_id", venueId)
-        .eq("status", "cancelled")
-        .eq("cancelled_by", "patron")
-        .not("ready_at", "is", null)
-        .order("created_at", { ascending: true });
-
-      const combinedData = [...(waitlistData || []), ...(patronCancelledData || [])];
 
       if (waitlistError) {
         toast({
@@ -135,7 +124,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
         return;
       }
 
-      setWaitlist(combinedData);
+      setWaitlist(waitlistData || []);
     };
 
     fetchWaitlist();
@@ -218,13 +207,29 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   };
 
   const acknowledgeCancellation = async (entryId: string) => {
-    // Remove from local state immediately
-    setWaitlist(prevWaitlist => prevWaitlist.filter(entry => entry.id !== entryId));
-    
-    toast({
-      title: "Acknowledged",
-      description: "Patron cancellation has been acknowledged",
-    });
+    try {
+      const { error } = await supabase
+        .from('waitlist_entries')
+        .update({ merchant_acknowledged: true })
+        .eq('id', entryId);
+
+      if (error) throw error;
+
+      // Remove from local state after successful update
+      setWaitlist(prevWaitlist => prevWaitlist.filter(entry => entry.id !== entryId));
+      
+      toast({
+        title: "Acknowledged",
+        description: "Patron cancellation has been acknowledged",
+      });
+    } catch (error: any) {
+      console.error("Error acknowledging cancellation:", error);
+      toast({
+        title: "Error",
+        description: "Failed to acknowledge cancellation",
+        variant: "destructive"
+      });
+    }
   };
 
   const openCancelDialog = (entryId: string) => {

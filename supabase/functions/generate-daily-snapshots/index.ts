@@ -44,12 +44,11 @@ serve(async (req) => {
     for (const venue of venues || []) {
       console.log(`Processing venue ${venue.id}...`);
 
-      // Get orders for yesterday (exclude rejected orders)
-      const { data: orders, error: ordersError } = await supabase
+      // Get all orders for yesterday
+      const { data: allOrders, error: ordersError } = await supabase
         .from('orders')
         .select('id, status, user_id')
         .eq('venue_id', venue.id)
-        .neq('status', 'rejected')
         .gte('created_at', startOfYesterday.toISOString())
         .lte('created_at', endOfYesterday.toISOString());
 
@@ -58,9 +57,14 @@ serve(async (req) => {
         continue;
       }
 
-      const totalOrders = orders?.length || 0;
-      const completedOrders = orders?.filter(o => o.status === 'collected').length || 0;
-      const uniqueCustomers = new Set(orders?.map(o => o.user_id).filter(Boolean));
+      // Count rejected orders (invalid order numbers)
+      const rejectedOrders = allOrders?.filter(o => o.status === 'rejected').length || 0;
+      
+      // Analytics use orders excluding rejected (but including cancelled)
+      const orders = allOrders?.filter(o => o.status !== 'rejected') || [];
+      const totalOrders = orders.length;
+      const completedOrders = orders.filter(o => o.status === 'collected').length;
+      const uniqueCustomers = new Set(orders.map(o => o.user_id).filter(Boolean));
 
       // Get waitlist entries for yesterday
       const { data: waitlist, error: waitlistError } = await supabase
@@ -174,6 +178,7 @@ serve(async (req) => {
         snapshot_date: yesterdayStr,
         total_orders: totalOrders,
         completed_orders: completedOrders,
+        rejected_orders_count: rejectedOrders,
         total_customers: totalCustomers,
         new_customers: newCustomers,
         returning_customers: returningCustomers,

@@ -93,6 +93,7 @@ export type Database = {
           id: string
           new_customers: number | null
           on_time_percentage: number | null
+          rejected_orders_count: number | null
           returning_customers: number | null
           snapshot_date: string
           total_customers: number | null
@@ -109,6 +110,7 @@ export type Database = {
           id?: string
           new_customers?: number | null
           on_time_percentage?: number | null
+          rejected_orders_count?: number | null
           returning_customers?: number | null
           snapshot_date: string
           total_customers?: number | null
@@ -125,6 +127,7 @@ export type Database = {
           id?: string
           new_customers?: number | null
           on_time_percentage?: number | null
+          rejected_orders_count?: number | null
           returning_customers?: number | null
           snapshot_date?: string
           total_customers?: number | null
@@ -257,6 +260,7 @@ export type Database = {
         Row: {
           awaiting_merchant_confirmation: boolean | null
           awaiting_patron_confirmation: boolean | null
+          cancellation_type: string | null
           cancelled_by: string | null
           confidence: string | null
           created_at: string
@@ -278,6 +282,7 @@ export type Database = {
         Insert: {
           awaiting_merchant_confirmation?: boolean | null
           awaiting_patron_confirmation?: boolean | null
+          cancellation_type?: string | null
           cancelled_by?: string | null
           confidence?: string | null
           created_at?: string
@@ -299,6 +304,7 @@ export type Database = {
         Update: {
           awaiting_merchant_confirmation?: boolean | null
           awaiting_patron_confirmation?: boolean | null
+          cancellation_type?: string | null
           cancelled_by?: string | null
           confidence?: string | null
           created_at?: string
@@ -593,6 +599,7 @@ export type Database = {
           delayed_until: string | null
           eta: string | null
           id: string
+          merchant_acknowledged: boolean | null
           notes: string | null
           original_eta: string | null
           party_size: number
@@ -620,6 +627,7 @@ export type Database = {
           delayed_until?: string | null
           eta?: string | null
           id?: string
+          merchant_acknowledged?: boolean | null
           notes?: string | null
           original_eta?: string | null
           party_size?: number
@@ -647,6 +655,7 @@ export type Database = {
           delayed_until?: string | null
           eta?: string | null
           id?: string
+          merchant_acknowledged?: boolean | null
           notes?: string | null
           original_eta?: string | null
           party_size?: number
@@ -822,6 +831,7 @@ export type Database = {
         | "collected"
         | "no_show"
         | "rejected"
+        | "cancelled"
       waitlist_status: "waiting" | "ready" | "seated" | "cancelled" | "no_show"
     }
     CompositeTypes: {
@@ -959,6 +969,7 @@ export const Constants = {
         "collected",
         "no_show",
         "rejected",
+        "cancelled",
       ],
       waitlist_status: ["waiting", "ready", "seated", "cancelled", "no_show"],
     },

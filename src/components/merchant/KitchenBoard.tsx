@@ -16,7 +16,7 @@ import { initializeAudio } from "@/utils/notificationSound";
 interface Order {
   id: string;
   order_number: string;
-  status: "awaiting_verification" | "placed" | "in_prep" | "ready" | "collected" | "no_show" | "rejected";
+  status: "awaiting_verification" | "placed" | "in_prep" | "ready" | "collected" | "no_show" | "rejected" | "cancelled";
   items: any[];
   created_at: string;
   eta: string | null;
@@ -26,6 +26,7 @@ interface Order {
   venue_id: string;
   user_id?: string | null;
   awaiting_merchant_confirmation?: boolean;
+  cancellation_type?: string | null;
   order_ratings?: Array<{
     rating: number;
     feedback_text: string | null;
@@ -59,14 +60,15 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
       .eq("venue_id", venueId);
 
     if (showRejected) {
-      // Show only rejected orders, most recent first
+      // Show only rejected orders (invalid order numbers), most recent first
       query
         .eq("status", "rejected")
         .order("created_at", { ascending: false });
     } else {
-      // Show all orders except rejected and no_show
+      // Show all orders except rejected, cancelled, and no_show
+      // cancelled orders are preserved in analytics but hidden from dashboard
       query
-        .not("status", "in", "(rejected,no_show)")
+        .not("status", "in", "(rejected,cancelled,no_show)")
         .or('status.neq.collected,and(status.eq.collected,awaiting_merchant_confirmation.eq.true)')
         .order("status", { ascending: true }) // awaiting_verification first
         .order("awaiting_merchant_confirmation", { ascending: false, nullsFirst: false })
@@ -247,11 +249,11 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
       return;
     }
 
-    // Optimistic update
+    // Optimistic update - use 'cancelled' status for venue cancellations
     setOrders(prevOrders => 
       prevOrders.map(order => 
         order.id === cancelOrderId 
-          ? { ...order, status: "rejected", notes: `Cancelled: ${cancelReason}` } 
+          ? { ...order, status: "cancelled" as const, notes: `Cancelled: ${cancelReason}` } 
           : order
       )
     );
@@ -259,8 +261,9 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
     const { error } = await supabase
       .from("orders")
       .update({ 
-        status: "rejected",
-        eta: null, // Clear ETA for rejected orders
+        status: "cancelled",  // Use 'cancelled' instead of 'rejected' - preserved in analytics
+        cancellation_type: "venue_cancel",
+        eta: null,
         notes: `Cancelled: ${cancelReason}`,
         cancelled_by: "venue",
         updated_at: new Date().toISOString()
