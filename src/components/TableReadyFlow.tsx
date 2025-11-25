@@ -771,13 +771,15 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         linked_reservation_id: linkedId
       }));
 
+      console.log('📝 Creating multi-table booking with data:', reservations);
+
       const { data: newEntries, error } = await supabase
         .from("waitlist_entries")
         .insert(reservations)
         .select();
 
       if (error) {
-        console.error("Error creating multi-table booking:", error);
+        console.error("❌ Error creating multi-table booking:", error);
         toast({
           title: "Booking Failed",
           description: error.message || "Unable to create your reservation. Please try again.",
@@ -785,6 +787,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         });
         return;
       }
+
+      console.log('✅ Multi-table booking created successfully:', newEntries);
 
       if (newEntries && newEntries.length > 0) {
         const entry: WaitlistEntry = {
@@ -815,7 +819,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         setStep("waiting");
       }
     } catch (err) {
-      console.error("Unexpected error:", err);
+      console.error("❌ Unexpected error in multi-table booking:", err);
       toast({
         title: "Error",
         description: "An unexpected error occurred. Please try again.",
