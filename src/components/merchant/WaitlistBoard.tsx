@@ -36,11 +36,13 @@ interface WaitlistEntry {
   cancelled_by?: string;
   ready_at?: string | null;
   linked_reservation_id?: string;
+  assigned_table_id?: string;
 }
 
 export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [todaysReservations, setTodaysReservations] = useState<WaitlistEntry[]>([]);
+  const [tableConfiguration, setTableConfiguration] = useState<any[]>([]);
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newPartySize, setNewPartySize] = useState("2");
   const [newPreferences, setNewPreferences] = useState("");
@@ -53,6 +55,24 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
   const [extensionEntryId, setExtensionEntryId] = useState<string>("");
   const { toast } = useToast();
+
+  // Fetch table configuration
+  useEffect(() => {
+    const fetchVenueSettings = async () => {
+      const { data } = await supabase
+        .from('venues')
+        .select('settings')
+        .eq('id', venueId)
+        .single();
+      
+      const settings = data?.settings as any;
+      if (settings?.table_configuration) {
+        setTableConfiguration(settings.table_configuration);
+      }
+    };
+    
+    fetchVenueSettings();
+  }, [venueId]);
 
   // Fetch upcoming reservations (within 1 hour window)
   useEffect(() => {
@@ -326,11 +346,28 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       return;
     }
 
-    // Optimistic update
+    // Find the entry being marked to check for linked reservations
+    const entryToMark = [...waitlist, ...todaysReservations].find(e => e.id === noShowEntryId);
+    const linkedReservationId = entryToMark?.linked_reservation_id;
+
+    // Find all linked entries if this is a multi-table booking
+    const linkedEntryIds = linkedReservationId
+      ? [...waitlist, ...todaysReservations].filter(e => e.linked_reservation_id === linkedReservationId).map(e => e.id)
+      : [noShowEntryId];
+
+    // Optimistic update for all linked entries
     setWaitlist(prevWaitlist => 
       prevWaitlist.map(entry => 
-        entry.id === noShowEntryId 
-          ? { ...entry, status: "no_show", cancellation_reason: `No show: ${noShowReason}` } 
+        linkedEntryIds.includes(entry.id)
+          ? { ...entry, status: "no_show" as const, cancellation_reason: `No show: ${noShowReason}` } 
+          : entry
+      )
+    );
+
+    setTodaysReservations(prevReservations =>
+      prevReservations.map(entry =>
+        linkedEntryIds.includes(entry.id)
+          ? { ...entry, status: "no_show" as const, cancellation_reason: `No show: ${noShowReason}` }
           : entry
       )
     );
@@ -339,11 +376,13 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       .from("waitlist_entries")
       .update({ 
         status: "no_show",
-        cancellation_reason: `No show: ${noShowReason}`,
+        cancellation_reason: linkedReservationId 
+          ? `Linked reservation no-show: ${noShowReason}`
+          : `No show: ${noShowReason}`,
         cancelled_by: "venue",
         updated_at: new Date().toISOString()
       })
-      .eq("id", noShowEntryId);
+      .in("id", linkedEntryIds);
 
     if (error) {
       toast({
@@ -366,8 +405,10 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     }
 
     toast({
-      title: "Marked as No Show",
-      description: "Customer marked as no show",
+      title: linkedReservationId ? "Linked Reservations Marked as No Show" : "Marked as No Show",
+      description: linkedReservationId 
+        ? `Marked all ${linkedEntryIds.length} linked tables as no-show`
+        : "Customer marked as no show",
     });
 
     // Reset dialog state
@@ -468,8 +509,14 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       return;
     }
 
-    // Get current entry state to preserve important flags
-    const currentEntry = waitlist.find(e => e.id === entryId);
+    // Get current entry state to preserve important flags and check for linked reservations
+    const currentEntry = [...waitlist, ...todaysReservations].find(e => e.id === entryId);
+    const linkedReservationId = currentEntry?.linked_reservation_id;
+    
+    // Find all linked entries if this is a multi-table booking
+    const linkedEntryIds = linkedReservationId
+      ? [...waitlist, ...todaysReservations].filter(e => e.linked_reservation_id === linkedReservationId).map(e => e.id)
+      : [entryId];
     
     // Prepare update object
     const updateData: any = { status: newStatus };
@@ -488,17 +535,23 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       }
     }
 
-    // Optimistic update BEFORE database call to prevent flickering
+    // Optimistic update BEFORE database call to prevent flickering (both waitlist and reservations)
     setWaitlist(prevWaitlist => 
       prevWaitlist.map(entry => 
-        entry.id === entryId ? { ...entry, ...updateData } : entry
+        linkedEntryIds.includes(entry.id) ? { ...entry, ...updateData } : entry
+      )
+    );
+
+    setTodaysReservations(prevReservations =>
+      prevReservations.map(entry =>
+        linkedEntryIds.includes(entry.id) ? { ...entry, ...updateData } : entry
       )
     );
 
     const { error } = await supabase
       .from("waitlist_entries")
       .update(updateData)
-      .eq("id", entryId);
+      .in("id", linkedEntryIds);
 
     if (error) {
       toast({
@@ -521,8 +574,10 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     }
 
     toast({
-      title: "Waitlist Updated",
-      description: `Entry status changed to ${newStatus.replace("_", " ")}${newStatus === "ready" ? " - patron has 5 minutes" : ""}`,
+      title: linkedReservationId ? "Linked Reservations Updated" : "Waitlist Updated",
+      description: linkedReservationId
+        ? `All ${linkedEntryIds.length} linked tables marked as ${newStatus.replace("_", " ")}${newStatus === "ready" ? " - patron has 5 minutes" : ""}`
+        : `Entry status changed to ${newStatus.replace("_", " ")}${newStatus === "ready" ? " - patron has 5 minutes" : ""}`,
     });
   };
 
@@ -714,85 +769,125 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {todaysReservations.map((reservation) => {
-                  const timeUntil = differenceInMinutes(
-                    new Date(reservation.reservation_time!),
-                    new Date()
-                  );
-                  const isNear = timeUntil <= 30 && timeUntil >= -15;
-                  const isVeryNear = timeUntil <= 10 && timeUntil >= 0;
-                  const nextStatus = getNextStatus(reservation.status, true);
+                {(() => {
+                  // Group reservations by linked_reservation_id
+                  const groupedReservations = todaysReservations.reduce((acc, reservation) => {
+                    const key = reservation.linked_reservation_id || reservation.id;
+                    if (!acc[key]) {
+                      acc[key] = [];
+                    }
+                    acc[key].push(reservation);
+                    return acc;
+                  }, {} as Record<string, WaitlistEntry[]>);
 
-                  return (
-                    <TableRow 
-                      key={reservation.id}
-                      className={cn(
-                        isVeryNear && "bg-red-50 dark:bg-red-950/30 animate-pulse",
-                        isNear && !isVeryNear && "bg-yellow-50 dark:bg-yellow-950/30"
-                      )}
-                    >
-                      <TableCell className="font-medium">
-                        <div className="flex items-center gap-2">
-                          <CalendarIcon size={14} className="text-muted-foreground" />
-                          {format(new Date(reservation.reservation_time!), 'HH:mm')}
-                        </div>
-                      </TableCell>
-                      <TableCell className="font-semibold">{reservation.customer_name}</TableCell>
-                      <TableCell>
-                        <span className="flex items-center gap-1">
-                          <Users size={14} />
-                          {reservation.party_size}
-                        </span>
-                      </TableCell>
-                      <TableCell className="text-sm text-muted-foreground">
-                        {reservation.preferences && reservation.preferences.length > 0
-                          ? reservation.preferences.join(", ")
-                          : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-col gap-1">
-                          <Badge className={getStatusColor(reservation.status)}>
-                            {reservation.status.replace("_", " ").toUpperCase()}
-                          </Badge>
-                          {isVeryNear && reservation.status === "waiting" && (
-                            <Badge className="bg-red-500 text-white text-xs">
-                              {timeUntil > 0 ? `${timeUntil}m left` : "NOW"}
+                  // Render grouped reservations
+                  return Object.values(groupedReservations).map((group) => {
+                    const primaryReservation = group[0];
+                    const isMultiTable = group.length > 1;
+                    const totalPartySize = group.reduce((sum, r) => sum + r.party_size, 0);
+                    
+                    const timeUntil = differenceInMinutes(
+                      new Date(primaryReservation.reservation_time!),
+                      new Date()
+                    );
+                    const isNear = timeUntil <= 30 && timeUntil >= -15;
+                    const isVeryNear = timeUntil <= 10 && timeUntil >= 0;
+                    const nextStatus = getNextStatus(primaryReservation.status, true);
+
+                    // Get table names
+                    const tableNames = group
+                      .map(r => {
+                        const table = tableConfiguration.find(t => t.id === r.assigned_table_id);
+                        return table ? table.name : r.assigned_table_id;
+                      })
+                      .filter(Boolean)
+                      .join(" + ");
+
+                    return (
+                      <TableRow 
+                        key={primaryReservation.linked_reservation_id || primaryReservation.id}
+                        className={cn(
+                          isVeryNear && "bg-red-50 dark:bg-red-950/30 animate-pulse",
+                          isNear && !isVeryNear && "bg-yellow-50 dark:bg-yellow-950/30"
+                        )}
+                      >
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <CalendarIcon size={14} className="text-muted-foreground" />
+                            {format(new Date(primaryReservation.reservation_time!), 'HH:mm')}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <span className="font-semibold">{primaryReservation.customer_name}</span>
+                            {isMultiTable && tableNames && (
+                              <span className="text-xs text-muted-foreground">{tableNames}</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <span className="flex items-center gap-1">
+                              <Users size={14} />
+                              {totalPartySize}
+                            </span>
+                            {isMultiTable && (
+                              <Badge variant="secondary" className="text-xs">
+                                🔗 Multi-Table
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {primaryReservation.preferences && primaryReservation.preferences.length > 0
+                            ? primaryReservation.preferences.join(", ")
+                            : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-1">
+                            <Badge className={getStatusColor(primaryReservation.status)}>
+                              {primaryReservation.status.replace("_", " ").toUpperCase()}
                             </Badge>
-                          )}
-                          {isNear && !isVeryNear && reservation.status === "waiting" && (
-                            <Badge className="bg-yellow-500 text-white text-xs">
-                              In {timeUntil}m
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
-                          {reservation.status !== "seated" && (
+                            {isVeryNear && primaryReservation.status === "waiting" && (
+                              <Badge className="bg-red-500 text-white text-xs">
+                                {timeUntil > 0 ? `${timeUntil}m left` : "NOW"}
+                              </Badge>
+                            )}
+                            {isNear && !isVeryNear && primaryReservation.status === "waiting" && (
+                              <Badge className="bg-yellow-500 text-white text-xs">
+                                In {timeUntil}m
+                              </Badge>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-2">
+                            {primaryReservation.status !== "seated" && (
+                              <Button
+                                size="sm"
+                                onClick={() => updateEntryStatus(primaryReservation.id, nextStatus)}
+                                className="text-xs"
+                              >
+                                {nextStatus === "ready" ? "Mark Ready" : "Mark Seated"}
+                              </Button>
+                            )}
                             <Button
                               size="sm"
-                              onClick={() => updateEntryStatus(reservation.id, nextStatus)}
+                              variant="ghost"
+                              onClick={() => {
+                                setCancelEntryId(primaryReservation.id);
+                                setCancelDialogOpen(true);
+                              }}
                               className="text-xs"
                             >
-                              {nextStatus === "ready" ? "Mark Ready" : "Mark Seated"}
+                              Cancel
                             </Button>
-                          )}
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setCancelEntryId(reservation.id);
-                              setCancelDialogOpen(true);
-                            }}
-                            className="text-xs"
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  });
+                })()}
               </TableBody>
             </Table>
           </CardContent>
