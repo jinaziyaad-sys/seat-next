@@ -3,6 +3,7 @@ export interface BusinessHours {
     open: string;
     close: string;
     is_closed: boolean;
+    is_overnight?: boolean; // NEW: When true, closing time is on the NEXT day
     breaks?: Array<{ start: string; end: string; reason: string }>;
   };
 }
@@ -11,7 +12,7 @@ export interface HolidayClosure {
   date: string;
   is_closed: boolean;
   reason: string;
-  special_hours?: { open: string; close: string };
+  special_hours?: { open: string; close: string; is_overnight?: boolean };
   breaks?: Array<{ start: string; end: string; reason: string }>;
 }
 
@@ -36,11 +37,51 @@ export function checkVenueStatus(
   const now = targetDateTime || new Date();
   const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const currentDay = dayNames[now.getDay()];
-  const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+  const currentHour = now.getHours();
+  const currentTime = `${String(currentHour).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   // Use local date to match how holidays are stored (avoiding UTC timezone shifts)
   const currentDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   
-  // Check for holiday closure first
+  // NEW: If it's early morning (before noon), check previous day's overnight hours first
+  if (currentHour < 12) {
+    const prevDayIndex = (now.getDay() - 1 + 7) % 7;
+    const previousDay = dayNames[prevDayIndex];
+    const prevDayHours = businessHours[previousDay];
+    
+    if (prevDayHours && !prevDayHours.is_closed && prevDayHours.is_overnight) {
+      // Check if we're still within the overnight closing time
+      if (currentTime <= prevDayHours.close) {
+        // Check for active breaks during overnight period
+        const activeBreak = (prevDayHours.breaks || []).find(b => 
+          isTimeInRange(currentTime, b.start, b.end, true)
+        );
+        
+        if (activeBreak) {
+          return {
+            is_open: false,
+            is_on_break: true,
+            current_break_reason: activeBreak.reason,
+            break_ends_at: activeBreak.end,
+            closes_at: prevDayHours.close,
+            message: `Currently on break: ${activeBreak.reason}. Resumes at ${activeBreak.end}`
+          };
+        }
+        
+        // Apply grace period for overnight hours
+        const gracePeriod = getGracePeriod(checkType, gracePeriods);
+        const closingSoon = isApproachingTime(currentTime, prevDayHours.close, gracePeriod);
+        
+        return {
+          is_open: !closingSoon,
+          is_on_break: false,
+          closes_at: prevDayHours.close,
+          message: closingSoon ? `Closing soon at ${prevDayHours.close}` : `Open until ${prevDayHours.close} (overnight)`
+        };
+      }
+    }
+  }
+  
+  // Check for holiday closure
   const holidayClosure = holidayClosures.find(h => h.date === currentDate);
   
   if (holidayClosure) {
@@ -58,7 +99,7 @@ export function checkVenueStatus(
     // Special hours for this holiday
     if (holidayClosure.special_hours) {
       const specialHours = holidayClosure.special_hours;
-      const isWithinSpecialHours = isTimeInRange(currentTime, specialHours.open, specialHours.close);
+      const isWithinSpecialHours = isTimeInRange(currentTime, specialHours.open, specialHours.close, specialHours.is_overnight);
       
       if (!isWithinSpecialHours) {
         return {
@@ -112,7 +153,7 @@ export function checkVenueStatus(
     };
   }
   
-  const isWithinHours = isTimeInRange(currentTime, todayHours.open, todayHours.close);
+  const isWithinHours = isTimeInRange(currentTime, todayHours.open, todayHours.close, todayHours.is_overnight);
   
   if (!isWithinHours) {
     if (currentTime < todayHours.open) {
@@ -136,7 +177,7 @@ export function checkVenueStatus(
   
   // Check for active breaks
   const activeBreak = (todayHours.breaks || []).find(b => 
-    isTimeInRange(currentTime, b.start, b.end)
+    isTimeInRange(currentTime, b.start, b.end, todayHours.is_overnight)
   );
   
   if (activeBreak) {
@@ -162,9 +203,9 @@ export function checkVenueStatus(
   };
 }
 
-function isTimeInRange(time: string, start: string, end: string): boolean {
+function isTimeInRange(time: string, start: string, end: string, isOvernight: boolean = false): boolean {
   // Handle overnight hours (e.g., 22:00 to 02:00)
-  if (start > end) {
+  if (isOvernight || start > end) {
     return time >= start || time <= end;
   }
   return time >= start && time <= end;
@@ -246,17 +287,21 @@ export function getAvailableReservationTimes(
   const holiday = holidayClosures.find(h => h.date === dateStr);
   let open: string, close: string, breaks: any[] = [];
   
+  let isOvernight = false;
+  
   if (holiday) {
     if (holiday.is_closed) return [];
     if (holiday.special_hours) {
       open = holiday.special_hours.open;
       close = holiday.special_hours.close;
+      isOvernight = holiday.special_hours.is_overnight || false;
       breaks = holiday.breaks || [];
     } else {
       const dayHours = businessHours[dayKey];
       if (!dayHours || dayHours.is_closed) return [];
       open = dayHours.open;
       close = dayHours.close;
+      isOvernight = dayHours.is_overnight || false;
       breaks = dayHours.breaks || [];
     }
   } else {
@@ -264,6 +309,7 @@ export function getAvailableReservationTimes(
     if (!dayHours || dayHours.is_closed) return [];
     open = dayHours.open;
     close = dayHours.close;
+    isOvernight = dayHours.is_overnight || false;
     breaks = dayHours.breaks || [];
   }
   
@@ -273,7 +319,7 @@ export function getAvailableReservationTimes(
   const [closeH, closeM] = close.split(':').map(Number);
   
   let currentMinutes = openH * 60 + openM;
-  const closeMinutes = closeH * 60 + closeM + (closeH < openH ? 1440 : 0); // Handle overnight
+  const closeMinutes = closeH * 60 + closeM + (isOvernight || closeH < openH ? 1440 : 0); // Handle overnight
   
   while (currentMinutes < closeMinutes - 30) { // End 30 mins before close
     const hours = Math.floor(currentMinutes / 60) % 24;
@@ -282,7 +328,7 @@ export function getAvailableReservationTimes(
     
     // Check if time falls during a break
     const isDuringBreak = breaks.some(b => 
-      isTimeInRange(timeStr, b.start, b.end)
+      isTimeInRange(timeStr, b.start, b.end, isOvernight)
     );
     
     if (!isDuringBreak) {
@@ -309,18 +355,32 @@ export function isWithinOperatingHours(timestamp: string, settings: any): boolea
   const date = new Date(timestamp);
   const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const dayKey = dayNames[date.getDay()];
-  const time = `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+  const hour = date.getHours();
+  const time = `${String(hour).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
   const dateStr = date.toISOString().split('T')[0];
   
   const businessHours = settings.business_hours || {};
   const holidayClosures = settings.holiday_closures || [];
+  
+  // NEW: If it's early morning, check previous day's overnight hours
+  if (hour < 12) {
+    const prevDayIndex = (date.getDay() - 1 + 7) % 7;
+    const previousDay = dayNames[prevDayIndex];
+    const prevDayHours = businessHours[previousDay];
+    
+    if (prevDayHours && !prevDayHours.is_closed && prevDayHours.is_overnight) {
+      if (time <= prevDayHours.close) {
+        return true;
+      }
+    }
+  }
   
   // Check holiday
   const holiday = holidayClosures.find((h: HolidayClosure) => h.date === dateStr);
   if (holiday) {
     if (holiday.is_closed) return false;
     if (holiday.special_hours) {
-      return isTimeInRange(time, holiday.special_hours.open, holiday.special_hours.close);
+      return isTimeInRange(time, holiday.special_hours.open, holiday.special_hours.close, holiday.special_hours.is_overnight);
     }
   }
   
@@ -328,5 +388,5 @@ export function isWithinOperatingHours(timestamp: string, settings: any): boolea
   const dayHours = businessHours[dayKey];
   if (!dayHours || dayHours.is_closed) return false;
   
-  return isTimeInRange(time, dayHours.open, dayHours.close);
+  return isTimeInRange(time, dayHours.open, dayHours.close, dayHours.is_overnight);
 }

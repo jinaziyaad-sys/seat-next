@@ -311,11 +311,28 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
       return 0;
     });
 
-  // Helper function to get today's business hours
+  // Helper function to get today's business hours (checks overnight from previous day)
   const getTodayHours = () => {
     if (!venueSettings?.business_hours) return null;
     const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-    const today = dayNames[new Date().getDay()];
+    const now = new Date();
+    const today = dayNames[now.getDay()];
+    const currentHour = now.getHours();
+    
+    // If it's early morning, check previous day's overnight hours
+    if (currentHour < 12) {
+      const prevDayIndex = (now.getDay() - 1 + 7) % 7;
+      const previousDay = dayNames[prevDayIndex];
+      const prevDayHours = venueSettings.business_hours[previousDay];
+      
+      if (prevDayHours && !prevDayHours.is_closed && prevDayHours.is_overnight) {
+        const currentTime = `${String(currentHour).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        if (currentTime <= prevDayHours.close) {
+          return prevDayHours;
+        }
+      }
+    }
+    
     return venueSettings.business_hours[today];
   };
 

@@ -1406,11 +1406,28 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   }
 
   if (step === "party-details") {
-    // Helper function to get today's business hours
+    // Helper function to get today's business hours (checks overnight from previous day)
     const getTodayHours = () => {
       if (!selectedVenueData?.settings?.business_hours) return null;
       const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
-      const today = dayNames[new Date().getDay()];
+      const now = new Date();
+      const today = dayNames[now.getDay()];
+      const currentHour = now.getHours();
+      
+      // If it's early morning, check previous day's overnight hours
+      if (currentHour < 12) {
+        const prevDayIndex = (now.getDay() - 1 + 7) % 7;
+        const previousDay = dayNames[prevDayIndex];
+        const prevDayHours = selectedVenueData.settings.business_hours[previousDay];
+        
+        if (prevDayHours && !prevDayHours.is_closed && prevDayHours.is_overnight) {
+          const currentTime = `${String(currentHour).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+          if (currentTime <= prevDayHours.close) {
+            return prevDayHours;
+          }
+        }
+      }
+      
       return selectedVenueData.settings.business_hours[today];
     };
 
@@ -1445,7 +1462,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                     <span className="font-medium text-right">
                       {getTodayHours()?.is_closed 
                         ? "Closed" 
-                        : `${getTodayHours()?.open} - ${getTodayHours()?.close}`}
+                        : `${getTodayHours()?.open} - ${getTodayHours()?.close}${getTodayHours()?.is_overnight ? ' (+1 day)' : ''}`}
                     </span>
                   </div>
                   
