@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, X, ChevronDown, Clock, Calendar, AlertCircle } from "lucide-react";
@@ -89,6 +90,7 @@ export const MerchantSettings = ({
   const [holidayFullyClosed, setHolidayFullyClosed] = useState(true);
   const [holidayOpen, setHolidayOpen] = useState("09:00");
   const [holidayClose, setHolidayClose] = useState("22:00");
+  const [holidayOvernight, setHolidayOvernight] = useState(false);
 
   const { toast } = useToast();
 
@@ -169,24 +171,47 @@ export const MerchantSettings = ({
     // Validation for business hours
     for (const [day, hours] of Object.entries(businessHours)) {
       if (!hours.is_closed) {
-        if (hours.open >= hours.close && !(hours.open > "12:00" && hours.close < "12:00")) {
-          toast({
-            title: "Invalid Hours",
-            description: `${day}: Closing time must be after opening time (unless overnight hours)`,
-            variant: "destructive"
-          });
-          return;
-        }
-        
-        // Validate breaks are within business hours
-        for (const breakTime of hours.breaks || []) {
-          if (breakTime.start < hours.open || breakTime.end > hours.close) {
+        // Validate overnight hours
+        if (hours.is_overnight) {
+          if (hours.open <= hours.close) {
             toast({
-              title: "Invalid Break",
-              description: `${day}: Break times must be within business hours`,
+              title: "Invalid Overnight Hours",
+              description: `${day}: When overnight is enabled, opening time must be later than closing time (e.g., open at 18:00, close at 02:00)`,
               variant: "destructive"
             });
             return;
+          }
+          if (hours.close >= "12:00") {
+            toast({
+              title: "Invalid Overnight Hours",
+              description: `${day}: Overnight closing time should be before noon (e.g., 02:00, not 14:00)`,
+              variant: "destructive"
+            });
+            return;
+          }
+        } else {
+          // Validate regular hours
+          if (hours.open >= hours.close) {
+            toast({
+              title: "Invalid Hours",
+              description: `${day}: Closing time must be after opening time, or enable "Overnight Hours" checkbox`,
+              variant: "destructive"
+            });
+            return;
+          }
+        }
+        
+        // Validate breaks are within business hours (skip for overnight)
+        if (!hours.is_overnight) {
+          for (const breakTime of hours.breaks || []) {
+            if (breakTime.start < hours.open || breakTime.end > hours.close) {
+              toast({
+                title: "Invalid Break",
+                description: `${day}: Break times must be within business hours`,
+                variant: "destructive"
+              });
+              return;
+            }
           }
         }
       }
@@ -345,7 +370,11 @@ export const MerchantSettings = ({
       date: format(holidayDate, "yyyy-MM-dd"),
       is_closed: holidayFullyClosed,
       reason: holidayReason,
-      special_hours: !holidayFullyClosed ? { open: holidayOpen, close: holidayClose } : undefined,
+      special_hours: !holidayFullyClosed ? { 
+        open: holidayOpen, 
+        close: holidayClose,
+        is_overnight: holidayOvernight 
+      } : undefined,
       breaks: []
     };
     
@@ -354,6 +383,7 @@ export const MerchantSettings = ({
     setHolidayDate(undefined);
     setHolidayReason("");
     setHolidayFullyClosed(true);
+    setHolidayOvernight(false);
   };
   
   const removeHoliday = (date: string) => {
@@ -620,7 +650,10 @@ export const MerchantSettings = ({
                               />
                             </div>
                             <div>
-                              <Label htmlFor={`${day}-close`} className="text-xs">Closing Time</Label>
+                              <Label htmlFor={`${day}-close`} className="text-xs">
+                                Closing Time
+                                {hours.is_overnight && <span className="text-primary ml-1">(+1 day)</span>}
+                              </Label>
                               <Input
                                 id={`${day}-close`}
                                 type="time"
@@ -634,6 +667,23 @@ export const MerchantSettings = ({
                                 className="mt-1"
                               />
                             </div>
+                          </div>
+                          
+                          {/* NEW: Overnight hours checkbox */}
+                          <div className="flex items-center gap-2 mb-3">
+                            <Checkbox
+                              id={`${day}-overnight`}
+                              checked={hours.is_overnight || false}
+                              onCheckedChange={(checked) => 
+                                setBusinessHours(prev => ({
+                                  ...prev,
+                                  [day]: { ...prev[day], is_overnight: !!checked }
+                                }))
+                              }
+                            />
+                            <Label htmlFor={`${day}-overnight`} className="text-xs text-muted-foreground cursor-pointer">
+                              Overnight hours (closes after midnight on the next day)
+                            </Label>
                           </div>
                           
                           {/* Breaks/Special Hours */}
@@ -708,7 +758,7 @@ export const MerchantSettings = ({
                           <div className="text-sm text-muted-foreground">{holiday.reason}</div>
                           {!holiday.is_closed && holiday.special_hours && (
                             <div className="text-xs text-primary mt-1">
-                              Special Hours: {holiday.special_hours.open} - {holiday.special_hours.close}
+                              Special Hours: {holiday.special_hours.open} - {holiday.special_hours.close}{holiday.special_hours.is_overnight ? ' (+1 day)' : ''}
                             </div>
                           )}
                         </div>
@@ -902,26 +952,42 @@ export const MerchantSettings = ({
                 />
               </div>
               {!holidayFullyClosed && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="holiday-open">Opening Time</Label>
-                    <Input
-                      id="holiday-open"
-                      type="time"
-                      value={holidayOpen}
-                      onChange={(e) => setHolidayOpen(e.target.value)}
-                    />
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="holiday-open">Opening Time</Label>
+                      <Input
+                        id="holiday-open"
+                        type="time"
+                        value={holidayOpen}
+                        onChange={(e) => setHolidayOpen(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="holiday-close">
+                        Closing Time
+                        {holidayOvernight && <span className="text-primary ml-1">(+1 day)</span>}
+                      </Label>
+                      <Input
+                        id="holiday-close"
+                        type="time"
+                        value={holidayClose}
+                        onChange={(e) => setHolidayClose(e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <Label htmlFor="holiday-close">Closing Time</Label>
-                    <Input
-                      id="holiday-close"
-                      type="time"
-                      value={holidayClose}
-                      onChange={(e) => setHolidayClose(e.target.value)}
+                  
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="holiday-overnight"
+                      checked={holidayOvernight}
+                      onCheckedChange={(checked) => setHolidayOvernight(!!checked)}
                     />
+                    <Label htmlFor="holiday-overnight" className="text-xs text-muted-foreground cursor-pointer">
+                      Overnight hours (closes after midnight on the next day)
+                    </Label>
                   </div>
-                </div>
+                </>
               )}
               <Button onClick={addHolidayClosure} className="w-full">
                 Add Holiday
