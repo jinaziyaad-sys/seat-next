@@ -43,6 +43,9 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [todaysReservations, setTodaysReservations] = useState<WaitlistEntry[]>([]);
   const [tableConfiguration, setTableConfiguration] = useState<any[]>([]);
+  const [cancelledCount, setCancelledCount] = useState(0);
+  const [showClearDialog, setShowClearDialog] = useState(false);
+  const [isClearing, setIsClearing] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newPartySize, setNewPartySize] = useState("2");
   const [newPreferences, setNewPreferences] = useState("");
@@ -56,7 +59,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   const [extensionEntryId, setExtensionEntryId] = useState<string>("");
   const { toast } = useToast();
 
-  // Fetch table configuration
+  // Fetch table configuration and cancelled count
   useEffect(() => {
     const fetchVenueSettings = async () => {
       const { data } = await supabase
@@ -70,8 +73,19 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
         setTableConfiguration(settings.table_configuration);
       }
     };
+
+    const fetchCancelledCount = async () => {
+      const { count } = await supabase
+        .from('waitlist_entries')
+        .select('*', { count: 'exact', head: true })
+        .eq('venue_id', venueId)
+        .in('status', ['cancelled', 'no_show']);
+      
+      setCancelledCount(count || 0);
+    };
     
     fetchVenueSettings();
+    fetchCancelledCount();
   }, [venueId]);
 
   // Fetch upcoming reservations (within 1 hour window)
@@ -415,6 +429,47 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     setNoShowDialogOpen(false);
     setNoShowEntryId("");
     setNoShowReason("");
+  };
+
+  const handleClearHistory = async () => {
+    setIsClearing(true);
+    try {
+      // Delete cancelled/no-show entries
+      const { data: deletedEntries, error: deleteError } = await supabase
+        .from('waitlist_entries')
+        .delete()
+        .eq('venue_id', venueId)
+        .in('status', ['cancelled', 'no_show'])
+        .select('id');
+
+      if (deleteError) throw deleteError;
+
+      // Delete their analytics
+      if (deletedEntries && deletedEntries.length > 0) {
+        const entryIds = deletedEntries.map(e => e.id);
+        await supabase
+          .from('waitlist_analytics')
+          .delete()
+          .in('entry_id', entryIds);
+      }
+
+      toast({
+        title: "History Cleared",
+        description: `Removed ${deletedEntries?.length || 0} cancelled/no-show entries`,
+      });
+
+      setCancelledCount(0);
+      setShowClearDialog(false);
+    } catch (error) {
+      console.error('Error clearing history:', error);
+      toast({
+        title: "Error",
+        description: "Failed to clear history",
+        variant: "destructive",
+      });
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   const setETA = async (entryId: string, minutes: number, reason: string) => {
@@ -897,13 +952,19 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       {/* Regular Waitlist Section */}
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Walk-in Waitlist</h2>
-        <Dialog>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus size={16} className="mr-2" />
-              Add to Waitlist
+        <div className="flex gap-2">
+          {cancelledCount > 0 && (
+            <Button variant="outline" onClick={() => setShowClearDialog(true)}>
+              Clear History ({cancelledCount})
             </Button>
-          </DialogTrigger>
+          )}
+          <Dialog>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus size={16} className="mr-2" />
+                Add to Waitlist
+              </Button>
+            </DialogTrigger>
           <DialogContent>
             <DialogHeader>
               <DialogTitle>Add Customer to Waitlist</DialogTitle>
@@ -948,6 +1009,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
             </div>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -1203,6 +1265,29 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
         title="Extend Wait Time"
         description="Select extension time and provide a reason for the customer"
       />
+
+      {/* Clear History Dialog */}
+      <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Clear Cancelled/No-Show History</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              This will permanently remove {cancelledCount} cancelled and no-show entries from the database. 
+              This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowClearDialog(false)} disabled={isClearing}>
+                Cancel
+              </Button>
+              <Button variant="destructive" onClick={handleClearHistory} disabled={isClearing}>
+                {isClearing ? 'Clearing...' : 'Clear History'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

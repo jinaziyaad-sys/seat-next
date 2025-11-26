@@ -53,7 +53,9 @@ export const MerchantSettings = ({
     maxExtensionTime: "45",
     pickupInstructions: "Please collect your order from the main counter. Show your order number to staff.",
     autoNoShowTime: "15",
-    orderNumberRefreshMinutes: "15"
+    orderNumberRefreshMinutes: "15",
+    cobTime: "23:00",
+    autoCleanupCancelledWaitlist: true
   });
 
   const [waitlistPreferences, setWaitlistPreferences] = useState<WaitlistPreference[]>([]);
@@ -143,7 +145,9 @@ export const MerchantSettings = ({
           maxExtensionTime: settings.max_extension_time?.toString() || "45",
           pickupInstructions: settings.pickup_instructions || "Please collect your order from the main counter. Show your order number to staff.",
           autoNoShowTime: settings.auto_no_show_time?.toString() || "15",
-          orderNumberRefreshMinutes: settings.order_number_refresh_minutes?.toString() || "15"
+          orderNumberRefreshMinutes: settings.order_number_refresh_minutes?.toString() || "15",
+          cobTime: settings.cob_time || "23:00",
+          autoCleanupCancelledWaitlist: settings.auto_cleanup_cancelled_waitlist !== false
         });
       }
 
@@ -243,6 +247,8 @@ export const MerchantSettings = ({
       holiday_closures: holidayClosures,
       grace_periods: gracePeriods,
       auto_cleanup_rejected: autoCleanupRejected,
+      auto_cleanup_cancelled_waitlist: settings.autoCleanupCancelledWaitlist,
+      cob_time: settings.cobTime,
       timezone: "America/New_York",
       
       // Kitchen/Food settings
@@ -505,6 +511,40 @@ export const MerchantSettings = ({
           </CardContent>
         </Card>
         )}
+
+        {/* Operations & Cleanup Settings */}
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>Operations & Cleanup</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="cob-time">Close of Business Time</Label>
+              <Input
+                id="cob-time"
+                type="time"
+                value={settings.cobTime}
+                onChange={(e) => handleInputChange('cobTime', e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Time when daily operations end (used for daily snapshots and auto-cleanup)
+              </p>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Auto-cleanup Cancelled Waitlist Entries</Label>
+                <p className="text-xs text-muted-foreground">
+                  Automatically remove cancelled/no-show entries at close of business
+                </p>
+              </div>
+              <Switch
+                checked={settings.autoCleanupCancelledWaitlist}
+                onCheckedChange={(checked) => handleInputChange('autoCleanupCancelledWaitlist', checked)}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Waitlist Preferences - Only for table_ready */}
         {hasTableReady && (

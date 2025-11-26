@@ -63,5 +63,11 @@ verify_jwt = false
 [[functions.cleanup-rejected-orders.cron]]
 schedule = "*/15 * * * *"
 
+[functions.cleanup-cancelled-waitlist]
+verify_jwt = false
+
+[[functions.cleanup-cancelled-waitlist.cron]]
+schedule = "*/15 * * * *"
+
 [functions.find-available-table]
 verify_jwt = true
