@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { format, isSameDay } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, Users, Utensils } from "lucide-react";
+import { Clock, Users, Utensils, X } from "lucide-react";
 
 interface Reservation {
   id: string;
@@ -97,7 +98,35 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
       case "waiting": return "secondary";
       case "ready": return "default";
       case "seated": return "outline";
+      case "cancelled": return "destructive";
+      case "no_show": return "destructive";
       default: return "secondary";
+    }
+  };
+
+  const handleClearReservation = async (reservationId: string, linkedReservationId?: string) => {
+    try {
+      if (linkedReservationId) {
+        // Delete all linked entries for multi-table bookings
+        await supabase
+          .from('waitlist_entries')
+          .delete()
+          .eq('linked_reservation_id', linkedReservationId);
+      } else {
+        // Delete single entry
+        await supabase
+          .from('waitlist_entries')
+          .delete()
+          .eq('id', reservationId);
+      }
+      
+      // Refresh the lists
+      if (selectedDate) {
+        fetchReservationsForDate(selectedDate);
+      }
+      fetchReservationDates();
+    } catch (error) {
+      console.error('Error clearing reservation:', error);
     }
   };
 
@@ -166,8 +195,19 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
                         .filter(Boolean)
                         .join(' + ');
                       
+                      const isClearable = ['seated', 'cancelled', 'no_show'].includes(firstRes.status);
+                      
                       return (
-                        <Card key={linkedId} className="p-4 border-2 border-primary/30">
+                        <Card 
+                          key={linkedId} 
+                          className={`p-4 border-2 ${
+                            ['cancelled', 'no_show'].includes(firstRes.status)
+                              ? 'border-destructive/50 opacity-60'
+                              : firstRes.status === 'seated'
+                                ? 'border-green-500/50 opacity-75'
+                                : 'border-primary/30'
+                          }`}
+                        >
                           <div className="flex items-center gap-2 mb-2">
                             <Badge variant="outline" className="text-xs">🔗 Multi-Table Booking</Badge>
                           </div>
@@ -197,48 +237,87 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
                                 ℹ️ {linkedReservations.length} tables reserved together
                               </p>
                             </div>
-                            <Badge variant={getStatusColor(firstRes.status)}>
-                              {firstRes.status}
-                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <Badge variant={getStatusColor(firstRes.status)}>
+                                {firstRes.status}
+                              </Badge>
+                              {isClearable && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                  onClick={() => handleClearReservation(firstRes.id, linkedId)}
+                                  title="Clear this booking"
+                                >
+                                  <X size={14} />
+                                </Button>
+                              )}
+                            </div>
                           </div>
                         </Card>
                       );
                     })}
 
                     {/* Render standalone reservations */}
-                    {standaloneReservations.map((reservation) => (
-                      <Card key={reservation.id} className="p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <p className="font-semibold">{reservation.customer_name}</p>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
-                              <span className="flex items-center gap-1">
-                                <Users size={14} />
-                                Party of {reservation.party_size}
-                              </span>
-                              <span className="flex items-center gap-1">
-                                <Clock size={14} />
-                                {format(new Date(reservation.reservation_time), 'HH:mm')}
-                              </span>
-                              {reservation.assigned_table_id && (
+                    {standaloneReservations.map((reservation) => {
+                      const isClearable = ['seated', 'cancelled', 'no_show'].includes(reservation.status);
+                      
+                      return (
+                        <Card 
+                          key={reservation.id} 
+                          className={`p-4 ${
+                            ['cancelled', 'no_show'].includes(reservation.status)
+                              ? 'border-destructive/50 opacity-60'
+                              : reservation.status === 'seated'
+                                ? 'border-green-500/50 opacity-75'
+                                : ''
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <p className="font-semibold">{reservation.customer_name}</p>
+                              <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
                                 <span className="flex items-center gap-1">
-                                  <Utensils size={14} />
-                                  {tableConfiguration.find(t => t.id === reservation.assigned_table_id)?.name || reservation.assigned_table_id}
+                                  <Users size={14} />
+                                  Party of {reservation.party_size}
                                 </span>
+                                <span className="flex items-center gap-1">
+                                  <Clock size={14} />
+                                  {format(new Date(reservation.reservation_time), 'HH:mm')}
+                                </span>
+                                {reservation.assigned_table_id && (
+                                  <span className="flex items-center gap-1">
+                                    <Utensils size={14} />
+                                    {tableConfiguration.find(t => t.id === reservation.assigned_table_id)?.name || reservation.assigned_table_id}
+                                  </span>
+                                )}
+                              </div>
+                              {reservation.preferences && reservation.preferences.length > 0 && (
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {reservation.preferences.join(", ")}
+                                </p>
                               )}
                             </div>
-                            {reservation.preferences && reservation.preferences.length > 0 && (
-                              <p className="text-xs text-muted-foreground mt-1">
-                                {reservation.preferences.join(", ")}
-                              </p>
-                            )}
+                            <div className="flex items-center gap-2">
+                              <Badge variant={getStatusColor(reservation.status)}>
+                                {reservation.status}
+                              </Badge>
+                              {isClearable && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-muted-foreground hover:text-destructive"
+                                  onClick={() => handleClearReservation(reservation.id)}
+                                  title="Clear this reservation"
+                                >
+                                  <X size={14} />
+                                </Button>
+                              )}
+                            </div>
                           </div>
-                          <Badge variant={getStatusColor(reservation.status)}>
-                            {reservation.status}
-                          </Badge>
-                        </div>
-                      </Card>
-                    ))}
+                        </Card>
+                      );
+                    })}
                   </>
                 );
               })()
