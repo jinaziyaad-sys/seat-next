@@ -44,6 +44,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   const [todaysReservations, setTodaysReservations] = useState<WaitlistEntry[]>([]);
   const [tableConfiguration, setTableConfiguration] = useState<any[]>([]);
   const [cancelledCount, setCancelledCount] = useState(0);
+  const [cancelledBreakdown, setCancelledBreakdown] = useState({ reservations: 0, walkIns: 0, noShows: 0 });
   const [showClearDialog, setShowClearDialog] = useState(false);
   const [isClearing, setIsClearing] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState("");
@@ -75,13 +76,24 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     };
 
     const fetchCancelledCount = async () => {
-      const { count } = await supabase
+      // Fetch all cancelled/no-show entries for breakdown
+      const { data } = await supabase
         .from('waitlist_entries')
-        .select('*', { count: 'exact', head: true })
+        .select('status, reservation_type')
         .eq('venue_id', venueId)
         .in('status', ['cancelled', 'no_show']);
       
-      setCancelledCount(count || 0);
+      if (data) {
+        const reservations = data.filter(e => e.reservation_type === 'reservation' && e.status === 'cancelled').length;
+        const walkIns = data.filter(e => e.reservation_type !== 'reservation' && e.status === 'cancelled').length;
+        const noShows = data.filter(e => e.status === 'no_show').length;
+        
+        setCancelledBreakdown({ reservations, walkIns, noShows });
+        setCancelledCount(data.length);
+      } else {
+        setCancelledBreakdown({ reservations: 0, walkIns: 0, noShows: 0 });
+        setCancelledCount(0);
+      }
     };
     
     fetchVenueSettings();
@@ -799,17 +811,29 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       {todaysReservations.length > 0 && (
         <Card className="shadow-card">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              Upcoming Reservations (Next Hour)
-              {todaysReservations.some(r => {
-                const timeUntil = differenceInMinutes(new Date(r.reservation_time!), new Date());
-                return timeUntil <= 10 && timeUntil >= 0;
-              }) && (
-                <Badge className="bg-red-500 text-white animate-pulse">
-                  ARRIVING SOON
-                </Badge>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                Upcoming Reservations (Next Hour)
+                {todaysReservations.some(r => {
+                  const timeUntil = differenceInMinutes(new Date(r.reservation_time!), new Date());
+                  return timeUntil <= 10 && timeUntil >= 0;
+                }) && (
+                  <Badge className="bg-red-500 text-white animate-pulse">
+                    ARRIVING SOON
+                  </Badge>
+                )}
+              </CardTitle>
+              {cancelledCount > 0 && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => setShowClearDialog(true)}
+                  className="text-muted-foreground hover:text-destructive"
+                >
+                  🗑️ Clear History ({cancelledCount})
+                </Button>
               )}
-            </CardTitle>
+            </div>
           </CardHeader>
           <CardContent>
             <Table>
@@ -1274,9 +1298,33 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              This will permanently remove {cancelledCount} cancelled and no-show entries from the database. 
+              This will permanently remove the following entries from the database. 
               This action cannot be undone.
             </p>
+            <div className="bg-muted/50 rounded-md p-3 space-y-1 text-sm">
+              {cancelledBreakdown.reservations > 0 && (
+                <div className="flex justify-between">
+                  <span>Cancelled Reservations</span>
+                  <span className="font-medium">{cancelledBreakdown.reservations}</span>
+                </div>
+              )}
+              {cancelledBreakdown.walkIns > 0 && (
+                <div className="flex justify-between">
+                  <span>Cancelled Walk-ins</span>
+                  <span className="font-medium">{cancelledBreakdown.walkIns}</span>
+                </div>
+              )}
+              {cancelledBreakdown.noShows > 0 && (
+                <div className="flex justify-between">
+                  <span>No-shows</span>
+                  <span className="font-medium">{cancelledBreakdown.noShows}</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t pt-1 mt-2">
+                <span className="font-medium">Total</span>
+                <span className="font-medium">{cancelledCount}</span>
+              </div>
+            </div>
             <div className="flex justify-end gap-2">
               <Button variant="outline" onClick={() => setShowClearDialog(false)} disabled={isClearing}>
                 Cancel
