@@ -273,6 +273,7 @@ export type Database = {
           notes: string | null
           order_number: string
           original_eta: string | null
+          patron_dismissed: boolean | null
           prepared_by_staff_id: string | null
           status: Database["public"]["Enums"]["order_status"]
           updated_at: string
@@ -295,6 +296,7 @@ export type Database = {
           notes?: string | null
           order_number: string
           original_eta?: string | null
+          patron_dismissed?: boolean | null
           prepared_by_staff_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           updated_at?: string
@@ -317,6 +319,7 @@ export type Database = {
           notes?: string | null
           order_number?: string
           original_eta?: string | null
+          patron_dismissed?: boolean | null
           prepared_by_staff_id?: string | null
           status?: Database["public"]["Enums"]["order_status"]
           updated_at?: string
@@ -605,6 +608,7 @@ export type Database = {
           original_eta: string | null
           party_size: number
           patron_delayed: boolean | null
+          patron_dismissed: boolean | null
           position: number | null
           preferences: string[] | null
           ready_at: string | null
@@ -634,6 +638,7 @@ export type Database = {
           original_eta?: string | null
           party_size?: number
           patron_delayed?: boolean | null
+          patron_dismissed?: boolean | null
           position?: number | null
           preferences?: string[] | null
           ready_at?: string | null
@@ -663,6 +668,7 @@ export type Database = {
           original_eta?: string | null
           party_size?: number
           patron_delayed?: boolean | null
+          patron_dismissed?: boolean | null
           position?: number | null
           preferences?: string[] | null
           ready_at?: string | null

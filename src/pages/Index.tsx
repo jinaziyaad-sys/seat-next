@@ -24,14 +24,6 @@ const Index = () => {
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [activeWaitlist, setActiveWaitlist] = useState<any[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
-  const [dismissedOrders, setDismissedOrders] = useState<string[]>(() => {
-    const stored = localStorage.getItem('dismissedOrders');
-    return stored ? JSON.parse(stored) : [];
-  });
-  const [dismissedWaitlist, setDismissedWaitlist] = useState<string[]>(() => {
-    const stored = localStorage.getItem('dismissedWaitlist');
-    return stored ? JSON.parse(stored) : [];
-  });
   const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
   const [ratingItem, setRatingItem] = useState<{
     type: 'order' | 'waitlist';
@@ -42,16 +34,46 @@ const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const handleRatingComplete = (itemId: string, type: 'order' | 'waitlist') => {
+  const handleDismissOrder = async (orderId: string) => {
+    if (!user) return;
+    
+    await supabase
+      .from('orders')
+      .update({ patron_dismissed: true })
+      .eq('id', orderId)
+      .eq('user_id', user.id);
+    
+    setActiveOrders(prev => prev.filter(o => o.id !== orderId));
+  };
+
+  const handleDismissWaitlist = async (entryId: string) => {
+    if (!user) return;
+    
+    await supabase
+      .from('waitlist_entries')
+      .update({ patron_dismissed: true })
+      .eq('id', entryId)
+      .eq('user_id', user.id);
+    
+    setActiveWaitlist(prev => prev.filter(w => w.id !== entryId));
+  };
+
+  const handleRatingComplete = async (itemId: string, type: 'order' | 'waitlist') => {
+    if (!user) return;
+    
     if (type === 'order') {
-      const updated = [...dismissedOrders, itemId];
-      setDismissedOrders(updated);
-      localStorage.setItem('dismissedOrders', JSON.stringify(updated));
+      await supabase
+        .from('orders')
+        .update({ patron_dismissed: true })
+        .eq('id', itemId)
+        .eq('user_id', user.id);
       setActiveOrders(prev => prev.filter(o => o.id !== itemId));
     } else {
-      const updated = [...dismissedWaitlist, itemId];
-      setDismissedWaitlist(updated);
-      localStorage.setItem('dismissedWaitlist', JSON.stringify(updated));
+      await supabase
+        .from('waitlist_entries')
+        .update({ patron_dismissed: true })
+        .eq('id', itemId)
+        .eq('user_id', user.id);
       setActiveWaitlist(prev => prev.filter(w => w.id !== itemId));
     }
     setRatingDialogOpen(false);
@@ -75,17 +97,11 @@ const Index = () => {
   const fetchActiveTracking = async () => {
     if (!user) return;
 
-    // Read dismissed items directly from localStorage to avoid stale closure values
-    const storedDismissedOrders = localStorage.getItem('dismissedOrders');
-    const currentDismissedOrders = storedDismissedOrders ? JSON.parse(storedDismissedOrders) : [];
-    
-    const storedDismissedWaitlist = localStorage.getItem('dismissedWaitlist');
-    const currentDismissedWaitlist = storedDismissedWaitlist ? JSON.parse(storedDismissedWaitlist) : [];
-
     const { data: orders } = await supabase
       .from('orders')
       .select('*, venues(name, settings)')
       .eq('user_id', user.id)
+      .eq('patron_dismissed', false)
       .in('status', ['awaiting_verification', 'placed', 'in_prep', 'ready', 'collected', 'rejected'])
       .order('created_at', { ascending: false });
 
@@ -93,20 +109,13 @@ const Index = () => {
       .from('waitlist_entries')
       .select('*, venues(name)')
       .eq('user_id', user.id)
+      .eq('patron_dismissed', false)
       .or('status.in.(waiting,ready,seated,cancelled),and(reservation_type.eq.reservation,reservation_time.gte.' + new Date().toISOString() + ')')
       .order('reservation_time', { ascending: true, nullsFirst: false })
       .order('created_at', { ascending: false });
 
-    // Filter out dismissed items using current localStorage values
-    const filteredOrders = (orders || []).filter(order => 
-      !currentDismissedOrders.includes(order.id)
-    );
-    const filteredWaitlist = (waitlist || []).filter(entry => 
-      !currentDismissedWaitlist.includes(entry.id)
-    );
-
-    setActiveOrders(filteredOrders);
-    setActiveWaitlist(filteredWaitlist);
+    setActiveOrders(orders || []);
+    setActiveWaitlist(waitlist || []);
   };
 
   useEffect(() => {
@@ -146,16 +155,19 @@ const Index = () => {
               });
             }
             
+            // Skip if patron_dismissed is true
+            if (payload.new.patron_dismissed) {
+              setActiveOrders(prevOrders => prevOrders.filter(order => order.id !== payload.new.id));
+              return;
+            }
+            
             setActiveOrders(prevOrders => {
               const updatedOrders = prevOrders.map(order => 
                 order.id === payload.new.id 
                   ? { ...order, ...payload.new, items: Array.isArray(payload.new.items) ? payload.new.items : [payload.new.items] }
                   : order
               );
-              // Filter out dismissed items - read from localStorage for current values
-              const storedDismissed = localStorage.getItem('dismissedOrders');
-              const currentDismissed = storedDismissed ? JSON.parse(storedDismissed) : [];
-              return updatedOrders.filter(order => !currentDismissed.includes(order.id));
+              return updatedOrders;
             });
           } else if (payload.eventType === 'INSERT') {
             fetchActiveTracking(); // Fetch for new orders
@@ -189,18 +201,20 @@ const Index = () => {
               });
             }
             
+            // Skip if patron_dismissed is true
+            if (payload.new.patron_dismissed) {
+              setActiveWaitlist(prevEntries => prevEntries.filter(entry => entry.id !== payload.new.id));
+              return;
+            }
+            
             setActiveWaitlist(prevEntries => {
               const updatedEntries = prevEntries.map(entry => 
                 entry.id === payload.new.id 
                   ? { ...entry, ...payload.new }
                   : entry
               );
-              // Filter out dismissed items - read from localStorage for current values
-              const storedDismissed = localStorage.getItem('dismissedWaitlist');
-              const currentDismissed = storedDismissed ? JSON.parse(storedDismissed) : [];
               const activeFiltered = updatedEntries.filter(entry => 
-                ['waiting', 'ready', 'cancelled', 'seated'].includes(entry.status) &&
-                !currentDismissed.includes(entry.id)
+                ['waiting', 'ready', 'cancelled', 'seated'].includes(entry.status)
               );
               return activeFiltered;
             });
@@ -427,10 +441,7 @@ const Index = () => {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const updated = [...dismissedOrders, order.id];
-                            setDismissedOrders(updated);
-                            localStorage.setItem('dismissedOrders', JSON.stringify(updated));
-                            setActiveOrders(prev => prev.filter(o => o.id !== order.id));
+                            handleDismissOrder(order.id);
                           }}
                         >
                           Clear
@@ -582,10 +593,7 @@ const Index = () => {
                           size="sm"
                           onClick={(e) => {
                             e.stopPropagation();
-                            const updated = [...dismissedWaitlist, entry.id];
-                            setDismissedWaitlist(updated);
-                            localStorage.setItem('dismissedWaitlist', JSON.stringify(updated));
-                            setActiveWaitlist(prev => prev.filter(w => w.id !== entry.id));
+                            handleDismissWaitlist(entry.id);
                           }}
                         >
                           Dismiss
