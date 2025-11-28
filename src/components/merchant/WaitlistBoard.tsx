@@ -43,10 +43,6 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   const [waitlist, setWaitlist] = useState<WaitlistEntry[]>([]);
   const [todaysReservations, setTodaysReservations] = useState<WaitlistEntry[]>([]);
   const [tableConfiguration, setTableConfiguration] = useState<any[]>([]);
-  const [cancelledCount, setCancelledCount] = useState(0);
-  const [cancelledBreakdown, setCancelledBreakdown] = useState({ reservations: 0, walkIns: 0, noShows: 0 });
-  const [showClearDialog, setShowClearDialog] = useState(false);
-  const [isClearing, setIsClearing] = useState(false);
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newPartySize, setNewPartySize] = useState("2");
   const [newPreferences, setNewPreferences] = useState("");
@@ -75,29 +71,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       }
     };
 
-    const fetchCancelledCount = async () => {
-      // Fetch all cancelled/no-show entries for breakdown
-      const { data } = await supabase
-        .from('waitlist_entries')
-        .select('status, reservation_type')
-        .eq('venue_id', venueId)
-        .in('status', ['cancelled', 'no_show']);
-      
-      if (data) {
-        const reservations = data.filter(e => e.reservation_type === 'reservation' && e.status === 'cancelled').length;
-        const walkIns = data.filter(e => e.reservation_type !== 'reservation' && e.status === 'cancelled').length;
-        const noShows = data.filter(e => e.status === 'no_show').length;
-        
-        setCancelledBreakdown({ reservations, walkIns, noShows });
-        setCancelledCount(data.length);
-      } else {
-        setCancelledBreakdown({ reservations: 0, walkIns: 0, noShows: 0 });
-        setCancelledCount(0);
-      }
-    };
-    
     fetchVenueSettings();
-    fetchCancelledCount();
   }, [venueId]);
 
   // Fetch upcoming reservations (within 1 hour window)
@@ -443,46 +417,6 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     setNoShowReason("");
   };
 
-  const handleClearHistory = async () => {
-    setIsClearing(true);
-    try {
-      // Delete cancelled/no-show entries
-      const { data: deletedEntries, error: deleteError } = await supabase
-        .from('waitlist_entries')
-        .delete()
-        .eq('venue_id', venueId)
-        .in('status', ['cancelled', 'no_show'])
-        .select('id');
-
-      if (deleteError) throw deleteError;
-
-      // Delete their analytics
-      if (deletedEntries && deletedEntries.length > 0) {
-        const entryIds = deletedEntries.map(e => e.id);
-        await supabase
-          .from('waitlist_analytics')
-          .delete()
-          .in('entry_id', entryIds);
-      }
-
-      toast({
-        title: "History Cleared",
-        description: `Removed ${deletedEntries?.length || 0} cancelled/no-show entries`,
-      });
-
-      setCancelledCount(0);
-      setShowClearDialog(false);
-    } catch (error) {
-      console.error('Error clearing history:', error);
-      toast({
-        title: "Error",
-        description: "Failed to clear history",
-        variant: "destructive",
-      });
-    } finally {
-      setIsClearing(false);
-    }
-  };
 
   const setETA = async (entryId: string, minutes: number, reason: string) => {
     const entry = waitlist.find(e => e.id === entryId);
@@ -823,16 +757,6 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                   </Badge>
                 )}
               </CardTitle>
-              {cancelledCount > 0 && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => setShowClearDialog(true)}
-                  className="text-muted-foreground hover:text-destructive"
-                >
-                  🗑️ Clear History ({cancelledCount})
-                </Button>
-              )}
             </div>
           </CardHeader>
           <CardContent>
@@ -977,11 +901,6 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Walk-in Waitlist</h2>
         <div className="flex gap-2">
-          {cancelledCount > 0 && (
-            <Button variant="outline" onClick={() => setShowClearDialog(true)}>
-              Clear History ({cancelledCount})
-            </Button>
-          )}
           <Dialog>
             <DialogTrigger asChild>
               <Button>
@@ -1289,53 +1208,6 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
         title="Extend Wait Time"
         description="Select extension time and provide a reason for the customer"
       />
-
-      {/* Clear History Dialog */}
-      <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Clear Cancelled/No-Show History</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              This will permanently remove the following entries from the database. 
-              This action cannot be undone.
-            </p>
-            <div className="bg-muted/50 rounded-md p-3 space-y-1 text-sm">
-              {cancelledBreakdown.reservations > 0 && (
-                <div className="flex justify-between">
-                  <span>Cancelled Reservations</span>
-                  <span className="font-medium">{cancelledBreakdown.reservations}</span>
-                </div>
-              )}
-              {cancelledBreakdown.walkIns > 0 && (
-                <div className="flex justify-between">
-                  <span>Cancelled Walk-ins</span>
-                  <span className="font-medium">{cancelledBreakdown.walkIns}</span>
-                </div>
-              )}
-              {cancelledBreakdown.noShows > 0 && (
-                <div className="flex justify-between">
-                  <span>No-shows</span>
-                  <span className="font-medium">{cancelledBreakdown.noShows}</span>
-                </div>
-              )}
-              <div className="flex justify-between border-t pt-1 mt-2">
-                <span className="font-medium">Total</span>
-                <span className="font-medium">{cancelledCount}</span>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowClearDialog(false)} disabled={isClearing}>
-                Cancel
-              </Button>
-              <Button variant="destructive" onClick={handleClearHistory} disabled={isClearing}>
-                {isClearing ? 'Clearing...' : 'Clear History'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
