@@ -14,7 +14,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { playNotificationSound, initializeAudio } from "@/utils/notificationSound";
+import { 
+  playNewOrderSound, 
+  playNewWaitlistSound, 
+  stopSoundForId, 
+  initializeAudio 
+} from "@/utils/notificationSound";
 import { toast } from "sonner";
 
 const MerchantDashboard = () => {
@@ -48,15 +53,18 @@ const MerchantDashboard = () => {
     }
   }, [userRole?.venue_id]);
 
+  // Track active order sounds (keyed by order ID)
+  const [pendingOrderSounds, setPendingOrderSounds] = useState<Map<string, () => void>>(new Map());
+
   // Global real-time subscriptions for sounds (works across ALL tabs)
   useEffect(() => {
     if (!userRole?.venue_id) return;
     
     initializeAudio();
     
-    // Subscribe to new orders (INSERT events)
-    const ordersChannel = supabase
-      .channel('global-orders-alert')
+    // Subscribe to new orders (INSERT events) - start continuous sound
+    const ordersInsertChannel = supabase
+      .channel('global-orders-insert-alert')
       .on(
         'postgres_changes',
         {
@@ -65,15 +73,47 @@ const MerchantDashboard = () => {
           table: 'orders',
           filter: `venue_id=eq.${userRole.venue_id}`
         },
-        () => {
-          console.log('🍽️ New order received - playing sound');
-          playNotificationSound('newOrder', 2);
-          toast.success("🍽️ New order received!");
+        (payload) => {
+          const orderId = payload.new?.id;
+          if (orderId && payload.new?.status === 'awaiting_verification') {
+            console.log('🍽️ New order received - starting continuous sound for', orderId);
+            // Start continuous sound (repeats 2x every 10 seconds)
+            const stopFn = playNewOrderSound(orderId);
+            setPendingOrderSounds(prev => new Map(prev).set(orderId, stopFn));
+            toast.success("🍽️ New order received!");
+          }
         }
       )
       .subscribe();
 
-    // Subscribe to new waitlist entries (INSERT events)
+    // Subscribe to order updates (UPDATE events) - stop sound when approved/rejected
+    const ordersUpdateChannel = supabase
+      .channel('global-orders-update-alert')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'orders',
+          filter: `venue_id=eq.${userRole.venue_id}`
+        },
+        (payload) => {
+          const orderId = payload.new?.id;
+          const newStatus = payload.new?.status;
+          // Stop sound when order is no longer awaiting verification
+          if (orderId && newStatus !== 'awaiting_verification') {
+            stopSoundForId('newOrder', orderId);
+            setPendingOrderSounds(prev => {
+              const newMap = new Map(prev);
+              newMap.delete(orderId);
+              return newMap;
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    // Subscribe to new waitlist entries (INSERT events) - one-time sound
     const waitlistChannel = supabase
       .channel('global-waitlist-alert')
       .on(
@@ -86,14 +126,17 @@ const MerchantDashboard = () => {
         },
         () => {
           console.log('👥 New waitlist entry - playing sound');
-          playNotificationSound('newWaitlist', 1);
+          playNewWaitlistSound();
           toast.success("👥 New waitlist entry!");
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(ordersChannel);
+      // Stop all pending order sounds on cleanup
+      pendingOrderSounds.forEach(stopFn => stopFn());
+      supabase.removeChannel(ordersInsertChannel);
+      supabase.removeChannel(ordersUpdateChannel);
       supabase.removeChannel(waitlistChannel);
     };
   }, [userRole?.venue_id]);

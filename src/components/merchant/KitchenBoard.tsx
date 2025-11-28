@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,7 +11,7 @@ import { Clock, Plus, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { FoodExtensionReasonDialog } from "./FoodExtensionReasonDialog";
-import { initializeAudio } from "@/utils/notificationSound";
+import { initializeAudio, playOrderDueSound, stopSoundForId } from "@/utils/notificationSound";
 
 interface Order {
   id: string;
@@ -44,6 +44,88 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
   const [extensionOrderId, setExtensionOrderId] = useState<string>("");
   const { toast } = useToast();
+  
+  // Track warning phases for each order (to avoid duplicate warnings)
+  // Phases: 'oneMin' | 'thirtySec' | 'late' | 'notified'
+  const orderWarningPhases = useRef<Map<string, string>>(new Map());
+  const lateOrderStopFns = useRef<Map<string, () => void>>(new Map());
+
+  // Order due warning system - monitors ETA and plays sounds
+  useEffect(() => {
+    const checkOrderETAs = () => {
+      const now = Date.now();
+      
+      orders.forEach(order => {
+        // Only check orders in prep/placed status with ETA
+        if (!order.eta || !['in_prep', 'placed'].includes(order.status)) {
+          // Stop any late sounds for orders no longer active
+          const stopFn = lateOrderStopFns.current.get(order.id);
+          if (stopFn) {
+            stopFn();
+            lateOrderStopFns.current.delete(order.id);
+          }
+          orderWarningPhases.current.delete(order.id);
+          return;
+        }
+        
+        const etaTime = new Date(order.eta).getTime();
+        const timeUntilDue = etaTime - now;
+        const currentPhase = orderWarningPhases.current.get(order.id);
+        
+        // Order is late (past ETA)
+        if (timeUntilDue <= 0 && currentPhase !== 'late') {
+          console.log(`⏰ Order #${order.order_number} is LATE - starting continuous sound`);
+          // Stop any previous sound
+          const existingStop = lateOrderStopFns.current.get(order.id);
+          if (existingStop) existingStop();
+          
+          // Start continuous late sound (every 10 seconds)
+          const stopFn = playOrderDueSound(order.id, 'late') as (() => void);
+          if (stopFn) lateOrderStopFns.current.set(order.id, stopFn);
+          orderWarningPhases.current.set(order.id, 'late');
+          
+          toast({
+            title: "⏰ Order Late!",
+            description: `Order #${order.order_number} is past its ETA`,
+            variant: "destructive"
+          });
+        }
+        // 30 seconds warning
+        else if (timeUntilDue > 0 && timeUntilDue <= 30000 && currentPhase !== 'thirtySec' && currentPhase !== 'late') {
+          console.log(`⏰ Order #${order.order_number} - 30 seconds until due`);
+          playOrderDueSound(order.id, 'thirtySec');
+          orderWarningPhases.current.set(order.id, 'thirtySec');
+          
+          toast({
+            title: "⏰ 30 Seconds!",
+            description: `Order #${order.order_number} due in 30 seconds`,
+          });
+        }
+        // 1 minute warning
+        else if (timeUntilDue > 30000 && timeUntilDue <= 60000 && !currentPhase) {
+          console.log(`⏰ Order #${order.order_number} - 1 minute until due`);
+          playOrderDueSound(order.id, 'oneMin');
+          orderWarningPhases.current.set(order.id, 'oneMin');
+          
+          toast({
+            title: "⏰ 1 Minute Warning",
+            description: `Order #${order.order_number} due in 1 minute`,
+          });
+        }
+      });
+    };
+    
+    // Check immediately and then every 5 seconds
+    checkOrderETAs();
+    const interval = setInterval(checkOrderETAs, 5000);
+    
+    return () => {
+      clearInterval(interval);
+      // Stop all late sounds on cleanup
+      lateOrderStopFns.current.forEach(stopFn => stopFn());
+      lateOrderStopFns.current.clear();
+    };
+  }, [orders, toast]);
 
   // Fetch orders function (defined outside useEffect so subscription can use it)
   const fetchOrders = async () => {
@@ -159,6 +241,17 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   }, [venueId, showRejected, toast]);
 
   const updateOrderStatus = async (orderId: string, newStatus: Order["status"]) => {
+    // Clear warning phase when status changes away from prep states
+    if (!['in_prep', 'placed'].includes(newStatus)) {
+      orderWarningPhases.current.delete(orderId);
+      const stopFn = lateOrderStopFns.current.get(orderId);
+      if (stopFn) {
+        stopFn();
+        lateOrderStopFns.current.delete(orderId);
+      }
+      stopSoundForId('orderDue', orderId);
+    }
+    
     // Optimistic update
     setOrders(prevOrders => 
       prevOrders.map(order => 
@@ -326,6 +419,17 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
     }
 
     const newETA = new Date(currentETA.getTime() + minutes * 60000);
+
+    // Reset the warning phase so the warning cycle restarts
+    orderWarningPhases.current.delete(orderId);
+    
+    // Stop any late sounds for this order
+    const stopFn = lateOrderStopFns.current.get(orderId);
+    if (stopFn) {
+      stopFn();
+      lateOrderStopFns.current.delete(orderId);
+    }
+    stopSoundForId('orderDue', orderId);
 
     // Optimistic update
     setOrders(prevOrders => 

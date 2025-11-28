@@ -15,7 +15,12 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import logo from "@/assets/logo.png";
 import { useToast } from "@/hooks/use-toast";
-import { playNotificationSound, initializeAudio } from "@/utils/notificationSound";
+import { 
+  playFoodReadySound, 
+  playTableReadySound, 
+  stopSoundForId, 
+  initializeAudio 
+} from "@/utils/notificationSound";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
@@ -37,6 +42,9 @@ const Index = () => {
   const handleDismissOrder = async (orderId: string) => {
     if (!user) return;
     
+    // Stop continuous sound when dismissing
+    stopSoundForId('foodReady', orderId);
+    
     await supabase
       .from('orders')
       .update({ patron_dismissed: true })
@@ -48,6 +56,9 @@ const Index = () => {
 
   const handleDismissWaitlist = async (entryId: string) => {
     if (!user) return;
+    
+    // Stop continuous sound when dismissing
+    stopSoundForId('tableReady', entryId);
     
     await supabase
       .from('waitlist_entries')
@@ -61,7 +72,9 @@ const Index = () => {
   const handleRatingComplete = async (itemId: string, type: 'order' | 'waitlist') => {
     if (!user) return;
     
+    // Stop any continuous sounds
     if (type === 'order') {
+      stopSoundForId('foodReady', itemId);
       await supabase
         .from('orders')
         .update({ patron_dismissed: true })
@@ -69,6 +82,7 @@ const Index = () => {
         .eq('user_id', user.id);
       setActiveOrders(prev => prev.filter(o => o.id !== itemId));
     } else {
+      stopSoundForId('tableReady', itemId);
       await supabase
         .from('waitlist_entries')
         .update({ patron_dismissed: true })
@@ -137,13 +151,19 @@ const Index = () => {
           
           // Optimistic state update
           if (payload.eventType === 'UPDATE' && payload.new) {
-            // Check if order became ready - PLAY SOUND!
+            // Check if order became ready - START CONTINUOUS SOUND!
             if (payload.new.status === 'ready' && payload.old?.status !== 'ready') {
-              playNotificationSound('orderReady', 2);
+              // Play food ready sound (repeats 3x every 10 seconds until collected)
+              playFoodReadySound(payload.new.id);
               toast({
                 title: "🎉 Order Ready!",
                 description: `Order #${payload.new.order_number} is ready for pickup!`,
               });
+            }
+            
+            // Stop sound when order is collected or cancelled
+            if (['collected', 'cancelled', 'rejected'].includes(payload.new.status)) {
+              stopSoundForId('foodReady', payload.new.id);
             }
             
             // Check if order was rejected
@@ -192,13 +212,19 @@ const Index = () => {
           
           // Optimistic state update
           if (payload.eventType === 'UPDATE' && payload.new) {
-            // Check if table became ready - PLAY SOUND!
+            // Check if table became ready - START CONTINUOUS SOUND!
             if (payload.new.status === 'ready' && payload.old?.status !== 'ready') {
-              playNotificationSound('tableReady', 2);
+              // Play table ready sound (repeats 2x every 25 seconds until seated/cancelled)
+              playTableReadySound(payload.new.id);
               toast({
                 title: "🎉 Table Ready!",
                 description: `Your table for ${payload.new.party_size} is ready!`,
               });
+            }
+            
+            // Stop sound when seated or cancelled
+            if (['seated', 'cancelled', 'no_show'].includes(payload.new.status)) {
+              stopSoundForId('tableReady', payload.new.id);
             }
             
             // Skip if patron_dismissed is true

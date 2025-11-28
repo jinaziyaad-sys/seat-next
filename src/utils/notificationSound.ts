@@ -1,80 +1,23 @@
-// Rich, musical notification sounds using Web Audio API with ADSR envelopes and harmonics
+// Custom MP3 notification sounds with repeat patterns
 
 export type NotificationSoundType = 
-  | 'orderReady'      // For patrons - your order is ready!
-  | 'tableReady'      // For patrons - your table is ready!
-  | 'newOrder'        // For kitchen - new order came in (bright doorbell)
-  | 'newWaitlist'     // For merchant - new waitlist entry (soft chime)
-  | 'urgent';         // For urgent alerts
+  | 'newOrder'        // For merchant - new order (repeat 2x every 10s until approved)
+  | 'newWaitlist'     // For merchant - new waitlist entry (repeat 2x once)
+  | 'tableReady'      // For patron - table ready (repeat 2x every 25s until seated/cancelled)
+  | 'foodReady'       // For patron - food ready (repeat 3x every 10s until collected)
+  | 'orderDue';       // For merchant - 1min, 30s, then continuous every 10s when late
 
-let audioContext: AudioContext | null = null;
-
-// Initialize audio context on first user interaction
-const getAudioContext = (): AudioContext => {
-  if (!audioContext) {
-    audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-  }
-  return audioContext;
+// Sound file paths
+const SOUND_FILES: Record<NotificationSoundType, string> = {
+  newOrder: '/sounds/new-order.mp3',
+  newWaitlist: '/sounds/new-waitlist.mp3',
+  tableReady: '/sounds/table-ready.mp3',
+  foodReady: '/sounds/food-ready.mp3',
+  orderDue: '/sounds/order-due.mp3',
 };
 
-// Play a rich tone with ADSR envelope and harmonics
-const playRichTone = (
-  frequency: number, 
-  duration: number, 
-  volume: number = 0.8,
-  waveType: OscillatorType = 'triangle'
-): Promise<void> => {
-  return new Promise((resolve) => {
-    try {
-      const ctx = getAudioContext();
-      const now = ctx.currentTime;
-      
-      // Create multiple oscillators for richness
-      const osc1 = ctx.createOscillator();
-      const osc2 = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      
-      osc1.type = waveType;
-      osc2.type = 'sine';
-      osc2.detune.value = 5; // Slight detune for warmth
-      
-      osc1.frequency.value = frequency;
-      osc2.frequency.value = frequency * 2; // Add harmonic
-      
-      osc1.connect(gainNode);
-      osc2.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      
-      // ADSR Envelope (Attack, Decay, Sustain, Release)
-      const attackTime = 0.02;
-      const decayTime = 0.1;
-      const sustainLevel = volume * 0.7;
-      const releaseTime = 0.15;
-      
-      gainNode.gain.setValueAtTime(0, now);
-      gainNode.gain.linearRampToValueAtTime(volume, now + attackTime); // Attack
-      gainNode.gain.linearRampToValueAtTime(sustainLevel, now + attackTime + decayTime); // Decay
-      gainNode.gain.setValueAtTime(sustainLevel, now + duration - releaseTime); // Sustain
-      gainNode.gain.linearRampToValueAtTime(0, now + duration); // Release
-      
-      osc1.start(now);
-      osc2.start(now);
-      osc1.stop(now + duration);
-      osc2.stop(now + duration);
-      
-      setTimeout(() => resolve(), duration * 1000);
-    } catch (error) {
-      console.error('Error playing rich tone:', error);
-      resolve();
-    }
-  });
-};
-
-// Play a chord (multiple notes simultaneously)
-const playChord = async (frequencies: number[], duration: number, volume: number = 0.8) => {
-  const promises = frequencies.map(freq => playRichTone(freq, duration, volume * 0.5, 'triangle'));
-  await Promise.all(promises);
-};
+// Active interval IDs for continuous sounds (keyed by unique identifier)
+const activeIntervals: Map<string, NodeJS.Timeout> = new Map();
 
 // Vibrate phone with pattern
 const vibratePattern = (pattern: number[]) => {
@@ -83,107 +26,246 @@ const vibratePattern = (pattern: number[]) => {
   }
 };
 
-// New Order Sound - Bright doorbell chime (C5→E5→G5→C6)
-const playNewOrderSound = async () => {
-  console.log('🍽️ Playing NEW ORDER sound (bright doorbell)');
-  await playRichTone(523, 0.25, 0.9, 'triangle');  // C5
-  await new Promise(resolve => setTimeout(resolve, 30));
-  await playRichTone(659, 0.25, 0.9, 'triangle');  // E5
-  await new Promise(resolve => setTimeout(resolve, 30));
-  await playRichTone(784, 0.25, 0.9, 'triangle');  // G5
-  await new Promise(resolve => setTimeout(resolve, 30));
-  await playRichTone(1047, 0.35, 1.0, 'triangle'); // C6 (emphasized)
-  vibratePattern([200, 100, 200]);
-};
-
-// New Waitlist Sound - Soft welcoming chime (G4→D5)
-const playNewWaitlistSound = async () => {
-  console.log('👥 Playing NEW WAITLIST sound (soft chime)');
-  await playRichTone(392, 0.3, 0.75, 'sine');  // G4
-  await new Promise(resolve => setTimeout(resolve, 50));
-  await playRichTone(587, 0.4, 0.8, 'sine');   // D5 (perfect 5th)
-  vibratePattern([150, 100, 150]);
-};
-
-// Order Ready Sound - Triumphant fanfare (C5→G5→C6 with harmony)
-const playOrderReadySound = async () => {
-  console.log('✅ Playing ORDER READY sound (triumphant)');
-  await playChord([523, 659], 0.3, 0.85);  // C5 + E5
-  await new Promise(resolve => setTimeout(resolve, 50));
-  await playChord([784, 988], 0.3, 0.9);   // G5 + B5
-  await new Promise(resolve => setTimeout(resolve, 50));
-  await playChord([1047, 1319], 0.4, 1.0); // C6 + E6
-  vibratePattern([400, 150, 400]);
-};
-
-// Table Ready Sound - Warm inviting chime (E4→A4→E5)
-const playTableReadySound = async () => {
-  console.log('🪑 Playing TABLE READY sound (warm invitation)');
-  await playRichTone(330, 0.3, 0.8, 'triangle');  // E4
-  await new Promise(resolve => setTimeout(resolve, 60));
-  await playRichTone(440, 0.3, 0.85, 'triangle'); // A4
-  await new Promise(resolve => setTimeout(resolve, 60));
-  await playRichTone(659, 0.4, 0.9, 'triangle');  // E5
-  vibratePattern([400, 150, 400]);
-};
-
-// Urgent Sound - Rapid alarm
-const playUrgentSound = async () => {
-  console.log('⚠️ Playing URGENT sound');
-  await playRichTone(1000, 0.2, 1.0, 'square');
-  await new Promise(resolve => setTimeout(resolve, 50));
-  await playRichTone(800, 0.2, 1.0, 'square');
-  await new Promise(resolve => setTimeout(resolve, 50));
-  await playRichTone(1000, 0.2, 1.0, 'square');
-  vibratePattern([300, 100, 300, 100, 300]);
-};
-
-// Main notification sound player
-export const playNotificationSound = async (type: NotificationSoundType, repeat: number = 1) => {
-  console.log(`🔊 Playing notification: ${type} (${repeat}x)`);
-
-  try {
-    getAudioContext();
-
-    for (let i = 0; i < repeat; i++) {
-      switch (type) {
-        case 'newOrder':
-          await playNewOrderSound();
-          if (i < repeat - 1) await new Promise(resolve => setTimeout(resolve, 400));
-          break;
-
-        case 'newWaitlist':
-          await playNewWaitlistSound();
-          if (i < repeat - 1) await new Promise(resolve => setTimeout(resolve, 400));
-          break;
-
-        case 'orderReady':
-          await playOrderReadySound();
-          if (i < repeat - 1) await new Promise(resolve => setTimeout(resolve, 500));
-          break;
-
-        case 'tableReady':
-          await playTableReadySound();
-          if (i < repeat - 1) await new Promise(resolve => setTimeout(resolve, 500));
-          break;
-
-        case 'urgent':
-          await playUrgentSound();
-          if (i < repeat - 1) await new Promise(resolve => setTimeout(resolve, 300));
-          break;
-      }
+// Play a sound file once
+const playSound = (type: NotificationSoundType): Promise<void> => {
+  return new Promise((resolve) => {
+    try {
+      const audio = new Audio(SOUND_FILES[type]);
+      audio.volume = 1.0;
+      
+      audio.onended = () => resolve();
+      audio.onerror = (e) => {
+        console.error(`Error playing ${type} sound:`, e);
+        resolve();
+      };
+      
+      audio.play().catch((error) => {
+        console.error(`Failed to play ${type} sound:`, error);
+        resolve();
+      });
+    } catch (error) {
+      console.error(`Error creating audio for ${type}:`, error);
+      resolve();
     }
-  } catch (error) {
-    console.error('Error playing notification sound:', error);
+  });
+};
+
+// Play a sound N times with a small gap between plays
+const playSoundNTimes = async (type: NotificationSoundType, times: number, gapMs: number = 500) => {
+  for (let i = 0; i < times; i++) {
+    await playSound(type);
+    if (i < times - 1) {
+      await new Promise(resolve => setTimeout(resolve, gapMs));
+    }
+  }
+};
+
+/**
+ * Play new order sound - repeats 2x every 10 seconds until stopped
+ * @param orderId - Unique identifier for the order
+ * @returns Stop function to cancel the continuous sound
+ */
+export const playNewOrderSound = (orderId: string): (() => void) => {
+  const key = `newOrder-${orderId}`;
+  
+  // Stop any existing interval for this order
+  stopSound(key);
+  
+  console.log(`🔔 Starting NEW ORDER sound for ${orderId}`);
+  vibratePattern([200, 100, 200]);
+  
+  // Play immediately
+  playSoundNTimes('newOrder', 2);
+  
+  // Then repeat every 10 seconds
+  const intervalId = setInterval(() => {
+    console.log(`🔔 Repeating NEW ORDER sound for ${orderId}`);
+    vibratePattern([200, 100, 200]);
+    playSoundNTimes('newOrder', 2);
+  }, 10000);
+  
+  activeIntervals.set(key, intervalId);
+  
+  return () => stopSound(key);
+};
+
+/**
+ * Play new waitlist sound - repeats 2x once (no continuous loop)
+ */
+export const playNewWaitlistSound = async () => {
+  console.log(`👥 Playing NEW WAITLIST sound`);
+  vibratePattern([150, 100, 150]);
+  await playSoundNTimes('newWaitlist', 2);
+};
+
+/**
+ * Play table ready sound - repeats 2x every 25 seconds until stopped
+ * @param entryId - Unique identifier for the waitlist entry
+ * @returns Stop function to cancel the continuous sound
+ */
+export const playTableReadySound = (entryId: string): (() => void) => {
+  const key = `tableReady-${entryId}`;
+  
+  // Stop any existing interval for this entry
+  stopSound(key);
+  
+  console.log(`🪑 Starting TABLE READY sound for ${entryId}`);
+  vibratePattern([400, 150, 400]);
+  
+  // Play immediately
+  playSoundNTimes('tableReady', 2);
+  
+  // Then repeat every 25 seconds
+  const intervalId = setInterval(() => {
+    console.log(`🪑 Repeating TABLE READY sound for ${entryId}`);
+    vibratePattern([400, 150, 400]);
+    playSoundNTimes('tableReady', 2);
+  }, 25000);
+  
+  activeIntervals.set(key, intervalId);
+  
+  return () => stopSound(key);
+};
+
+/**
+ * Play food ready sound - repeats 3x every 10 seconds until stopped
+ * @param orderId - Unique identifier for the order
+ * @returns Stop function to cancel the continuous sound
+ */
+export const playFoodReadySound = (orderId: string): (() => void) => {
+  const key = `foodReady-${orderId}`;
+  
+  // Stop any existing interval for this order
+  stopSound(key);
+  
+  console.log(`✅ Starting FOOD READY sound for ${orderId}`);
+  vibratePattern([400, 150, 400]);
+  
+  // Play immediately (3 times)
+  playSoundNTimes('foodReady', 3);
+  
+  // Then repeat every 10 seconds
+  const intervalId = setInterval(() => {
+    console.log(`✅ Repeating FOOD READY sound for ${orderId}`);
+    vibratePattern([400, 150, 400]);
+    playSoundNTimes('foodReady', 3);
+  }, 10000);
+  
+  activeIntervals.set(key, intervalId);
+  
+  return () => stopSound(key);
+};
+
+/**
+ * Play order due warning sound
+ * Called at 1 min before, 30 sec before, then continuously every 10s when late
+ * @param orderId - Unique identifier for the order
+ * @param phase - 'oneMin' | 'thirtySec' | 'late'
+ * @returns Stop function for late phase only
+ */
+export const playOrderDueSound = (orderId: string, phase: 'oneMin' | 'thirtySec' | 'late'): (() => void) | void => {
+  console.log(`⏰ Playing ORDER DUE sound for ${orderId} - phase: ${phase}`);
+  vibratePattern([300, 100, 300, 100, 300]);
+  
+  if (phase === 'oneMin' || phase === 'thirtySec') {
+    // Single play for warning phases
+    playSound('orderDue');
+    return;
+  }
+  
+  // Late phase - continuous every 10 seconds
+  const key = `orderDue-${orderId}`;
+  
+  // Stop any existing interval for this order
+  stopSound(key);
+  
+  // Play immediately
+  playSound('orderDue');
+  
+  // Then repeat every 10 seconds
+  const intervalId = setInterval(() => {
+    console.log(`⏰ Repeating ORDER DUE (late) sound for ${orderId}`);
+    vibratePattern([300, 100, 300, 100, 300]);
+    playSound('orderDue');
+  }, 10000);
+  
+  activeIntervals.set(key, intervalId);
+  
+  return () => stopSound(key);
+};
+
+/**
+ * Stop a specific continuous sound by key
+ */
+export const stopSound = (key: string) => {
+  const intervalId = activeIntervals.get(key);
+  if (intervalId) {
+    console.log(`🔇 Stopping sound: ${key}`);
+    clearInterval(intervalId);
+    activeIntervals.delete(key);
+  }
+};
+
+/**
+ * Stop all sounds for a specific type and ID
+ */
+export const stopSoundForId = (type: NotificationSoundType, id: string) => {
+  const key = `${type}-${id}`;
+  stopSound(key);
+};
+
+/**
+ * Stop all active continuous sounds
+ */
+export const stopAllSounds = () => {
+  console.log(`🔇 Stopping all ${activeIntervals.size} active sounds`);
+  activeIntervals.forEach((intervalId, key) => {
+    clearInterval(intervalId);
+  });
+  activeIntervals.clear();
+};
+
+/**
+ * Check if a sound is currently active
+ */
+export const isSoundActive = (type: NotificationSoundType, id: string): boolean => {
+  const key = `${type}-${id}`;
+  return activeIntervals.has(key);
+};
+
+// Legacy function for backwards compatibility - maps to new sound types
+export const playNotificationSound = async (type: string, repeat: number = 1) => {
+  console.log(`🔊 Legacy playNotificationSound called: ${type}`);
+  
+  switch (type) {
+    case 'newOrder':
+      await playSoundNTimes('newOrder', repeat);
+      break;
+    case 'newWaitlist':
+      await playSoundNTimes('newWaitlist', repeat);
+      break;
+    case 'tableReady':
+      await playSoundNTimes('tableReady', repeat);
+      break;
+    case 'orderReady':
+    case 'foodReady':
+      await playSoundNTimes('foodReady', repeat);
+      break;
+    case 'urgent':
+    case 'orderDue':
+      await playSoundNTimes('orderDue', repeat);
+      break;
+    default:
+      console.warn(`Unknown sound type: ${type}`);
   }
 };
 
 // Initialize audio context on first user interaction (required by browsers)
 export const initializeAudio = () => {
-  try {
-    getAudioContext();
-    console.log('🎵 Audio context initialized');
-  } catch (error) {
-    console.error('Failed to initialize audio context:', error);
-  }
+  // Pre-load audio files for faster playback
+  Object.values(SOUND_FILES).forEach(src => {
+    const audio = new Audio(src);
+    audio.preload = 'auto';
+  });
+  console.log('🎵 Audio files pre-loaded');
 };
