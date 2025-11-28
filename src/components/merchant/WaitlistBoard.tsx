@@ -105,7 +105,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     const fetchUpcomingReservations = async () => {
       const now = new Date();
       const oneHourBefore = new Date(now.getTime() - 60 * 60 * 1000);
-      const futureTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const futureTime = new Date(now.getTime() + 60 * 60 * 1000);
 
       const { data } = await supabase
         .from('waitlist_entries')
