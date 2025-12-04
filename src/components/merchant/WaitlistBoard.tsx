@@ -175,12 +175,6 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
               description: `${payload.new.customer_name} cancelled their ready table (Party of ${payload.new.party_size})`,
               variant: "destructive",
             });
-            
-            // Play audio notification if supported
-            if ('Audio' in window) {
-              const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmwhBSuBzvLZiTYIGGS56+adUw4OTqPh77BgGgU7ldny0oIwBSd6yu/glUULElyx6OyrWBUIQ5zd8sFuHwQ5jdXvxXQmBTB+zO/glUULElyx6OyrWBUIQ5zd8sFuHwQ5jdXvxXQmBTB+zO/glUULElyx6OyrWBUIQ5zd8sFuHwQ5jdXvxXQmBTB+zO/glUULElyx6OyrWBUIQ5zd8sFuHwQ5jdXvxXQmBTB+zO/glUULElyx6OyrWBUIQ5zd8sFuHwQ5jdXvxXQmBQ==');
-              audio.play().catch(() => {}); // Ignore errors if audio fails
-            }
           }
           
           // Update the specific entry in local state with ALL fields from payload
