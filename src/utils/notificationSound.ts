@@ -233,33 +233,6 @@ export const isSoundActive = (type: NotificationSoundType, id: string): boolean 
   return activeIntervals.has(key);
 };
 
-// Legacy function for backwards compatibility - maps to new sound types
-export const playNotificationSound = async (type: string, repeat: number = 1) => {
-  console.log(`🔊 Legacy playNotificationSound called: ${type}`);
-  
-  switch (type) {
-    case 'newOrder':
-      await playSoundNTimes('newOrder', repeat);
-      break;
-    case 'newWaitlist':
-      await playSoundNTimes('newWaitlist', repeat);
-      break;
-    case 'tableReady':
-      await playSoundNTimes('tableReady', repeat);
-      break;
-    case 'orderReady':
-    case 'foodReady':
-      await playSoundNTimes('foodReady', repeat);
-      break;
-    case 'urgent':
-    case 'orderDue':
-      await playSoundNTimes('orderDue', repeat);
-      break;
-    default:
-      console.warn(`Unknown sound type: ${type}`);
-  }
-};
-
 // Initialize audio context on first user interaction (required by browsers)
 export const initializeAudio = () => {
   // Pre-load audio files for faster playback
