@@ -11,7 +11,8 @@ import { Clock, Plus, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { FoodExtensionReasonDialog } from "./FoodExtensionReasonDialog";
-import { initializeAudio, playOrderDueSound, stopSoundForId } from "@/utils/notificationSound";
+import { initializeAudio, playOrderDueSound, playNewOrderSound, stopSoundForId } from "@/utils/notificationSound";
+import { toast as sonnerToast } from "sonner";
 
 interface Order {
   id: string;
@@ -210,9 +211,18 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
         
         // Handle the update directly in state for instant UI update
         if (payload.eventType === 'INSERT') {
-          // UI update only - sound is handled globally in MerchantDashboard
+          // Play newOrder sound for new awaiting_verification orders
+          if (payload.new?.status === 'awaiting_verification') {
+            console.log('🍽️ New order received - starting continuous sound for', payload.new.id);
+            playNewOrderSound(payload.new.id);
+            sonnerToast.success("🍽️ New order received!");
+          }
           fetchOrders(); // Fetch fresh data for new orders
         } else if (payload.eventType === 'UPDATE' && payload.new) {
+          // Stop newOrder sound when order is no longer awaiting verification
+          if (payload.old?.status === 'awaiting_verification' && payload.new.status !== 'awaiting_verification') {
+            stopSoundForId('newOrder', payload.new.id);
+          }
           // Optimistically update the specific order in state
           setOrders(prevOrders => 
             prevOrders.map(order => 
