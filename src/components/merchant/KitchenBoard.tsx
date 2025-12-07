@@ -50,6 +50,9 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   // Phases: 'oneMin' | 'thirtySec' | 'late' | 'notified'
   const orderWarningPhases = useRef<Map<string, string>>(new Map());
   const lateOrderStopFns = useRef<Map<string, () => void>>(new Map());
+  
+  // Track orders we've already started sounds for to prevent duplicates
+  const soundStartedForOrders = useRef<Set<string>>(new Set());
 
   // Order due warning system - monitors ETA and plays sounds
   useEffect(() => {
@@ -102,7 +105,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
             description: `Order #${order.order_number} due in 30 seconds`,
           });
         }
-        // 1 minute warning
+        // 1 minute warning (only if within the 30s-60s window AND no phase set yet)
         else if (timeUntilDue > 30000 && timeUntilDue <= 60000 && !currentPhase) {
           console.log(`⏰ Order #${order.order_number} - 1 minute until due`);
           playOrderDueSound(order.id, 'oneMin');
@@ -113,6 +116,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
             description: `Order #${order.order_number} due in 1 minute`,
           });
         }
+        // More than 1 minute away - no action, but don't set a phase
       });
     };
     
@@ -211,8 +215,9 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
         
         // Handle the update directly in state for instant UI update
         if (payload.eventType === 'INSERT') {
-          // Play newOrder sound for new awaiting_verification orders
-          if (payload.new?.status === 'awaiting_verification') {
+          // Play newOrder sound for new awaiting_verification orders (only once per order)
+          if (payload.new?.status === 'awaiting_verification' && !soundStartedForOrders.current.has(payload.new.id)) {
+            soundStartedForOrders.current.add(payload.new.id);
             console.log('🍽️ New order received - starting continuous sound for', payload.new.id);
             playNewOrderSound(payload.new.id);
             sonnerToast.success("🍽️ New order received!");
@@ -222,6 +227,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
           // Stop newOrder sound when order is no longer awaiting verification
           if (payload.old?.status === 'awaiting_verification' && payload.new.status !== 'awaiting_verification') {
             stopSoundForId('newOrder', payload.new.id);
+            soundStartedForOrders.current.delete(payload.new.id);
           }
           // Optimistically update the specific order in state
           setOrders(prevOrders => 
