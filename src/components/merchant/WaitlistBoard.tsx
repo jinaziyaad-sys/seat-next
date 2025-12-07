@@ -14,8 +14,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { differenceInMinutes, format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { TableExtensionReasonDialog } from "./TableExtensionReasonDialog";
-import { initializeAudio, playNewWaitlistSound } from "@/utils/notificationSound";
-import { toast as sonnerToast } from "sonner";
+import { initializeAudio } from "@/utils/notificationSound";
 
 interface WaitlistEntry {
   id: string;
@@ -162,10 +161,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
         console.log('Waitlist change:', payload);
         
         if (payload.eventType === 'INSERT') {
-          // Play newWaitlist sound for new entries
-          console.log('👥 New waitlist entry - playing sound');
-          playNewWaitlistSound();
-          sonnerToast.success("👥 New waitlist entry!");
+          // Sound is now played globally from MerchantDashboard
           setWaitlist(prev => [...prev, payload.new as WaitlistEntry]);
           
         } else if (payload.eventType === 'UPDATE') {

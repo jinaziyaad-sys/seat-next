@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { FoodReadyFlow } from "@/components/FoodReadyFlow";
 import { TableReadyFlow } from "@/components/TableReadyFlow";
 import { ProfileSection } from "@/components/ProfileSection";
@@ -19,7 +19,8 @@ import {
   playFoodReadySound, 
   playTableReadySound, 
   stopSoundForId, 
-  initializeAudio 
+  initializeAudio,
+  isSoundActive
 } from "@/utils/notificationSound";
 
 const Index = () => {
@@ -38,6 +39,10 @@ const Index = () => {
   } | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Track IDs we've already started sounds for to prevent duplicates
+  const soundStartedForOrders = useRef<Set<string>>(new Set());
+  const soundStartedForWaitlist = useRef<Set<string>>(new Set());
 
   const handleDismissOrder = async (orderId: string) => {
     if (!user) return;
@@ -151,8 +156,11 @@ const Index = () => {
           
           // Optimistic state update
           if (payload.eventType === 'UPDATE' && payload.new) {
-            // Check if order became ready - START CONTINUOUS SOUND!
-            if (payload.new.status === 'ready' && payload.old?.status !== 'ready') {
+            // Check if order became ready - START CONTINUOUS SOUND! (only once per order)
+            if (payload.new.status === 'ready' && payload.old?.status !== 'ready' && 
+                !soundStartedForOrders.current.has(payload.new.id) && 
+                !isSoundActive('foodReady', payload.new.id)) {
+              soundStartedForOrders.current.add(payload.new.id);
               // Play food ready sound (repeats 3x every 10 seconds until collected)
               playFoodReadySound(payload.new.id);
               toast({
@@ -164,6 +172,7 @@ const Index = () => {
             // Stop sound when order is collected or cancelled
             if (['collected', 'cancelled', 'rejected'].includes(payload.new.status)) {
               stopSoundForId('foodReady', payload.new.id);
+              soundStartedForOrders.current.delete(payload.new.id);
             }
             
             // Check if order was rejected
@@ -194,9 +203,7 @@ const Index = () => {
           } else if (payload.eventType === 'DELETE') {
             setActiveOrders(prevOrders => prevOrders.filter(order => order.id !== payload.old?.id));
           }
-          
-          // Also fetch to ensure consistency
-          fetchActiveTracking();
+          // Removed redundant fetchActiveTracking() to prevent re-renders
         })
         .subscribe();
 
@@ -212,8 +219,11 @@ const Index = () => {
           
           // Optimistic state update
           if (payload.eventType === 'UPDATE' && payload.new) {
-            // Check if table became ready - START CONTINUOUS SOUND!
-            if (payload.new.status === 'ready' && payload.old?.status !== 'ready') {
+            // Check if table became ready - START CONTINUOUS SOUND! (only once per entry)
+            if (payload.new.status === 'ready' && payload.old?.status !== 'ready' && 
+                !soundStartedForWaitlist.current.has(payload.new.id) && 
+                !isSoundActive('tableReady', payload.new.id)) {
+              soundStartedForWaitlist.current.add(payload.new.id);
               // Play table ready sound (repeats 2x every 25 seconds until seated/cancelled)
               playTableReadySound(payload.new.id);
               toast({
@@ -225,6 +235,7 @@ const Index = () => {
             // Stop sound when seated or cancelled
             if (['seated', 'cancelled', 'no_show'].includes(payload.new.status)) {
               stopSoundForId('tableReady', payload.new.id);
+              soundStartedForWaitlist.current.delete(payload.new.id);
             }
             
             // Skip if patron_dismissed is true
@@ -249,9 +260,7 @@ const Index = () => {
           } else if (payload.eventType === 'DELETE') {
             setActiveWaitlist(prevEntries => prevEntries.filter(entry => entry.id !== payload.old?.id));
           }
-          
-          // Also fetch to ensure consistency
-          fetchActiveTracking();
+          // Removed redundant fetchActiveTracking() to prevent re-renders
         })
         .subscribe();
 

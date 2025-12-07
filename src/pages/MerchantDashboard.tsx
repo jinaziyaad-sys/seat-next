@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMerchantAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +14,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { initializeAudio } from "@/utils/notificationSound";
+import { initializeAudio, playNewWaitlistSound } from "@/utils/notificationSound";
+import { toast as sonnerToast } from "sonner";
 
 const MerchantDashboard = () => {
   const { userRole, loading } = useMerchantAuth();
@@ -47,10 +48,45 @@ const MerchantDashboard = () => {
     }
   }, [userRole?.venue_id]);
 
-  // Initialize audio on mount (sounds are triggered in child components)
+  // Track waitlist entries we've already played sounds for
+  const soundStartedForWaitlist = useRef<Set<string>>(new Set());
+
+  // Initialize audio and set up GLOBAL waitlist sound subscription
   useEffect(() => {
     initializeAudio();
-  }, []);
+    
+    if (!userRole?.venue_id) return;
+    
+    // Global waitlist INSERT subscription - plays sound regardless of active tab
+    const waitlistSoundChannel = supabase
+      .channel('global-waitlist-insert-sound')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'waitlist_entries',
+        filter: `venue_id=eq.${userRole.venue_id}`
+      }, (payload) => {
+        // Prevent duplicate sounds using ref
+        if (soundStartedForWaitlist.current.has(payload.new.id)) {
+          return;
+        }
+        soundStartedForWaitlist.current.add(payload.new.id);
+        
+        console.log('👥 New waitlist entry (global) - playing sound');
+        playNewWaitlistSound();
+        sonnerToast.success("👥 New waitlist entry!");
+        
+        // Clean up after 30 seconds to prevent memory buildup
+        setTimeout(() => {
+          soundStartedForWaitlist.current.delete(payload.new.id);
+        }, 30000);
+      })
+      .subscribe();
+    
+    return () => {
+      supabase.removeChannel(waitlistSoundChannel);
+    };
+  }, [userRole?.venue_id]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
