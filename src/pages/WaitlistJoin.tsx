@@ -19,7 +19,7 @@ export default function WaitlistJoin() {
   const { venueId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [venue, setVenue] = useState<{ name: string; address?: string } | null>(null);
+  const [venue, setVenue] = useState<{ name: string; address?: string; settings?: any } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [partySize, setPartySize] = useState(2);
@@ -37,7 +37,7 @@ export default function WaitlistJoin() {
 
       const { data, error } = await supabase
         .from("venues")
-        .select("name, address, waitlist_preferences")
+        .select("name, address, waitlist_preferences, settings")
         .eq("id", venueId)
         .single();
 
@@ -174,28 +174,45 @@ export default function WaitlistJoin() {
 
           <div className="space-y-3">
             <Label>Party Size</Label>
-            <div className="flex items-center justify-center gap-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPartySize(Math.max(1, partySize - 1))}
-                disabled={partySize <= 1}
-              >
-                -
-              </Button>
-              <div className="flex items-center gap-2 text-lg font-semibold min-w-[80px] justify-center">
-                <Users size={20} />
-                <span>{partySize}</span>
-              </div>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setPartySize(Math.min(12, partySize + 1))}
-                disabled={partySize >= 12}
-              >
-                +
-              </Button>
-            </div>
+            {(() => {
+              // Calculate max party size from venue's table configuration
+              const tableConfig = venue?.settings?.table_configuration || [];
+              const maxPartySize = tableConfig.length > 0
+                ? tableConfig.reduce((sum: number, table: any) => sum + (table.capacity || 0), 0)
+                : 12;
+              
+              return (
+                <>
+                  <div className="flex items-center justify-center gap-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPartySize(Math.max(1, partySize - 1))}
+                      disabled={partySize <= 1}
+                    >
+                      -
+                    </Button>
+                    <div className="flex items-center gap-2 text-lg font-semibold min-w-[80px] justify-center">
+                      <Users size={20} />
+                      <span>{partySize}</span>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setPartySize(Math.min(maxPartySize, partySize + 1))}
+                      disabled={partySize >= maxPartySize}
+                    >
+                      +
+                    </Button>
+                  </div>
+                  {maxPartySize > 12 && (
+                    <p className="text-xs text-muted-foreground text-center">
+                      Large parties may require multiple tables
+                    </p>
+                  )}
+                </>
+              );
+            })()}
           </div>
 
           {availablePreferences.length > 0 && (

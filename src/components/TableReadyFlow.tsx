@@ -51,9 +51,10 @@ interface WaitlistEntry {
   notes?: string;
 }
 
-const partyDetailsSchema = z.object({
+// Dynamic schema builder that uses venue's max capacity
+const createPartyDetailsSchema = (maxCapacity: number) => z.object({
   partyName: z.string().trim().min(1, "Party name is required").max(50, "Party name must be less than 50 characters"),
-  partySize: z.number().int().min(1, "Party size must be at least 1").max(12, "Party size cannot exceed 12"),
+  partySize: z.number().int().min(1, "Party size must be at least 1").max(maxCapacity, `Party size cannot exceed ${maxCapacity}`),
 });
 
 // Helper to extract extension reason from notes (for future use if notes field is added)
@@ -92,6 +93,11 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [requiresMultipleTables, setRequiresMultipleTables] = useState(false);
   const [tablesNeeded, setTablesNeeded] = useState<any[]>([]);
   const [pendingReservationData, setPendingReservationData] = useState<any>(null);
+
+  // Calculate max party size from venue's table configuration (total capacity of all tables)
+  const maxPartySize = selectedVenueData?.settings?.table_configuration?.length > 0
+    ? selectedVenueData.settings.table_configuration.reduce((sum: number, table: any) => sum + (table.capacity || 0), 0)
+    : 12; // Default to 12 if no tables configured
 
   // Get authenticated user and initialize notifications
   useEffect(() => {
@@ -497,7 +503,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     }
 
     // Validate inputs
-    const validation = partyDetailsSchema.safeParse({ partyName, partySize });
+    const validation = createPartyDetailsSchema(maxPartySize).safeParse({ partyName, partySize });
     if (!validation.success) {
       toast({
         title: "Validation Error",
@@ -1534,12 +1540,17 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPartySize(Math.min(12, partySize + 1))}
-                  disabled={partySize >= 12}
+                  onClick={() => setPartySize(Math.min(maxPartySize, partySize + 1))}
+                  disabled={partySize >= maxPartySize}
                 >
                   +
                 </Button>
               </div>
+              {maxPartySize > 12 && (
+                <p className="text-xs text-muted-foreground text-center">
+                  Large parties may require multiple tables
+                </p>
+              )}
             </div>
 
             {/* Dynamic Seating Preferences - Based on Merchant Configuration */}
