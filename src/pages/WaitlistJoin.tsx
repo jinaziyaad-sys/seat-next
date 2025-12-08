@@ -175,7 +175,7 @@ export default function WaitlistJoin() {
           <div className="space-y-3">
             <Label>Party Size</Label>
             {(() => {
-              // Calculate max party size from venue's table configuration
+              // Calculate max party size from venue's table configuration (total venue capacity for walk-ins)
               const tableConfig = venue?.settings?.table_configuration || [];
               const maxPartySize = tableConfig.length > 0
                 ? tableConfig.reduce((sum: number, table: any) => sum + (table.capacity || 0), 0)
@@ -205,9 +205,9 @@ export default function WaitlistJoin() {
                       +
                     </Button>
                   </div>
-                  {maxPartySize > 12 && (
+                  {maxPartySize > 6 && (
                     <p className="text-xs text-muted-foreground text-center">
-                      Large parties may require multiple tables
+                      Up to {maxPartySize} seats • Large parties may require multiple tables
                     </p>
                   )}
                 </>

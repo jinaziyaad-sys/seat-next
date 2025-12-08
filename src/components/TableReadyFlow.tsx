@@ -93,11 +93,18 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [requiresMultipleTables, setRequiresMultipleTables] = useState(false);
   const [tablesNeeded, setTablesNeeded] = useState<any[]>([]);
   const [pendingReservationData, setPendingReservationData] = useState<any>(null);
+  const [availableCapacity, setAvailableCapacity] = useState<number | null>(null);
+  const [isCheckingCapacity, setIsCheckingCapacity] = useState(false);
 
-  // Calculate max party size from venue's table configuration (total capacity of all tables)
-  const maxPartySize = selectedVenueData?.settings?.table_configuration?.length > 0
+  // Calculate total venue capacity from table configuration
+  const totalVenueCapacity = selectedVenueData?.settings?.table_configuration?.length > 0
     ? selectedVenueData.settings.table_configuration.reduce((sum: number, table: any) => sum + (table.capacity || 0), 0)
     : 12; // Default to 12 if no tables configured
+
+  // For reservations with a selected time, use available capacity; otherwise use total venue capacity
+  const maxPartySize = (bookingType === "later" && availableCapacity !== null)
+    ? (availableCapacity > 0 ? availableCapacity : 0)
+    : totalVenueCapacity;
 
   // Get authenticated user and initialize notifications
   useEffect(() => {
@@ -1310,6 +1317,63 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     );
   }
 
+  // Check available capacity when date/time changes for reservations
+  const checkAvailableCapacity = async (venueId: string, reservationDateTime: Date) => {
+    setIsCheckingCapacity(true);
+    try {
+      const tableConfig = selectedVenueData?.settings?.table_configuration || [];
+      if (tableConfig.length === 0) {
+        setAvailableCapacity(12); // Default if no tables configured
+        return;
+      }
+
+      // Get occupied tables at this time using the existing RPC
+      const { data: occupiedTables, error } = await supabase.rpc('get_occupied_tables', {
+        p_venue_id: venueId,
+        p_time_slot: reservationDateTime.toISOString(),
+        p_buffer_minutes: 30
+      });
+
+      if (error) {
+        console.error('Error checking capacity:', error);
+        setAvailableCapacity(totalVenueCapacity);
+        return;
+      }
+
+      const occupiedTableIds = new Set((occupiedTables || []).map((t: any) => t.table_id));
+
+      // Calculate available capacity (sum of unoccupied table capacities)
+      const capacity = tableConfig
+        .filter((table: any) => !occupiedTableIds.has(table.id))
+        .reduce((sum: number, table: any) => sum + (table.capacity || 0), 0);
+
+      setAvailableCapacity(capacity);
+
+      // If current partySize exceeds available capacity, adjust it down
+      if (partySize > capacity && capacity > 0) {
+        setPartySize(capacity);
+      }
+    } catch (err) {
+      console.error('Error checking capacity:', err);
+      setAvailableCapacity(totalVenueCapacity);
+    } finally {
+      setIsCheckingCapacity(false);
+    }
+  };
+
+  // Trigger capacity check when reservation date/time changes
+  useEffect(() => {
+    if (bookingType === "later" && reservationDate && reservationTime && selectedVenueData?.id) {
+      const [hours, minutes] = reservationTime.split(':').map(Number);
+      const reservationDateTime = new Date(reservationDate);
+      reservationDateTime.setHours(hours, minutes, 0, 0);
+      
+      checkAvailableCapacity(selectedVenueData.id, reservationDateTime);
+    } else {
+      setAvailableCapacity(null); // Reset for walk-ins or when no time selected
+    }
+  }, [bookingType, reservationDate, reservationTime, selectedVenueData?.id]);
+
   if (step === "reservation-details") {
     // Get available times from venue settings
     const timeSlots = selectedVenueData?.settings?.business_hours && reservationDate
@@ -1373,7 +1437,11 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                   <Calendar
                     mode="single"
                     selected={reservationDate}
-                    onSelect={setReservationDate}
+                    onSelect={(date) => {
+                      setReservationDate(date);
+                      setReservationTime(""); // Reset time when date changes
+                      setAvailableCapacity(null); // Reset capacity
+                    }}
                     disabled={(date) => date < new Date() || date > addDays(new Date(), 30)}
                     initialFocus
                     className="pointer-events-auto"
@@ -1398,9 +1466,33 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               </Select>
             </div>
 
+            {/* Show capacity status after time selection */}
+            {reservationTime && (
+              <div className="p-3 bg-muted rounded-lg">
+                {isCheckingCapacity ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Checking availability...</span>
+                  </div>
+                ) : availableCapacity !== null && availableCapacity > 0 ? (
+                  <div className="flex items-center gap-2 text-sm">
+                    <Users className="h-4 w-4 text-primary" />
+                    <span>
+                      Up to <span className="font-semibold text-primary">{availableCapacity} seats</span> available at this time
+                    </span>
+                  </div>
+                ) : availableCapacity === 0 ? (
+                  <div className="flex items-center gap-2 text-sm text-destructive">
+                    <XCircle className="h-4 w-4" />
+                    <span>No tables available at this time. Please select a different time.</span>
+                  </div>
+                ) : null}
+              </div>
+            )}
+
             <Button 
               onClick={() => setStep("party-details")}
-              disabled={!reservationDate || !reservationTime || hasNoAvailability}
+              disabled={!reservationDate || !reservationTime || hasNoAvailability || availableCapacity === 0}
               className="w-full"
             >
               Continue to Party Details
@@ -1541,16 +1633,23 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                   variant="outline"
                   size="sm"
                   onClick={() => setPartySize(Math.min(maxPartySize, partySize + 1))}
-                  disabled={partySize >= maxPartySize}
+                  disabled={partySize >= maxPartySize || maxPartySize === 0}
                 >
                   +
                 </Button>
               </div>
-              {maxPartySize > 12 && (
+              {/* Show capacity context based on booking type */}
+              {bookingType === "later" && availableCapacity !== null ? (
+                <p className="text-xs text-muted-foreground text-center">
+                  {availableCapacity > 0 
+                    ? `${availableCapacity} seats available at selected time${availableCapacity > 6 ? ' (may require multiple tables)' : ''}`
+                    : 'No seats available at this time'}
+                </p>
+              ) : maxPartySize > 12 ? (
                 <p className="text-xs text-muted-foreground text-center">
                   Large parties may require multiple tables
                 </p>
-              )}
+              ) : null}
             </div>
 
             {/* Dynamic Seating Preferences - Based on Merchant Configuration */}
