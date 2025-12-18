@@ -66,7 +66,7 @@ const extractExtensionReason = (notes: string | null | undefined): string | null
 
 export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; initialEntry?: any }) {
   const { toast } = useToast();
-  const [step, setStep] = useState<"venue-select" | "booking-type" | "reservation-details" | "party-details" | "waiting" | "ready" | "awaiting-confirmation" | "delayed-countdown" | "feedback" | "cancelled-details">("venue-select");
+  const [step, setStep] = useState<"venue-select" | "booking-type" | "reservation-details" | "party-details" | "waiting" | "ready" | "awaiting-confirmation" | "seated" | "delayed-countdown" | "feedback" | "cancelled-details">("venue-select");
   const [selectedVenue, setSelectedVenue] = useState("");
   const [selectedVenueData, setSelectedVenueData] = useState<any>(null);
   const [bookingType, setBookingType] = useState<"now" | "later">("now");
@@ -318,7 +318,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 vibratePhone([200, 100, 200, 100, 200]);
               }
             } else if (newStatus === "seated") {
-              setStep("feedback");
+              setStep("seated");
             } else if (newStatus === "cancelled" || newStatus === "no_show") {
               setStep("cancelled-details");
             }
@@ -1981,6 +1981,55 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 onClick={handleCancelBooking}
               >
                 Cancel Booking
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (step === "seated" && waitlistEntry) {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Seated</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardContent className="p-8 text-center space-y-6">
+            <div className="text-6xl">✅</div>
+            
+            <div className="space-y-2">
+              <h2 className="text-2xl font-bold text-green-600">You've Been Seated!</h2>
+              <p className="text-muted-foreground">{waitlistEntry.venue}</p>
+            </div>
+
+            <div className="p-6 bg-green-50 dark:bg-green-950 rounded-xl border border-green-200 dark:border-green-800">
+              <p className="font-semibold text-green-900 dark:text-green-100">
+                Enjoy your meal!
+              </p>
+              <p className="text-sm text-green-700 dark:text-green-300 mt-1">
+                We'd love to hear about your experience
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <Button 
+                className="w-full h-12"
+                onClick={() => setStep("feedback")}
+              >
+                Rate Your Experience
+              </Button>
+              <Button 
+                variant="ghost"
+                className="w-full"
+                onClick={handleSkipRating}
+              >
+                Maybe Later
               </Button>
             </div>
           </CardContent>
