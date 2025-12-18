@@ -967,8 +967,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       setStep("awaiting-confirmation");
       
       toast({
-        title: "Notified Host",
-        description: "The host has been notified you're here. Please wait to be seated.",
+        title: "Notified Restaurant",
+        description: "We have notified the restaurant that you are here.",
       });
     }
   };
@@ -1062,8 +1062,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       setStep("awaiting-confirmation");
       
       toast({
-        title: "Notified Host",
-        description: "The host has been notified you're here. Please wait to be seated.",
+        title: "Notified Restaurant",
+        description: "We have notified the restaurant that you are here.",
       });
     }
   };
