@@ -5,7 +5,8 @@ export type NotificationSoundType =
   | 'newWaitlist'     // For merchant - new waitlist entry (repeat 2x once)
   | 'tableReady'      // For patron - table ready (repeat 2x every 25s until seated/cancelled)
   | 'foodReady'       // For patron - food ready (repeat 3x every 10s until collected)
-  | 'orderDue';       // For merchant - 1min, 30s, then continuous every 10s when late
+  | 'orderDue'        // For merchant - 1min, 30s, then continuous every 10s when late
+  | 'patronArrived';  // For merchant - patron has arrived (repeat 2x once)
 
 // Sound file paths
 const SOUND_FILES: Record<NotificationSoundType, string> = {
@@ -14,6 +15,7 @@ const SOUND_FILES: Record<NotificationSoundType, string> = {
   tableReady: '/sounds/table-ready.mp3',
   foodReady: '/sounds/food-ready.mp3',
   orderDue: '/sounds/order-due.mp3',
+  patronArrived: '/sounds/patron-arrived.mp3',
 };
 
 // Active interval IDs for continuous sounds (keyed by unique identifier)
@@ -140,6 +142,16 @@ export const playNewWaitlistSound = async () => {
   console.log(`👥 Playing NEW WAITLIST sound`);
   vibratePattern([150, 100, 150]);
   await playSoundNTimes('newWaitlist', 2);
+};
+
+/**
+ * Play patron arrived sound - repeats 2x once (no continuous loop)
+ * For merchant when patron confirms arrival
+ */
+export const playPatronArrivedSound = async () => {
+  console.log(`🚶 Playing PATRON ARRIVED sound`);
+  vibratePattern([300, 150, 300]);
+  await playSoundNTimes('patronArrived', 2);
 };
 
 /**

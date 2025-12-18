@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId } from "@/utils/notificationSound";
+import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId, playPatronArrivedSound } from "@/utils/notificationSound";
 import { toast as sonnerToast } from "sonner";
 
 const MerchantDashboard = () => {
@@ -51,6 +51,7 @@ const MerchantDashboard = () => {
   // Track items we've already played sounds for
   const soundStartedForWaitlist = useRef<Set<string>>(new Set());
   const soundStartedForOrders = useRef<Set<string>>(new Set());
+  const arrivedPatronsRef = useRef<Set<string>>(new Set());
 
   // Initialize audio and set up GLOBAL sound subscriptions
   useEffect(() => {
@@ -119,9 +120,41 @@ const MerchantDashboard = () => {
       })
       .subscribe();
 
+    // Global patron arrival subscription - plays sound when patron confirms arrival
+    const patronArrivalChannel = supabase
+      .channel(`global-patron-arrival-${userRole.venue_id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'waitlist_entries',
+        filter: `venue_id=eq.${userRole.venue_id}`
+      }, (payload) => {
+        const id = (payload.new as any)?.id as string | undefined;
+        const oldAwaitingConfirmation = (payload.old as any)?.awaiting_merchant_confirmation;
+        const newAwaitingConfirmation = (payload.new as any)?.awaiting_merchant_confirmation;
+        const customerName = (payload.new as any)?.customer_name as string | undefined;
+
+        // Check if patron just confirmed arrival (awaiting_merchant_confirmation changed to true)
+        if (!oldAwaitingConfirmation && newAwaitingConfirmation === true) {
+          if (!arrivedPatronsRef.current.has(id!)) {
+            arrivedPatronsRef.current.add(id!);
+            console.log(`🚶 Patron arrived: ${customerName} - playing sound`);
+            playPatronArrivedSound();
+            sonnerToast.success(`🚶 ${customerName || 'A patron'} has arrived!`);
+
+            // Cleanup after 30 seconds
+            setTimeout(() => {
+              arrivedPatronsRef.current.delete(id!);
+            }, 30000);
+          }
+        }
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(waitlistSoundChannel);
       supabase.removeChannel(orderSoundChannel);
+      supabase.removeChannel(patronArrivalChannel);
     };
   }, [userRole?.venue_id]);
 
