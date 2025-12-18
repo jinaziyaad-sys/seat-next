@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,6 +19,7 @@ import { z } from "zod";
 import { sendBrowserNotification, vibratePhone, initializePushNotifications } from "@/utils/notifications";
 import { checkVenueStatus, getAvailableReservationTimes } from "@/utils/businessHours";
 import { calculateDistance, formatDistance, getUserLocation, type UserLocation } from "@/utils/geolocation";
+import { playTableReadySound, stopSoundForId, isSoundActive } from "@/utils/notificationSound";
 
 type WaitlistStatus = "waiting" | "ready" | "seated" | "cancelled";
 type DatabaseWaitlistStatus = "waiting" | "ready" | "seated" | "cancelled" | "no_show";
@@ -92,6 +93,32 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [requiresMultipleTables, setRequiresMultipleTables] = useState(false);
   const [tablesNeeded, setTablesNeeded] = useState<any[]>([]);
   const [pendingReservationData, setPendingReservationData] = useState<any>(null);
+
+  const soundStartedRef = useRef(false);
+
+  // Play sound when table is ready (on mount or status change)
+  useEffect(() => {
+    if (waitlistEntry?.status === 'ready' && waitlistEntry.id) {
+      if (!isSoundActive('tableReady', waitlistEntry.id) && !soundStartedRef.current) {
+        soundStartedRef.current = true;
+        playTableReadySound(waitlistEntry.id);
+      }
+    } else {
+      soundStartedRef.current = false;
+      if (waitlistEntry?.id) {
+        stopSoundForId('tableReady', waitlistEntry.id);
+      }
+    }
+  }, [waitlistEntry?.status, waitlistEntry?.id]);
+
+  // Cleanup sound on unmount
+  useEffect(() => {
+    return () => {
+      if (waitlistEntry?.id) {
+        stopSoundForId('tableReady', waitlistEntry.id);
+      }
+    };
+  }, [waitlistEntry?.id]);
 
   // Get authenticated user and initialize notifications
   useEffect(() => {
