@@ -22,11 +22,27 @@ const activeIntervals: Map<string, NodeJS.Timeout> = new Map();
 // Track cancelled sounds to prevent queued plays from completing
 const cancelledSounds: Set<string> = new Set();
 
+// Track currently playing audio elements so we can stop mid-play (prevents "echo" overlap)
+const activeAudios: Map<string, Set<HTMLAudioElement>> = new Map();
+
 // Vibrate phone with pattern
 const vibratePattern = (pattern: number[]) => {
   if ('vibrate' in navigator) {
     navigator.vibrate(pattern);
   }
+};
+
+const registerAudio = (key: string, audio: HTMLAudioElement) => {
+  const set = activeAudios.get(key) ?? new Set<HTMLAudioElement>();
+  set.add(audio);
+  activeAudios.set(key, set);
+};
+
+const unregisterAudio = (key: string, audio: HTMLAudioElement) => {
+  const set = activeAudios.get(key);
+  if (!set) return;
+  set.delete(audio);
+  if (set.size === 0) activeAudios.delete(key);
 };
 
 // Play a sound file once
@@ -38,20 +54,27 @@ const playSound = (type: NotificationSoundType, key?: string): Promise<void> => 
       resolve();
       return;
     }
-    
+
     try {
       const audio = new Audio(SOUND_FILES[type]);
       audio.volume = 1.0;
-      
-      audio.onended = () => resolve();
-      audio.onerror = (e) => {
-        console.error(`Error playing ${type} sound:`, e);
+
+      if (key) registerAudio(key, audio);
+
+      const cleanup = () => {
+        if (key) unregisterAudio(key, audio);
         resolve();
       };
-      
+
+      audio.onended = cleanup;
+      audio.onerror = (e) => {
+        console.error(`Error playing ${type} sound:`, e);
+        cleanup();
+      };
+
       audio.play().catch((error) => {
         console.error(`Failed to play ${type} sound:`, error);
-        resolve();
+        cleanup();
       });
     } catch (error) {
       console.error(`Error creating audio for ${type}:`, error);
@@ -240,7 +263,21 @@ export const playOrderDueSound = (orderId: string, phase: 'oneMin' | 'thirtySec'
 export const stopSound = (key: string) => {
   // Add to cancelled set to stop any queued plays
   cancelledSounds.add(key);
-  
+
+  // Stop any in-progress audio immediately (prevents overlap/echo)
+  const audios = activeAudios.get(key);
+  if (audios) {
+    audios.forEach((audio) => {
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+      } catch {
+        // ignore
+      }
+    });
+    activeAudios.delete(key);
+  }
+
   const intervalId = activeIntervals.get(key);
   if (intervalId) {
     console.log(`🔇 Stopping sound: ${key}`);

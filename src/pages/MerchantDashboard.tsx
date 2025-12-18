@@ -14,7 +14,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { initializeAudio, playNewWaitlistSound } from "@/utils/notificationSound";
+import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId } from "@/utils/notificationSound";
 import { toast as sonnerToast } from "sonner";
 
 const MerchantDashboard = () => {
@@ -48,43 +48,80 @@ const MerchantDashboard = () => {
     }
   }, [userRole?.venue_id]);
 
-  // Track waitlist entries we've already played sounds for
+  // Track items we've already played sounds for
   const soundStartedForWaitlist = useRef<Set<string>>(new Set());
+  const soundStartedForOrders = useRef<Set<string>>(new Set());
 
-  // Initialize audio and set up GLOBAL waitlist sound subscription
+  // Initialize audio and set up GLOBAL sound subscriptions
   useEffect(() => {
     initializeAudio();
-    
+
     if (!userRole?.venue_id) return;
-    
+
     // Global waitlist INSERT subscription - plays sound regardless of active tab
     const waitlistSoundChannel = supabase
-      .channel('global-waitlist-insert-sound')
+      .channel(`global-waitlist-insert-sound-${userRole.venue_id}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
         table: 'waitlist_entries',
         filter: `venue_id=eq.${userRole.venue_id}`
       }, (payload) => {
-        // Prevent duplicate sounds using ref
-        if (soundStartedForWaitlist.current.has(payload.new.id)) {
-          return;
-        }
-        soundStartedForWaitlist.current.add(payload.new.id);
-        
+        const id = (payload.new as any)?.id as string | undefined;
+        if (!id) return;
+
+        if (soundStartedForWaitlist.current.has(id)) return;
+        soundStartedForWaitlist.current.add(id);
+
         console.log('👥 New waitlist entry (global) - playing sound');
         playNewWaitlistSound();
         sonnerToast.success("👥 New waitlist entry!");
-        
+
         // Clean up after 30 seconds to prevent memory buildup
         setTimeout(() => {
-          soundStartedForWaitlist.current.delete(payload.new.id);
+          soundStartedForWaitlist.current.delete(id);
         }, 30000);
       })
       .subscribe();
-    
+
+    // Global order subscription - plays/clears new order sound regardless of active tab
+    const orderSoundChannel = supabase
+      .channel(`global-order-sound-${userRole.venue_id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'orders',
+        filter: `venue_id=eq.${userRole.venue_id}`
+      }, (payload) => {
+        if (payload.eventType === 'INSERT') {
+          const id = (payload.new as any)?.id as string | undefined;
+          const status = (payload.new as any)?.status as string | undefined;
+          if (!id || status !== 'awaiting_verification') return;
+
+          if (soundStartedForOrders.current.has(id)) return;
+          soundStartedForOrders.current.add(id);
+
+          console.log('🍽️ New order received (global) - starting continuous sound for', id);
+          playNewOrderSound(id);
+          sonnerToast.success("🍽️ New order received!");
+        }
+
+        if (payload.eventType === 'UPDATE') {
+          const id = (payload.new as any)?.id as string | undefined;
+          const oldStatus = (payload.old as any)?.status as string | undefined;
+          const newStatus = (payload.new as any)?.status as string | undefined;
+
+          if (id && oldStatus === 'awaiting_verification' && newStatus && newStatus !== 'awaiting_verification') {
+            stopSoundForId('newOrder', id);
+            soundStartedForOrders.current.delete(id);
+          }
+        }
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(waitlistSoundChannel);
+      supabase.removeChannel(orderSoundChannel);
     };
   }, [userRole?.venue_id]);
 
