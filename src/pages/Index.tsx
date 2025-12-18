@@ -225,8 +225,16 @@ const Index = () => {
           
           // Optimistic state update
           if (payload.eventType === 'UPDATE' && payload.new) {
+            // Stop sound when patron confirms arrival (awaiting_merchant_confirmation becomes true)
+            if (payload.new.awaiting_merchant_confirmation && !payload.old?.awaiting_merchant_confirmation) {
+              stopSoundForId('tableReady', payload.new.id);
+              soundStartedForWaitlist.current.delete(payload.new.id);
+            }
+            
             // Check if table became ready - START CONTINUOUS SOUND! (only once per entry)
+            // Don't start if patron already confirmed arrival
             if (payload.new.status === 'ready' && payload.old?.status !== 'ready' && 
+                !payload.new.awaiting_merchant_confirmation &&
                 !soundStartedForWaitlist.current.has(payload.new.id) && 
                 !isSoundActive('tableReady', payload.new.id)) {
               soundStartedForWaitlist.current.add(payload.new.id);
@@ -302,7 +310,8 @@ const Index = () => {
     });
 
     activeWaitlist.forEach((entry) => {
-      if (entry?.status === 'ready') {
+      // Only play sound if ready AND patron hasn't confirmed arrival yet
+      if (entry?.status === 'ready' && !entry.awaiting_merchant_confirmation) {
         const id = entry.id as string;
         if (!soundStartedForWaitlist.current.has(id) && !isSoundActive('tableReady', id)) {
           soundStartedForWaitlist.current.add(id);
