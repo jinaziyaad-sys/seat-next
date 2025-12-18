@@ -97,8 +97,12 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const soundStartedRef = useRef(false);
 
   // Play sound when table is ready (on mount or status change)
+  // Stop sound when patron confirms arrival (awaiting_merchant_confirmation = true)
   useEffect(() => {
-    if (waitlistEntry?.status === 'ready' && waitlistEntry.id) {
+    const isReady = waitlistEntry?.status === 'ready';
+    const hasConfirmedArrival = waitlistEntry?.awaiting_merchant_confirmation === true;
+    
+    if (isReady && waitlistEntry.id && !hasConfirmedArrival) {
       if (!isSoundActive('tableReady', waitlistEntry.id) && !soundStartedRef.current) {
         soundStartedRef.current = true;
         playTableReadySound(waitlistEntry.id);
@@ -109,7 +113,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         stopSoundForId('tableReady', waitlistEntry.id);
       }
     }
-  }, [waitlistEntry?.status, waitlistEntry?.id]);
+  }, [waitlistEntry?.status, waitlistEntry?.id, waitlistEntry?.awaiting_merchant_confirmation]);
 
   // Cleanup sound on unmount
   useEffect(() => {
@@ -257,7 +261,12 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       } else {
         // Set appropriate step based on status
         if (initialEntry.status === "ready") {
-          setStep("ready");
+          // Check if patron already confirmed arrival
+          if (initialEntry.awaiting_merchant_confirmation) {
+            setStep("awaiting-confirmation");
+          } else {
+            setStep("ready");
+          }
         } else if (initialEntry.status === "cancelled" || initialEntry.status === "no_show") {
           // Don't set step - let the component render based on status check
           // The cancelled screen is shown via: if (waitlistEntry?.status === "cancelled")
@@ -276,9 +285,12 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           filter: `id=eq.${initialEntry.id}`
         }, (payload) => {
           if (payload.new) {
+            const newAwaitingConfirmation = payload.new.awaiting_merchant_confirmation;
+            const newStatus = payload.new.status;
+            
             setWaitlistEntry(prev => prev ? {
               ...prev,
-              status: mapDatabaseStatus(payload.new.status),
+              status: mapDatabaseStatus(newStatus),
               eta: payload.new.eta,
               position: payload.new.position,
               cancellation_reason: payload.new.cancellation_reason || undefined,
@@ -288,19 +300,26 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               cancelled_by: payload.new.cancelled_by,
               updated_at: payload.new.updated_at,
               notes: payload.new.notes,
+              awaiting_merchant_confirmation: newAwaitingConfirmation,
             } : null);
             
-            if (payload.new.status === "ready") {
-              setStep("ready");
-              
-              // Send browser notification and vibrate
-              sendBrowserNotification(
-                "🍽️ Your Table is Ready!",
-                "Please proceed to the venue to be seated",
-                { tag: 'table-ready', requireInteraction: true }
-              );
-              vibratePhone([200, 100, 200, 100, 200]);
-            } else if (payload.new.status === "cancelled" || payload.new.status === "no_show") {
+            if (newStatus === "ready") {
+              // Only set to "ready" step if patron hasn't confirmed arrival yet
+              if (newAwaitingConfirmation) {
+                setStep("awaiting-confirmation");
+              } else {
+                setStep("ready");
+                // Send browser notification and vibrate only when first becoming ready
+                sendBrowserNotification(
+                  "🍽️ Your Table is Ready!",
+                  "Please proceed to the venue to be seated",
+                  { tag: 'table-ready', requireInteraction: true }
+                );
+                vibratePhone([200, 100, 200, 100, 200]);
+              }
+            } else if (newStatus === "seated") {
+              setStep("feedback");
+            } else if (newStatus === "cancelled" || newStatus === "no_show") {
               setStep("cancelled-details");
             }
           }
