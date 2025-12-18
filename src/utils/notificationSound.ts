@@ -84,7 +84,7 @@ const playSound = (type: NotificationSoundType, key?: string): Promise<void> => 
 };
 
 // Play a sound N times with a small gap between plays
-const playSoundNTimes = async (type: NotificationSoundType, times: number, key?: string, gapMs: number = 500) => {
+const playSoundNTimes = async (type: NotificationSoundType, times: number, key?: string, gapMs: number = 1500) => {
   for (let i = 0; i < times; i++) {
     // Check cancellation before each play
     if (key && cancelledSounds.has(key)) {

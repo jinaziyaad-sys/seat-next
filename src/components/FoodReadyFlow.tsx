@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,7 @@ import { sendBrowserNotification, vibratePhone, initializePushNotifications } fr
 import { checkVenueStatus } from "@/utils/businessHours";
 import { calculateDistance, formatDistance, getUserLocation, type UserLocation } from "@/utils/geolocation";
 import { format } from "date-fns";
+import { playFoodReadySound, stopSoundForId, isSoundActive } from "@/utils/notificationSound";
 
 type OrderStatus = "awaiting_verification" | "placed" | "in_prep" | "ready" | "collected" | "rejected" | "cancelled";
 
@@ -70,6 +71,31 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
   const [userId, setUserId] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const { toast } = useToast();
+  const soundStartedRef = useRef(false);
+
+  // Play sound when order is ready (on mount or status change)
+  useEffect(() => {
+    if (currentOrder?.status === 'ready' && currentOrder.id) {
+      if (!isSoundActive('foodReady', currentOrder.id) && !soundStartedRef.current) {
+        soundStartedRef.current = true;
+        playFoodReadySound(currentOrder.id);
+      }
+    } else {
+      soundStartedRef.current = false;
+      if (currentOrder?.id) {
+        stopSoundForId('foodReady', currentOrder.id);
+      }
+    }
+  }, [currentOrder?.status, currentOrder?.id]);
+
+  // Cleanup sound on unmount
+  useEffect(() => {
+    return () => {
+      if (currentOrder?.id) {
+        stopSoundForId('foodReady', currentOrder.id);
+      }
+    };
+  }, [currentOrder?.id]);
 
   // Get authenticated user and initialize notifications
   useEffect(() => {
