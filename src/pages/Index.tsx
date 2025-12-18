@@ -198,8 +198,14 @@ const Index = () => {
               );
               return updatedOrders;
             });
-          } else if (payload.eventType === 'INSERT') {
-            fetchActiveTracking(); // Fetch for new orders
+          } else if (payload.eventType === 'INSERT' && payload.new) {
+            // Insert new order into local state (avoid refetch to prevent duplicate sound triggers)
+            if (!payload.new.patron_dismissed) {
+              setActiveOrders(prev => {
+                if (prev.some(o => o.id === payload.new.id)) return prev;
+                return [{ ...payload.new, items: Array.isArray(payload.new.items) ? payload.new.items : [payload.new.items] }, ...prev];
+              });
+            }
           } else if (payload.eventType === 'DELETE') {
             setActiveOrders(prevOrders => prevOrders.filter(order => order.id !== payload.old?.id));
           }
@@ -252,15 +258,21 @@ const Index = () => {
               );
               const activeFiltered = updatedEntries.filter(entry => 
                 ['waiting', 'ready', 'cancelled', 'seated'].includes(entry.status)
-              );
-              return activeFiltered;
-            });
-          } else if (payload.eventType === 'INSERT') {
-            fetchActiveTracking(); // Fetch for new entries
-          } else if (payload.eventType === 'DELETE') {
-            setActiveWaitlist(prevEntries => prevEntries.filter(entry => entry.id !== payload.old?.id));
-          }
-          // Removed redundant fetchActiveTracking() to prevent re-renders
+               );
+               return activeFiltered;
+             });
+           } else if (payload.eventType === 'INSERT' && payload.new) {
+             // Insert new waitlist entry into local state (avoid refetch to prevent duplicate sound triggers)
+             if (!payload.new.patron_dismissed) {
+               setActiveWaitlist(prev => {
+                 if (prev.some(w => w.id === payload.new.id)) return prev;
+                 return [payload.new as any, ...prev];
+               });
+             }
+           } else if (payload.eventType === 'DELETE') {
+             setActiveWaitlist(prevEntries => prevEntries.filter(entry => entry.id !== payload.old?.id));
+           }
+           // Removed redundant fetchActiveTracking() to prevent re-renders
         })
         .subscribe();
 
@@ -270,6 +282,39 @@ const Index = () => {
       };
     }
   }, [user]);
+
+  // Ensure ready sounds play even if user opens the app (or the card) after status is already "ready"
+  useEffect(() => {
+    if (!user) return;
+
+    activeOrders.forEach((order) => {
+      if (order?.status === 'ready') {
+        const id = order.id as string;
+        if (!soundStartedForOrders.current.has(id) && !isSoundActive('foodReady', id)) {
+          soundStartedForOrders.current.add(id);
+          playFoodReadySound(id);
+        }
+      } else if (order?.id) {
+        const id = order.id as string;
+        stopSoundForId('foodReady', id);
+        soundStartedForOrders.current.delete(id);
+      }
+    });
+
+    activeWaitlist.forEach((entry) => {
+      if (entry?.status === 'ready') {
+        const id = entry.id as string;
+        if (!soundStartedForWaitlist.current.has(id) && !isSoundActive('tableReady', id)) {
+          soundStartedForWaitlist.current.add(id);
+          playTableReadySound(id);
+        }
+      } else if (entry?.id) {
+        const id = entry.id as string;
+        stopSoundForId('tableReady', id);
+        soundStartedForWaitlist.current.delete(id);
+      }
+    });
+  }, [user, activeOrders, activeWaitlist]);
 
   if (activeTab === "food-ready") {
     return (
