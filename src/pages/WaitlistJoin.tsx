@@ -8,6 +8,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Users, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { PatronBusynessIndicator } from "@/components/PatronBusynessIndicator";
+import { BusinessHours, HolidayClosure } from "@/utils/businessHours";
 
 interface WaitlistPreference {
   id: string;
@@ -15,11 +17,22 @@ interface WaitlistPreference {
   enabled: boolean;
 }
 
+interface VenueSettings {
+  business_hours?: Record<string, BusinessHours>;
+  holiday_closures?: HolidayClosure[];
+  grace_periods?: {
+    last_reservation: number;
+    last_order: number;
+    last_waitlist_join: number;
+  };
+}
+
 export default function WaitlistJoin() {
   const { venueId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [venue, setVenue] = useState<{ name: string; address?: string } | null>(null);
+  const [venueSettings, setVenueSettings] = useState<VenueSettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [partySize, setPartySize] = useState(2);
@@ -37,7 +50,7 @@ export default function WaitlistJoin() {
 
       const { data, error } = await supabase
         .from("venues")
-        .select("name, address, waitlist_preferences")
+        .select("name, address, waitlist_preferences, settings")
         .eq("id", venueId)
         .single();
 
@@ -52,6 +65,7 @@ export default function WaitlistJoin() {
       }
 
       setVenue(data);
+      setVenueSettings(data.settings as VenueSettings | null);
       
       // Set available preferences from venue settings
       console.log("Raw venue data:", data);
@@ -146,7 +160,10 @@ export default function WaitlistJoin() {
           </CardTitle>
           <p className="text-lg font-semibold">{venue?.name}</p>
           {venue?.address && (
-            <p className="text-sm text-muted-foreground">{venue.address}</p>
+            <p className="text-sm text-muted-foreground mb-4">{venue.address}</p>
+          )}
+          {venueId && (
+            <PatronBusynessIndicator venueId={venueId} settings={venueSettings} />
           )}
         </CardHeader>
         <CardContent className="space-y-6">
