@@ -132,6 +132,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   // Fetch orders function (defined outside useEffect so subscription can use it)
   const fetchOrders = async () => {
     // Build query based on showRejected state
+    // Always filter out merchant_dismissed orders
     const query = supabase
       .from("orders")
       .select(`
@@ -141,7 +142,8 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
           feedback_text
         )
       `)
-      .eq("venue_id", venueId);
+      .eq("venue_id", venueId)
+      .eq("merchant_dismissed", false);
 
     if (showRejected) {
       // Show only rejected orders (invalid order numbers), most recent first
@@ -223,6 +225,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
           
           // Remove order from list if it no longer matches display criteria
           const shouldRemove = 
+            payload.new.merchant_dismissed === true ||
             (['rejected', 'cancelled', 'no_show'].includes(payload.new.status) && !showRejected) ||
             (payload.new.status === 'collected' && !payload.new.awaiting_merchant_confirmation);
           
@@ -656,7 +659,8 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
       .from("orders")
       .select("id")
       .eq("venue_id", venueId)
-      .eq("status", "rejected");
+      .eq("status", "rejected")
+      .eq("merchant_dismissed", false);
 
     if (!rejectedOrders || rejectedOrders.length === 0) {
       toast({
@@ -666,12 +670,13 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
       return;
     }
 
-    // Delete the orders
+    // Soft-delete by setting merchant_dismissed = true (instead of deleting)
     const { error } = await supabase
       .from("orders")
-      .delete()
+      .update({ merchant_dismissed: true })
       .eq("venue_id", venueId)
-      .eq("status", "rejected");
+      .eq("status", "rejected")
+      .eq("merchant_dismissed", false);
 
     if (error) {
       toast({
@@ -682,13 +687,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
       return;
     }
 
-    // Delete their analytics records
-    const orderIds = rejectedOrders.map(o => o.id);
-    await supabase
-      .from("order_analytics")
-      .delete()
-      .in("order_id", orderIds);
-
+    // Immediately remove from local state
     setOrders(prevOrders => prevOrders.filter(o => o.status !== 'rejected'));
     setShowRejected(false); // Switch back to active view
 
