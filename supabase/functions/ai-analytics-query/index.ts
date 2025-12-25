@@ -177,64 +177,24 @@ Return a JSON object with this structure:
 
     console.log('Executing SQL:', sql);
 
-    // Execute the query
-    const { data: queryResult, error: queryError } = await supabase.rpc('', {}).then(() => {
-      // Use raw SQL through Supabase
-      return { data: null, error: null };
-    });
-
-    // Actually execute via fetch to REST API with custom query
-    const queryUrl = `${SUPABASE_URL}/rest/v1/rpc/`;
-    
-    // For complex queries, we need to use the SQL endpoint or create an RPC function
-    // For now, let's try to translate common queries to Supabase client methods
-    // This is a simplified approach - a production system would use a proper SQL execution method
-    
     let results: any[] = [];
     let queryExecutionError = null;
 
     try {
-      // Execute the query using postgres connection
-      const pgResponse = await fetch(`${SUPABASE_URL}/rest/v1/rpc/`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${SUPABASE_SERVICE_ROLE_KEY}`,
-          'apikey': SUPABASE_SERVICE_ROLE_KEY,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({}),
+      // Use the secure RPC function to execute the query
+      const { data, error } = await supabase.rpc('execute_readonly_query', {
+        query_text: sql
       });
-      
-      // Since we can't run arbitrary SQL through the REST API, let's use a workaround
-      // We'll interpret common query patterns and use the Supabase client
-      
-      // Try to execute using raw SQL if available via a database function
-      // For now, return the SQL and let the client know we need a proper execution method
-      
-      // Actually, let's use postgREST query builder for simple cases
-      const simpleMatch = sql.match(/SELECT\s+(.+)\s+FROM\s+(\w+)(?:\s+WHERE\s+(.+))?(?:\s+ORDER BY\s+(.+))?(?:\s+LIMIT\s+(\d+))?/i);
-      
-      if (simpleMatch) {
-        const [, columns, tableName, whereClause, orderClause, limitClause] = simpleMatch;
-        let query = supabase.from(tableName).select(columns.includes('*') ? '*' : columns);
-        
-        if (limitClause) {
-          query = query.limit(parseInt(limitClause));
-        } else {
-          query = query.limit(100);
-        }
-        
-        const { data, error } = await query;
-        if (error) {
-          queryExecutionError = error.message;
-        } else {
-          results = data || [];
-        }
+
+      if (error) {
+        console.error('Query execution error:', error);
+        queryExecutionError = error.message;
       } else {
-        // For complex queries, return the SQL for manual execution
-        queryExecutionError = 'Complex query - please execute manually in SQL editor';
+        results = Array.isArray(data) ? data : [];
+        console.log('Query returned', results.length, 'results');
       }
     } catch (e) {
+      console.error('Query execution exception:', e);
       queryExecutionError = e instanceof Error ? e.message : 'Query execution failed';
     }
 
