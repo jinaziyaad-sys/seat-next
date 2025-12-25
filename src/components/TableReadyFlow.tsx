@@ -1113,9 +1113,14 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   };
 
   const handleSkipRating = async () => {
-    setTimeout(() => {
-      onBack();
-    }, 500);
+    // Mark the waitlist entry as dismissed so it disappears from the patron's list
+    if (waitlistEntry?.id) {
+      await supabase
+        .from('waitlist_entries')
+        .update({ patron_dismissed: true })
+        .eq('id', waitlistEntry.id);
+    }
+    onBack();
   };
 
   // Debug render state
