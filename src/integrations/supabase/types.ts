@@ -921,6 +921,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      analytics_avg_wait_time_all_time: {
+        Args: never
+        Returns: {
+          avg_wait_time_minutes: number
+        }[]
+      }
+      analytics_top_venue_orders_last_7_days: {
+        Args: { p_limit?: number }
+        Returns: {
+          total_orders: number
+          venue_name: string
+        }[]
+      }
+      analytics_top_venue_orders_this_week: {
+        Args: { p_limit?: number }
+        Returns: {
+          total_orders: number
+          venue_name: string
+        }[]
+      }
       calculate_dynamic_prep_time: {
         Args: {
           p_current_load?: number
@@ -955,7 +975,6 @@ export type Database = {
       }
       cancel_expired_ready_entries: { Args: never; Returns: undefined }
       cleanup_expired_otps: { Args: never; Returns: undefined }
-      execute_readonly_query: { Args: { query_text: string }; Returns: Json }
       get_occupied_tables: {
         Args: {
           p_buffer_minutes?: number
