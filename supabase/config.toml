@@ -74,3 +74,6 @@ verify_jwt = true
 
 [functions.help-assistant]
 verify_jwt = false
+
+[functions.dev-ai-control]
+verify_jwt = true
