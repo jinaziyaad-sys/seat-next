@@ -487,6 +487,7 @@ export type Database = {
           occurrence_count: number | null
           resolved_at: string | null
           route: string | null
+          screenshot_url: string | null
           source: string | null
           stack_trace: string | null
           status: string
@@ -509,6 +510,7 @@ export type Database = {
           occurrence_count?: number | null
           resolved_at?: string | null
           route?: string | null
+          screenshot_url?: string | null
           source?: string | null
           stack_trace?: string | null
           status?: string
@@ -531,6 +533,7 @@ export type Database = {
           occurrence_count?: number | null
           resolved_at?: string | null
           route?: string | null
+          screenshot_url?: string | null
           source?: string | null
           stack_trace?: string | null
           status?: string
