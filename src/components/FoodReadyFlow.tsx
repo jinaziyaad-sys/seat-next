@@ -73,6 +73,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const { toast } = useToast();
   const soundStartedRef = useRef(false);
+  const submittingRef = useRef(false);
 
   // Play sound when order is ready (on mount or status change)
   useEffect(() => {
@@ -406,74 +407,75 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
 
 
   const handleOrderSubmit = async () => {
-    if (isSubmitting) return; // Prevent duplicate submissions
-    
-    if (!orderNumber.trim() || !selectedVenue) {
-      toast({
-        title: "Missing Information",
-        description: "Please enter your order number",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    if (!userId) {
-      toast({
-        title: "Authentication Required",
-        description: "Please sign in to track your order",
-        variant: "default",
-        action: (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={() => window.location.href = '/auth'}
-          >
-            Sign In
-          </Button>
-        ),
-      });
-      return;
-    }
-
-    const venue = venues.find(v => v.name === selectedVenue);
-    if (!venue) {
-      toast({
-        title: "Error",
-        description: "Venue not found",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    // Check for duplicate orders within the refresh window
-    const refreshMinutes = venue.settings?.order_number_refresh_minutes || 15;
-    const refreshTime = new Date(Date.now() - refreshMinutes * 60 * 1000);
-
-    const { data: existingOrders, error: duplicateError } = await supabase
-      .from('orders')
-      .select('id, created_at, status')
-      .eq('venue_id', venue.id)
-      .eq('order_number', orderNumber.toUpperCase())
-      .gte('created_at', refreshTime.toISOString());
-
-    if (duplicateError) {
-      console.error('Error checking for duplicates:', duplicateError);
-    }
-
-    if (existingOrders && existingOrders.length > 0) {
-      const minutesAgo = Math.round((Date.now() - new Date(existingOrders[0].created_at).getTime()) / 60000);
-      const minutesRemaining = refreshMinutes - minutesAgo;
-      toast({
-        title: "Duplicate Order",
-        description: `Order #${orderNumber.toUpperCase()} was already used ${minutesAgo} minute${minutesAgo !== 1 ? 's' : ''} ago. Please wait ${minutesRemaining} more minute${minutesRemaining !== 1 ? 's' : ''} before reusing this number.`,
-        variant: "destructive"
-      });
-      return;
-    }
-
+    // Synchronous ref check + state check for bulletproof duplicate prevention
+    if (submittingRef.current || isSubmitting) return;
+    submittingRef.current = true;
     setIsSubmitting(true);
     
     try {
+      if (!orderNumber.trim() || !selectedVenue) {
+        toast({
+          title: "Missing Information",
+          description: "Please enter your order number",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!userId) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to track your order",
+          variant: "default",
+          action: (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.location.href = '/auth'}
+            >
+              Sign In
+            </Button>
+          ),
+        });
+        return;
+      }
+
+      const venue = venues.find(v => v.name === selectedVenue);
+      if (!venue) {
+        toast({
+          title: "Error",
+          description: "Venue not found",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Check for duplicate orders within the refresh window
+      const refreshMinutes = venue.settings?.order_number_refresh_minutes || 15;
+      const refreshTime = new Date(Date.now() - refreshMinutes * 60 * 1000);
+
+      const { data: existingOrders, error: duplicateError } = await supabase
+        .from('orders')
+        .select('id, created_at, status')
+        .eq('venue_id', venue.id)
+        .eq('order_number', orderNumber.toUpperCase())
+        .gte('created_at', refreshTime.toISOString());
+
+      if (duplicateError) {
+        console.error('Error checking for duplicates:', duplicateError);
+      }
+
+      if (existingOrders && existingOrders.length > 0) {
+        const minutesAgo = Math.round((Date.now() - new Date(existingOrders[0].created_at).getTime()) / 60000);
+        const minutesRemaining = refreshMinutes - minutesAgo;
+        toast({
+          title: "Duplicate Order",
+          description: `Order #${orderNumber.toUpperCase()} was already used ${minutesAgo} minute${minutesAgo !== 1 ? 's' : ''} ago. Please wait ${minutesRemaining} more minute${minutesRemaining !== 1 ? 's' : ''} before reusing this number.`,
+          variant: "destructive"
+        });
+        return;
+      }
+
       // Calculate dynamic ETA using edge function
       let calculatedEta = new Date();
       let confidence = 'low';
@@ -555,6 +557,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
         description: "Waiting for kitchen to verify your order...",
       });
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
