@@ -119,19 +119,31 @@ export function usePlatformConfig(): UsePlatformConfigReturn {
   }, []);
 
   const updateConfig = useCallback(async (key: string, value: any): Promise<boolean> => {
+    // Optimistic update - immediately update local state
+    const previousConfigs = [...configs];
+    const newValue = typeof value === 'boolean' ? String(value) : value;
+    
+    setConfigs(prev => prev.map(config => 
+      config.key === key 
+        ? { ...config, value: newValue, updated_at: new Date().toISOString() }
+        : config
+    ));
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
       const { error } = await supabase
         .from('platform_config')
         .update({ 
-          value: typeof value === 'boolean' ? String(value) : value,
+          value: newValue,
           updated_by: user?.id,
           updated_at: new Date().toISOString()
         })
         .eq('key', key);
 
       if (error) {
+        // Rollback on failure
+        setConfigs(previousConfigs);
         console.error('Error updating config:', error);
         toast({
           variant: 'destructive',
@@ -148,10 +160,12 @@ export function usePlatformConfig(): UsePlatformConfigReturn {
 
       return true;
     } catch (error) {
+      // Rollback on failure
+      setConfigs(previousConfigs);
       console.error('Error updating config:', error);
       return false;
     }
-  }, [toast]);
+  }, [toast, configs]);
 
   useEffect(() => {
     fetchConfigs();
