@@ -4,11 +4,12 @@ import { usePlatformConfig, Announcement } from '@/hooks/usePlatformConfig';
 import { FeatureFlagsPanel } from './FeatureFlagsPanel';
 import { AnnouncementsPanel } from './AnnouncementsPanel';
 import { DevAIAssistant } from './DevAIAssistant';
+import { AIOperationsCenter } from './AIOperationsCenter';
 import { Loader2 } from 'lucide-react';
 
 export function AIControlCenter() {
   const { configs, features, announcement, loading, updateConfig } = usePlatformConfig();
-  const [activeTab, setActiveTab] = useState('ai');
+  const [activeTab, setActiveTab] = useState('operations');
 
   const handleToggleFeature = async (key: string, value: boolean) => {
     await updateConfig(key, value);
@@ -52,11 +53,16 @@ export function AIControlCenter() {
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="ai">AI Assistant</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4">
+          <TabsTrigger value="operations">AI Operations</TabsTrigger>
+          <TabsTrigger value="ai">Config Assistant</TabsTrigger>
           <TabsTrigger value="features">Feature Flags</TabsTrigger>
           <TabsTrigger value="announcements">Announcements</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="operations">
+          <AIOperationsCenter />
+        </TabsContent>
 
         <TabsContent value="ai">
           <DevAIAssistant configs={configs} onExecuteAction={handleExecuteAIAction} />
