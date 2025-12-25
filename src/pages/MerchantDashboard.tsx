@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMerchantAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
@@ -16,6 +16,16 @@ import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId, playPatronArrivedSound } from "@/utils/notificationSound";
 import { toast as sonnerToast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 const MerchantDashboard = () => {
   const { userRole, loading } = useMerchantAuth();
@@ -23,6 +33,12 @@ const MerchantDashboard = () => {
   const [venueServiceTypes, setVenueServiceTypes] = useState<string[]>([]);
   const [venueData, setVenueData] = useState<any>(null);
   const [loadingVenue, setLoadingVenue] = useState(true);
+  
+  // Tab and unsaved changes state
+  const [activeTab, setActiveTab] = useState<string>("");
+  const [settingsHasUnsavedChanges, setSettingsHasUnsavedChanges] = useState(false);
+  const [pendingTabChange, setPendingTabChange] = useState<string | null>(null);
+  const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
 
   // Fetch venue data
   useEffect(() => {
@@ -166,6 +182,36 @@ const MerchantDashboard = () => {
   const hasFoodReady = venueServiceTypes.includes("food_ready");
   const hasTableReady = venueServiceTypes.includes("table_ready");
 
+  // Set initial tab when service types are loaded
+  useEffect(() => {
+    if (!activeTab && venueServiceTypes.length > 0) {
+      setActiveTab(hasFoodReady ? "kitchen" : "waitlist");
+    }
+  }, [venueServiceTypes, activeTab, hasFoodReady]);
+
+  // Handle tab change with unsaved changes check
+  const handleTabChange = useCallback((newTab: string) => {
+    if (activeTab === "settings" && settingsHasUnsavedChanges && newTab !== "settings") {
+      setPendingTabChange(newTab);
+      setShowUnsavedDialog(true);
+    } else {
+      setActiveTab(newTab);
+    }
+  }, [activeTab, settingsHasUnsavedChanges]);
+
+  const handleDiscardAndChangeTab = useCallback(() => {
+    setShowUnsavedDialog(false);
+    if (pendingTabChange) {
+      setActiveTab(pendingTabChange);
+      setPendingTabChange(null);
+    }
+  }, [pendingTabChange]);
+
+  const handleStayOnSettings = useCallback(() => {
+    setShowUnsavedDialog(false);
+    setPendingTabChange(null);
+  }, []);
+
   if (loading || !userRole || loadingVenue) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -205,7 +251,7 @@ const MerchantDashboard = () => {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto p-6">
-        <Tabs defaultValue={hasFoodReady ? "kitchen" : "waitlist"} className="space-y-6">
+        <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className={`grid w-full ${
             userRole.role === "admin" 
               ? (hasFoodReady && hasTableReady ? "grid-cols-6" : 
@@ -277,6 +323,7 @@ const MerchantDashboard = () => {
                   venue={userRole.venue_name!} 
                   venueId={userRole.venue_id!}
                   serviceTypes={venueServiceTypes}
+                  onUnsavedChangesChange={setSettingsHasUnsavedChanges}
                 />
               </TabsContent>
 
@@ -325,6 +372,26 @@ const MerchantDashboard = () => {
           )}
         </Tabs>
       </div>
+
+      {/* Unsaved Changes Dialog */}
+      <AlertDialog open={showUnsavedDialog} onOpenChange={setShowUnsavedDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes in Settings. Are you sure you want to leave without saving?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleStayOnSettings}>
+              Stay on Settings
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleDiscardAndChangeTab}>
+              Discard & Leave
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

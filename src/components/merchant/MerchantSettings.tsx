@@ -35,15 +35,19 @@ interface TableConfig {
   name: string;
 }
 
+interface MerchantSettingsProps {
+  venue: string;
+  venueId: string;
+  serviceTypes?: string[];
+  onUnsavedChangesChange?: (hasChanges: boolean) => void;
+}
+
 export const MerchantSettings = ({ 
   venue, 
   venueId, 
-  serviceTypes = ["food_ready", "table_ready"] 
-}: { 
-  venue: string; 
-  venueId: string;
-  serviceTypes?: string[];
-}) => {
+  serviceTypes = ["food_ready", "table_ready"],
+  onUnsavedChangesChange
+}: MerchantSettingsProps) => {
   const hasFoodReady = serviceTypes.includes("food_ready");
   const hasTableReady = serviceTypes.includes("table_ready");
   const [settings, setSettings] = useState({
@@ -120,12 +124,17 @@ export const MerchantSettings = ({
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  // Track changes after initial load
+  // Track changes after initial load and notify parent
   useEffect(() => {
     if (!isInitialLoad) {
       setHasUnsavedChanges(true);
     }
   }, [settings, businessHours, waitlistPreferences, holidayClosures, gracePeriods, autoCleanupRejected, tableConfiguration]);
+
+  // Notify parent of unsaved changes state
+  useEffect(() => {
+    onUnsavedChangesChange?.(hasUnsavedChanges);
+  }, [hasUnsavedChanges, onUnsavedChangesChange]);
 
   useEffect(() => {
     const fetchVenueSettings = async () => {
