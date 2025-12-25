@@ -21,17 +21,6 @@ import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
-import { useBlocker } from "react-router-dom";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 interface WaitlistPreference {
   id: string;
@@ -117,12 +106,6 @@ export const MerchantSettings = ({
   const initialTableConfigurationRef = useRef<TableConfig[] | null>(null);
 
   const { toast } = useToast();
-
-  // Block navigation when there are unsaved changes
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      hasUnsavedChanges && currentLocation.pathname !== nextLocation.pathname
-  );
 
   // Browser beforeunload warning
   useEffect(() => {
@@ -389,10 +372,6 @@ export const MerchantSettings = ({
     });
   }, [toast]);
 
-  const handleSaveAndLeave = async () => {
-    await handleSaveAll();
-    blocker.proceed?.();
-  };
 
   const handleInputChange = (key: string, value: string | boolean) => {
     setSettings(prev => ({ ...prev, [key]: value }));
@@ -1199,28 +1178,6 @@ export const MerchantSettings = ({
         </div>
       )}
 
-      {/* Navigation Warning Dialog */}
-      <AlertDialog open={blocker.state === "blocked"}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
-            <AlertDialogDescription>
-              You have unsaved changes that will be lost if you leave this page. What would you like to do?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
-            <AlertDialogCancel onClick={() => blocker.reset?.()}>
-              Stay on Page
-            </AlertDialogCancel>
-            <Button variant="outline" onClick={() => blocker.proceed?.()}>
-              Discard & Leave
-            </Button>
-            <Button onClick={handleSaveAndLeave}>
-              Save & Leave
-            </Button>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };
