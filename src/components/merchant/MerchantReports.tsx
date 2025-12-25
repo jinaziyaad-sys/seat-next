@@ -12,6 +12,7 @@ import { useToast } from "@/hooks/use-toast";
 import { RatingsView } from "./RatingsView";
 import { CustomerInsights } from "./CustomerInsights";
 import { OperationsEfficiency } from "./OperationsEfficiency";
+import { CancellationHistory } from "./CancellationHistory";
 import { MerchantExport } from "./MerchantExport";
 import { SmartInsights } from "./SmartInsights";
 import * as XLSX from 'xlsx';
@@ -725,6 +726,8 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
                 />
               </CardContent>
             </Card>
+
+            <CancellationHistory venueId={venue.id} />
           </div>
         </TabsContent>
 
