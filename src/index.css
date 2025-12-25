@@ -36,6 +36,9 @@ All colors MUST be HSL.
     --card: 0 0% 100%;
     --card-foreground: 24 45% 25%;
     
+    --popover: 0 0% 100%;
+    --popover-foreground: 24 45% 25%;
+    
     --border: 39 33% 85%;
     --input: 39 33% 93%;
     --ring: 14 100% 60%;
@@ -105,6 +108,9 @@ All colors MUST be HSL.
     
     --card: 24 25% 15%;
     --card-foreground: 39 33% 95%;
+    
+    --popover: 24 25% 18%;
+    --popover-foreground: 39 33% 95%;
     
     --border: 24 20% 25%;
     --input: 24 20% 20%;
