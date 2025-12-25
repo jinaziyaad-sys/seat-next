@@ -16,6 +16,7 @@ import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId, playPatronArrivedSound } from "@/utils/notificationSound";
 import { toast as sonnerToast } from "sonner";
+import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,6 +40,37 @@ const MerchantDashboard = () => {
   const [settingsHasUnsavedChanges, setSettingsHasUnsavedChanges] = useState(false);
   const [pendingTabChange, setPendingTabChange] = useState<string | null>(null);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
+  
+  // Help system state
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpTab, setHelpTab] = useState<'faq' | 'chat' | 'tour'>('faq');
+  const [tourOpen, setTourOpen] = useState(false);
+  const [showTourPulse, setShowTourPulse] = useState(false);
+
+  // Check if first visit for tour
+  useEffect(() => {
+    const hasSeenTour = localStorage.getItem('merchantTourCompleted');
+    if (!hasSeenTour && userRole?.role === 'admin') {
+      setShowTourPulse(true);
+    }
+  }, [userRole?.role]);
+
+  const handleStartTour = () => {
+    setTourOpen(true);
+    setShowTourPulse(false);
+  };
+
+  const handleTourComplete = () => {
+    setTourOpen(false);
+    localStorage.setItem('merchantTourCompleted', 'true');
+  };
+
+  const handleHelpNavigate = (target: string) => {
+    setHelpOpen(false);
+    if (['kitchen', 'waitlist', 'reservations', 'staff', 'settings', 'reports'].includes(target)) {
+      handleTabChange(target);
+    }
+  };
 
   // Fetch venue data
   useEffect(() => {
@@ -259,18 +291,18 @@ const MerchantDashboard = () => {
               : (hasFoodReady && hasTableReady ? "grid-cols-3" : hasFoodReady || hasTableReady ? "grid-cols-2" : "grid-cols-1")
           }`}>
             {hasFoodReady && (
-              <TabsTrigger value="kitchen" className="flex items-center gap-2">
+              <TabsTrigger value="kitchen" data-tour="tab-kitchen" className="flex items-center gap-2">
                 <ChefHat size={16} />
                 Kitchen Orders
               </TabsTrigger>
             )}
             {hasTableReady && (
               <>
-                <TabsTrigger value="waitlist" className="flex items-center gap-2">
+                <TabsTrigger value="waitlist" data-tour="tab-waitlist" className="flex items-center gap-2">
                   <Users size={16} />
                   Waitlist
                 </TabsTrigger>
-                <TabsTrigger value="reservations" className="flex items-center gap-2">
+                <TabsTrigger value="reservations" data-tour="tab-reservations" className="flex items-center gap-2">
                   <Calendar size={16} />
                   Reservations
                 </TabsTrigger>
@@ -278,15 +310,15 @@ const MerchantDashboard = () => {
             )}
             {userRole.role === "admin" && (
               <>
-                <TabsTrigger value="staff" className="flex items-center gap-2">
+                <TabsTrigger value="staff" data-tour="tab-staff" className="flex items-center gap-2">
                   <Users size={16} />
                   Staff
                 </TabsTrigger>
-                <TabsTrigger value="settings" className="flex items-center gap-2">
+                <TabsTrigger value="settings" data-tour="tab-settings" className="flex items-center gap-2">
                   <Settings size={16} />
                   Settings
                 </TabsTrigger>
-                <TabsTrigger value="reports" className="flex items-center gap-2">
+                <TabsTrigger value="reports" data-tour="tab-reports" className="flex items-center gap-2">
                   <BarChart3 size={16} />
                   Reports
                 </TabsTrigger>
@@ -392,6 +424,24 @@ const MerchantDashboard = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Help System */}
+      <HelpButton onClick={() => setHelpOpen(true)} showPulse={showTourPulse} />
+      <HelpPanel
+        variant="merchant"
+        isOpen={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        activeTab={helpTab}
+        onTabChange={setHelpTab}
+        onStartTour={handleStartTour}
+        onNavigate={handleHelpNavigate}
+      />
+      <OnboardingTour
+        variant="merchant"
+        isOpen={tourOpen}
+        onClose={() => setTourOpen(false)}
+        onComplete={handleTourComplete}
+      />
     </div>
   );
 };
