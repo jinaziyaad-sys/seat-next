@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,23 +12,15 @@ interface AIControlRequest {
   };
 }
 
-interface ConfigAction {
-  action: 'update_config' | 'create_announcement' | 'clear_announcement' | 'info';
-  key?: string;
-  value?: any;
-  description?: string;
-  confirmationMessage: string;
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
-    if (!openAIApiKey) {
-      throw new Error('OPENAI_API_KEY is not configured');
+    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
+    if (!lovableApiKey) {
+      throw new Error('LOVABLE_API_KEY is not configured');
     }
 
     const { command, context } = await req.json() as AIControlRequest;
@@ -83,27 +74,36 @@ For announcements, use:
 
 If the command is unclear or you can't help, use action: "info" with a helpful message.`;
 
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${openAIApiKey}`,
+        'Authorization': `Bearer ${lovableApiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'gpt-4o-mini',
+        model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: command }
         ],
-        response_format: { type: 'json_object' },
-        max_tokens: 1000,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('OpenAI API error:', response.status, errorText);
-      throw new Error(`OpenAI API error: ${response.status}`);
+      console.error('Lovable AI API error:', response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ 
+            error: 'Rate limit exceeded. Please try again in a moment.',
+            actions: [{ action: 'info', confirmationMessage: 'Too many requests. Please wait a moment and try again.' }]
+          }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      throw new Error(`AI API error: ${response.status}`);
     }
 
     const data = await response.json();
@@ -115,7 +115,15 @@ If the command is unclear or you can't help, use action: "info" with a helpful m
 
     console.log('AI response:', content);
 
-    const parsedResponse = JSON.parse(content);
+    // Parse the JSON response - handle markdown code blocks if present
+    let jsonContent = content;
+    if (content.includes('```json')) {
+      jsonContent = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    } else if (content.includes('```')) {
+      jsonContent = content.replace(/```\n?/g, '').trim();
+    }
+
+    const parsedResponse = JSON.parse(jsonContent);
 
     return new Response(
       JSON.stringify(parsedResponse),
