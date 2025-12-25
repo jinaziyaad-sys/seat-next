@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Clock, Plus, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeSupabaseFunctionWithTimeout } from "@/utils/invokeWithTimeout";
 import { FoodExtensionReasonDialog } from "./FoodExtensionReasonDialog";
 import { initializeAudio, playOrderDueSound, stopSoundForId } from "@/utils/notificationSound";
 import { toast as sonnerToast } from "sonner";
@@ -40,6 +41,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   const [newOrderItems, setNewOrderItems] = useState("");
   const [showRejected, setShowRejected] = useState(false);
   const [addOrderDialogOpen, setAddOrderDialogOpen] = useState(false);
+  const [isAddingOrder, setIsAddingOrder] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelOrderId, setCancelOrderId] = useState<string>("");
   const [cancelReason, setCancelReason] = useState("");
@@ -487,60 +489,110 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   };
 
   const addOrder = async () => {
-    if (!newOrderNumber || !newOrderItems || !venueId) return;
-    
-    const items = newOrderItems.split(",").map(item => ({ name: item.trim() }));
-    
-    // Call edge function to calculate dynamic ETA
-    const { data: etaData, error: etaError } = await supabase.functions.invoke('calculate-order-eta', {
-      body: { 
-        venue_id: venueId, 
-        items, 
-        order_number: newOrderNumber.toUpperCase() 
-      }
-    });
+    const orderNumber = newOrderNumber.trim().toUpperCase();
+    const itemsText = newOrderItems.trim();
 
-    let eta: string;
-    let confidence = 'low';
-    
-    if (etaError || !etaData) {
-      console.error('Error calculating ETA:', etaError);
-      // Fallback to default 15 minutes
-      eta = new Date(Date.now() + 15 * 60000).toISOString();
-    } else {
-      eta = new Date(Date.now() + etaData.eta_minutes * 60000).toISOString();
-      confidence = etaData.confidence;
-      console.log('Dynamic ETA calculated:', etaData);
-    }
-
-    const { error } = await supabase
-      .from("orders")
-      .insert({
-        venue_id: venueId,
-        order_number: newOrderNumber.toUpperCase(),
-        status: "placed",
-        items,
-        eta,
-        original_eta: eta,
-        confidence
-      });
-
-    if (error) {
+    if (!venueId) {
       toast({
         title: "Error",
-        description: "Could not add order",
-        variant: "destructive"
+        description: "Missing venue id",
+        variant: "destructive",
       });
       return;
     }
 
-    setNewOrderNumber("");
-    setNewOrderItems("");
-    setAddOrderDialogOpen(false);
-    toast({
-      title: "Order Added",
-      description: `Order ${newOrderNumber.toUpperCase()} added to kitchen. ETA: ${etaData?.eta_minutes || 15}m (${confidence} confidence)`,
-    });
+    if (!orderNumber) {
+      toast({
+        title: "Order number required",
+        description: "Please enter an order number.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!itemsText) {
+      toast({
+        title: "Items required",
+        description: "Please enter at least one item (comma separated).",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const items = itemsText
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .slice(0, 25)
+      .map((name) => ({ name }));
+
+    if (items.length === 0) {
+      toast({
+        title: "Items required",
+        description: "Please enter at least one valid item.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAddingOrder(true);
+    try {
+      const { data: etaData, error: etaError, timedOut } =
+        await invokeSupabaseFunctionWithTimeout<{
+          eta_minutes: number;
+          confidence?: string;
+        }>(
+          "calculate-order-eta",
+          {
+            venue_id: venueId,
+            items,
+            order_number: orderNumber,
+          },
+          6000,
+        );
+
+      let etaMinutes = 15;
+      let confidence = "low";
+
+      if (!etaError && etaData?.eta_minutes) {
+        etaMinutes = etaData.eta_minutes;
+        confidence = etaData.confidence ?? "low";
+      } else {
+        console.error("Error calculating ETA:", { etaError, timedOut });
+      }
+
+      const eta = new Date(Date.now() + etaMinutes * 60000).toISOString();
+
+      const { error } = await supabase.from("orders").insert({
+        venue_id: venueId,
+        order_number: orderNumber,
+        status: "placed",
+        items,
+        eta,
+        original_eta: eta,
+        confidence,
+      });
+
+      if (error) {
+        console.error("Error inserting order:", error);
+        toast({
+          title: "Error",
+          description: "Could not add order",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setNewOrderNumber("");
+      setNewOrderItems("");
+      setAddOrderDialogOpen(false);
+      toast({
+        title: "Order Added",
+        description: `Order ${orderNumber} added to kitchen. ETA: ${etaMinutes}m (${confidence} confidence)`,
+      });
+    } finally {
+      setIsAddingOrder(false);
+    }
   };
 
   const getStatusColor = (status: Order["status"]) => {
@@ -757,8 +809,8 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
                   placeholder="e.g., Burger, Fries, Coke"
                 />
               </div>
-              <Button onClick={addOrder} className="w-full">
-                Add Order
+              <Button onClick={addOrder} className="w-full" disabled={isAddingOrder}>
+                {isAddingOrder ? "Adding…" : "Add Order"}
               </Button>
             </div>
           </DialogContent>

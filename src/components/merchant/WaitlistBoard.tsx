@@ -11,6 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Clock, Users, Plus, MapPin, Calendar as CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { invokeSupabaseFunctionWithTimeout } from "@/utils/invokeWithTimeout";
 import { differenceInMinutes, format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { TableExtensionReasonDialog } from "./TableExtensionReasonDialog";
@@ -46,6 +47,8 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   const [newCustomerName, setNewCustomerName] = useState("");
   const [newPartySize, setNewPartySize] = useState("2");
   const [newPreferences, setNewPreferences] = useState("");
+  const [addWaitlistDialogOpen, setAddWaitlistDialogOpen] = useState(false);
+  const [isAddingWaitlist, setIsAddingWaitlist] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelEntryId, setCancelEntryId] = useState<string>("");
   const [cancelReason, setCancelReason] = useState("");
@@ -642,61 +645,105 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   };
 
   const addToWaitlist = async () => {
-    if (!newCustomerName || !venueId) return;
-    
-    const preferences = newPreferences ? newPreferences.split(",").map(p => p.trim()) : [];
-    
-    // Call edge function to calculate dynamic ETA
-    const { data: etaData, error: etaError } = await supabase.functions.invoke('calculate-waitlist-eta', {
-      body: { 
-        venue_id: venueId, 
-        party_size: parseInt(newPartySize),
-        preferences
-      }
-    });
+    const customerName = newCustomerName.trim();
+    const partySize = Number.parseInt(newPartySize, 10);
 
-    let eta: string;
-    let confidence = 'low';
-    
-    if (etaError || !etaData) {
-      console.error('Error calculating waitlist ETA:', etaError);
-      // Fallback to default 20 minutes
-      eta = new Date(Date.now() + 20 * 60000).toISOString();
-    } else {
-      eta = new Date(Date.now() + etaData.eta_minutes * 60000).toISOString();
-      confidence = etaData.confidence;
-      console.log('Dynamic waitlist ETA calculated:', etaData);
-    }
-
-    const { error } = await supabase
-      .from("waitlist_entries")
-      .insert({
-        venue_id: venueId,
-        customer_name: newCustomerName,
-        party_size: parseInt(newPartySize),
-        preferences,
-        eta,
-        original_eta: eta,
-        status: "waiting",
-        position: etaData?.position || null
-      });
-
-    if (error) {
+    if (!venueId) {
       toast({
         title: "Error",
-        description: "Could not add to waitlist",
-        variant: "destructive"
+        description: "Missing venue id",
+        variant: "destructive",
       });
       return;
     }
 
-    setNewCustomerName("");
-    setNewPartySize("2");
-    setNewPreferences("");
-    toast({
-      title: "Added to Waitlist",
-      description: `${newCustomerName} added to waitlist. ETA: ${etaData?.eta_minutes || 20}m (${confidence} confidence)`,
-    });
+    if (!customerName) {
+      toast({
+        title: "Customer name required",
+        description: "Please enter a customer name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!Number.isFinite(partySize) || partySize < 1 || partySize > 20) {
+      toast({
+        title: "Invalid party size",
+        description: "Please choose a party size between 1 and 20.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const preferences = newPreferences
+      ? newPreferences
+          .split(",")
+          .map((p) => p.trim())
+          .filter(Boolean)
+          .slice(0, 10)
+      : [];
+
+    setIsAddingWaitlist(true);
+    try {
+      const { data: etaData, error: etaError, timedOut } =
+        await invokeSupabaseFunctionWithTimeout<{
+          eta_minutes: number;
+          confidence?: string;
+          position?: number;
+        }>(
+          "calculate-waitlist-eta",
+          {
+            venue_id: venueId,
+            party_size: partySize,
+            preferences,
+          },
+          6000,
+        );
+
+      let etaMinutes = 20;
+      let confidence = "low";
+
+      if (!etaError && etaData?.eta_minutes) {
+        etaMinutes = etaData.eta_minutes;
+        confidence = etaData.confidence ?? "low";
+      } else {
+        console.error("Error calculating waitlist ETA:", { etaError, timedOut });
+      }
+
+      const eta = new Date(Date.now() + etaMinutes * 60000).toISOString();
+
+      const { error } = await supabase.from("waitlist_entries").insert({
+        venue_id: venueId,
+        customer_name: customerName,
+        party_size: partySize,
+        preferences,
+        eta,
+        original_eta: eta,
+        status: "waiting",
+        position: etaData?.position ?? null,
+      });
+
+      if (error) {
+        console.error("Error inserting waitlist entry:", error);
+        toast({
+          title: "Error",
+          description: "Could not add to waitlist",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      setNewCustomerName("");
+      setNewPartySize("2");
+      setNewPreferences("");
+      setAddWaitlistDialogOpen(false);
+      toast({
+        title: "Added to Waitlist",
+        description: `${customerName} added to waitlist. ETA: ${etaMinutes}m (${confidence} confidence)`,
+      });
+    } finally {
+      setIsAddingWaitlist(false);
+    }
   };
 
   const getStatusColor = (status: WaitlistEntry["status"]) => {
@@ -908,7 +955,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">Walk-in Waitlist</h2>
         <div className="flex gap-2">
-          <Dialog>
+          <Dialog open={addWaitlistDialogOpen} onOpenChange={setAddWaitlistDialogOpen}>
             <DialogTrigger asChild>
               <Button>
                 <Plus size={16} className="mr-2" />
@@ -953,8 +1000,8 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                   placeholder="e.g., Indoor, Non-smoking"
                 />
               </div>
-              <Button onClick={addToWaitlist} className="w-full">
-                Add to Waitlist
+              <Button onClick={addToWaitlist} className="w-full" disabled={isAddingWaitlist}>
+                {isAddingWaitlist ? "Adding…" : "Add to Waitlist"}
               </Button>
             </div>
           </DialogContent>
