@@ -270,6 +270,7 @@ export type Database = {
           id: string
           items: Json
           marked_ready_by_staff_id: string | null
+          merchant_dismissed: boolean
           notes: string | null
           order_number: string
           original_eta: string | null
@@ -293,6 +294,7 @@ export type Database = {
           id?: string
           items?: Json
           marked_ready_by_staff_id?: string | null
+          merchant_dismissed?: boolean
           notes?: string | null
           order_number: string
           original_eta?: string | null
@@ -316,6 +318,7 @@ export type Database = {
           id?: string
           items?: Json
           marked_ready_by_staff_id?: string | null
+          merchant_dismissed?: boolean
           notes?: string | null
           order_number?: string
           original_eta?: string | null
