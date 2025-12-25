@@ -16,6 +16,7 @@ export default function MerchantAuth() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [emailVerificationSent, setEmailVerificationSent] = useState(false);
+  const [showResendOption, setShowResendOption] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -110,10 +111,11 @@ export default function MerchantAuth() {
       if (error.message.includes("Email not confirmed") || error.message.includes("email_not_confirmed")) {
         toast({
           title: "Email Not Verified",
-          description: "Please check your inbox and click the confirmation link.",
+          description: "Please check your inbox and click the confirmation link, or resend it below.",
           variant: "destructive",
         });
-        setEmailVerificationSent(false); // Allow resend
+        setShowResendOption(true);
+        setEmailVerificationSent(false);
       } else {
         toast({
           title: "Error",
@@ -224,15 +226,17 @@ export default function MerchantAuth() {
               {loading ? "Signing in..." : "Sign In"}
             </Button>
             
-            <Button 
-              type="button"
-              variant="ghost" 
-              onClick={handleResendConfirmation}
-              className="w-full"
-              disabled={loading}
-            >
-              Resend Confirmation Email
-            </Button>
+            {showResendOption && (
+              <Button 
+                type="button"
+                variant="ghost" 
+                onClick={handleResendConfirmation}
+                className="w-full"
+                disabled={loading}
+              >
+                Resend Confirmation Email
+              </Button>
+            )}
             
             <p className="text-sm text-muted-foreground text-center mt-4">
               Need access? Contact your venue administrator.
