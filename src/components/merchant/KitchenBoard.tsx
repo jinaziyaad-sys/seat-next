@@ -39,6 +39,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   const [newOrderNumber, setNewOrderNumber] = useState("");
   const [newOrderItems, setNewOrderItems] = useState("");
   const [showRejected, setShowRejected] = useState(false);
+  const [addOrderDialogOpen, setAddOrderDialogOpen] = useState(false);
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
   const [cancelOrderId, setCancelOrderId] = useState<string>("");
   const [cancelReason, setCancelReason] = useState("");
@@ -535,6 +536,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
 
     setNewOrderNumber("");
     setNewOrderItems("");
+    setAddOrderDialogOpen(false);
     toast({
       title: "Order Added",
       description: `Order ${newOrderNumber.toUpperCase()} added to kitchen. ETA: ${etaData?.eta_minutes || 15}m (${confidence} confidence)`,
@@ -724,7 +726,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
           >
             {showRejected ? "Active Orders" : "Rejected Orders"}
           </Button>
-          <Dialog>
+          <Dialog open={addOrderDialogOpen} onOpenChange={setAddOrderDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus size={16} className="mr-2" />
