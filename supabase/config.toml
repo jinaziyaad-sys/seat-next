@@ -86,3 +86,9 @@ verify_jwt = true
 
 [functions.ai-feature-request]
 verify_jwt = true
+
+[functions.send-engagement-nudge]
+verify_jwt = false
+
+[[functions.send-engagement-nudge.cron]]
+schedule = "*/30 * * * *"

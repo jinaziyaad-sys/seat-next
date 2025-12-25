@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import logo from "@/assets/logo.png";
 import { useToast } from "@/hooks/use-toast";
 import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
+import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { 
   playFoodReadySound, 
   playTableReadySound, 
@@ -869,6 +870,9 @@ const Index = () => {
         onClose={() => setTourOpen(false)}
         onComplete={handleTourComplete}
       />
+      
+      {/* Notification Prompt for new users */}
+      {user && <NotificationPrompt />}
     </div>
   );
 };

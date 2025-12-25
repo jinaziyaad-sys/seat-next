@@ -438,6 +438,93 @@ export type Database = {
           },
         ]
       }
+      patron_notification_preferences: {
+        Row: {
+          created_at: string
+          favorite_venue_alerts: boolean
+          id: string
+          max_nudges_per_day: number
+          mealtime_nudges: boolean
+          nudge_frequency: string
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          reengagement_nudges: boolean
+          updated_at: string
+          user_id: string
+          weekend_planning_nudges: boolean
+        }
+        Insert: {
+          created_at?: string
+          favorite_venue_alerts?: boolean
+          id?: string
+          max_nudges_per_day?: number
+          mealtime_nudges?: boolean
+          nudge_frequency?: string
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          reengagement_nudges?: boolean
+          updated_at?: string
+          user_id: string
+          weekend_planning_nudges?: boolean
+        }
+        Update: {
+          created_at?: string
+          favorite_venue_alerts?: boolean
+          id?: string
+          max_nudges_per_day?: number
+          mealtime_nudges?: boolean
+          nudge_frequency?: string
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          reengagement_nudges?: boolean
+          updated_at?: string
+          user_id?: string
+          weekend_planning_nudges?: boolean
+        }
+        Relationships: []
+      }
+      patron_nudge_history: {
+        Row: {
+          body: string
+          clicked: boolean | null
+          created_at: string
+          dismissed_at: string | null
+          id: string
+          nudge_type: string
+          opened_at: string | null
+          sent_at: string
+          title: string
+          user_id: string
+          venue_id: string | null
+        }
+        Insert: {
+          body: string
+          clicked?: boolean | null
+          created_at?: string
+          dismissed_at?: string | null
+          id?: string
+          nudge_type: string
+          opened_at?: string | null
+          sent_at?: string
+          title: string
+          user_id: string
+          venue_id?: string | null
+        }
+        Update: {
+          body?: string
+          clicked?: boolean | null
+          created_at?: string
+          dismissed_at?: string | null
+          id?: string
+          nudge_type?: string
+          opened_at?: string | null
+          sent_at?: string
+          title?: string
+          user_id?: string
+          venue_id?: string | null
+        }
+        Relationships: []
+      }
       platform_config: {
         Row: {
           category: string | null
