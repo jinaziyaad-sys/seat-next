@@ -124,15 +124,13 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     
     const fetchWaitlist = async () => {
       // Fetch waitlist entries for this venue
-      // Exclude: seated (unless awaiting confirmation), no_show, and merchant-acknowledged entries
+      // Exclude: seated, no_show, and merchant-acknowledged entries
       const { data: waitlistData, error: waitlistError } = await supabase
         .from("waitlist_entries")
         .select("*")
         .eq("venue_id", venueId)
         .eq("merchant_acknowledged", false)
-        .not("status", "eq", "no_show")
-        .or("status.neq.seated,awaiting_merchant_confirmation.eq.true")
-        .or("status.neq.cancelled,and(status.eq.cancelled,cancelled_by.eq.patron,ready_at.not.is.null)")
+        .not("status", "in", "(seated,no_show)")
         .order("created_at", { ascending: true });
 
       if (waitlistError) {
@@ -180,7 +178,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
           // Remove entry from list if it no longer matches display criteria
           const shouldRemove = 
             payload.new.status === 'no_show' ||
-            (payload.new.status === 'seated' && !payload.new.awaiting_merchant_confirmation) ||
+            payload.new.status === 'seated' ||
             payload.new.merchant_acknowledged === true;
           
           if (shouldRemove) {
@@ -538,6 +536,11 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       if (currentEntry?.awaiting_merchant_confirmation) {
         updateData.awaiting_merchant_confirmation = true;
       }
+    }
+    
+    // If marking as seated, always set awaiting_merchant_confirmation to false
+    if (newStatus === "seated") {
+      updateData.awaiting_merchant_confirmation = false;
     }
 
     // Optimistic update BEFORE database call to prevent flickering (both waitlist and reservations)
