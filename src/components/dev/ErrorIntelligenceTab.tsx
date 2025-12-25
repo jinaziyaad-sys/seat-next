@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, AlertCircle, Search, Trash2, Copy, Sparkles } from 'lucide-react';
+import { Loader2, AlertCircle, Search, Trash2, Copy, Sparkles, Users, Bot, Store, TrendingUp } from 'lucide-react';
 import { useAIOperations, PlatformError } from '@/hooks/useAIOperations';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -25,12 +25,46 @@ import { toast } from 'sonner';
 export function ErrorIntelligenceTab() {
   const { errors, loading, updateErrorStatus, analyzeError, deleteError } = useAIOperations();
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [selectedError, setSelectedError] = useState<PlatformError | null>(null);
   const [analyzing, setAnalyzing] = useState<string | null>(null);
 
-  const filteredErrors = errors.filter(e => 
-    statusFilter === 'all' || e.status === statusFilter
-  );
+  // Calculate analytics
+  const analytics = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const todayErrors = errors.filter(e => new Date(e.created_at) >= today);
+    const userReported = errors.filter(e => e.source === 'patron' || e.source === 'merchant');
+    const autoCaputured = errors.filter(e => !e.source || e.source === 'auto');
+    const newErrors = errors.filter(e => e.status === 'new');
+    
+    // Group by venue
+    const byVenue = errors.reduce((acc, e) => {
+      if (e.venue_name) {
+        acc[e.venue_name] = (acc[e.venue_name] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    return {
+      total: errors.length,
+      today: todayErrors.length,
+      userReported: userReported.length,
+      autoCaptured: autoCaputured.length,
+      new: newErrors.length,
+      byVenue: Object.entries(byVenue).sort((a, b) => b[1] - a[1]).slice(0, 5),
+    };
+  }, [errors]);
+
+  const filteredErrors = errors.filter(e => {
+    const matchesStatus = statusFilter === 'all' || e.status === statusFilter;
+    const matchesSource = sourceFilter === 'all' || 
+      (sourceFilter === 'user' && (e.source === 'patron' || e.source === 'merchant')) ||
+      (sourceFilter === 'auto' && (!e.source || e.source === 'auto')) ||
+      e.source === sourceFilter;
+    return matchesStatus && matchesSource;
+  });
 
   const handleAnalyze = async (error: PlatformError) => {
     setAnalyzing(error.id);
@@ -44,6 +78,8 @@ export function ErrorIntelligenceTab() {
 
 **Error Type:** ${error.error_type}
 **Error Message:** ${error.error_message}
+**Source:** ${error.source || 'auto'}
+**Venue:** ${error.venue_name || 'N/A'}
 **Route:** ${error.route || 'Unknown'}
 **Component:** ${error.component || 'Unknown'}
 **First Seen:** ${new Date(error.first_seen_at).toLocaleString()}
@@ -76,6 +112,17 @@ ${analysis}
     }
   };
 
+  const getSourceBadge = (source: string | null | undefined) => {
+    switch (source) {
+      case 'patron':
+        return <Badge variant="outline" className="gap-1 border-blue-500/50 text-blue-600"><Users className="h-3 w-3" />Patron</Badge>;
+      case 'merchant':
+        return <Badge variant="outline" className="gap-1 border-orange-500/50 text-orange-600"><Store className="h-3 w-3" />Merchant</Badge>;
+      default:
+        return <Badge variant="outline" className="gap-1 border-muted-foreground/50"><Bot className="h-3 w-3" />Auto</Badge>;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -86,24 +133,91 @@ ${analysis}
 
   return (
     <div className="space-y-4">
+      {/* Analytics Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardDescription className="text-xs">Today</CardDescription>
+            <CardTitle className="text-2xl">{analytics.today}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardDescription className="text-xs flex items-center gap-1">
+              <Users className="h-3 w-3" /> User Reported
+            </CardDescription>
+            <CardTitle className="text-2xl">{analytics.userReported}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardDescription className="text-xs flex items-center gap-1">
+              <Bot className="h-3 w-3" /> Auto-Captured
+            </CardDescription>
+            <CardTitle className="text-2xl">{analytics.autoCaptured}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardDescription className="text-xs flex items-center gap-1">
+              <TrendingUp className="h-3 w-3" /> New Issues
+            </CardDescription>
+            <CardTitle className="text-2xl text-destructive">{analytics.new}</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+
+      {/* Issues by Venue (if any) */}
+      {analytics.byVenue.length > 0 && (
+        <Card>
+          <CardHeader className="py-3 px-4">
+            <CardTitle className="text-sm">Issues by Venue</CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0 px-4 pb-3">
+            <div className="flex flex-wrap gap-2">
+              {analytics.byVenue.map(([venue, count]) => (
+                <Badge key={venue} variant="secondary" className="gap-1">
+                  {venue}: {count}
+                </Badge>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Filters */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <AlertCircle className="h-5 w-5 text-destructive" />
           <h3 className="font-semibold">Error Intelligence</h3>
           <Badge variant="outline">{errors.length} total</Badge>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[150px]">
-            <SelectValue placeholder="Filter status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Status</SelectItem>
-            <SelectItem value="new">New</SelectItem>
-            <SelectItem value="investigating">Investigating</SelectItem>
-            <SelectItem value="resolved">Resolved</SelectItem>
-            <SelectItem value="ignored">Ignored</SelectItem>
-          </SelectContent>
-        </Select>
+        <div className="flex items-center gap-2">
+          <Select value={sourceFilter} onValueChange={setSourceFilter}>
+            <SelectTrigger className="w-[130px]">
+              <SelectValue placeholder="Filter source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Sources</SelectItem>
+              <SelectItem value="user">User Reported</SelectItem>
+              <SelectItem value="auto">Auto-Captured</SelectItem>
+              <SelectItem value="patron">Patron Only</SelectItem>
+              <SelectItem value="merchant">Merchant Only</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[130px]">
+              <SelectValue placeholder="Filter status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="new">New</SelectItem>
+              <SelectItem value="investigating">Investigating</SelectItem>
+              <SelectItem value="resolved">Resolved</SelectItem>
+              <SelectItem value="ignored">Ignored</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {filteredErrors.length === 0 ? (
@@ -112,7 +226,7 @@ ${analysis}
             <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">No errors captured yet</p>
             <p className="text-sm text-muted-foreground mt-1">
-              Runtime errors will appear here automatically
+              Runtime errors and user reports will appear here
             </p>
           </CardContent>
         </Card>
@@ -124,13 +238,19 @@ ${analysis}
                 <CardHeader className="py-3 px-4">
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <Badge variant={getStatusColor(error.status)}>
                           {error.status}
                         </Badge>
+                        {getSourceBadge(error.source)}
                         <Badge variant="outline">{error.error_type}</Badge>
                         {error.occurrence_count > 1 && (
                           <Badge variant="secondary">×{error.occurrence_count}</Badge>
+                        )}
+                        {error.venue_name && (
+                          <Badge variant="secondary" className="text-xs">
+                            📍 {error.venue_name}
+                          </Badge>
                         )}
                       </div>
                       <CardTitle className="text-sm font-mono truncate">
@@ -213,13 +333,17 @@ ${analysis}
               </DialogHeader>
 
               <div className="space-y-4">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <Badge variant={getStatusColor(selectedError.status)}>
                     {selectedError.status}
                   </Badge>
+                  {getSourceBadge(selectedError.source)}
                   <Badge variant="outline">{selectedError.error_type}</Badge>
                   {selectedError.route && (
                     <Badge variant="secondary">📍 {selectedError.route}</Badge>
+                  )}
+                  {selectedError.venue_name && (
+                    <Badge variant="secondary">🏪 {selectedError.venue_name}</Badge>
                   )}
                 </div>
 
@@ -244,7 +368,7 @@ ${analysis}
                   </div>
                 )}
 
-                <div className="flex items-center gap-2 pt-2">
+                <div className="flex items-center gap-2 pt-2 flex-wrap">
                   <Select 
                     value={selectedError.status} 
                     onValueChange={(value) => updateErrorStatus(selectedError.id, value as PlatformError['status'])}

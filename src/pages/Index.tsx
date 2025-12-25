@@ -17,6 +17,7 @@ import { format } from "date-fns";
 import logo from "@/assets/logo.png";
 import { useToast } from "@/hooks/use-toast";
 import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
+import { ReportIssueButton } from "@/components/ReportIssueButton";
 import { 
   playFoodReadySound, 
   playTableReadySound, 
@@ -850,8 +851,11 @@ const Index = () => {
         }}
       />
 
-      {/* Help System */}
-      <HelpButton onClick={() => setHelpOpen(true)} showPulse={showTourPulse} />
+      {/* Report Issue & Help System */}
+      <div className="fixed bottom-4 right-4 flex items-center gap-2 z-50">
+        <ReportIssueButton source="patron" />
+        <HelpButton onClick={() => setHelpOpen(true)} showPulse={showTourPulse} />
+      </div>
       <HelpPanel
         variant="patron"
         isOpen={helpOpen}

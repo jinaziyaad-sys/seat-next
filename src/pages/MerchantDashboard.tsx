@@ -18,6 +18,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId, playPatronArrivedSound } from "@/utils/notificationSound";
 import { toast as sonnerToast } from "sonner";
 import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
+import { ReportIssueButton } from "@/components/ReportIssueButton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -450,8 +451,11 @@ const MerchantDashboard = () => {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Help System */}
-      <HelpButton onClick={() => setHelpOpen(true)} showPulse={showTourPulse} />
+      {/* Report Issue & Help System */}
+      <div className="fixed bottom-4 right-4 flex items-center gap-2 z-50">
+        <ReportIssueButton source="merchant" venueId={userRole.venue_id!} venueName={userRole.venue_name!} />
+        <HelpButton onClick={() => setHelpOpen(true)} showPulse={showTourPulse} />
+      </div>
       <HelpPanel
         variant="merchant"
         isOpen={helpOpen}

@@ -482,13 +482,17 @@ export type Database = {
           error_type: string
           first_seen_at: string
           id: string
+          issue_category: string | null
           last_seen_at: string
           occurrence_count: number | null
           resolved_at: string | null
           route: string | null
+          source: string | null
           stack_trace: string | null
           status: string
           user_id: string | null
+          venue_id: string | null
+          venue_name: string | null
         }
         Insert: {
           ai_analysis?: Json | null
@@ -500,13 +504,17 @@ export type Database = {
           error_type: string
           first_seen_at?: string
           id?: string
+          issue_category?: string | null
           last_seen_at?: string
           occurrence_count?: number | null
           resolved_at?: string | null
           route?: string | null
+          source?: string | null
           stack_trace?: string | null
           status?: string
           user_id?: string | null
+          venue_id?: string | null
+          venue_name?: string | null
         }
         Update: {
           ai_analysis?: Json | null
@@ -518,13 +526,17 @@ export type Database = {
           error_type?: string
           first_seen_at?: string
           id?: string
+          issue_category?: string | null
           last_seen_at?: string
           occurrence_count?: number | null
           resolved_at?: string | null
           route?: string | null
+          source?: string | null
           stack_trace?: string | null
           status?: string
           user_id?: string | null
+          venue_id?: string | null
+          venue_name?: string | null
         }
         Relationships: []
       }
