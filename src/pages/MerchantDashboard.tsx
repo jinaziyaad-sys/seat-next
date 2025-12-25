@@ -18,7 +18,6 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId, playPatronArrivedSound } from "@/utils/notificationSound";
 import { toast as sonnerToast } from "sonner";
 import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
-import { ReportIssueButton } from "@/components/ReportIssueButton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,7 +45,7 @@ const MerchantDashboard = () => {
   
   // Help system state
   const [helpOpen, setHelpOpen] = useState(false);
-  const [helpTab, setHelpTab] = useState<'faq' | 'chat' | 'tour'>('faq');
+  const [helpTab, setHelpTab] = useState<'faq' | 'chat' | 'tour' | 'report'>('faq');
   const [tourOpen, setTourOpen] = useState(false);
   const [showTourPulse, setShowTourPulse] = useState(false);
 
@@ -452,8 +451,7 @@ const MerchantDashboard = () => {
       </AlertDialog>
 
       {/* Report Issue & Help System */}
-      <div className="fixed bottom-4 right-4 flex items-center gap-2 z-50">
-        <ReportIssueButton source="merchant" venueId={userRole.venue_id!} venueName={userRole.venue_name!} />
+      <div className="fixed bottom-4 right-4 z-50">
         <HelpButton onClick={() => setHelpOpen(true)} showPulse={showTourPulse} />
       </div>
       <HelpPanel
@@ -464,6 +462,8 @@ const MerchantDashboard = () => {
         onTabChange={setHelpTab}
         onStartTour={handleStartTour}
         onNavigate={handleHelpNavigate}
+        venueId={userRole.venue_id!}
+        venueName={userRole.venue_name!}
       />
       <OnboardingTour
         variant="merchant"
