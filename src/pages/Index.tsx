@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon } from "lucide-react";
+import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon, AlertTriangle, Info, X, Wrench } from "lucide-react";
+import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
@@ -38,8 +39,10 @@ const Index = () => {
     venueId: string;
     venueName: string;
   } | null>(null);
+  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { announcement, features } = usePlatformConfig();
   
   // Help system state
   const [helpOpen, setHelpOpen] = useState(false);
@@ -395,8 +398,45 @@ const Index = () => {
     );
   }
 
+  // Get announcement icon based on type
+  const getAnnouncementIcon = (type: string) => {
+    switch (type) {
+      case 'maintenance': return Wrench;
+      case 'warning': return AlertTriangle;
+      case 'error': return AlertTriangle;
+      default: return Info;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Announcement Banner */}
+      {announcement && !announcementDismissed && (
+        <div className={cn(
+          "px-4 py-3 flex items-center gap-3",
+          announcement.type === 'maintenance' && "bg-amber-500/20 text-amber-100 border-b border-amber-500/30",
+          announcement.type === 'warning' && "bg-yellow-500/20 text-yellow-100 border-b border-yellow-500/30",
+          announcement.type === 'error' && "bg-red-500/20 text-red-100 border-b border-red-500/30",
+          announcement.type === 'info' && "bg-blue-500/20 text-blue-100 border-b border-blue-500/30"
+        )}>
+          {(() => {
+            const IconComponent = getAnnouncementIcon(announcement.type);
+            return <IconComponent className="h-5 w-5 shrink-0" />;
+          })()}
+          <p className="text-sm flex-1">{announcement.message}</p>
+          {announcement.dismissible && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 shrink-0 hover:bg-white/10"
+              onClick={() => setAnnouncementDismissed(true)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      )}
+
       {/* Hero Section - Black Background */}
       <div className="relative overflow-hidden bg-black px-6 py-20 text-white">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,107,53,0.08),transparent_70%)]" />
