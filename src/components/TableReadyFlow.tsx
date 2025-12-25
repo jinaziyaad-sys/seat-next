@@ -2063,7 +2063,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 disabled={isSubmittingRating}
                 className="w-full"
               >
-                Skip for now
+                Skip
               </Button>
             </div>
           </CardContent>
