@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMerchantAuth } from "@/hooks/useAuth";
+import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { supabase } from "@/integrations/supabase/client";
 import { KitchenBoard } from "@/components/merchant/KitchenBoard";
 import { WaitlistBoard } from "@/components/merchant/WaitlistBoard";
@@ -30,6 +31,7 @@ import {
 
 const MerchantDashboard = () => {
   const { userRole, loading } = useMerchantAuth();
+  const { features } = usePlatformConfig();
   const navigate = useNavigate();
   const [venueServiceTypes, setVenueServiceTypes] = useState<string[]>([]);
   const [venueData, setVenueData] = useState<any>(null);
@@ -211,15 +213,37 @@ const MerchantDashboard = () => {
     navigate("/merchant/auth");
   };
 
-  const hasFoodReady = venueServiceTypes.includes("food_ready");
-  const hasTableReady = venueServiceTypes.includes("table_ready");
+  const hasFoodReady = venueServiceTypes.includes("food_ready") && features.food_ordering_enabled;
+  const hasTableReady = venueServiceTypes.includes("table_ready") && features.waitlist_enabled;
+  const hasReservations = hasTableReady && features.reservations_enabled;
+  const hasKitchenBoard = hasFoodReady && features.kitchen_board_enabled;
+  const hasAnalytics = features.analytics_enabled;
+
+  // Calculate available tabs count for grid layout
+  const getTabCount = () => {
+    let count = 0;
+    if (hasKitchenBoard) count++;
+    if (hasTableReady) count++; // Waitlist tab
+    if (hasReservations) count++; // Reservations tab
+    if (userRole.role === "admin") {
+      count += 2; // Staff + Settings always visible for admin
+      if (hasAnalytics) count++; // Reports tab
+    }
+    return Math.max(count, 1);
+  };
 
   // Set initial tab when service types are loaded
   useEffect(() => {
     if (!activeTab && venueServiceTypes.length > 0) {
-      setActiveTab(hasFoodReady ? "kitchen" : "waitlist");
+      if (hasKitchenBoard) {
+        setActiveTab("kitchen");
+      } else if (hasTableReady) {
+        setActiveTab("waitlist");
+      } else if (userRole.role === "admin") {
+        setActiveTab("settings");
+      }
     }
-  }, [venueServiceTypes, activeTab, hasFoodReady]);
+  }, [venueServiceTypes, activeTab, hasKitchenBoard, hasTableReady, userRole.role]);
 
   // Handle tab change with unsaved changes check
   const handleTabChange = useCallback((newTab: string) => {
@@ -284,29 +308,24 @@ const MerchantDashboard = () => {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto p-6">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className={`grid w-full ${
-            userRole.role === "admin" 
-              ? (hasFoodReady && hasTableReady ? "grid-cols-6" : 
-                 hasFoodReady || hasTableReady ? "grid-cols-5" : "grid-cols-3")
-              : (hasFoodReady && hasTableReady ? "grid-cols-3" : hasFoodReady || hasTableReady ? "grid-cols-2" : "grid-cols-1")
-          }`}>
-            {hasFoodReady && (
+          <TabsList className={`grid w-full`} style={{ gridTemplateColumns: `repeat(${getTabCount()}, minmax(0, 1fr))` }}>
+            {hasKitchenBoard && (
               <TabsTrigger value="kitchen" data-tour="tab-kitchen" className="flex items-center gap-2">
                 <ChefHat size={16} />
                 Kitchen Orders
               </TabsTrigger>
             )}
             {hasTableReady && (
-              <>
-                <TabsTrigger value="waitlist" data-tour="tab-waitlist" className="flex items-center gap-2">
-                  <Users size={16} />
-                  Waitlist
-                </TabsTrigger>
-                <TabsTrigger value="reservations" data-tour="tab-reservations" className="flex items-center gap-2">
-                  <Calendar size={16} />
-                  Reservations
-                </TabsTrigger>
-              </>
+              <TabsTrigger value="waitlist" data-tour="tab-waitlist" className="flex items-center gap-2">
+                <Users size={16} />
+                Waitlist
+              </TabsTrigger>
+            )}
+            {hasReservations && (
+              <TabsTrigger value="reservations" data-tour="tab-reservations" className="flex items-center gap-2">
+                <Calendar size={16} />
+                Reservations
+              </TabsTrigger>
             )}
             {userRole.role === "admin" && (
               <>
@@ -318,30 +337,32 @@ const MerchantDashboard = () => {
                   <Settings size={16} />
                   Settings
                 </TabsTrigger>
-                <TabsTrigger value="reports" data-tour="tab-reports" className="flex items-center gap-2">
-                  <BarChart3 size={16} />
-                  Reports
-                </TabsTrigger>
+                {hasAnalytics && (
+                  <TabsTrigger value="reports" data-tour="tab-reports" className="flex items-center gap-2">
+                    <BarChart3 size={16} />
+                    Reports
+                  </TabsTrigger>
+                )}
               </>
             )}
           </TabsList>
 
-          {hasFoodReady && (
+          {hasKitchenBoard && (
             <TabsContent value="kitchen">
               <KitchenBoard venueId={userRole.venue_id!} />
             </TabsContent>
           )}
 
           {hasTableReady && (
-            <>
-              <TabsContent value="waitlist">
-                <WaitlistBoard venueId={userRole.venue_id!} />
-              </TabsContent>
-              
-              <TabsContent value="reservations">
-                <ReservationCalendar venueId={userRole.venue_id!} />
-              </TabsContent>
-            </>
+            <TabsContent value="waitlist">
+              <WaitlistBoard venueId={userRole.venue_id!} />
+            </TabsContent>
+          )}
+          
+          {hasReservations && (
+            <TabsContent value="reservations">
+              <ReservationCalendar venueId={userRole.venue_id!} />
+            </TabsContent>
           )}
 
           {userRole.role === "admin" ? (
@@ -359,15 +380,17 @@ const MerchantDashboard = () => {
                 />
               </TabsContent>
 
-              <TabsContent value="reports">
-                {venueData ? (
-                  <MerchantReports venue={venueData} />
-                ) : (
-                  <div className="flex items-center justify-center py-12">
-                    <p className="text-muted-foreground">Loading venue data...</p>
-                  </div>
-                )}
-              </TabsContent>
+              {hasAnalytics && (
+                <TabsContent value="reports">
+                  {venueData ? (
+                    <MerchantReports venue={venueData} />
+                  ) : (
+                    <div className="flex items-center justify-center py-12">
+                      <p className="text-muted-foreground">Loading venue data...</p>
+                    </div>
+                  )}
+                </TabsContent>
+              )}
             </>
           ) : (
             <>
@@ -391,15 +414,17 @@ const MerchantDashboard = () => {
                 </div>
               </TabsContent>
 
-              <TabsContent value="reports">
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Lock className="w-16 h-16 text-muted-foreground/50 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Admin Access Required</h3>
-                  <p className="text-muted-foreground max-w-md">
-                    You need administrator privileges to view reports and analytics.
-                  </p>
-                </div>
-              </TabsContent>
+              {hasAnalytics && (
+                <TabsContent value="reports">
+                  <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Lock className="w-16 h-16 text-muted-foreground/50 mb-4" />
+                    <h3 className="text-lg font-semibold mb-2">Admin Access Required</h3>
+                    <p className="text-muted-foreground max-w-md">
+                      You need administrator privileges to view reports and analytics.
+                    </p>
+                  </div>
+                </TabsContent>
+              )}
             </>
           )}
         </Tabs>
