@@ -1433,7 +1433,13 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                     mode="single"
                     selected={reservationDate}
                     onSelect={setReservationDate}
-                    disabled={(date) => date < new Date() || date > addDays(new Date(), 30)}
+                    disabled={(date) => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const compareDate = new Date(date);
+                      compareDate.setHours(0, 0, 0, 0);
+                      return compareDate < today || date > addDays(new Date(), 30);
+                    }}
                     initialFocus
                     className="pointer-events-auto"
                   />
