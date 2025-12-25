@@ -1,4 +1,4 @@
-import { X, HelpCircle, MessageSquare, PlayCircle } from 'lucide-react';
+import { HelpCircle, MessageSquare, PlayCircle, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/sheet';
 import { FAQSection } from './FAQSection';
 import { AIAssistant } from './AIAssistant';
+import { ReportIssueForm } from './ReportIssueForm';
 import { DashboardVariant } from './types';
 import {
   merchantFAQs,
@@ -21,10 +22,12 @@ interface HelpPanelProps {
   variant: DashboardVariant;
   isOpen: boolean;
   onClose: () => void;
-  activeTab: 'faq' | 'chat' | 'tour';
-  onTabChange: (tab: 'faq' | 'chat' | 'tour') => void;
+  activeTab: 'faq' | 'chat' | 'tour' | 'report';
+  onTabChange: (tab: 'faq' | 'chat' | 'tour' | 'report') => void;
   onStartTour: () => void;
   onNavigate?: (target: string) => void;
+  venueId?: string;
+  venueName?: string;
 }
 
 export function HelpPanel({
@@ -35,6 +38,8 @@ export function HelpPanel({
   onTabChange,
   onStartTour,
   onNavigate,
+  venueId,
+  venueName,
 }: HelpPanelProps) {
   const faqs = variant === 'merchant' ? merchantFAQs : patronFAQs;
   const categories = variant === 'merchant' ? merchantFAQCategories : patronFAQCategories;
@@ -58,10 +63,10 @@ export function HelpPanel({
 
         <Tabs
           value={activeTab}
-          onValueChange={(v) => onTabChange(v as 'faq' | 'chat' | 'tour')}
+          onValueChange={(v) => onTabChange(v as 'faq' | 'chat' | 'tour' | 'report')}
           className="mt-4 flex flex-1 flex-col"
         >
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="faq" className="gap-2">
               <HelpCircle className="h-4 w-4" />
               <span className="hidden sm:inline">FAQ</span>
@@ -73,6 +78,10 @@ export function HelpPanel({
             <TabsTrigger value="tour" className="gap-2">
               <PlayCircle className="h-4 w-4" />
               <span className="hidden sm:inline">Tour</span>
+            </TabsTrigger>
+            <TabsTrigger value="report" className="gap-2">
+              <Bug className="h-4 w-4" />
+              <span className="hidden sm:inline">Report</span>
             </TabsTrigger>
           </TabsList>
 
@@ -98,10 +107,19 @@ export function HelpPanel({
               </div>
               <Button onClick={handleStartTour} className="mt-4">
                 <PlayCircle className="mr-2 h-4 w-4" />
-                Start Tour
-              </Button>
-            </div>
-          </TabsContent>
+              Start Tour
+            </Button>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="report" className="mt-4 flex-1 overflow-auto">
+          <ReportIssueForm 
+            source={variant === 'merchant' ? 'merchant' : 'patron'}
+            venueId={venueId}
+            venueName={venueName}
+            onSuccess={onClose}
+          />
+        </TabsContent>
         </Tabs>
       </SheetContent>
     </Sheet>
