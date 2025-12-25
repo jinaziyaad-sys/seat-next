@@ -9,6 +9,7 @@ import { ReservationCalendar } from "@/components/merchant/ReservationCalendar";
 import { MerchantSettings } from "@/components/merchant/MerchantSettings";
 import { StaffManagement } from "@/components/merchant/StaffManagement";
 import { MerchantReports } from "@/components/merchant/MerchantReports";
+import { VenueStatusIndicator } from "@/components/merchant/VenueStatusIndicator";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -289,9 +290,17 @@ const MerchantDashboard = () => {
                   {userRole.role === 'admin' ? 'Administrator' : 'Staff Member'}
                 </Badge>
               </div>
-              <p className="text-sm text-muted-foreground mt-1">
-                {userRole.role === 'admin' ? 'Full access to all features' : 'Kitchen & Waitlist access'}
-              </p>
+              <div className="flex items-center gap-3 mt-2">
+                {venueData && (
+                  <VenueStatusIndicator 
+                    venueId={userRole.venue_id!} 
+                    settings={venueData.settings}
+                  />
+                )}
+                <span className="text-sm text-muted-foreground">
+                  {userRole.role === 'admin' ? 'Full access to all features' : 'Kitchen & Waitlist access'}
+                </span>
+              </div>
             </div>
             <div className="flex gap-2">
               <ThemeToggle />
