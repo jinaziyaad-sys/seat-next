@@ -5,7 +5,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { TourStep, DashboardVariant } from './types';
 import { merchantTourSteps, patronTourSteps } from './helpContent';
-import { cn } from '@/lib/utils';
 
 interface OnboardingTourProps {
   variant: DashboardVariant;
@@ -119,33 +118,66 @@ export function OnboardingTour({ variant, isOpen, onClose, onComplete }: Onboard
     return { top: `${top}px`, left: `${left}px` };
   };
 
+  // Generate clip-path for the spotlight cutout
+  const getClipPath = () => {
+    if (!targetRect) return 'none';
+    
+    const padding = 8;
+    const x = targetRect.left - padding;
+    const y = targetRect.top - padding;
+    const w = targetRect.width + padding * 2;
+    const h = targetRect.height + padding * 2;
+    const r = 8; // border radius
+
+    // Create a polygon that covers everything except the target area
+    return `polygon(
+      0% 0%, 
+      0% 100%, 
+      ${x}px 100%, 
+      ${x}px ${y + r}px,
+      ${x + r}px ${y}px,
+      ${x + w - r}px ${y}px,
+      ${x + w}px ${y + r}px,
+      ${x + w}px ${y + h - r}px,
+      ${x + w - r}px ${y + h}px,
+      ${x + r}px ${y + h}px,
+      ${x}px ${y + h - r}px,
+      ${x}px 100%,
+      100% 100%, 
+      100% 0%
+    )`;
+  };
+
   return (
     <div className="fixed inset-0 z-[100]">
-      {/* Overlay */}
-      <div className="absolute inset-0 bg-background/80 backdrop-blur-sm" />
+      {/* Dark overlay with cutout - NO blur */}
+      <div 
+        className="absolute inset-0 bg-black/70 transition-all duration-300"
+        style={{ clipPath: targetRect ? getClipPath() : 'none' }}
+      />
 
-      {/* Spotlight */}
+      {/* Highlight border around target */}
       {targetRect && (
         <div
-          className="absolute z-[101] rounded-lg ring-4 ring-primary ring-offset-4 ring-offset-background transition-all duration-300"
+          className="absolute z-[101] rounded-lg border-4 border-primary shadow-[0_0_0_4px_rgba(255,107,53,0.3)] transition-all duration-300 pointer-events-none"
           style={{
-            top: targetRect.top - 4,
-            left: targetRect.left - 4,
-            width: targetRect.width + 8,
-            height: targetRect.height + 8,
+            top: targetRect.top - 8,
+            left: targetRect.left - 8,
+            width: targetRect.width + 16,
+            height: targetRect.height + 16,
           }}
         />
       )}
 
-      {/* Tooltip Card */}
+      {/* Tooltip Card - solid background, high contrast */}
       <Card
-        className="absolute z-[102] w-80 shadow-floating"
+        className="absolute z-[102] w-80 border-2 border-primary bg-card shadow-2xl"
         style={getTooltipPosition()}
       >
         <CardContent className="p-4">
           {/* Header */}
           <div className="mb-3 flex items-center justify-between">
-            <span className="text-xs text-muted-foreground">
+            <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
               Step {currentStep + 1} of {steps.length}
             </span>
             <Button
@@ -159,11 +191,11 @@ export function OnboardingTour({ variant, isOpen, onClose, onComplete }: Onboard
           </div>
 
           {/* Progress */}
-          <Progress value={progress} className="mb-4 h-1" />
+          <Progress value={progress} className="mb-4 h-2" />
 
           {/* Content */}
-          <h3 className="mb-2 font-semibold">{currentStepData?.title}</h3>
-          <p className="mb-4 text-sm text-muted-foreground">
+          <h3 className="mb-2 text-lg font-bold text-foreground">{currentStepData?.title}</h3>
+          <p className="mb-4 text-sm text-muted-foreground leading-relaxed">
             {currentStepData?.description}
           </p>
 
@@ -173,7 +205,7 @@ export function OnboardingTour({ variant, isOpen, onClose, onComplete }: Onboard
               variant="ghost"
               size="sm"
               onClick={handleSkip}
-              className="text-muted-foreground"
+              className="text-muted-foreground hover:text-foreground"
             >
               Skip tour
             </Button>
