@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import logo from "@/assets/logo.png";
 import { useToast } from "@/hooks/use-toast";
+import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
 import { 
   playFoodReadySound, 
   playTableReadySound, 
@@ -39,6 +40,37 @@ const Index = () => {
   } | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // Help system state
+  const [helpOpen, setHelpOpen] = useState(false);
+  const [helpTab, setHelpTab] = useState<'faq' | 'chat' | 'tour'>('faq');
+  const [tourOpen, setTourOpen] = useState(false);
+  const [showTourPulse, setShowTourPulse] = useState(false);
+
+  useEffect(() => {
+    const hasSeenTour = localStorage.getItem('patronTourCompleted');
+    if (!hasSeenTour && user) {
+      setShowTourPulse(true);
+    }
+  }, [user]);
+
+  const handleStartTour = () => {
+    setTourOpen(true);
+    setShowTourPulse(false);
+  };
+
+  const handleTourComplete = () => {
+    setTourOpen(false);
+    localStorage.setItem('patronTourCompleted', 'true');
+  };
+
+  const handleHelpNavigate = (target: string) => {
+    setHelpOpen(false);
+    if (target === 'food') setActiveTab('food-ready');
+    else if (target === 'table') setActiveTab('table-ready');
+    else if (target === 'profile') setActiveTab('profile');
+    else if (target === 'home') setActiveTab('home');
+  };
   
   // Track IDs we've already started sounds for to prevent duplicates
   const soundStartedForOrders = useRef<Set<string>>(new Set());
