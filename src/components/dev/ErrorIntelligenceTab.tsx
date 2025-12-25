@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, AlertCircle, Search, Trash2, Copy, Sparkles, Users, Bot, Store, TrendingUp } from 'lucide-react';
+import { Loader2, AlertCircle, Search, Trash2, Copy, Sparkles, Users, Bot, Store, TrendingUp, Image, X } from 'lucide-react';
 import { useAIOperations, PlatformError } from '@/hooks/useAIOperations';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -21,6 +21,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 export function ErrorIntelligenceTab() {
   const { errors, loading, updateErrorStatus, analyzeError, deleteError } = useAIOperations();
@@ -28,6 +29,7 @@ export function ErrorIntelligenceTab() {
   const [sourceFilter, setSourceFilter] = useState<string>('all');
   const [selectedError, setSelectedError] = useState<PlatformError | null>(null);
   const [analyzing, setAnalyzing] = useState<string | null>(null);
+  const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
   // Calculate analytics
   const analytics = useMemo(() => {
@@ -236,7 +238,7 @@ ${analysis}
             {filteredErrors.map((error) => (
               <Card key={error.id} className="cursor-pointer hover:bg-muted/50 transition-colors">
                 <CardHeader className="py-3 px-4">
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <Badge variant={getStatusColor(error.status)}>
@@ -252,16 +254,47 @@ ${analysis}
                             📍 {error.venue_name}
                           </Badge>
                         )}
+                        {error.screenshot_url && (
+                          <Badge variant="outline" className="gap-1 text-xs">
+                            <Image className="h-3 w-3" />
+                            Screenshot
+                          </Badge>
+                        )}
                       </div>
-                      <CardTitle className="text-sm font-mono truncate">
-                        {error.error_message}
-                      </CardTitle>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <CardTitle className="text-sm font-mono line-clamp-2 break-all">
+                            {error.error_message}
+                          </CardTitle>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="max-w-md">
+                          <p className="text-xs font-mono break-all">{error.error_message}</p>
+                        </TooltipContent>
+                      </Tooltip>
                       <CardDescription className="text-xs mt-1">
                         {error.route && <span className="mr-2">📍 {error.route}</span>}
                         {formatDistanceToNow(new Date(error.last_seen_at), { addSuffix: true })}
                       </CardDescription>
                     </div>
-                    <div className="flex items-center gap-1 ml-2">
+                    
+                    {/* Screenshot thumbnail */}
+                    {error.screenshot_url && (
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setLightboxImage(error.screenshot_url);
+                        }}
+                        className="flex-shrink-0 rounded-md overflow-hidden border border-border hover:border-primary transition-colors"
+                      >
+                        <img 
+                          src={error.screenshot_url} 
+                          alt="Error screenshot" 
+                          className="w-16 h-12 object-cover"
+                        />
+                      </button>
+                    )}
+                    
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       <Button
                         size="sm"
                         variant="ghost"
@@ -307,7 +340,7 @@ ${analysis}
                         <Sparkles className="h-3 w-3" />
                         AI Analysis
                       </div>
-                      <p className="line-clamp-2">{error.ai_analysis.content?.substring(0, 200)}...</p>
+                      <p className="line-clamp-3 break-words">{error.ai_analysis.content}</p>
                     </div>
                   </CardContent>
                 )}
@@ -347,10 +380,29 @@ ${analysis}
                   )}
                 </div>
 
+                {selectedError.screenshot_url && (
+                  <div>
+                    <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
+                      <Image className="h-4 w-4" />
+                      Screenshot
+                    </h4>
+                    <button
+                      onClick={() => setLightboxImage(selectedError.screenshot_url)}
+                      className="rounded-md overflow-hidden border border-border hover:border-primary transition-colors"
+                    >
+                      <img 
+                        src={selectedError.screenshot_url} 
+                        alt="Error screenshot" 
+                        className="max-w-full max-h-[200px] object-contain"
+                      />
+                    </button>
+                  </div>
+                )}
+
                 {selectedError.stack_trace && (
                   <div>
                     <h4 className="text-sm font-medium mb-2">Stack Trace</h4>
-                    <pre className="bg-muted rounded-md p-3 text-xs overflow-x-auto max-h-[200px]">
+                    <pre className="bg-muted rounded-md p-3 text-xs overflow-x-auto max-h-[200px] whitespace-pre-wrap break-all">
                       {selectedError.stack_trace}
                     </pre>
                   </div>
@@ -362,7 +414,7 @@ ${analysis}
                       <Sparkles className="h-4 w-4" />
                       AI Analysis
                     </h4>
-                    <div className="bg-muted rounded-md p-3 text-sm whitespace-pre-wrap">
+                    <div className="bg-muted rounded-md p-3 text-sm whitespace-pre-wrap break-words">
                       {selectedError.ai_analysis.content}
                     </div>
                   </div>
@@ -418,6 +470,27 @@ ${analysis}
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Screenshot Lightbox */}
+      {lightboxImage && (
+        <Dialog open={!!lightboxImage} onOpenChange={() => setLightboxImage(null)}>
+          <DialogContent className="max-w-4xl p-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-2 top-2 z-10"
+              onClick={() => setLightboxImage(null)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+            <img 
+              src={lightboxImage} 
+              alt="Error screenshot full size" 
+              className="w-full h-auto max-h-[80vh] object-contain rounded-md"
+            />
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }

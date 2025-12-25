@@ -24,6 +24,7 @@ export interface PlatformError {
   venue_id: string | null;
   venue_name: string | null;
   issue_category: string | null;
+  screenshot_url: string | null;
 }
 
 export interface FeatureRequest {
