@@ -220,16 +220,26 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
           if (payload.old?.status === 'awaiting_verification' && payload.new.status !== 'awaiting_verification') {
             stopSoundForId('newOrder', payload.new.id);
           }
-          // Optimistically update the specific order in state
-          setOrders(prevOrders => 
-            prevOrders.map(order => 
-              order.id === payload.new.id 
-                ? { ...order, ...payload.new as any, items: Array.isArray(payload.new.items) ? payload.new.items : [payload.new.items] }
-                : order
-            )
-          );
-          // Also fetch to ensure we have ratings data
-          fetchOrders();
+          
+          // Remove order from list if it no longer matches display criteria
+          const shouldRemove = 
+            (['rejected', 'cancelled', 'no_show'].includes(payload.new.status) && !showRejected) ||
+            (payload.new.status === 'collected' && !payload.new.awaiting_merchant_confirmation);
+          
+          if (shouldRemove) {
+            setOrders(prevOrders => prevOrders.filter(order => order.id !== payload.new.id));
+          } else {
+            // Optimistically update the specific order in state
+            setOrders(prevOrders => 
+              prevOrders.map(order => 
+                order.id === payload.new.id 
+                  ? { ...order, ...payload.new as any, items: Array.isArray(payload.new.items) ? payload.new.items : [payload.new.items] }
+                  : order
+              )
+            );
+            // Also fetch to ensure we have ratings data
+            fetchOrders();
+          }
         } else if (payload.eventType === 'DELETE') {
           setOrders(prevOrders => prevOrders.filter(order => order.id !== payload.old?.id));
         }
