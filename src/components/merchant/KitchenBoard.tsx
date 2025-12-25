@@ -510,30 +510,15 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
       return;
     }
 
-    if (!itemsText) {
-      toast({
-        title: "Items required",
-        description: "Please enter at least one item (comma separated).",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    // Items are optional - parse if provided
     const items = itemsText
-      .split(",")
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .slice(0, 25)
-      .map((name) => ({ name }));
-
-    if (items.length === 0) {
-      toast({
-        title: "Items required",
-        description: "Please enter at least one valid item.",
-        variant: "destructive",
-      });
-      return;
-    }
+      ? itemsText
+          .split(",")
+          .map((item) => item.trim())
+          .filter(Boolean)
+          .slice(0, 25)
+          .map((name) => ({ name }))
+      : [];
 
     setIsAddingOrder(true);
     try {
