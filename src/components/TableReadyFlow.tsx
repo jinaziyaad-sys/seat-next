@@ -258,6 +258,9 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       // Check if entry is cancelled and show details view
       if (entry.status === 'cancelled') {
         setStep("cancelled-details");
+      } else if (entry.status === 'seated') {
+        // Patron is already seated - show feedback/rating screen
+        setStep("feedback");
       } else {
         // Set appropriate step based on status
         if (initialEntry.status === "ready") {
