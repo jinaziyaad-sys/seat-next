@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { X, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -16,6 +16,8 @@ interface OnboardingTourProps {
 export function OnboardingTour({ variant, isOpen, onClose, onComplete }: OnboardingTourProps) {
   const [currentStep, setCurrentStep] = useState(0);
   const [targetRect, setTargetRect] = useState<DOMRect | null>(null);
+  const [tooltipHeight, setTooltipHeight] = useState(200);
+  const tooltipRef = useRef<HTMLDivElement>(null);
 
   const steps = variant === 'merchant' ? merchantTourSteps : patronTourSteps;
   const currentStepData = steps[currentStep];
@@ -51,6 +53,16 @@ export function OnboardingTour({ variant, isOpen, onClose, onComplete }: Onboard
     };
   }, [isOpen, currentStep, findTarget, currentStepData]);
 
+  // Measure actual tooltip height after render
+  useEffect(() => {
+    if (tooltipRef.current) {
+      const height = tooltipRef.current.getBoundingClientRect().height;
+      if (height > 0) {
+        setTooltipHeight(height);
+      }
+    }
+  }, [currentStep, isOpen]);
+
   const handleNext = () => {
     if (currentStep < steps.length - 1) {
       setCurrentStep((prev) => prev + 1);
@@ -82,17 +94,25 @@ export function OnboardingTour({ variant, isOpen, onClose, onComplete }: Onboard
       return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
     }
 
-    const padding = 16;
+    const padding = 20;
     const tooltipWidth = 320;
-    const tooltipHeight = 200;
-    const placement = currentStepData?.placement || 'bottom';
+    const actualHeight = tooltipHeight;
+    let placement = currentStepData?.placement || 'bottom';
 
     let top = 0;
     let left = 0;
 
+    // Check if bottom placement would overflow - if so, try top
+    if (placement === 'bottom' && targetRect.bottom + padding + actualHeight > window.innerHeight - padding) {
+      // Not enough room below, try above
+      if (targetRect.top - padding - actualHeight > padding) {
+        placement = 'top';
+      }
+    }
+
     switch (placement) {
       case 'top':
-        top = targetRect.top - tooltipHeight - padding;
+        top = targetRect.top - actualHeight - padding;
         left = targetRect.left + targetRect.width / 2 - tooltipWidth / 2;
         break;
       case 'bottom':
@@ -100,18 +120,18 @@ export function OnboardingTour({ variant, isOpen, onClose, onComplete }: Onboard
         left = targetRect.left + targetRect.width / 2 - tooltipWidth / 2;
         break;
       case 'left':
-        top = targetRect.top + targetRect.height / 2 - tooltipHeight / 2;
+        top = targetRect.top + targetRect.height / 2 - actualHeight / 2;
         left = targetRect.left - tooltipWidth - padding;
         break;
       case 'right':
-        top = targetRect.top + targetRect.height / 2 - tooltipHeight / 2;
+        top = targetRect.top + targetRect.height / 2 - actualHeight / 2;
         left = targetRect.right + padding;
         break;
     }
 
-    // Keep tooltip in viewport
+    // Keep tooltip in viewport with generous margins
     const maxLeft = window.innerWidth - tooltipWidth - padding;
-    const maxTop = window.innerHeight - tooltipHeight - padding;
+    const maxTop = window.innerHeight - actualHeight - padding;
     left = Math.max(padding, Math.min(left, maxLeft));
     top = Math.max(padding, Math.min(top, maxTop));
 
@@ -171,7 +191,8 @@ export function OnboardingTour({ variant, isOpen, onClose, onComplete }: Onboard
 
       {/* Tooltip Card - solid background, high contrast */}
       <Card
-        className="absolute z-[102] w-80 border-2 border-primary bg-card shadow-2xl"
+        ref={tooltipRef}
+        className="absolute z-[102] w-80 max-h-[85vh] overflow-y-auto border-2 border-primary bg-card shadow-2xl"
         style={getTooltipPosition()}
       >
         <CardContent className="p-4">
