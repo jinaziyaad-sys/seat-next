@@ -2,20 +2,15 @@ import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePlatformConfig, Announcement } from '@/hooks/usePlatformConfig';
 import { FeatureFlagsPanel } from './FeatureFlagsPanel';
-import { GlobalSettingsPanel } from './GlobalSettingsPanel';
 import { AnnouncementsPanel } from './AnnouncementsPanel';
 import { DevAIAssistant } from './DevAIAssistant';
 import { Loader2 } from 'lucide-react';
 
 export function AIControlCenter() {
-  const { configs, features, settings, announcement, loading, updateConfig, refetch } = usePlatformConfig();
+  const { configs, features, announcement, loading, updateConfig } = usePlatformConfig();
   const [activeTab, setActiveTab] = useState('ai');
 
   const handleToggleFeature = async (key: string, value: boolean) => {
-    await updateConfig(key, value);
-  };
-
-  const handleUpdateSetting = async (key: string, value: number) => {
     await updateConfig(key, value);
   };
 
@@ -57,10 +52,9 @@ export function AIControlCenter() {
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="ai">AI Assistant</TabsTrigger>
           <TabsTrigger value="features">Feature Flags</TabsTrigger>
-          <TabsTrigger value="settings">Global Settings</TabsTrigger>
           <TabsTrigger value="announcements">Announcements</TabsTrigger>
         </TabsList>
 
@@ -73,14 +67,6 @@ export function AIControlCenter() {
             features={features}
             loading={loading}
             onToggle={handleToggleFeature}
-          />
-        </TabsContent>
-
-        <TabsContent value="settings">
-          <GlobalSettingsPanel
-            settings={settings}
-            loading={loading}
-            onUpdate={handleUpdateSetting}
           />
         </TabsContent>
 

@@ -20,13 +20,6 @@ export interface FeatureFlags {
   analytics_enabled: boolean;
 }
 
-export interface GlobalSettings {
-  default_prep_time_minutes: number;
-  default_wait_time_minutes: number;
-  max_party_size: number;
-  ready_deadline_minutes: number;
-}
-
 export type Announcement = {
   message: string;
   type: 'info' | 'warning' | 'error' | 'maintenance';
@@ -37,7 +30,6 @@ export type Announcement = {
 export interface UsePlatformConfigReturn {
   configs: PlatformConfig[];
   features: FeatureFlags;
-  settings: GlobalSettings;
   announcement: Announcement;
   loading: boolean;
   updateConfig: (key: string, value: any) => Promise<boolean>;
@@ -53,13 +45,6 @@ const DEFAULT_FEATURES: FeatureFlags = {
   analytics_enabled: true,
 };
 
-const DEFAULT_SETTINGS: GlobalSettings = {
-  default_prep_time_minutes: 15,
-  default_wait_time_minutes: 20,
-  max_party_size: 20,
-  ready_deadline_minutes: 10,
-};
-
 export function usePlatformConfig(): UsePlatformConfigReturn {
   const [configs, setConfigs] = useState<PlatformConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +52,6 @@ export function usePlatformConfig(): UsePlatformConfigReturn {
 
   const parseConfigs = useCallback((configList: PlatformConfig[]) => {
     const features = { ...DEFAULT_FEATURES };
-    const settings = { ...DEFAULT_SETTINGS };
     let announcement: Announcement = null;
 
     configList.forEach((config) => {
@@ -83,19 +67,13 @@ export function usePlatformConfig(): UsePlatformConfigReturn {
       if (config.key === 'feature.kitchen_board_enabled') features.kitchen_board_enabled = !!value;
       if (config.key === 'feature.analytics_enabled') features.analytics_enabled = !!value;
 
-      // Global settings
-      if (config.key === 'global.default_prep_time_minutes') settings.default_prep_time_minutes = Number(value) || 15;
-      if (config.key === 'global.default_wait_time_minutes') settings.default_wait_time_minutes = Number(value) || 20;
-      if (config.key === 'global.max_party_size') settings.max_party_size = Number(value) || 20;
-      if (config.key === 'global.ready_deadline_minutes') settings.ready_deadline_minutes = Number(value) || 10;
-
       // Announcement
       if (config.key === 'announcement.active' && value && value !== 'null') {
         announcement = typeof value === 'object' ? value : null;
       }
     });
 
-    return { features, settings, announcement };
+    return { features, announcement };
   }, []);
 
   const fetchConfigs = useCallback(async () => {
@@ -206,12 +184,11 @@ export function usePlatformConfig(): UsePlatformConfigReturn {
     };
   }, [fetchConfigs]);
 
-  const { features, settings, announcement } = parseConfigs(configs);
+  const { features, announcement } = parseConfigs(configs);
 
   return {
     configs,
     features,
-    settings,
     announcement,
     loading,
     updateConfig,
