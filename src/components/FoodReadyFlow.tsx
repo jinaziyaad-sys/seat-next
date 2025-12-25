@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Clock, CheckCircle, Package, Truck, Search, MapPin, Star, XCircle, Navigation } from "lucide-react";
+import { ArrowLeft, Clock, CheckCircle, Package, Truck, Search, MapPin, Star, XCircle, Navigation, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -68,6 +68,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
   const [venues, setVenues] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
   const { toast } = useToast();
@@ -405,6 +406,8 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
 
 
   const handleOrderSubmit = async () => {
+    if (isSubmitting) return; // Prevent duplicate submissions
+    
     if (!orderNumber.trim() || !selectedVenue) {
       toast({
         title: "Missing Information",
@@ -468,86 +471,92 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
       return;
     }
 
-    // Calculate dynamic ETA using edge function
-    let calculatedEta = new Date();
-    let confidence = 'low';
+    setIsSubmitting(true);
     
-    const { data: etaData, error: etaError } = await supabase.functions.invoke('calculate-order-eta', {
-      body: {
-        venue_id: venue.id,
-        items: [], // Empty items for patron-created orders
-        order_number: orderNumber.toUpperCase()
-      }
-    });
-
-    if (etaError || !etaData) {
-      console.error('Error calculating ETA:', etaError);
-      // Fallback to venue's default prep time
-      const defaultPrepTime = venue.settings?.default_prep_time || 15;
-      calculatedEta.setMinutes(calculatedEta.getMinutes() + defaultPrepTime);
-    } else {
-      calculatedEta.setMinutes(calculatedEta.getMinutes() + etaData.eta_minutes);
-      confidence = etaData.confidence;
-      console.log('Dynamic ETA calculated for patron order:', etaData);
-    }
-
-    // Create new order with awaiting_verification status
-    const { data: newOrder, error: insertError } = await supabase
-      .from("orders")
-      .insert({
-        venue_id: venue.id,
-        order_number: orderNumber.toUpperCase(),
-        user_id: userId,
-        status: 'awaiting_verification',
-        items: [], // Empty initially, kitchen will see it
-        eta: calculatedEta.toISOString(),
-        confidence: confidence,
-        awaiting_patron_confirmation: false,
-        awaiting_merchant_confirmation: false
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('Error creating order:', insertError);
+    try {
+      // Calculate dynamic ETA using edge function
+      let calculatedEta = new Date();
+      let confidence = 'low';
       
-      // Handle duplicate order number gracefully
-      if (insertError.code === '23505') {
-        toast({
-          title: "Order Already Submitted",
-          description: "This order number is already being tracked at this venue",
-        });
+      const { data: etaData, error: etaError } = await supabase.functions.invoke('calculate-order-eta', {
+        body: {
+          venue_id: venue.id,
+          items: [], // Empty items for patron-created orders
+          order_number: orderNumber.toUpperCase()
+        }
+      });
+
+      if (etaError || !etaData) {
+        console.error('Error calculating ETA:', etaError);
+        // Fallback to venue's default prep time
+        const defaultPrepTime = venue.settings?.default_prep_time || 15;
+        calculatedEta.setMinutes(calculatedEta.getMinutes() + defaultPrepTime);
       } else {
-        toast({
-          title: "Error",
-          description: "Could not create order tracking request",
-          variant: "destructive"
-        });
+        calculatedEta.setMinutes(calculatedEta.getMinutes() + etaData.eta_minutes);
+        confidence = etaData.confidence;
+        console.log('Dynamic ETA calculated for patron order:', etaData);
       }
-      return;
+
+      // Create new order with awaiting_verification status
+      const { data: newOrder, error: insertError } = await supabase
+        .from("orders")
+        .insert({
+          venue_id: venue.id,
+          order_number: orderNumber.toUpperCase(),
+          user_id: userId,
+          status: 'awaiting_verification',
+          items: [], // Empty initially, kitchen will see it
+          eta: calculatedEta.toISOString(),
+          confidence: confidence,
+          awaiting_patron_confirmation: false,
+          awaiting_merchant_confirmation: false
+        })
+        .select()
+        .single();
+
+      if (insertError) {
+        console.error('Error creating order:', insertError);
+        
+        // Handle duplicate order number gracefully
+        if (insertError.code === '23505') {
+          toast({
+            title: "Order Already Submitted",
+            description: "This order number is already being tracked at this venue",
+          });
+        } else {
+          toast({
+            title: "Error",
+            description: "Could not create order tracking request",
+            variant: "destructive"
+          });
+        }
+        return;
+      }
+
+      // Set current order and move to verification waiting screen
+      const order: Order = {
+        id: newOrder.id,
+        order_number: newOrder.order_number,
+        venue: selectedVenue,
+        venue_id: newOrder.venue_id,
+        status: 'awaiting_verification',
+        eta: newOrder.eta,
+        instructions: venueSettings?.pickup_instructions || "Please collect from the main counter",
+        items: [],
+        notes: "",
+        updated_at: newOrder.created_at,
+      };
+      
+      setCurrentOrder(order);
+      setStep("tracking");
+
+      toast({
+        title: "Order Submitted",
+        description: "Waiting for kitchen to verify your order...",
+      });
+    } finally {
+      setIsSubmitting(false);
     }
-
-    // Set current order and move to verification waiting screen
-    const order: Order = {
-      id: newOrder.id,
-      order_number: newOrder.order_number,
-      venue: selectedVenue,
-      venue_id: newOrder.venue_id,
-      status: 'awaiting_verification',
-      eta: newOrder.eta,
-      instructions: venueSettings?.pickup_instructions || "Please collect from the main counter",
-      items: [],
-      notes: "",
-      updated_at: newOrder.created_at,
-    };
-    
-    setCurrentOrder(order);
-    setStep("tracking");
-
-    toast({
-      title: "Order Submitted",
-      description: "Waiting for kitchen to verify your order...",
-    });
   };
 
   const handleMarkAsCollected = async () => {
@@ -918,10 +927,17 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
             />
             <Button 
               onClick={handleOrderSubmit}
-              disabled={!orderNumber.trim() || (venueStatus && !venueStatus.is_open)}
+              disabled={!orderNumber.trim() || isSubmitting || (venueStatus && !venueStatus.is_open)}
               className="w-full h-12"
             >
-              Track My Order
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Track My Order"
+              )}
             </Button>
           </CardContent>
         </Card>
