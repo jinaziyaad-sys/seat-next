@@ -19,6 +19,11 @@ export interface PlatformError {
   last_seen_at: string;
   resolved_at: string | null;
   created_at: string;
+  // New fields for user-reported issues
+  source: 'auto' | 'patron' | 'merchant' | null;
+  venue_id: string | null;
+  venue_name: string | null;
+  issue_category: string | null;
 }
 
 export interface FeatureRequest {
