@@ -13,11 +13,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Download } from "lucide-react";
+import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Download, Sparkles } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PatronManagement } from "@/components/dev/PatronManagement";
 import { PlatformAnalytics } from "@/components/dev/PlatformAnalytics";
+import { AIControlCenter } from "@/components/dev/AIControlCenter";
 import { LocationMap } from "@/components/LocationMap";
 import { InteractiveLocationMap } from "@/components/InteractiveLocationMap";
 import * as XLSX from 'xlsx';
@@ -841,6 +842,10 @@ export default function DevDashboard() {
             <TabsTrigger value="merchants">Manage Merchants</TabsTrigger>
             <TabsTrigger value="patrons">Patron Management</TabsTrigger>
             <TabsTrigger value="platform">Platform Analytics</TabsTrigger>
+            <TabsTrigger value="ai-control" className="flex items-center gap-1">
+              <Sparkles className="h-3 w-3" />
+              AI Control
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="venues" className="space-y-6">
@@ -1447,6 +1452,10 @@ export default function DevDashboard() {
 
           <TabsContent value="platform">
             <PlatformAnalytics />
+          </TabsContent>
+
+          <TabsContent value="ai-control">
+            <AIControlCenter />
           </TabsContent>
         </Tabs>
       </div>
