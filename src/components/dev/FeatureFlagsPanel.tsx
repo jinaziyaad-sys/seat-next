@@ -1,9 +1,11 @@
+import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, UtensilsCrossed, Users, Calendar, Star, ChefHat, BarChart3 } from 'lucide-react';
 import { FeatureFlags } from '@/hooks/usePlatformConfig';
+import { cn } from '@/lib/utils';
 
 interface FeatureFlagsPanelProps {
   features: FeatureFlags;
@@ -57,6 +59,17 @@ const FEATURE_CONFIG = [
 ];
 
 export function FeatureFlagsPanel({ features, loading, onToggle }: FeatureFlagsPanelProps) {
+  const [pendingToggles, setPendingToggles] = useState<Record<string, boolean>>({});
+
+  const handleToggle = async (key: string, value: boolean) => {
+    setPendingToggles(prev => ({ ...prev, [key]: true }));
+    try {
+      await onToggle(key, value);
+    } finally {
+      setPendingToggles(prev => ({ ...prev, [key]: false }));
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -72,14 +85,21 @@ export function FeatureFlagsPanel({ features, loading, onToggle }: FeatureFlagsP
         {FEATURE_CONFIG.map((feature) => {
           const Icon = feature.icon;
           const isEnabled = features[feature.field];
+          const isPending = pendingToggles[feature.key];
           
           return (
             <div
               key={feature.key}
-              className="flex items-center justify-between rounded-lg border p-4"
+              className={cn(
+                "flex items-center justify-between rounded-lg border p-4 transition-opacity",
+                isPending && "opacity-70"
+              )}
             >
               <div className="flex items-center gap-3">
-                <div className={`rounded-full p-2 ${isEnabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'}`}>
+                <div className={cn(
+                  "rounded-full p-2 transition-colors",
+                  isEnabled ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground'
+                )}>
                   <Icon className="h-4 w-4" />
                 </div>
                 <div>
@@ -90,15 +110,23 @@ export function FeatureFlagsPanel({ features, loading, onToggle }: FeatureFlagsP
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant={isEnabled ? 'default' : 'secondary'}>
+                <Badge variant={isEnabled ? 'default' : 'secondary'} className="transition-colors">
                   {isEnabled ? 'Enabled' : 'Disabled'}
                 </Badge>
-                <Switch
-                  id={feature.key}
-                  checked={isEnabled}
-                  onCheckedChange={(checked) => onToggle(feature.key, checked)}
-                  disabled={loading}
-                />
+                <div className="relative">
+                  <Switch
+                    id={feature.key}
+                    checked={isEnabled}
+                    onCheckedChange={(checked) => handleToggle(feature.key, checked)}
+                    disabled={isPending}
+                    className="transition-opacity"
+                  />
+                  {isPending && (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           );

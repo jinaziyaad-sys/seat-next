@@ -791,35 +791,45 @@ const Index = () => {
         )}
 
         <div className="grid grid-cols-2 gap-4">
-          <Card 
-            className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
-            onClick={() => setActiveTab("food-ready")}
-          >
-            <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <UtensilsCrossed size={28} />
-              </div>
-              <div>
-                <h3 className="font-semibold">Food Ready</h3>
-                <p className="text-sm text-muted-foreground">Track your order status</p>
-              </div>
-            </CardContent>
-          </Card>
+          {features.food_ordering_enabled && (
+            <Card 
+              className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
+              onClick={() => setActiveTab("food-ready")}
+            >
+              <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <UtensilsCrossed size={28} />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Food Ready</h3>
+                  <p className="text-sm text-muted-foreground">Track your order status</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
-          <Card 
-            className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
-            onClick={() => setActiveTab("table-ready")}
-          >
-            <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-accent-foreground">
-                <Users size={28} />
-              </div>
-              <div>
-                <h3 className="font-semibold">Table Ready</h3>
-                <p className="text-sm text-muted-foreground">Join a waitlist</p>
-              </div>
-            </CardContent>
-          </Card>
+          {features.waitlist_enabled && (
+            <Card 
+              className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
+              onClick={() => setActiveTab("table-ready")}
+            >
+              <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                  <Users size={28} />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Table Ready</h3>
+                  <p className="text-sm text-muted-foreground">Join a waitlist</p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {!features.food_ordering_enabled && !features.waitlist_enabled && (
+            <div className="col-span-2 text-center py-8 text-muted-foreground">
+              <p>No features are currently available.</p>
+            </div>
+          )}
         </div>
 
       </div>
