@@ -25,6 +25,10 @@ export interface PlatformError {
   venue_name: string | null;
   issue_category: string | null;
   screenshot_url: string | null;
+  // Joined user profile data
+  user_name?: string | null;
+  user_email?: string | null;
+  user_phone?: string | null;
 }
 
 export interface FeatureRequest {
@@ -60,7 +64,8 @@ export function useAIOperations() {
   const [loading, setLoading] = useState(true);
 
   const fetchErrors = useCallback(async () => {
-    const { data, error } = await supabase
+    // Fetch errors
+    const { data: errorsData, error } = await supabase
       .from('platform_errors')
       .select('*')
       .order('created_at', { ascending: false })
@@ -70,7 +75,35 @@ export function useAIOperations() {
       console.error('Failed to fetch errors:', error);
       return;
     }
-    setErrors(data as PlatformError[] || []);
+
+    // Get unique user IDs from errors
+    const userIds = [...new Set(errorsData?.map(e => e.user_id).filter(Boolean))] as string[];
+    
+    // Fetch user profiles for those IDs
+    let profilesMap: Record<string, { full_name: string; email: string | null; phone: string | null }> = {};
+    if (userIds.length > 0) {
+      const { data: profiles } = await supabase
+        .from('profiles')
+        .select('id, full_name, email, phone')
+        .in('id', userIds);
+      
+      if (profiles) {
+        profilesMap = profiles.reduce((acc, p) => {
+          acc[p.id] = { full_name: p.full_name, email: p.email, phone: p.phone };
+          return acc;
+        }, {} as Record<string, { full_name: string; email: string | null; phone: string | null }>);
+      }
+    }
+
+    // Merge profile data into errors
+    const enrichedErrors = errorsData?.map(e => ({
+      ...e,
+      user_name: e.user_id && profilesMap[e.user_id] ? profilesMap[e.user_id].full_name : null,
+      user_email: e.user_id && profilesMap[e.user_id] ? profilesMap[e.user_id].email : null,
+      user_phone: e.user_id && profilesMap[e.user_id] ? profilesMap[e.user_id].phone : null,
+    })) as PlatformError[];
+
+    setErrors(enrichedErrors || []);
   }, []);
 
   const fetchFeatureRequests = useCallback(async () => {

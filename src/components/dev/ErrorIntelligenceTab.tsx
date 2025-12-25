@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, AlertCircle, Search, Trash2, Copy, Sparkles, Users, Bot, Store, TrendingUp, Image, X } from 'lucide-react';
+import { Loader2, AlertCircle, Search, Trash2, Copy, Sparkles, Users, Bot, Store, TrendingUp, Image, X, User, Mail, Phone } from 'lucide-react';
 import { useAIOperations, PlatformError } from '@/hooks/useAIOperations';
 import { formatDistanceToNow } from 'date-fns';
 import {
@@ -81,7 +81,8 @@ export function ErrorIntelligenceTab() {
 **Error Type:** ${error.error_type}
 **Error Message:** ${error.error_message}
 **Source:** ${error.source || 'auto'}
-**Venue:** ${error.venue_name || 'N/A'}
+**Venue:** ${error.venue_name || 'Not specified'}
+**Reporter:** ${error.user_name || 'Anonymous'} ${error.user_email ? `(${error.user_email})` : ''}
 **Route:** ${error.route || 'Unknown'}
 **Component:** ${error.component || 'Unknown'}
 **First Seen:** ${new Date(error.first_seen_at).toLocaleString()}
@@ -379,6 +380,39 @@ ${analysis}
                     <Badge variant="secondary">🏪 {selectedError.venue_name}</Badge>
                   )}
                 </div>
+
+                {/* Reporter Info */}
+                {(selectedError.user_name || selectedError.user_email || selectedError.user_id) && (
+                  <div className="bg-muted/50 rounded-md p-3">
+                    <h4 className="text-sm font-medium mb-2 flex items-center gap-1">
+                      <User className="h-4 w-4" />
+                      Reporter Details
+                    </h4>
+                    <div className="space-y-1 text-sm">
+                      {selectedError.user_name && (
+                        <div className="flex items-center gap-2">
+                          <User className="h-3 w-3 text-muted-foreground" />
+                          <span>{selectedError.user_name}</span>
+                        </div>
+                      )}
+                      {selectedError.user_email && (
+                        <div className="flex items-center gap-2">
+                          <Mail className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-muted-foreground">{selectedError.user_email}</span>
+                        </div>
+                      )}
+                      {selectedError.user_phone && (
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-muted-foreground">{selectedError.user_phone}</span>
+                        </div>
+                      )}
+                      {!selectedError.user_name && !selectedError.user_email && selectedError.user_id && (
+                        <span className="text-xs text-muted-foreground font-mono">ID: {selectedError.user_id}</span>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {selectedError.screenshot_url && (
                   <div>
