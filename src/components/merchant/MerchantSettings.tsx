@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,13 +14,24 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, X, ChevronDown, Clock, Calendar, AlertCircle } from "lucide-react";
+import { Plus, X, ChevronDown, Clock, Calendar, AlertCircle, RotateCcw, Save } from "lucide-react";
 import { TableConfigurationManager } from "./TableConfigurationManager";
 import { BusinessHours, HolidayClosure } from "@/utils/businessHours";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { useBlocker } from "react-router-dom";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface WaitlistPreference {
   id: string;
@@ -94,7 +105,44 @@ export const MerchantSettings = ({
   const [holidayClose, setHolidayClose] = useState("22:00");
   const [holidayOvernight, setHolidayOvernight] = useState(false);
 
+  // Unsaved changes tracking
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const initialSettingsRef = useRef<typeof settings | null>(null);
+  const initialBusinessHoursRef = useRef<BusinessHours | null>(null);
+  const initialWaitlistPreferencesRef = useRef<WaitlistPreference[] | null>(null);
+  const initialHolidayClosuresRef = useRef<HolidayClosure[] | null>(null);
+  const initialGracePeriodsRef = useRef<typeof gracePeriods | null>(null);
+  const initialAutoCleanupRejectedRef = useRef<boolean | null>(null);
+  const initialTableConfigurationRef = useRef<TableConfig[] | null>(null);
+
   const { toast } = useToast();
+
+  // Block navigation when there are unsaved changes
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      hasUnsavedChanges && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  // Browser beforeunload warning
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [hasUnsavedChanges]);
+
+  // Track changes after initial load
+  useEffect(() => {
+    if (!isInitialLoad) {
+      setHasUnsavedChanges(true);
+    }
+  }, [settings, businessHours, waitlistPreferences, holidayClosures, gracePeriods, autoCleanupRejected, tableConfiguration]);
 
   useEffect(() => {
     const fetchVenueSettings = async () => {
@@ -155,15 +203,39 @@ export const MerchantSettings = ({
         const prefs = data.waitlist_preferences as { options?: WaitlistPreference[] };
         if (prefs.options) {
           setWaitlistPreferences(prefs.options);
+          initialWaitlistPreferencesRef.current = prefs.options;
         } else {
           // Set default preferences if none exist
-          setWaitlistPreferences([
+          const defaultPrefs = [
             { id: "indoor", label: "Indoor Seating", enabled: true },
             { id: "outdoor", label: "Outdoor Seating", enabled: true },
             { id: "smoking", label: "Smoking Area", enabled: false }
-          ]);
+          ];
+          setWaitlistPreferences(defaultPrefs);
+          initialWaitlistPreferencesRef.current = defaultPrefs;
         }
       }
+
+      // Store initial values for comparison
+      initialSettingsRef.current = {
+        venueCapacity: (data?.settings as any)?.venue_capacity?.toString() || "40",
+        tablesPerInterval: (data?.settings as any)?.tables_per_interval?.toString() || "4",
+        defaultPrepTime: (data?.settings as any)?.default_prep_time?.toString() || "10",
+        maxExtensionTime: (data?.settings as any)?.max_extension_time?.toString() || "45",
+        pickupInstructions: (data?.settings as any)?.pickup_instructions || "Please collect your order from the main counter. Show your order number to staff.",
+        autoNoShowTime: (data?.settings as any)?.auto_no_show_time?.toString() || "15",
+        orderNumberRefreshMinutes: (data?.settings as any)?.order_number_refresh_minutes?.toString() || "15",
+        cobTime: (data?.settings as any)?.cob_time || "23:00",
+        autoCleanupCancelledWaitlist: (data?.settings as any)?.auto_cleanup_cancelled_waitlist !== false
+      };
+      initialBusinessHoursRef.current = (data?.settings as any)?.business_hours || businessHours;
+      initialHolidayClosuresRef.current = (data?.settings as any)?.holiday_closures || [];
+      initialGracePeriodsRef.current = (data?.settings as any)?.grace_periods || gracePeriods;
+      initialAutoCleanupRejectedRef.current = (data?.settings as any)?.auto_cleanup_rejected !== false;
+      initialTableConfigurationRef.current = (data?.settings as any)?.table_configuration || [];
+
+      // Mark initial load as complete after a short delay
+      setTimeout(() => setIsInitialLoad(false), 100);
     };
 
     fetchVenueSettings();
@@ -284,10 +356,42 @@ export const MerchantSettings = ({
       return;
     }
 
+    // Update initial refs to match saved state
+    initialSettingsRef.current = { ...settings };
+    initialBusinessHoursRef.current = { ...businessHours };
+    initialWaitlistPreferencesRef.current = [...waitlistPreferences];
+    initialHolidayClosuresRef.current = [...holidayClosures];
+    initialGracePeriodsRef.current = { ...gracePeriods };
+    initialAutoCleanupRejectedRef.current = autoCleanupRejected;
+    initialTableConfigurationRef.current = [...tableConfiguration];
+    
+    setHasUnsavedChanges(false);
+
     toast({
       title: "All Settings Saved",
       description: "Venue settings have been updated successfully",
     });
+  };
+
+  const handleDiscardChanges = useCallback(() => {
+    if (initialSettingsRef.current) setSettings(initialSettingsRef.current);
+    if (initialBusinessHoursRef.current) setBusinessHours(initialBusinessHoursRef.current);
+    if (initialWaitlistPreferencesRef.current) setWaitlistPreferences(initialWaitlistPreferencesRef.current);
+    if (initialHolidayClosuresRef.current) setHolidayClosures(initialHolidayClosuresRef.current);
+    if (initialGracePeriodsRef.current) setGracePeriods(initialGracePeriodsRef.current);
+    if (initialAutoCleanupRejectedRef.current !== null) setAutoCleanupRejected(initialAutoCleanupRejectedRef.current);
+    if (initialTableConfigurationRef.current) setTableConfiguration(initialTableConfigurationRef.current);
+    setHasUnsavedChanges(false);
+    
+    toast({
+      title: "Changes Discarded",
+      description: "Settings have been reverted to their last saved state",
+    });
+  }, [toast]);
+
+  const handleSaveAndLeave = async () => {
+    await handleSaveAll();
+    blocker.proceed?.();
   };
 
   const handleInputChange = (key: string, value: string | boolean) => {
@@ -1070,11 +1174,53 @@ export const MerchantSettings = ({
         </Card>
       </div>
 
-      <div className="flex justify-end">
-        <Button onClick={handleSaveAll} className="px-8 py-6 text-lg">
-          Save All Settings
-        </Button>
-      </div>
+      {/* Spacer for sticky footer */}
+      <div className={hasUnsavedChanges ? "h-24" : "h-0"} />
+
+      {/* Sticky Save Footer */}
+      {hasUnsavedChanges && (
+        <div className="fixed bottom-0 left-0 right-0 bg-background border-t border-border shadow-lg z-50">
+          <div className="container max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-600 dark:text-amber-500">
+              <AlertCircle className="h-4 w-4" />
+              <span className="text-sm font-medium">You have unsaved changes</span>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={handleDiscardChanges} className="gap-2">
+                <RotateCcw className="h-4 w-4" />
+                Discard
+              </Button>
+              <Button onClick={handleSaveAll} className="gap-2">
+                <Save className="h-4 w-4" />
+                Save All Settings
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Navigation Warning Dialog */}
+      <AlertDialog open={blocker.state === "blocked"}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes that will be lost if you leave this page. What would you like to do?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel onClick={() => blocker.reset?.()}>
+              Stay on Page
+            </AlertDialogCancel>
+            <Button variant="outline" onClick={() => blocker.proceed?.()}>
+              Discard & Leave
+            </Button>
+            <Button onClick={handleSaveAndLeave}>
+              Save & Leave
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
