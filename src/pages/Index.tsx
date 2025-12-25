@@ -667,6 +667,9 @@ const Index = () => {
                       </div>
                       <div>
                         <h3 className="font-semibold">{entry.venues?.name}</h3>
+                        {entry.customer_name && (
+                          <p className="text-xs font-medium text-primary">{entry.customer_name}</p>
+                        )}
                         {isUpcomingReservation ? (
                           <>
                             <p className="text-sm text-muted-foreground">
