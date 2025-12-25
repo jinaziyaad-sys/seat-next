@@ -796,6 +796,24 @@ const Index = () => {
           }
         }}
       />
+
+      {/* Help System */}
+      <HelpButton onClick={() => setHelpOpen(true)} showPulse={showTourPulse} />
+      <HelpPanel
+        variant="patron"
+        isOpen={helpOpen}
+        onClose={() => setHelpOpen(false)}
+        activeTab={helpTab}
+        onTabChange={setHelpTab}
+        onStartTour={handleStartTour}
+        onNavigate={handleHelpNavigate}
+      />
+      <OnboardingTour
+        variant="patron"
+        isOpen={tourOpen}
+        onClose={() => setTourOpen(false)}
+        onComplete={handleTourComplete}
+      />
     </div>
   );
 };
