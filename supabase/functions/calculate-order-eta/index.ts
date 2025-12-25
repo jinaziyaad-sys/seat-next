@@ -51,7 +51,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           eta_minutes: fixedPrepTime,
-          confidence: 'fixed',
+          confidence: 'high', // Fixed mode = high confidence (predictable)
           confidence_score: 100,
           breakdown: {
             base_time: fixedPrepTime,
