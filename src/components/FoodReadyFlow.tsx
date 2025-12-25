@@ -495,8 +495,18 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
         calculatedEta.setMinutes(calculatedEta.getMinutes() + defaultPrepTime);
       } else {
         calculatedEta.setMinutes(calculatedEta.getMinutes() + etaData.eta_minutes);
-        confidence = etaData.confidence;
-        console.log('Dynamic ETA calculated for patron order:', etaData);
+
+        const rawConfidence = etaData.confidence;
+        const mode = etaData?.breakdown?.mode;
+        const normalizedConfidence =
+          rawConfidence === 'low' || rawConfidence === 'medium' || rawConfidence === 'high'
+            ? rawConfidence
+            : mode === 'fixed'
+              ? 'high'
+              : 'low';
+
+        confidence = normalizedConfidence;
+        console.log('ETA calculated for patron order:', { ...etaData, confidence: normalizedConfidence });
       }
 
       // Create new order with awaiting_verification status
