@@ -59,7 +59,8 @@ export const MerchantSettings = ({
     autoNoShowTime: "15",
     orderNumberRefreshMinutes: "15",
     cobTime: "23:00",
-    autoCleanupCancelledWaitlist: true
+    autoCleanupCancelledWaitlist: true,
+    prepTimeMode: "analytics" as "fixed" | "analytics"
   });
 
   const [waitlistPreferences, setWaitlistPreferences] = useState<WaitlistPreference[]>([]);
@@ -187,7 +188,8 @@ export const MerchantSettings = ({
           autoNoShowTime: settings.auto_no_show_time?.toString() || "15",
           orderNumberRefreshMinutes: settings.order_number_refresh_minutes?.toString() || "15",
           cobTime: settings.cob_time || "23:00",
-          autoCleanupCancelledWaitlist: settings.auto_cleanup_cancelled_waitlist !== false
+          autoCleanupCancelledWaitlist: settings.auto_cleanup_cancelled_waitlist !== false,
+          prepTimeMode: settings.prep_time_mode || "analytics"
         });
       }
 
@@ -218,7 +220,8 @@ export const MerchantSettings = ({
         autoNoShowTime: (data?.settings as any)?.auto_no_show_time?.toString() || "15",
         orderNumberRefreshMinutes: (data?.settings as any)?.order_number_refresh_minutes?.toString() || "15",
         cobTime: (data?.settings as any)?.cob_time || "23:00",
-        autoCleanupCancelledWaitlist: (data?.settings as any)?.auto_cleanup_cancelled_waitlist !== false
+        autoCleanupCancelledWaitlist: (data?.settings as any)?.auto_cleanup_cancelled_waitlist !== false,
+        prepTimeMode: (data?.settings as any)?.prep_time_mode || "analytics"
       };
       initialBusinessHoursRef.current = (data?.settings as any)?.business_hours || businessHours;
       initialHolidayClosuresRef.current = (data?.settings as any)?.holiday_closures || [];
@@ -320,6 +323,7 @@ export const MerchantSettings = ({
       max_extension_time: parseInt(settings.maxExtensionTime) || 45,
       pickup_instructions: settings.pickupInstructions,
       order_number_refresh_minutes: parseInt(settings.orderNumberRefreshMinutes) || 15,
+      prep_time_mode: settings.prepTimeMode,
       
       // Waitlist/Table settings
       venue_capacity: parseInt(settings.venueCapacity) || 40,
@@ -521,61 +525,114 @@ export const MerchantSettings = ({
             <CardTitle>Kitchen Settings</CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            <Card className="bg-muted/50 border-primary/20">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
+            {/* Prep Time Mode Toggle */}
+            <div className="space-y-3">
+              <Label className="text-base font-medium">Prep Time Mode</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => handleInputChange("prepTimeMode", "fixed")}
+                  className={cn(
+                    "p-4 rounded-lg border-2 text-left transition-all",
+                    settings.prepTimeMode === "fixed" 
+                      ? "border-primary bg-primary/5" 
+                      : "border-border hover:border-primary/50"
+                  )}
+                >
+                  <div className="font-medium">Fixed Time</div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Simple, predictable prep times
+                  </p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleInputChange("prepTimeMode", "analytics")}
+                  className={cn(
+                    "p-4 rounded-lg border-2 text-left transition-all",
+                    settings.prepTimeMode === "analytics" 
+                      ? "border-primary bg-primary/5" 
+                      : "border-border hover:border-primary/50"
+                  )}
+                >
+                  <div className="font-medium flex items-center gap-2">
+                    Smart ETA
+                    <Badge variant="secondary" className="text-xs">Analytics</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    ML-powered dynamic predictions
+                  </p>
+                </button>
+              </div>
+            </div>
+
+            {/* Smart ETA Explanation - Only show when analytics mode is selected */}
+            {settings.prepTimeMode === "analytics" && (
+              <div className="bg-muted/50 rounded-lg p-4 space-y-3 border">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <AlertCircle className="h-4 w-4 text-primary" />
                   How Smart ETA Works
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm space-y-3">
-                <div>
-                  <strong className="text-foreground">1. Historical Data (Primary):</strong>
-                  <p className="text-muted-foreground mt-0.5">System analyzes last 30 days of similar orders (same day/time window) to predict accurate prep times.</p>
                 </div>
-                <div>
-                  <strong className="text-foreground">2. Default Fallback:</strong>
-                  <p className="text-muted-foreground mt-0.5">When you're starting out or have limited data, the system uses your configured default prep time below.</p>
-                </div>
-                <div>
-                  <strong className="text-foreground">3. Real-Time Adjustments:</strong>
-                  <ul className="list-disc pl-5 mt-1 text-xs text-muted-foreground space-y-1">
-                    <li>Kitchen Load: Adds 0-60% based on current order volume</li>
-                    <li>Order Complexity: Adds 0-20% based on number of items</li>
-                  </ul>
-                </div>
-              </CardContent>
-            </Card>
+                <ul className="text-sm text-muted-foreground space-y-2">
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary font-bold">•</span>
+                    <span><strong>Historical Learning:</strong> Uses 30 days of your order data to understand typical prep times</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary font-bold">•</span>
+                    <span><strong>Kitchen Load:</strong> Adjusts ETA based on current orders (1.0x when quiet, up to 1.6x when busy)</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary font-bold">•</span>
+                    <span><strong>Order Complexity:</strong> Larger orders get 10-20% more time automatically</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-primary font-bold">•</span>
+                    <span><strong>Time-Aware:</strong> Considers day of week and hour patterns from your history</span>
+                  </li>
+                </ul>
+                <p className="text-xs text-muted-foreground border-t pt-3 mt-3">
+                  💡 Confidence improves with more data. You need ~30 completed orders for reliable predictions.
+                </p>
+              </div>
+            )}
 
             <div>
               <Label htmlFor="prepTime" className="flex items-center gap-2">
-                Default Prep Time (fallback)
-                <Badge variant="outline" className="text-xs font-normal">Used when no historical data</Badge>
+                {settings.prepTimeMode === "fixed" ? "Prep Time" : "Default Prep Time (fallback)"}
+                {settings.prepTimeMode === "analytics" && (
+                  <Badge variant="outline" className="text-xs font-normal">Used when no historical data</Badge>
+                )}
               </Label>
-              <Input
-                id="prepTime"
-                type="number"
-                value={settings.defaultPrepTime}
-                onChange={(e) => handleInputChange("defaultPrepTime", e.target.value)}
-                className="mt-2"
-              />
+              <div className="flex items-center gap-2 mt-2">
+                <Input
+                  id="prepTime"
+                  type="number"
+                  value={settings.defaultPrepTime}
+                  onChange={(e) => handleInputChange("defaultPrepTime", e.target.value)}
+                  className="w-24"
+                />
+                <span className="text-sm text-muted-foreground">minutes</span>
+              </div>
               <p className="text-sm text-muted-foreground mt-1.5">
-                Starting point for new venues. Once you have 30+ completed orders, the system automatically uses real historical averages.
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                💡 <strong>Final ETA =</strong> Historical Avg × Kitchen Load (1.0-1.6x) × Order Complexity (1.0-1.2x)
+                {settings.prepTimeMode === "fixed" 
+                  ? "All orders will show this prep time"
+                  : "Starting point for new venues until enough historical data is collected"
+                }
               </p>
             </div>
 
             <div>
               <Label htmlFor="maxExtension">Maximum Extension Time (minutes)</Label>
-              <Input
-                id="maxExtension"
-                type="number"
-                value={settings.maxExtensionTime}
-                onChange={(e) => handleInputChange("maxExtensionTime", e.target.value)}
-                className="mt-2"
-              />
+              <div className="flex items-center gap-2 mt-2">
+                <Input
+                  id="maxExtension"
+                  type="number"
+                  value={settings.maxExtensionTime}
+                  onChange={(e) => handleInputChange("maxExtensionTime", e.target.value)}
+                  className="w-24"
+                />
+                <span className="text-sm text-muted-foreground">minutes</span>
+              </div>
               <p className="text-sm text-muted-foreground mt-1.5">
                 Maximum time an order ETA can be extended
               </p>
@@ -586,18 +643,18 @@ export const MerchantSettings = ({
                 Order Number Refresh Time
                 <Badge variant="outline" className="text-xs font-normal">Duplicate prevention</Badge>
               </Label>
-              <Input
-                id="orderRefresh"
-                type="number"
-                value={settings.orderNumberRefreshMinutes}
-                onChange={(e) => handleInputChange("orderNumberRefreshMinutes", e.target.value)}
-                className="mt-2"
-              />
+              <div className="flex items-center gap-2 mt-2">
+                <Input
+                  id="orderRefresh"
+                  type="number"
+                  value={settings.orderNumberRefreshMinutes}
+                  onChange={(e) => handleInputChange("orderNumberRefreshMinutes", e.target.value)}
+                  className="w-24"
+                />
+                <span className="text-sm text-muted-foreground">minutes</span>
+              </div>
               <p className="text-sm text-muted-foreground mt-1.5">
-                After this many minutes, the same order number can be used again. Prevents duplicate tracking while allowing number reuse.
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                💡 Set to 15-30 minutes for busy restaurants, or 60+ for venues that reset daily
+                After this many minutes, the same order number can be used again.
               </p>
             </div>
           </CardContent>
