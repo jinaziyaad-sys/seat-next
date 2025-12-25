@@ -77,3 +77,12 @@ verify_jwt = false
 
 [functions.dev-ai-control]
 verify_jwt = true
+
+[functions.ai-error-analysis]
+verify_jwt = true
+
+[functions.ai-analytics-query]
+verify_jwt = true
+
+[functions.ai-feature-request]
+verify_jwt = true

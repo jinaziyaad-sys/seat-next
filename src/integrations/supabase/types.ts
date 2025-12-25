@@ -14,6 +14,36 @@ export type Database = {
   }
   public: {
     Tables: {
+      ai_operations_log: {
+        Row: {
+          action_type: string
+          created_at: string
+          duration_ms: number | null
+          id: string
+          input_data: Json | null
+          output_data: Json | null
+          tokens_used: number | null
+        }
+        Insert: {
+          action_type: string
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          input_data?: Json | null
+          output_data?: Json | null
+          tokens_used?: number | null
+        }
+        Update: {
+          action_type?: string
+          created_at?: string
+          duration_ms?: number | null
+          id?: string
+          input_data?: Json | null
+          output_data?: Json | null
+          tokens_used?: number | null
+        }
+        Relationships: []
+      }
       customer_analytics: {
         Row: {
           avg_rating_given: number | null
@@ -144,6 +174,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      feature_requests: {
+        Row: {
+          ai_summary: string | null
+          category: string | null
+          created_at: string
+          description: string
+          id: string
+          priority: string | null
+          similar_request_ids: string[] | null
+          source: string
+          status: string
+          submitter_id: string | null
+          title: string
+          updated_at: string
+          votes: number | null
+        }
+        Insert: {
+          ai_summary?: string | null
+          category?: string | null
+          created_at?: string
+          description: string
+          id?: string
+          priority?: string | null
+          similar_request_ids?: string[] | null
+          source?: string
+          status?: string
+          submitter_id?: string | null
+          title: string
+          updated_at?: string
+          votes?: number | null
+        }
+        Update: {
+          ai_summary?: string | null
+          category?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          priority?: string | null
+          similar_request_ids?: string[] | null
+          source?: string
+          status?: string
+          submitter_id?: string | null
+          title?: string
+          updated_at?: string
+          votes?: number | null
+        }
+        Relationships: []
       }
       order_analytics: {
         Row: {
@@ -390,6 +468,63 @@ export type Database = {
           updated_at?: string | null
           updated_by?: string | null
           value?: Json
+        }
+        Relationships: []
+      }
+      platform_errors: {
+        Row: {
+          ai_analysis: Json | null
+          browser_info: string | null
+          component: string | null
+          created_at: string
+          device_info: string | null
+          error_message: string
+          error_type: string
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          occurrence_count: number | null
+          resolved_at: string | null
+          route: string | null
+          stack_trace: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          ai_analysis?: Json | null
+          browser_info?: string | null
+          component?: string | null
+          created_at?: string
+          device_info?: string | null
+          error_message: string
+          error_type: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          occurrence_count?: number | null
+          resolved_at?: string | null
+          route?: string | null
+          stack_trace?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          ai_analysis?: Json | null
+          browser_info?: string | null
+          component?: string | null
+          created_at?: string
+          device_info?: string | null
+          error_message?: string
+          error_type?: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          occurrence_count?: number | null
+          resolved_at?: string | null
+          route?: string | null
+          stack_trace?: string | null
+          status?: string
+          user_id?: string | null
         }
         Relationships: []
       }
