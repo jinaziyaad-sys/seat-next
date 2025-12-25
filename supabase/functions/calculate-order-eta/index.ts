@@ -23,6 +23,49 @@ serve(async (req) => {
       throw new Error('venue_id is required');
     }
 
+    // Fetch venue settings to check prep time mode
+    const { data: venue, error: venueError } = await supabase
+      .from('venues')
+      .select('settings')
+      .eq('id', venue_id)
+      .single();
+
+    if (venueError) {
+      console.error('Error fetching venue:', venueError);
+      throw venueError;
+    }
+
+    const venueSettings = venue?.settings as any || {};
+    const prepTimeMode = venueSettings.prep_time_mode || 'analytics';
+    const fixedPrepTime = venueSettings.default_prep_time || 15;
+
+    // If fixed mode, return the configured prep time directly
+    if (prepTimeMode === 'fixed') {
+      console.log('Order ETA (fixed mode):', {
+        order_number,
+        venue_id,
+        prep_time: fixedPrepTime,
+        mode: 'fixed'
+      });
+
+      return new Response(
+        JSON.stringify({
+          eta_minutes: fixedPrepTime,
+          confidence: 'fixed',
+          confidence_score: 100,
+          breakdown: {
+            base_time: fixedPrepTime,
+            load_factor: 1.0,
+            complexity_factor: 1.0,
+            data_points: 0,
+            mode: 'fixed'
+          }
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Analytics mode - use dynamic calculation
     const now = new Date();
     const dayOfWeek = now.getDay();
     const hourOfDay = now.getHours();
@@ -71,7 +114,7 @@ serve(async (req) => {
       confidenceLevel = 'medium';
     }
 
-    console.log('Order ETA calculated:', {
+    console.log('Order ETA (analytics mode):', {
       order_number,
       venue_id,
       items_count: itemsCount,
@@ -79,7 +122,8 @@ serve(async (req) => {
       base_minutes: result.estimated_minutes,
       final_minutes: finalMinutes,
       confidence: confidenceLevel,
-      data_points: result.data_points
+      data_points: result.data_points,
+      mode: 'analytics'
     });
 
     return new Response(
@@ -91,7 +135,8 @@ serve(async (req) => {
           base_time: Math.round(result.base_time),
           load_factor: result.load_multiplier,
           complexity_factor: complexityFactor,
-          data_points: result.data_points
+          data_points: result.data_points,
+          mode: 'analytics'
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
