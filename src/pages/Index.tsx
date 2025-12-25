@@ -414,21 +414,24 @@ const Index = () => {
       {announcement && !announcementDismissed && (
         <div className={cn(
           "px-4 py-3 flex items-center gap-3",
-          announcement.type === 'maintenance' && "bg-amber-500/20 text-amber-100 border-b border-amber-500/30",
-          announcement.type === 'warning' && "bg-yellow-500/20 text-yellow-100 border-b border-yellow-500/30",
-          announcement.type === 'error' && "bg-red-500/20 text-red-100 border-b border-red-500/30",
-          announcement.type === 'info' && "bg-blue-500/20 text-blue-100 border-b border-blue-500/30"
+          announcement.type === 'maintenance' && "bg-amber-600 text-white",
+          announcement.type === 'warning' && "bg-yellow-500 text-black",
+          announcement.type === 'error' && "bg-red-600 text-white",
+          announcement.type === 'info' && "bg-blue-600 text-white"
         )}>
           {(() => {
             const IconComponent = getAnnouncementIcon(announcement.type);
             return <IconComponent className="h-5 w-5 shrink-0" />;
           })()}
-          <p className="text-sm flex-1">{announcement.message}</p>
+          <p className="text-sm font-medium flex-1">{announcement.message}</p>
           {announcement.dismissible && (
             <Button
               variant="ghost"
               size="icon"
-              className="h-6 w-6 shrink-0 hover:bg-white/10"
+              className={cn(
+                "h-6 w-6 shrink-0",
+                announcement.type === 'warning' ? "hover:bg-black/10 text-black" : "hover:bg-white/20 text-white"
+              )}
               onClick={() => setAnnouncementDismissed(true)}
             >
               <X className="h-4 w-4" />
