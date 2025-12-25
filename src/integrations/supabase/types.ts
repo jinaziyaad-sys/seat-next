@@ -955,6 +955,7 @@ export type Database = {
       }
       cancel_expired_ready_entries: { Args: never; Returns: undefined }
       cleanup_expired_otps: { Args: never; Returns: undefined }
+      execute_readonly_query: { Args: { query_text: string }; Returns: Json }
       get_occupied_tables: {
         Args: {
           p_buffer_minutes?: number
