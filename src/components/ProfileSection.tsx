@@ -3,13 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { ArrowLeft, User, Bell, Accessibility, Shield, LogOut, KeyRound, Palette } from "lucide-react";
+import { ArrowLeft, User, Shield, LogOut, Palette } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { PatronNotificationSettings } from "@/components/PatronNotificationSettings";
 
 interface UserProfile {
   full_name: string;
@@ -208,6 +208,9 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Notifications Section */}
+      <PatronNotificationSettings />
 
       {/* Appearance Section */}
       <Card className="shadow-card">
