@@ -1359,17 +1359,25 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   }
 
   if (step === "reservation-details") {
+    // Get minimum lead time from venue settings (default 60 minutes)
+    const minimumLeadTime = selectedVenueData?.settings?.minimum_reservation_lead_time ?? 60;
+    
+    // Check if selected date is today
+    const isToday = reservationDate?.toDateString() === new Date().toDateString();
+    
     // Get available times from venue settings
     const timeSlots = selectedVenueData?.settings?.business_hours && reservationDate
       ? getAvailableReservationTimes(
           reservationDate,
           selectedVenueData.settings.business_hours,
           selectedVenueData.settings.holiday_closures || [],
-          15
+          15,
+          minimumLeadTime
         )
       : [];
     
     const hasNoAvailability = reservationDate && timeSlots.length === 0;
+    const isNoSameDaySlots = isToday && hasNoAvailability;
 
     return (
       <div className="space-y-6 p-6">
@@ -1394,7 +1402,10 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                     <div>
                       <p className="font-semibold text-destructive">No Availability</p>
                       <p className="text-sm text-muted-foreground">
-                        This venue is not accepting reservations on the selected date.
+                        {isNoSameDaySlots 
+                          ? `No same-day slots available. Reservations require at least ${Math.round(minimumLeadTime / 60)} hour${minimumLeadTime >= 120 ? 's' : ''} notice. Please select a future date.`
+                          : "This venue is not accepting reservations on the selected date."
+                        }
                       </p>
                     </div>
                   </div>

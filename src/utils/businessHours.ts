@@ -276,12 +276,24 @@ export function getAvailableReservationTimes(
   date: Date,
   businessHours: BusinessHours,
   holidayClosures: HolidayClosure[],
-  intervalMinutes: number = 15
+  intervalMinutes: number = 15,
+  minimumLeadTimeMinutes: number = 0
 ): string[] {
   const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
   const dayKey = dayNames[date.getDay()];
   // Use local date to match how holidays are stored
   const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  
+  // Check if selected date is today
+  const now = new Date();
+  const isToday = date.toDateString() === now.toDateString();
+  
+  // Calculate minimum allowed time for today (current time + lead time)
+  let minAllowedMinutes = 0;
+  if (isToday && minimumLeadTimeMinutes > 0) {
+    const currentMinutesOfDay = now.getHours() * 60 + now.getMinutes();
+    minAllowedMinutes = currentMinutesOfDay + minimumLeadTimeMinutes;
+  }
   
   // Check holiday first
   const holiday = holidayClosures.find(h => h.date === dateStr);
@@ -325,6 +337,12 @@ export function getAvailableReservationTimes(
     const hours = Math.floor(currentMinutes / 60) % 24;
     const minutes = currentMinutes % 60;
     const timeStr = `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+    
+    // Skip slots that are before the minimum allowed time for today
+    if (isToday && currentMinutes < minAllowedMinutes) {
+      currentMinutes += intervalMinutes;
+      continue;
+    }
     
     // Check if time falls during a break
     const isDuringBreak = breaks.some(b => 
