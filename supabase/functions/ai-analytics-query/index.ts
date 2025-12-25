@@ -157,11 +157,21 @@ Return a JSON object with this structure:
       throw new Error('Only SELECT queries are allowed');
     }
 
-    // Check for dangerous keywords
-    const dangerousKeywords = ['INSERT', 'UPDATE', 'DELETE', 'DROP', 'TRUNCATE', 'ALTER', 'CREATE', 'GRANT', 'REVOKE'];
-    for (const keyword of dangerousKeywords) {
-      if (normalizedSql.includes(keyword)) {
-        throw new Error(`Dangerous operation detected: ${keyword}`);
+    // Check for dangerous keywords - use word boundaries to avoid false positives like "created_at"
+    const dangerousPatterns = [
+      /\bINSERT\s+INTO\b/i,
+      /\bUPDATE\s+\w+\s+SET\b/i,
+      /\bDELETE\s+FROM\b/i,
+      /\bDROP\s+(TABLE|DATABASE|INDEX|VIEW|SCHEMA)\b/i,
+      /\bTRUNCATE\b/i,
+      /\bALTER\s+(TABLE|DATABASE)\b/i,
+      /\bCREATE\s+(TABLE|DATABASE|INDEX|VIEW|FUNCTION|TRIGGER)\b/i,
+      /\bGRANT\b/i,
+      /\bREVOKE\b/i,
+    ];
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(sql)) {
+        throw new Error(`Dangerous operation detected in query`);
       }
     }
 
