@@ -225,7 +225,7 @@ const MerchantDashboard = () => {
     if (hasKitchenBoard) count++;
     if (hasTableReady) count++; // Waitlist tab
     if (hasReservations) count++; // Reservations tab
-    if (userRole.role === "admin") {
+    if (userRole?.role === "admin") {
       count += 2; // Staff + Settings always visible for admin
       if (hasAnalytics) count++; // Reports tab
     }
@@ -234,7 +234,7 @@ const MerchantDashboard = () => {
 
   // Set initial tab when service types are loaded
   useEffect(() => {
-    if (!activeTab && venueServiceTypes.length > 0) {
+    if (!activeTab && venueServiceTypes.length > 0 && userRole) {
       if (hasKitchenBoard) {
         setActiveTab("kitchen");
       } else if (hasTableReady) {
@@ -243,7 +243,7 @@ const MerchantDashboard = () => {
         setActiveTab("settings");
       }
     }
-  }, [venueServiceTypes, activeTab, hasKitchenBoard, hasTableReady, userRole.role]);
+  }, [venueServiceTypes, activeTab, hasKitchenBoard, hasTableReady, userRole]);
 
   // Handle tab change with unsaved changes check
   const handleTabChange = useCallback((newTab: string) => {
