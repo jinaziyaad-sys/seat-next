@@ -177,12 +177,22 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
             });
           }
           
-          // Update the specific entry in local state with ALL fields from payload
-          setWaitlist(prev => prev.map(entry => 
-            entry.id === payload.new.id 
-              ? { ...entry, ...(payload.new as WaitlistEntry) }
-              : entry
-          ));
+          // Remove entry from list if it no longer matches display criteria
+          const shouldRemove = 
+            payload.new.status === 'no_show' ||
+            (payload.new.status === 'seated' && !payload.new.awaiting_merchant_confirmation) ||
+            payload.new.merchant_acknowledged === true;
+          
+          if (shouldRemove) {
+            setWaitlist(prev => prev.filter(entry => entry.id !== payload.new.id));
+          } else {
+            // Update the specific entry in local state with ALL fields from payload
+            setWaitlist(prev => prev.map(entry => 
+              entry.id === payload.new.id 
+                ? { ...entry, ...(payload.new as WaitlistEntry) }
+                : entry
+            ));
+          }
           
         } else if (payload.eventType === 'DELETE') {
           // Remove entry from local state
