@@ -25,6 +25,7 @@ interface StaffMember {
   user_id: string;
   role: string;
   email?: string;
+  full_name?: string;
   created_at: string;
 }
 
@@ -65,22 +66,23 @@ export const StaffManagement = ({ venueId }: { venueId: string }) => {
       .order("created_at", { ascending: false });
 
     if (data && !error) {
-      // Fetch email addresses for each user
-      const staffWithEmails = await Promise.all(
+      // Fetch email addresses and names for each user
+      const staffWithDetails = await Promise.all(
         data.map(async (member) => {
           const { data: profile } = await supabase
             .from("profiles")
-            .select("email")
+            .select("email, full_name")
             .eq("id", member.user_id)
             .single();
           
           return {
             ...member,
-            email: profile?.email || "Unknown"
+            email: profile?.email || "Unknown",
+            full_name: profile?.full_name || ""
           };
         })
       );
-      setStaffMembers(staffWithEmails);
+      setStaffMembers(staffWithDetails);
     }
     setFetchingStaff(false);
   };
@@ -292,7 +294,12 @@ export const StaffManagement = ({ venueId }: { venueId: string }) => {
                         <Mail className="w-4 h-4 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{member.email}</p>
+                        <p className="font-medium truncate">
+                          {member.full_name || member.email}
+                        </p>
+                        {member.full_name && (
+                          <p className="text-xs text-muted-foreground truncate">{member.email}</p>
+                        )}
                         <p className="text-xs text-muted-foreground">
                           Added {new Date(member.created_at).toLocaleDateString()}
                         </p>

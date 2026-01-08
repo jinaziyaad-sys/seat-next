@@ -76,10 +76,10 @@ Deno.serve(async (req) => {
       const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
         email,
         password,
+        email_confirm: true, // Auto-confirm so staff can log in immediately with shared password
         user_metadata: {
           full_name: fullName
         }
-        // Removed email_confirm: true - user must verify email
       });
 
       if (authError) {
