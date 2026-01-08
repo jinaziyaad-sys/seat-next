@@ -98,3 +98,6 @@ verify_jwt = false
 
 [[functions.send-engagement-nudge.cron]]
 schedule = "*/30 * * * *"
+
+[functions.reset-merchant-user]
+verify_jwt = false

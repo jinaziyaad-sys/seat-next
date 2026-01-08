@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Download, Sparkles } from "lucide-react";
+import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Download, Sparkles, KeyRound, CheckCircle, Mail, RotateCcw } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PatronManagement } from "@/components/dev/PatronManagement";
@@ -63,6 +63,7 @@ interface MerchantUser {
   email?: string;
   full_name?: string;
   venue_name?: string;
+  email_confirmed?: boolean;
 }
 
 export default function DevDashboard() {
@@ -608,6 +609,103 @@ export default function DevDashboard() {
       toast({
         title: "Error",
         description: error.message || "Failed to remove merchant admin",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConfirmEmail = async (userId: string, email: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-merchant-user", {
+        body: { userId, action: "confirm_email" },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: "Email Confirmed",
+        description: `${email} can now log in successfully`,
+      });
+
+      fetchMerchantUsers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to confirm email",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendPasswordReset = async (userId: string, email: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-merchant-user", {
+        body: { userId, action: "send_password_reset" },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      // Copy reset link to clipboard if available
+      if (data?.resetLink) {
+        await navigator.clipboard.writeText(data.resetLink);
+        toast({
+          title: "Password Reset Link Copied",
+          description: `Share this link with ${email} to reset their password. Link copied to clipboard.`,
+        });
+      } else {
+        toast({
+          title: "Password Reset Generated",
+          description: `Password reset for ${email} was processed`,
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to generate password reset",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetAll = async (userId: string, email: string) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-merchant-user", {
+        body: { userId, action: "reset_all" },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      // Copy reset link to clipboard if available
+      if (data?.resetLink) {
+        await navigator.clipboard.writeText(data.resetLink);
+        toast({
+          title: "Account Reset Complete",
+          description: `Email confirmed and password reset link copied to clipboard for ${email}`,
+        });
+      } else {
+        toast({
+          title: "Account Reset Complete",
+          description: `Account reset for ${email} was processed`,
+        });
+      }
+
+      fetchMerchantUsers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to reset account",
         variant: "destructive",
       });
     } finally {
@@ -1394,9 +1492,9 @@ export default function DevDashboard() {
                 <div className="space-y-4">
                   {merchantUsers.map((merchant) => (
                     <div key={merchant.id} className="border rounded-lg p-4">
-                      <div className="flex items-start justify-between">
+                      <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 flex-wrap">
                             <h3 className="font-semibold">{merchant.full_name || merchant.email || "N/A"}</h3>
                             <span className={`text-xs px-2 py-1 rounded-full ${
                               merchant.role === 'admin' 
@@ -1405,36 +1503,79 @@ export default function DevDashboard() {
                             }`}>
                               {merchant.role}
                             </span>
+                            {merchant.email_confirmed === false && (
+                              <Badge variant="destructive" className="text-xs">
+                                Unconfirmed
+                              </Badge>
+                            )}
+                            {merchant.email_confirmed === true && (
+                              <Badge variant="outline" className="text-xs text-green-600 border-green-600">
+                                <CheckCircle className="w-3 h-3 mr-1" />
+                                Confirmed
+                              </Badge>
+                            )}
                           </div>
                           <p className="text-sm text-muted-foreground">{merchant.email}</p>
                           <p className="text-sm text-muted-foreground mt-1">
                             Venue: {merchant.venue_name}
                           </p>
                         </div>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button variant="destructive" size="sm" disabled={loading}>
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>Remove Merchant User?</AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to remove {merchant.role} "{merchant.email}" from {merchant.venue_name}? They will lose access to the merchant dashboard. This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDeleteMerchant(merchant.user_id, merchant.venue_id, merchant.email)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                              >
-                                Remove
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                        <div className="flex flex-wrap gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleConfirmEmail(merchant.user_id, merchant.email || '')}
+                            disabled={loading}
+                            title="Confirm email (allow login)"
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1" />
+                            Confirm
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleSendPasswordReset(merchant.user_id, merchant.email || '')}
+                            disabled={loading}
+                            title="Generate password reset link"
+                          >
+                            <KeyRound className="w-4 h-4 mr-1" />
+                            Reset Password
+                          </Button>
+                          <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            onClick={() => handleResetAll(merchant.user_id, merchant.email || '')}
+                            disabled={loading}
+                            title="Confirm email + generate password reset"
+                          >
+                            <RotateCcw className="w-4 h-4 mr-1" />
+                            Fix Login
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="destructive" size="sm" disabled={loading}>
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Remove Merchant User?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to remove {merchant.role} "{merchant.email}" from {merchant.venue_name}? They will lose access to the merchant dashboard. This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDeleteMerchant(merchant.user_id, merchant.venue_id, merchant.email || '')}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Remove
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
                       </div>
                     </div>
                   ))}
