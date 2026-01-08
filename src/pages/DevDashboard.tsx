@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Download, Sparkles, KeyRound, CheckCircle, Mail, RotateCcw, Lock } from "lucide-react";
+import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Download, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -22,7 +22,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PatronManagement } from "@/components/dev/PatronManagement";
 import { PlatformAnalytics } from "@/components/dev/PlatformAnalytics";
@@ -110,8 +109,9 @@ export default function DevDashboard() {
   const [selectedVenueId, setSelectedVenueId] = useState("");
   const [loading, setLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
-  const [setPasswordUser, setSetPasswordUser] = useState<{ userId: string; email: string } | null>(null);
+  const [setPasswordUser, setSetPasswordUser] = useState<{ userId: string; email: string; resetRequestId?: string } | null>(null);
   const [newPasswordInput, setNewPasswordInput] = useState("");
+  const [passwordResetRequests, setPasswordResetRequests] = useState<any[]>([]);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -119,8 +119,34 @@ export default function DevDashboard() {
     if (!authLoading) {
       fetchVenues();
       fetchMerchantUsers();
+      fetchPasswordResetRequests();
     }
   }, [authLoading]);
+
+  const fetchPasswordResetRequests = async () => {
+    const { data } = await supabase
+      .from("password_reset_requests")
+      .select("*")
+      .order("created_at", { ascending: false });
+    if (data) setPasswordResetRequests(data);
+  };
+
+  const handleDismissResetRequest = async (requestId: string) => {
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("password_reset_requests")
+        .update({ status: "dismissed", resolved_at: new Date().toISOString() })
+        .eq("id", requestId);
+      if (error) throw error;
+      toast({ title: "Request dismissed" });
+      fetchPasswordResetRequests();
+    } catch (error: any) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchVenues = async () => {
     const { data: venuesData } = await supabase
@@ -626,103 +652,6 @@ export default function DevDashboard() {
     }
   };
 
-  const handleConfirmEmail = async (userId: string, email: string) => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("reset-merchant-user", {
-        body: { userId, action: "confirm_email" },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      toast({
-        title: "Email Confirmed",
-        description: `${email} can now log in successfully`,
-      });
-
-      fetchMerchantUsers();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to confirm email",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSendPasswordReset = async (userId: string, email: string) => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("reset-merchant-user", {
-        body: { userId, action: "send_password_reset" },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      // Copy reset link to clipboard if available
-      if (data?.resetLink) {
-        await navigator.clipboard.writeText(data.resetLink);
-        toast({
-          title: "Password Reset Link Copied",
-          description: `Share this link with ${email} to reset their password. Link copied to clipboard.`,
-        });
-      } else {
-        toast({
-          title: "Password Reset Generated",
-          description: `Password reset for ${email} was processed`,
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to generate password reset",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResetAll = async (userId: string, email: string) => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("reset-merchant-user", {
-        body: { userId, action: "reset_all" },
-      });
-
-      if (error) throw error;
-      if (data?.error) throw new Error(data.error);
-
-      // Copy reset link to clipboard if available
-      if (data?.resetLink) {
-        await navigator.clipboard.writeText(data.resetLink);
-        toast({
-          title: "Account Reset Complete",
-          description: `Email confirmed and password reset link copied to clipboard for ${email}`,
-        });
-      } else {
-        toast({
-          title: "Account Reset Complete",
-          description: `Account reset for ${email} was processed`,
-        });
-      }
-
-      fetchMerchantUsers();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to reset account",
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSetPassword = async () => {
     if (!setPasswordUser || !newPasswordInput) return;
     
@@ -742,6 +671,7 @@ export default function DevDashboard() {
           userId: setPasswordUser.userId, 
           action: "set_password",
           newPassword: newPasswordInput,
+          resetRequestId: setPasswordUser.resetRequestId,
         },
       });
 
@@ -756,6 +686,7 @@ export default function DevDashboard() {
       setSetPasswordUser(null);
       setNewPasswordInput("");
       fetchMerchantUsers();
+      fetchPasswordResetRequests();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -940,7 +871,6 @@ export default function DevDashboard() {
             </div>
             <div className="flex gap-2">
               <ThemeToggle />
-              <PasswordResetDialog />
               <Button variant="outline" onClick={handleLogout}>
                 <LogOut size={16} className="mr-2" />
                 Logout
@@ -989,9 +919,18 @@ export default function DevDashboard() {
 
         {/* Management Tabs */}
         <Tabs defaultValue="venues" className="space-y-6">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="venues">Manage Venues</TabsTrigger>
             <TabsTrigger value="merchants">Manage Merchants</TabsTrigger>
+            <TabsTrigger value="password-resets" className="flex items-center gap-1">
+              <KeyRound className="h-3 w-3" />
+              Password Resets
+              {passwordResetRequests.filter(r => r.status === 'pending').length > 0 && (
+                <Badge variant="destructive" className="ml-1 h-5 px-1.5 text-xs">
+                  {passwordResetRequests.filter(r => r.status === 'pending').length}
+                </Badge>
+              )}
+            </TabsTrigger>
             <TabsTrigger value="patrons">Patron Management</TabsTrigger>
             <TabsTrigger value="platform">Platform Analytics</TabsTrigger>
             <TabsTrigger value="ai-control" className="flex items-center gap-1">
@@ -1564,7 +1503,7 @@ export default function DevDashboard() {
                             )}
                             {merchant.email_confirmed === true && (
                               <Badge variant="outline" className="text-xs text-green-600 border-green-600">
-                                <CheckCircle className="w-3 h-3 mr-1" />
+                                <CheckCircle2 className="w-3 h-3 mr-1" />
                                 Confirmed
                               </Badge>
                             )}
@@ -1575,36 +1514,6 @@ export default function DevDashboard() {
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => handleConfirmEmail(merchant.user_id, merchant.email || '')}
-                            disabled={loading}
-                            title="Confirm email (allow login)"
-                          >
-                            <CheckCircle className="w-4 h-4 mr-1" />
-                            Confirm
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => handleSendPasswordReset(merchant.user_id, merchant.email || '')}
-                            disabled={loading}
-                            title="Generate password reset link"
-                          >
-                            <KeyRound className="w-4 h-4 mr-1" />
-                            Reset Password
-                          </Button>
-                          <Button 
-                            variant="secondary" 
-                            size="sm" 
-                            onClick={() => handleResetAll(merchant.user_id, merchant.email || '')}
-                            disabled={loading}
-                            title="Confirm email + generate password reset"
-                          >
-                            <RotateCcw className="w-4 h-4 mr-1" />
-                            Fix Login
-                          </Button>
                           <Button 
                             variant="outline" 
                             size="sm" 
@@ -1648,6 +1557,67 @@ export default function DevDashboard() {
                   ))}
                   {merchantUsers.length === 0 && (
                     <p className="text-center text-muted-foreground py-8">No merchant users yet</p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="password-resets">
+            <Card>
+              <CardHeader>
+                <CardTitle>Password Reset Requests</CardTitle>
+                <CardDescription>Requests from staff who need admin assistance resetting their password</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {passwordResetRequests.filter(r => r.status === 'pending').map((request) => (
+                    <div key={request.id} className="border rounded-lg p-4">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold">{request.email}</h3>
+                            <Badge variant="outline" className="text-xs">
+                              <Clock className="w-3 h-3 mr-1" />
+                              {new Date(request.created_at).toLocaleDateString()}
+                            </Badge>
+                          </div>
+                          {request.venue_name && (
+                            <p className="text-sm text-muted-foreground mt-1">Venue: {request.venue_name}</p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            size="sm"
+                            onClick={async () => {
+                              // Find user by email
+                              const { data: profile } = await supabase
+                                .from("profiles")
+                                .select("id")
+                                .eq("email", request.email.toLowerCase())
+                                .single();
+                              if (profile) {
+                                setSetPasswordUser({ userId: profile.id, email: request.email, resetRequestId: request.id });
+                                setNewPasswordInput("");
+                              } else {
+                                toast({ title: "User not found", description: "No account found for this email", variant: "destructive" });
+                              }
+                            }}
+                            disabled={loading}
+                          >
+                            <Lock className="w-4 h-4 mr-1" />
+                            Set Password
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => handleDismissResetRequest(request.id)} disabled={loading}>
+                            <XCircle className="w-4 h-4 mr-1" />
+                            Dismiss
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {passwordResetRequests.filter(r => r.status === 'pending').length === 0 && (
+                    <p className="text-center text-muted-foreground py-8">No pending password reset requests</p>
                   )}
                 </div>
               </CardContent>
