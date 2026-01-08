@@ -135,12 +135,12 @@ export const StaffManagement = ({ venueId }: { venueId: string }) => {
 
   const handleDeleteStaff = async (staffId: string, userEmail: string) => {
     try {
-      const { error } = await supabase
-        .from("user_roles")
-        .delete()
-        .eq("id", staffId);
+      const { data, error } = await supabase.functions.invoke('delete-venue-staff', {
+        body: { staffRoleId: staffId, venueId },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       toast({
         title: "Staff Removed",
