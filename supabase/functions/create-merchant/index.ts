@@ -31,6 +31,39 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Validate requester (create-merchant has verify_jwt=false)
+    const authHeader = req.headers.get('Authorization') ?? '';
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const supabaseAuth = createClient(
+      Deno.env.get('SUPABASE_URL') ?? '',
+      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      {
+        global: { headers: { Authorization: authHeader } },
+        auth: { autoRefreshToken: false, persistSession: false },
+      }
+    );
+
+    const { data: { user: requester }, error: requesterError } = await supabaseAuth.auth.getUser();
+    if (requesterError || !requester) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    if (!['admin', 'staff'].includes(role)) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid role (must be admin or staff)' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Create Supabase admin client with service role key
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -42,6 +75,30 @@ Deno.serve(async (req) => {
         }
       }
     );
+
+    // Only venue admins (or super admins) can create staff for a venue
+    const { data: requesterRoles, error: requesterRolesError } = await supabaseAdmin
+      .from('user_roles')
+      .select('role, venue_id')
+      .eq('user_id', requester.id);
+
+    if (requesterRolesError) {
+      console.error('Failed to read requester roles:', requesterRolesError);
+      return new Response(
+        JSON.stringify({ error: 'Failed to validate permissions' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const isSuperAdmin = (requesterRoles ?? []).some((r: any) => r.role === 'super_admin');
+    const isVenueAdmin = (requesterRoles ?? []).some((r: any) => r.role === 'admin' && r.venue_id === venueId);
+
+    if (!isSuperAdmin && !isVenueAdmin) {
+      return new Response(
+        JSON.stringify({ error: 'Forbidden: venue admin required' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     console.log('Checking if user exists with email:', email);
 
