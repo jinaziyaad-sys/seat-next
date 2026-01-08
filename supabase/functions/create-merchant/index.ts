@@ -112,6 +112,19 @@ Deno.serve(async (req) => {
       console.log('User already exists:', existingUser.id);
       userId = existingUser.id;
 
+      // Ensure existing users can log in (confirm email if not confirmed)
+      const isConfirmed = Boolean((existingUser as any)?.email_confirmed_at || (existingUser as any)?.confirmed_at);
+      if (!isConfirmed) {
+        const { error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+          email_confirm: true,
+        });
+
+        if (confirmError) {
+          console.error('Failed to auto-confirm existing user:', confirmError);
+        } else {
+          console.log('Existing user email confirmed:', userId);
+        }
+      }
       // Check if user already has a role for this venue
       const { data: existingRole } = await supabaseAdmin
         .from('user_roles')
