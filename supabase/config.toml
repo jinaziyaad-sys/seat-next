@@ -101,3 +101,6 @@ schedule = "*/30 * * * *"
 
 [functions.reset-merchant-user]
 verify_jwt = false
+
+[functions.request-password-reset]
+verify_jwt = false

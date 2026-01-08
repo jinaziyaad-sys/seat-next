@@ -14,9 +14,9 @@ Deno.serve(async (req) => {
   try {
     console.log('Reset merchant user function invoked');
     
-    const { userId, action, newPassword } = await req.json();
+    const { userId, action, newPassword, resetRequestId } = await req.json();
 
-    console.log('Request data:', { userId, action });
+    console.log('Request data:', { userId, action, resetRequestId });
 
     // Validate input
     if (!userId) {
@@ -150,6 +150,25 @@ Deno.serve(async (req) => {
       results.passwordSet = true;
       results.emailConfirmed = true;
       console.log('Password set and email confirmed for user:', userId);
+
+      // If a resetRequestId was provided, mark the request as completed
+      if (resetRequestId) {
+        const { error: updateRequestError } = await supabaseAdmin
+          .from('password_reset_requests')
+          .update({
+            status: 'completed',
+            resolved_at: new Date().toISOString(),
+            resolved_by: user.id,
+          })
+          .eq('id', resetRequestId);
+
+        if (updateRequestError) {
+          console.error('Failed to update reset request:', updateRequestError);
+          // Don't fail the whole operation, just log it
+        } else {
+          console.log('Reset request marked as completed:', resetRequestId);
+        }
+      }
 
       return new Response(
         JSON.stringify({

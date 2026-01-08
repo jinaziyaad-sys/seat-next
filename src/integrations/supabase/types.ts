@@ -438,6 +438,42 @@ export type Database = {
           },
         ]
       }
+      password_reset_requests: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          notes: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          status: string
+          user_id: string | null
+          venue_name: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id?: string
+          notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_id?: string | null
+          venue_name?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          notes?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          status?: string
+          user_id?: string | null
+          venue_name?: string | null
+        }
+        Relationships: []
+      }
       patron_notification_preferences: {
         Row: {
           created_at: string
