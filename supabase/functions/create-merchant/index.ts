@@ -121,9 +121,32 @@ Deno.serve(async (req) => {
         .single();
 
       if (existingRole) {
+        // If this user was created earlier (before we started auto-confirming), they may be blocked from login.
+        const isConfirmed = Boolean((existingUser as any)?.email_confirmed_at || (existingUser as any)?.confirmed_at);
+        let emailConfirmedUpdated = false;
+
+        if (!isConfirmed) {
+          const { error: confirmError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+            email_confirm: true,
+          });
+
+          if (confirmError) {
+            console.error('Failed to auto-confirm existing user:', confirmError);
+          } else {
+            emailConfirmedUpdated = true;
+          }
+        }
+
         return new Response(
-          JSON.stringify({ error: 'This user is already assigned to this venue' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({
+            success: true,
+            userId: userId,
+            email: email,
+            isNewUser: false,
+            alreadyAssigned: true,
+            emailConfirmedUpdated,
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
     } else {
