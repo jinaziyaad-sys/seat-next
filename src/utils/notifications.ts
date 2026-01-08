@@ -66,6 +66,7 @@ export const initializePushNotifications = async (_firebaseProjectId: string): P
 
 /**
  * Send a browser notification (works when app is open)
+ * Note: This does NOT request permission - permission must already be granted
  */
 export const sendBrowserNotification = async (
   title: string,
@@ -77,21 +78,23 @@ export const sendBrowserNotification = async (
     return;
   }
 
-  const permission = await Notification.requestPermission();
-  
-  if (permission === 'granted') {
-    // Vibrate first
-    if ('vibrate' in navigator) {
-      navigator.vibrate([200, 100, 200]);
-    }
-    
-    // Show notification
-    new Notification(title, {
-      body,
-      icon: '/favicon.ico',
-      ...options,
-    });
+  // Only send if permission is already granted - don't request again
+  if (Notification.permission !== 'granted') {
+    console.log('Notification permission not granted, skipping');
+    return;
   }
+
+  // Vibrate first
+  if ('vibrate' in navigator) {
+    navigator.vibrate([200, 100, 200]);
+  }
+  
+  // Show notification
+  new Notification(title, {
+    body,
+    icon: '/favicon.ico',
+    ...options,
+  });
 };
 
 /**

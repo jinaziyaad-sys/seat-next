@@ -3,10 +3,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, Clock, Moon } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Bell, Clock, Moon, CheckCircle, XCircle, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-
+import { areNotificationsSupported, getNotificationPermission } from "@/utils/notifications";
+import { UnblockNotificationsDialog } from "@/components/notifications/UnblockNotificationsDialog";
 interface NotificationPreferences {
   mealtime_nudges: boolean;
   reengagement_nudges: boolean;
@@ -34,7 +37,11 @@ export function PatronNotificationSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [showUnblockDialog, setShowUnblockDialog] = useState(false);
   const { toast } = useToast();
+  
+  const notificationsSupported = areNotificationsSupported();
+  const notificationPermission = notificationsSupported ? getNotificationPermission() : 'denied';
 
   useEffect(() => {
     fetchPreferences();
@@ -130,6 +137,38 @@ export function PatronNotificationSettings() {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Notification Status */}
+        <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-medium">Browser notifications</span>
+            {notificationPermission === 'granted' ? (
+              <Badge variant="default" className="gap-1 bg-green-500/20 text-green-700 dark:text-green-400 hover:bg-green-500/20">
+                <CheckCircle size={12} />
+                Enabled
+              </Badge>
+            ) : notificationPermission === 'denied' ? (
+              <Badge variant="destructive" className="gap-1">
+                <XCircle size={12} />
+                Blocked
+              </Badge>
+            ) : (
+              <Badge variant="secondary" className="gap-1">
+                <HelpCircle size={12} />
+                Not set
+              </Badge>
+            )}
+          </div>
+          {notificationPermission === 'denied' && (
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={() => setShowUnblockDialog(true)}
+            >
+              How to enable
+            </Button>
+          )}
+        </div>
+
         {/* Nudge Types */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-muted-foreground">Reminders</h3>
@@ -269,6 +308,11 @@ export function PatronNotificationSettings() {
           </div>
         </div>
       </CardContent>
+      
+      <UnblockNotificationsDialog 
+        open={showUnblockDialog} 
+        onOpenChange={setShowUnblockDialog} 
+      />
     </Card>
   );
 }
