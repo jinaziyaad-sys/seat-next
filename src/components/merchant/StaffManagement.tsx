@@ -30,6 +30,7 @@ interface StaffMember {
 
 export const StaffManagement = ({ venueId }: { venueId: string }) => {
   const [email, setEmail] = useState("");
+  const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState<"admin" | "staff">("staff");
   const [loading, setLoading] = useState(false);
@@ -87,7 +88,7 @@ export const StaffManagement = ({ venueId }: { venueId: string }) => {
   const handleCreateStaff = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!email || !password) {
+    if (!email || !password || !fullName) {
       toast({
         title: "Missing Information",
         description: "Please fill in all fields",
@@ -104,6 +105,7 @@ export const StaffManagement = ({ venueId }: { venueId: string }) => {
         body: {
           email,
           password,
+          fullName,
           venueId,
           role, // Pass the selected role
         },
@@ -123,6 +125,7 @@ export const StaffManagement = ({ venueId }: { venueId: string }) => {
 
         // Reset form
         setEmail("");
+        setFullName("");
         setPassword("");
         setRole("staff");
         
@@ -194,6 +197,18 @@ export const StaffManagement = ({ venueId }: { venueId: string }) => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleCreateStaff} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="John Doe"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required
+                />
+              </div>
+
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
                 <Input
