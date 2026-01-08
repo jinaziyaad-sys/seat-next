@@ -13,7 +13,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Download, Sparkles, KeyRound, CheckCircle, Mail, RotateCcw } from "lucide-react";
+import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Download, Sparkles, KeyRound, CheckCircle, Mail, RotateCcw, Lock } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PatronManagement } from "@/components/dev/PatronManagement";
@@ -102,6 +110,8 @@ export default function DevDashboard() {
   const [selectedVenueId, setSelectedVenueId] = useState("");
   const [loading, setLoading] = useState(false);
   const [exportLoading, setExportLoading] = useState(false);
+  const [setPasswordUser, setSetPasswordUser] = useState<{ userId: string; email: string } | null>(null);
+  const [newPasswordInput, setNewPasswordInput] = useState("");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -706,6 +716,50 @@ export default function DevDashboard() {
       toast({
         title: "Error",
         description: error.message || "Failed to reset account",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSetPassword = async () => {
+    if (!setPasswordUser || !newPasswordInput) return;
+    
+    if (newPasswordInput.length < 6) {
+      toast({
+        title: "Invalid Password",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("reset-merchant-user", {
+        body: { 
+          userId: setPasswordUser.userId, 
+          action: "set_password",
+          newPassword: newPasswordInput,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      toast({
+        title: "Password Updated",
+        description: `Password set successfully for ${setPasswordUser.email}. They can now log in.`,
+      });
+
+      setSetPasswordUser(null);
+      setNewPasswordInput("");
+      fetchMerchantUsers();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to set password",
         variant: "destructive",
       });
     } finally {
@@ -1551,6 +1605,19 @@ export default function DevDashboard() {
                             <RotateCcw className="w-4 h-4 mr-1" />
                             Fix Login
                           </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => {
+                              setSetPasswordUser({ userId: merchant.user_id, email: merchant.email || '' });
+                              setNewPasswordInput("");
+                            }}
+                            disabled={loading}
+                            title="Set a new password directly"
+                          >
+                            <Lock className="w-4 h-4 mr-1" />
+                            Set Password
+                          </Button>
                           <AlertDialog>
                             <AlertDialogTrigger asChild>
                               <Button variant="destructive" size="sm" disabled={loading}>
@@ -1600,6 +1667,41 @@ export default function DevDashboard() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Set Password Dialog */}
+      <Dialog open={!!setPasswordUser} onOpenChange={(open) => !open && setSetPasswordUser(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Set New Password</DialogTitle>
+            <DialogDescription>
+              Set a new password for {setPasswordUser?.email}. This will also confirm their email.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Label htmlFor="new-password">New Password</Label>
+            <Input
+              id="new-password"
+              type="password"
+              value={newPasswordInput}
+              onChange={(e) => setNewPasswordInput(e.target.value)}
+              placeholder="Minimum 6 characters"
+              minLength={6}
+              className="mt-2"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSetPasswordUser(null)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSetPassword} 
+              disabled={loading || newPasswordInput.length < 6}
+            >
+              {loading ? "Setting..." : "Set Password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

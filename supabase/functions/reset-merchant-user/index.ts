@@ -14,7 +14,7 @@ Deno.serve(async (req) => {
   try {
     console.log('Reset merchant user function invoked');
     
-    const { userId, action } = await req.json();
+    const { userId, action, newPassword } = await req.json();
 
     console.log('Request data:', { userId, action });
 
@@ -26,11 +26,34 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (!action || !['confirm_email', 'send_password_reset', 'reset_all'].includes(action)) {
+    const validActions = ['confirm_email', 'send_password_reset', 'reset_all', 'set_password'];
+    if (!action || !validActions.includes(action)) {
       return new Response(
-        JSON.stringify({ error: 'Invalid action. Must be confirm_email, send_password_reset, or reset_all' }),
+        JSON.stringify({ error: `Invalid action. Must be one of: ${validActions.join(', ')}` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Validate password for set_password action
+    if (action === 'set_password') {
+      if (!newPassword || typeof newPassword !== 'string') {
+        return new Response(
+          JSON.stringify({ error: 'newPassword is required for set_password action' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (newPassword.length < 6) {
+        return new Response(
+          JSON.stringify({ error: 'Password must be at least 6 characters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (newPassword.length > 72) {
+        return new Response(
+          JSON.stringify({ error: 'Password must be less than 72 characters' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
     // Create Supabase admin client
@@ -107,7 +130,37 @@ Deno.serve(async (req) => {
     }
 
     const targetUser = targetUserData.user;
-    const results: { emailConfirmed?: boolean; passwordResetSent?: boolean } = {};
+    const results: { emailConfirmed?: boolean; passwordResetSent?: boolean; passwordSet?: boolean } = {};
+
+    // Set password action
+    if (action === 'set_password') {
+      const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(userId, {
+        password: newPassword,
+        email_confirm: true, // Also confirm email when setting password
+      });
+
+      if (updateError) {
+        console.error('Failed to set password:', updateError);
+        return new Response(
+          JSON.stringify({ error: `Failed to set password: ${updateError.message}` }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      results.passwordSet = true;
+      results.emailConfirmed = true;
+      console.log('Password set and email confirmed for user:', userId);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Password set and email confirmed successfully',
+          ...results,
+          userEmail: targetUser.email,
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Confirm email action
     if (action === 'confirm_email' || action === 'reset_all') {
