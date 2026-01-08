@@ -54,36 +54,23 @@ export const StaffManagement = ({ venueId }: { venueId: string }) => {
 
   const fetchStaffMembers = async () => {
     setFetchingStaff(true);
-    const { data, error } = await supabase
-      .from("user_roles")
-      .select(`
-        id,
-        user_id,
-        role,
-        created_at
-      `)
-      .eq("venue_id", venueId)
-      .order("created_at", { ascending: false });
 
-    if (data && !error) {
-      // Fetch email addresses and names for each user
-      const staffWithDetails = await Promise.all(
-        data.map(async (member) => {
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("email, full_name")
-            .eq("id", member.user_id)
-            .single();
-          
-          return {
-            ...member,
-            email: profile?.email || "Unknown",
-            full_name: profile?.full_name || ""
-          };
-        })
-      );
-      setStaffMembers(staffWithDetails);
+    const { data, error } = await supabase.functions.invoke('get-venue-staff', {
+      body: { venueId },
+    });
+
+    if (error) {
+      console.error('Error fetching staff members:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to load staff members",
+        variant: "destructive",
+      });
+      setFetchingStaff(false);
+      return;
     }
+
+    setStaffMembers((data?.staff ?? []) as StaffMember[]);
     setFetchingStaff(false);
   };
 

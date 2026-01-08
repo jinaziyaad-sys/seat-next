@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.create-merchant]
 verify_jwt = false
 
+[functions.get-venue-staff]
+verify_jwt = false
+
 [functions.delete-merchant]
 verify_jwt = false
 
