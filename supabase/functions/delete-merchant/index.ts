@@ -41,9 +41,9 @@ Deno.serve(async (req) => {
 
     console.log('Checking requester permissions...');
     
-    // Get the authorization header
+    // Validate requester using getClaims() for secure JWT validation
     const authHeader = req.headers.get('Authorization');
-    if (!authHeader) {
+    if (!authHeader?.startsWith('Bearer ')) {
       console.error('No authorization header');
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -62,17 +62,19 @@ Deno.serve(async (req) => {
       }
     );
 
-    // Get the current user
-    const { data: { user }, error: userError } = await supabaseUser.auth.getUser();
+    // Validate JWT using getClaims()
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseUser.auth.getClaims(token);
     
-    if (userError || !user) {
-      console.error('Failed to get user:', userError);
+    if (claimsError || !claimsData?.claims) {
+      console.error('Failed to validate JWT:', claimsError);
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    const user = { id: claimsData.claims.sub as string };
     console.log('Requester user ID:', user.id);
 
     // Check if requester is super_admin
