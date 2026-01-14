@@ -31,9 +31,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Validate requester (create-merchant has verify_jwt=false)
-    const authHeader = req.headers.get('Authorization') ?? '';
-    if (!authHeader) {
+    // Validate requester using getClaims() for secure JWT validation
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -49,13 +49,16 @@ Deno.serve(async (req) => {
       }
     );
 
-    const { data: { user: requester }, error: requesterError } = await supabaseAuth.auth.getUser();
-    if (requesterError || !requester) {
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    const requester = { id: claimsData.claims.sub as string };
 
     if (!['admin', 'staff'].includes(role)) {
       return new Response(
