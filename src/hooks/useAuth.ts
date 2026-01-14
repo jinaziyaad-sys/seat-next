@@ -70,10 +70,36 @@ export const useAuth = () => {
 
 export const useMerchantAuth = () => {
   const { user, session, loading: authLoading } = useAuth();
-  const [userRole, setUserRole] = useState<UserRole | null>(null);
+  const [allVenueRoles, setAllVenueRoles] = useState<UserRole[]>([]);
+  const [currentVenueRole, setCurrentVenueRole] = useState<UserRole | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Load saved venue preference from localStorage
+  const getSavedVenueId = () => {
+    try {
+      return localStorage.getItem('selectedVenueId');
+    } catch {
+      return null;
+    }
+  };
+
+  const saveVenueId = (venueId: string) => {
+    try {
+      localStorage.setItem('selectedVenueId', venueId);
+    } catch {
+      // Ignore localStorage errors
+    }
+  };
+
+  const switchVenue = (venueId: string) => {
+    const venue = allVenueRoles.find(v => v.venue_id === venueId);
+    if (venue) {
+      setCurrentVenueRole(venue);
+      saveVenueId(venueId);
+    }
+  };
 
   useEffect(() => {
     const checkMerchantAccess = async () => {
@@ -84,14 +110,13 @@ export const useMerchantAuth = () => {
         return;
       }
 
-      // Check user role
+      // Check user roles - fetch ALL roles for this user
       const { data: roles } = await supabase
         .from("user_roles")
-        .select("role, venue_id")
-        .eq("user_id", user.id)
-        .maybeSingle();
+        .select("role, venue_id, venues(name)")
+        .eq("user_id", user.id);
 
-      if (!roles) {
+      if (!roles || roles.length === 0) {
         // User is a patron (no role) - deny access
         toast({
           title: "Access Denied",
@@ -104,13 +129,16 @@ export const useMerchantAuth = () => {
       }
 
       // Check if user is super_admin - redirect to dev portal
-      if (roles.role === "super_admin") {
+      const superAdminRole = roles.find((r: any) => r.role === "super_admin");
+      if (superAdminRole) {
         navigate("/dev/dashboard");
         return;
       }
 
-      // Check if user is staff or admin
-      if (roles.role !== "staff" && roles.role !== "admin") {
+      // Filter to only staff/admin roles
+      const merchantRoles = roles.filter((r: any) => r.role === "staff" || r.role === "admin");
+      
+      if (merchantRoles.length === 0) {
         toast({
           title: "Access Denied",
           description: "You don't have the required permissions.",
@@ -121,18 +149,24 @@ export const useMerchantAuth = () => {
         return;
       }
 
-      // Fetch venue name
-      if (roles.venue_id) {
-        const { data: venue } = await supabase
-          .from("venues")
-          .select("name")
-          .eq("id", roles.venue_id)
-          .single();
+      // Map roles to UserRole format with venue names
+      const formattedRoles: UserRole[] = merchantRoles.map((r: any) => ({
+        role: r.role as AppRole,
+        venue_id: r.venue_id,
+        venue_name: (r.venues as any)?.name || "Unknown Venue",
+      }));
 
-        setUserRole({
-          ...roles,
-          venue_name: venue?.name || "Unknown Venue",
-        });
+      setAllVenueRoles(formattedRoles);
+
+      // Determine which venue to select
+      const savedVenueId = getSavedVenueId();
+      const savedVenue = savedVenueId ? formattedRoles.find(r => r.venue_id === savedVenueId) : null;
+      
+      // Use saved venue if exists, otherwise first venue
+      const selectedVenue = savedVenue || formattedRoles[0];
+      setCurrentVenueRole(selectedVenue);
+      if (selectedVenue.venue_id) {
+        saveVenueId(selectedVenue.venue_id);
       }
 
       setLoading(false);
@@ -141,7 +175,15 @@ export const useMerchantAuth = () => {
     checkMerchantAccess();
   }, [user, session, authLoading, navigate, toast]);
 
-  return { user, session, userRole, loading };
+  // For backwards compatibility, expose currentVenueRole as userRole
+  return { 
+    user, 
+    session, 
+    userRole: currentVenueRole, 
+    allVenueRoles,
+    switchVenue,
+    loading 
+  };
 };
 
 export const useDevAuth = () => {

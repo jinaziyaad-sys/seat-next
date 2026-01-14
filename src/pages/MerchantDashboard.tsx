@@ -10,6 +10,7 @@ import { MerchantSettings } from "@/components/merchant/MerchantSettings";
 import { StaffManagement } from "@/components/merchant/StaffManagement";
 import { MerchantReports } from "@/components/merchant/MerchantReports";
 import { VenueStatusIndicator } from "@/components/merchant/VenueStatusIndicator";
+import { VenueSwitcher } from "@/components/merchant/VenueSwitcher";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -31,7 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const MerchantDashboard = () => {
-  const { userRole, loading } = useMerchantAuth();
+  const { userRole, allVenueRoles, switchVenue, loading } = useMerchantAuth();
   const { features } = usePlatformConfig();
   const navigate = useNavigate();
   const [venueServiceTypes, setVenueServiceTypes] = useState<string[]>([]);
@@ -285,7 +286,11 @@ const MerchantDashboard = () => {
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-primary">{userRole.venue_name}</h1>
+                <VenueSwitcher 
+                  currentVenue={userRole}
+                  allVenues={allVenueRoles}
+                  onVenueChange={switchVenue}
+                />
                 <Badge variant={userRole.role === 'admin' ? 'default' : 'secondary'}>
                   {userRole.role === 'admin' ? 'Administrator' : 'Staff Member'}
                 </Badge>
@@ -299,6 +304,7 @@ const MerchantDashboard = () => {
                 )}
                 <span className="text-sm text-muted-foreground">
                   {userRole.role === 'admin' ? 'Full access to all features' : 'Kitchen & Waitlist access'}
+                  {allVenueRoles.length > 1 && ` • ${allVenueRoles.length} venues`}
                 </span>
               </div>
             </div>
