@@ -342,10 +342,24 @@ export default function DevDashboard() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      toast({
-        title: "Success!",
-        description: `Merchant admin account created for ${merchantEmail}`,
-      });
+      // Handle different response scenarios
+      if (data?.alreadyAssigned) {
+        toast({
+          title: "Already Assigned",
+          description: `${merchantEmail} already has access to this venue.`,
+        });
+      } else if (data?.isNewUser === false) {
+        // Existing user added to a new venue
+        toast({
+          title: "User Added to Venue",
+          description: data.message || `${merchantEmail} now has access to this venue (${data.existingRoles?.length || 1} total venue(s))`,
+        });
+      } else {
+        toast({
+          title: "Success!",
+          description: `New merchant admin account created for ${merchantEmail}`,
+        });
+      }
 
       setMerchantEmail("");
       setMerchantPassword("");
@@ -1412,7 +1426,10 @@ export default function DevDashboard() {
             <Card>
               <CardHeader>
                 <CardTitle>Create Merchant Admin</CardTitle>
-                <CardDescription>Create an admin account for a venue</CardDescription>
+                <CardDescription>
+                  Create a new admin account or add an existing user to a venue. 
+                  If the email already exists, they'll be granted access to the selected venue.
+                </CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleCreateMerchant} className="space-y-4">
@@ -1427,6 +1444,9 @@ export default function DevDashboard() {
                         placeholder="admin@restaurant.com"
                         required
                       />
+                      <p className="text-xs text-muted-foreground">
+                        If this email exists, the user will be added to the selected venue
+                      </p>
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="merchant-fullname">Full Name *</Label>
@@ -1451,6 +1471,9 @@ export default function DevDashboard() {
                       required
                       minLength={6}
                     />
+                    <p className="text-xs text-muted-foreground">
+                      For existing users, the password field is ignored (they keep their current password)
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="merchant-venue">Assign to Venue *</Label>
@@ -1469,56 +1492,92 @@ export default function DevDashboard() {
                   </div>
                   <Button type="submit" disabled={loading || venues.length === 0}>
                     <UserPlus className="w-4 h-4 mr-2" />
-                    {loading ? "Creating..." : "Create Merchant Admin"}
+                    {loading ? "Processing..." : "Create / Add Merchant Admin"}
                   </Button>
                 </form>
               </CardContent>
             </Card>
 
-            {/* Merchant Users List */}
+            {/* Merchant Users List - grouped by user */}
             <Card>
               <CardHeader>
                 <CardTitle>All Merchant Users ({merchantUsers.length})</CardTitle>
-                <CardDescription>Admin and staff accounts across all venues</CardDescription>
+                <CardDescription>Admin and staff accounts across all venues. Users with multiple venue access are grouped together.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {merchantUsers.map((merchant) => (
-                    <div key={merchant.id} className="border rounded-lg p-4">
+                  {/* Group merchants by user_id */}
+                  {Object.entries(
+                    merchantUsers.reduce((acc: Record<string, typeof merchantUsers>, merchant) => {
+                      if (!acc[merchant.user_id]) {
+                        acc[merchant.user_id] = [];
+                      }
+                      acc[merchant.user_id].push(merchant);
+                      return acc;
+                    }, {})
+                  ).map(([userId, userMerchants]) => (
+                    <div key={userId} className="border rounded-lg p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h3 className="font-semibold">{merchant.full_name || merchant.email || "N/A"}</h3>
-                            <span className={`text-xs px-2 py-1 rounded-full ${
-                              merchant.role === 'admin' 
-                                ? 'bg-primary/10 text-primary' 
-                                : 'bg-muted text-muted-foreground'
-                            }`}>
-                              {merchant.role}
-                            </span>
-                            {merchant.email_confirmed === false && (
-                              <Badge variant="destructive" className="text-xs">
-                                Unconfirmed
-                              </Badge>
-                            )}
-                            {merchant.email_confirmed === true && (
-                              <Badge variant="outline" className="text-xs text-green-600 border-green-600">
-                                <CheckCircle2 className="w-3 h-3 mr-1" />
-                                Confirmed
+                            <h3 className="font-semibold">{userMerchants[0].full_name || userMerchants[0].email || "N/A"}</h3>
+                            {userMerchants.length > 1 && (
+                              <Badge variant="outline" className="text-xs">
+                                {userMerchants.length} venues
                               </Badge>
                             )}
                           </div>
-                          <p className="text-sm text-muted-foreground">{merchant.email}</p>
-                          <p className="text-sm text-muted-foreground mt-1">
-                            Venue: {merchant.venue_name}
-                          </p>
+                          <p className="text-sm text-muted-foreground">{userMerchants[0].email}</p>
+                          
+                          {/* Show all venue assignments */}
+                          <div className="mt-2 space-y-1">
+                            {userMerchants.map((merchant) => (
+                              <div key={merchant.id} className="flex items-center gap-2 text-sm">
+                                <span className={`px-2 py-0.5 rounded text-xs ${
+                                  merchant.role === 'admin' 
+                                    ? 'bg-primary/10 text-primary' 
+                                    : 'bg-muted text-muted-foreground'
+                                }`}>
+                                  {merchant.role}
+                                </span>
+                                <span className="text-muted-foreground">at</span>
+                                <span className="font-medium">{merchant.venue_name}</span>
+                                {userMerchants.length > 1 && (
+                                  <AlertDialog>
+                                    <AlertDialogTrigger asChild>
+                                      <Button variant="ghost" size="sm" className="h-6 px-2 text-destructive hover:text-destructive" disabled={loading}>
+                                        <Trash2 className="w-3 h-3" />
+                                      </Button>
+                                    </AlertDialogTrigger>
+                                    <AlertDialogContent>
+                                      <AlertDialogHeader>
+                                        <AlertDialogTitle>Remove from Venue?</AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                          Remove {merchant.role} access for "{merchant.email}" from {merchant.venue_name}? They will retain access to their other venue(s).
+                                        </AlertDialogDescription>
+                                      </AlertDialogHeader>
+                                      <AlertDialogFooter>
+                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                        <AlertDialogAction
+                                          onClick={() => handleDeleteMerchant(merchant.user_id, merchant.venue_id, merchant.email || '')}
+                                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                        >
+                                          Remove from Venue
+                                        </AlertDialogAction>
+                                      </AlertDialogFooter>
+                                    </AlertDialogContent>
+                                  </AlertDialog>
+                                )}
+                              </div>
+                            ))}
+                          </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
                           <Button 
                             variant="outline" 
                             size="sm" 
                             onClick={() => {
-                              setSetPasswordUser({ userId: merchant.user_id, email: merchant.email || '' });
+                              setSetPasswordUser({ userId: userMerchants[0].user_id, email: userMerchants[0].email || '' });
                               setNewPasswordInput("");
                             }}
                             disabled={loading}
@@ -1537,16 +1596,24 @@ export default function DevDashboard() {
                               <AlertDialogHeader>
                                 <AlertDialogTitle>Remove Merchant User?</AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to remove {merchant.role} "{merchant.email}" from {merchant.venue_name}? They will lose access to the merchant dashboard. This action cannot be undone.
+                                  {userMerchants.length > 1 
+                                    ? `Remove "${userMerchants[0].email}" from ALL ${userMerchants.length} venues? They will lose all merchant access.`
+                                    : `Remove ${userMerchants[0].role} "${userMerchants[0].email}" from ${userMerchants[0].venue_name}? They will lose access to the merchant dashboard.`
+                                  }
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
                                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                                 <AlertDialogAction
-                                  onClick={() => handleDeleteMerchant(merchant.user_id, merchant.venue_id, merchant.email || '')}
+                                  onClick={async () => {
+                                    // Delete all venue assignments for this user
+                                    for (const m of userMerchants) {
+                                      await handleDeleteMerchant(m.user_id, m.venue_id, m.email || '');
+                                    }
+                                  }}
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                                 >
-                                  Remove
+                                  {userMerchants.length > 1 ? 'Remove from All Venues' : 'Remove'}
                                 </AlertDialogAction>
                               </AlertDialogFooter>
                             </AlertDialogContent>

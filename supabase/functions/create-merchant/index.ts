@@ -131,10 +131,16 @@ Deno.serve(async (req) => {
         .select('id')
         .eq('user_id', userId)
         .eq('venue_id', venueId)
-        .single();
+        .maybeSingle();
+
+      // Fetch all existing roles for this user to return in response
+      const { data: allExistingRoles } = await supabaseAdmin
+        .from('user_roles')
+        .select('role, venue_id, venues(name)')
+        .eq('user_id', userId);
 
       if (existingRole) {
-        // If this user was created earlier (before we started auto-confirming), they may be blocked from login.
+        // User already has a role at this specific venue
         const isConfirmed = Boolean((existingUser as any)?.email_confirmed_at || (existingUser as any)?.confirmed_at);
         let emailConfirmedUpdated = false;
 
@@ -158,10 +164,15 @@ Deno.serve(async (req) => {
             isNewUser: false,
             alreadyAssigned: true,
             emailConfirmedUpdated,
+            existingRoles: allExistingRoles || [],
+            message: `User already has a role at this venue`,
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+      
+      // User exists but doesn't have a role at this venue - we'll add them below
+      console.log('Existing user will be assigned to new venue:', venueId);
     } else {
       // Create new user
       console.log('Creating new user with email:', email, 'and full name:', fullName);
@@ -220,12 +231,22 @@ Deno.serve(async (req) => {
 
     console.log('Role assigned successfully for user:', userId, 'venue:', venueId);
 
+    // Fetch updated roles to return
+    const { data: updatedRoles } = await supabaseAdmin
+      .from('user_roles')
+      .select('role, venue_id, venues(name)')
+      .eq('user_id', userId);
+
     return new Response(
       JSON.stringify({ 
         success: true, 
         userId: userId,
         email: email,
-        isNewUser: !existingUser
+        isNewUser: !existingUser,
+        existingRoles: updatedRoles || [],
+        message: existingUser 
+          ? `User added to venue successfully (now has access to ${updatedRoles?.length || 1} venue(s))`
+          : `New user created and assigned to venue`
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
