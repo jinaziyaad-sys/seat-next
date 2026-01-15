@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Download, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Download, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -112,6 +112,14 @@ export default function DevDashboard() {
   const [setPasswordUser, setSetPasswordUser] = useState<{ userId: string; email: string; resetRequestId?: string } | null>(null);
   const [newPasswordInput, setNewPasswordInput] = useState("");
   const [passwordResetRequests, setPasswordResetRequests] = useState<any[]>([]);
+  const [assigningUserToVenue, setAssigningUserToVenue] = useState<{
+    userId: string;
+    email: string;
+    fullName: string;
+    existingVenueIds: string[];
+  } | null>(null);
+  const [quickAssignVenueId, setQuickAssignVenueId] = useState("");
+  const [quickAssignRole, setQuickAssignRole] = useState<"admin" | "staff">("admin");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -860,6 +868,43 @@ export default function DevDashboard() {
     }
   };
 
+  const handleQuickAssignToVenue = async () => {
+    if (!assigningUserToVenue || !quickAssignVenueId) return;
+    
+    setLoading(true);
+    try {
+      const { error } = await supabase
+        .from("user_roles")
+        .insert({
+          user_id: assigningUserToVenue.userId,
+          venue_id: quickAssignVenueId,
+          role: quickAssignRole,
+        });
+
+      if (error) throw error;
+
+      const venueName = venues.find(v => v.id === quickAssignVenueId)?.name;
+      toast({
+        title: "Success!",
+        description: `${assigningUserToVenue.email} now has ${quickAssignRole} access to ${venueName}`,
+      });
+
+      setAssigningUserToVenue(null);
+      setQuickAssignVenueId("");
+      setQuickAssignRole("admin");
+      fetchMerchantUsers();
+      fetchVenues();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleLogout = async () => {
     await supabase.auth.signOut();
     navigate("/dev/auth");
@@ -1573,6 +1618,25 @@ export default function DevDashboard() {
                           </div>
                         </div>
                         <div className="flex flex-wrap gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setAssigningUserToVenue({
+                                userId: userMerchants[0].user_id,
+                                email: userMerchants[0].email || '',
+                                fullName: userMerchants[0].full_name || '',
+                                existingVenueIds: userMerchants.map(m => m.venue_id),
+                              });
+                              setQuickAssignVenueId("");
+                              setQuickAssignRole("admin");
+                            }}
+                            disabled={loading || userMerchants.length >= venues.length}
+                            title={userMerchants.length >= venues.length ? "Already assigned to all venues" : "Add to another venue"}
+                          >
+                            <Plus className="w-4 h-4 mr-1" />
+                            Add Venue
+                          </Button>
                           <Button 
                             variant="outline" 
                             size="sm" 
@@ -1735,6 +1799,57 @@ export default function DevDashboard() {
               disabled={loading || newPasswordInput.length < 6}
             >
               {loading ? "Setting..." : "Set Password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Quick Assign to Venue Dialog */}
+      <Dialog open={!!assigningUserToVenue} onOpenChange={(open) => !open && setAssigningUserToVenue(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add to Another Venue</DialogTitle>
+            <DialogDescription>
+              Assign {assigningUserToVenue?.fullName || assigningUserToVenue?.email} to an additional venue.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Select Venue</Label>
+              <Select value={quickAssignVenueId} onValueChange={setQuickAssignVenueId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a venue..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {venues
+                    .filter(v => !assigningUserToVenue?.existingVenueIds.includes(v.id))
+                    .map((venue) => (
+                      <SelectItem key={venue.id} value={venue.id}>
+                        {venue.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={quickAssignRole} onValueChange={(v) => setQuickAssignRole(v as "admin" | "staff")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="staff">Staff</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAssigningUserToVenue(null)}>
+              Cancel
+            </Button>
+            <Button onClick={handleQuickAssignToVenue} disabled={loading || !quickAssignVenueId}>
+              {loading ? "Adding..." : "Add to Venue"}
             </Button>
           </DialogFooter>
         </DialogContent>
