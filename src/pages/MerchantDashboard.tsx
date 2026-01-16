@@ -11,6 +11,7 @@ import { StaffManagement } from "@/components/merchant/StaffManagement";
 import { MerchantReports } from "@/components/merchant/MerchantReports";
 import { VenueStatusIndicator } from "@/components/merchant/VenueStatusIndicator";
 import { VenueSwitcher } from "@/components/merchant/VenueSwitcher";
+import { VenueNotificationBell } from "@/components/merchant/VenueNotificationBell";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -405,6 +406,13 @@ const MerchantDashboard = () => {
                   allVenues={allVenueRoles}
                   onVenueChange={switchVenue}
                 />
+                {allVenueRoles.length > 1 && userRole.venue_id && (
+                  <VenueNotificationBell
+                    allVenues={allVenueRoles}
+                    currentVenueId={userRole.venue_id}
+                    onVenueChange={switchVenue}
+                  />
+                )}
                 <Badge variant={userRole.role === 'admin' ? 'default' : 'secondary'}>
                   {userRole.role === 'admin' ? 'Administrator' : 'Staff Member'}
                 </Badge>
