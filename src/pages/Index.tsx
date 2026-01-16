@@ -501,7 +501,7 @@ const Index = () => {
               <Card 
                 key={order.id} 
                 className={cn(
-                  "shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01]",
+                  "group shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01]",
                   order.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
                   order.status === 'rejected' && "bg-destructive/10 border-destructive",
                   order.status === 'collected' && "bg-success/10 border-success"
@@ -533,7 +533,7 @@ const Index = () => {
                       </div>
                       <div>
                         <h3 className="font-semibold">{order.venues?.name}</h3>
-                        <p className="text-sm text-muted-foreground">Order #{order.order_number}</p>
+                        <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">Order #{order.order_number}</p>
                         {order.status === 'rejected' && (
                           <p className="text-xs text-destructive mt-1">
                             Cancelled by {order.cancelled_by === 'patron' ? 'you' : order.cancelled_by === 'system' ? 'system' : 'venue'}
@@ -541,14 +541,14 @@ const Index = () => {
                         )}
                         {order.eta && (order.status === 'placed' || order.status === 'in_prep') && (
                           <div className="space-y-1 mt-1">
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors">
                               <Clock size={12} />
                               <span>
                                 {Math.ceil((new Date(order.eta).getTime() - new Date().getTime()) / (1000 * 60))} min • ETA {new Date(order.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
                               </span>
                             </div>
                             {order.confidence && (
-                              <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                              <div className="text-[10px] text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-1">
                                 <Badge variant={order.confidence === 'high' ? 'default' : order.confidence === 'medium' ? 'secondary' : 'outline'} className="h-4 text-[9px] px-1">
                                   {order.confidence === 'high' ? 'High Confidence' : order.confidence === 'medium' ? 'Medium' : 'Estimate'}
                                 </Badge>
@@ -635,7 +635,7 @@ const Index = () => {
               <Card 
                 key={entry.id} 
                 className={cn(
-                  "shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01]",
+                  "group shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01]",
                   entry.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
                   entry.status === 'cancelled' && "bg-destructive/10 border-destructive",
                   entry.status === 'seated' && "bg-success/10 border-success"
@@ -672,10 +672,10 @@ const Index = () => {
                         )}
                         {isUpcomingReservation ? (
                           <>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
                               Reservation for {entry.party_size}
                             </p>
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors mt-1">
                               <CalendarIcon size={12} />
                               <span>
                                 {isToday ? 'Today' : format(new Date(entry.reservation_time), 'MMM d')} 
@@ -686,7 +686,7 @@ const Index = () => {
                           </>
                         ) : (
                           <>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
                               Party of {entry.party_size}{entry.position ? ` • #${entry.position}` : ''}
                             </p>
                         {entry.status === 'cancelled' && (
@@ -696,14 +696,14 @@ const Index = () => {
                         )}
                             {entry.eta && entry.status === 'waiting' && (
                               <div className="space-y-1 mt-1">
-                                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors">
                                   <Clock size={12} />
                                   <span>
                                     {Math.ceil((new Date(entry.eta).getTime() - new Date().getTime()) / (1000 * 60))} min • ETA {new Date(entry.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
                                   </span>
                                 </div>
                                 {entry.confidence && (
-                                  <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                  <div className="text-[10px] text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-1">
                                     <Badge variant={entry.confidence === 'high' ? 'default' : entry.confidence === 'medium' ? 'secondary' : 'outline'} className="h-4 text-[9px] px-1">
                                       {entry.confidence === 'high' ? 'High Confidence' : entry.confidence === 'medium' ? 'Medium' : 'Estimate'}
                                     </Badge>
