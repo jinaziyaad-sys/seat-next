@@ -50,6 +50,11 @@ const MerchantDashboard = () => {
   const [waitlistCount, setWaitlistCount] = useState(0);
   const [reservationCount, setReservationCount] = useState(0);
   
+  // Track if there are new (unseen) items for each tab
+  const [kitchenHasNew, setKitchenHasNew] = useState(false);
+  const [waitlistHasNew, setWaitlistHasNew] = useState(false);
+  const [reservationHasNew, setReservationHasNew] = useState(false);
+  
   // Help system state
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpTab, setHelpTab] = useState<'faq' | 'chat' | 'tour' | 'report'>('faq');
@@ -82,17 +87,24 @@ const MerchantDashboard = () => {
   };
 
   // Fetch tab notification counts
-  const fetchKitchenCount = useCallback(async () => {
+  const fetchKitchenCount = useCallback(async (isInitial = false) => {
     if (!userRole?.venue_id) return;
     const { count } = await supabase
       .from("orders")
       .select("*", { count: "exact", head: true })
       .eq("venue_id", userRole.venue_id)
       .in("status", ["awaiting_verification", "placed", "in_prep", "ready"]);
-    setKitchenCount(count || 0);
+    const newCount = count || 0;
+    setKitchenCount(prev => {
+      // Mark as new if count increased and not initial load
+      if (!isInitial && newCount > prev) {
+        setKitchenHasNew(true);
+      }
+      return newCount;
+    });
   }, [userRole?.venue_id]);
 
-  const fetchWaitlistCount = useCallback(async () => {
+  const fetchWaitlistCount = useCallback(async (isInitial = false) => {
     if (!userRole?.venue_id) return;
     const { count } = await supabase
       .from("waitlist_entries")
@@ -100,10 +112,16 @@ const MerchantDashboard = () => {
       .eq("venue_id", userRole.venue_id)
       .in("status", ["waiting", "ready"])
       .neq("reservation_type", "reservation");
-    setWaitlistCount(count || 0);
+    const newCount = count || 0;
+    setWaitlistCount(prev => {
+      if (!isInitial && newCount > prev) {
+        setWaitlistHasNew(true);
+      }
+      return newCount;
+    });
   }, [userRole?.venue_id]);
 
-  const fetchReservationCount = useCallback(async () => {
+  const fetchReservationCount = useCallback(async (isInitial = false) => {
     if (!userRole?.venue_id) return;
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -118,7 +136,13 @@ const MerchantDashboard = () => {
       .in("status", ["waiting", "ready"])
       .gte("reservation_time", startOfDay.toISOString())
       .lte("reservation_time", endOfDay.toISOString());
-    setReservationCount(count || 0);
+    const newCount = count || 0;
+    setReservationCount(prev => {
+      if (!isInitial && newCount > prev) {
+        setReservationHasNew(true);
+      }
+      return newCount;
+    });
   }, [userRole?.venue_id]);
 
   // Fetch venue data
@@ -149,10 +173,10 @@ const MerchantDashboard = () => {
   useEffect(() => {
     if (!userRole?.venue_id) return;
 
-    // Initial fetch
-    fetchKitchenCount();
-    fetchWaitlistCount();
-    fetchReservationCount();
+    // Initial fetch (marked as initial so no "new" highlight)
+    fetchKitchenCount(true);
+    fetchWaitlistCount(true);
+    fetchReservationCount(true);
 
     // Subscribe to orders table for kitchen count updates
     const ordersCountChannel = supabase
@@ -162,7 +186,7 @@ const MerchantDashboard = () => {
         schema: 'public',
         table: 'orders',
         filter: `venue_id=eq.${userRole.venue_id}`
-      }, () => fetchKitchenCount())
+      }, () => fetchKitchenCount(false))
       .subscribe();
 
     // Subscribe to waitlist_entries for waitlist + reservation count updates
@@ -174,8 +198,8 @@ const MerchantDashboard = () => {
         table: 'waitlist_entries',
         filter: `venue_id=eq.${userRole.venue_id}`
       }, () => {
-        fetchWaitlistCount();
-        fetchReservationCount();
+        fetchWaitlistCount(false);
+        fetchReservationCount(false);
       })
       .subscribe();
 
@@ -332,8 +356,13 @@ const MerchantDashboard = () => {
     }
   }, [venueServiceTypes, activeTab, hasKitchenBoard, hasTableReady, userRole]);
 
-  // Handle tab change with unsaved changes check
+  // Handle tab change with unsaved changes check and clear "new" state
   const handleTabChange = useCallback((newTab: string) => {
+    // Clear "new" state when switching to a tab
+    if (newTab === "kitchen") setKitchenHasNew(false);
+    if (newTab === "waitlist") setWaitlistHasNew(false);
+    if (newTab === "reservations") setReservationHasNew(false);
+    
     if (activeTab === "settings" && settingsHasUnsavedChanges && newTab !== "settings") {
       setPendingTabChange(newTab);
       setShowUnsavedDialog(true);
@@ -414,7 +443,10 @@ const MerchantDashboard = () => {
                 <ChefHat size={16} />
                 Kitchen Orders
                 {kitchenCount > 0 && (
-                  <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                  <Badge 
+                    variant={kitchenHasNew ? "destructive" : "secondary"} 
+                    className="ml-1 h-5 min-w-5 px-1.5 text-xs"
+                  >
                     {kitchenCount}
                   </Badge>
                 )}
@@ -425,7 +457,10 @@ const MerchantDashboard = () => {
                 <Users size={16} />
                 Waitlist
                 {waitlistCount > 0 && (
-                  <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                  <Badge 
+                    variant={waitlistHasNew ? "destructive" : "secondary"} 
+                    className="ml-1 h-5 min-w-5 px-1.5 text-xs"
+                  >
                     {waitlistCount}
                   </Badge>
                 )}
@@ -436,7 +471,10 @@ const MerchantDashboard = () => {
                 <Calendar size={16} />
                 Reservations
                 {reservationCount > 0 && (
-                  <Badge variant="outline" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                  <Badge 
+                    variant={reservationHasNew ? "destructive" : "secondary"} 
+                    className="ml-1 h-5 min-w-5 px-1.5 text-xs"
+                  >
                     {reservationCount}
                   </Badge>
                 )}
