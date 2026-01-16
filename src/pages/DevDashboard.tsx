@@ -873,21 +873,34 @@ export default function DevDashboard() {
     
     setLoading(true);
     try {
-      const { error } = await supabase
-        .from("user_roles")
-        .insert({
-          user_id: assigningUserToVenue.userId,
-          venue_id: quickAssignVenueId,
+      // Use the create-merchant edge function which has proper permissions
+      // For existing users, it will add them to the new venue
+      const { data, error } = await supabase.functions.invoke("create-merchant", {
+        body: {
+          email: assigningUserToVenue.email,
+          password: "placeholder-not-used-for-existing-users",
+          fullName: assigningUserToVenue.fullName,
+          venueId: quickAssignVenueId,
           role: quickAssignRole,
-        });
+        },
+      });
 
       if (error) throw error;
+      if (data?.error) throw new Error(data.error);
 
       const venueName = venues.find(v => v.id === quickAssignVenueId)?.name;
-      toast({
-        title: "Success!",
-        description: `${assigningUserToVenue.email} now has ${quickAssignRole} access to ${venueName}`,
-      });
+      
+      if (data?.alreadyAssigned) {
+        toast({
+          title: "Already Assigned",
+          description: `${assigningUserToVenue.email} already has access to ${venueName}.`,
+        });
+      } else {
+        toast({
+          title: "Success!",
+          description: `${assigningUserToVenue.email} now has ${quickAssignRole} access to ${venueName}`,
+        });
+      }
 
       setAssigningUserToVenue(null);
       setQuickAssignVenueId("");
@@ -897,7 +910,7 @@ export default function DevDashboard() {
     } catch (error: any) {
       toast({
         title: "Error",
-        description: error.message,
+        description: error.message || "Failed to assign venue",
         variant: "destructive",
       });
     } finally {
