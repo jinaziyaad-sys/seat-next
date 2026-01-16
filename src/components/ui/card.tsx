@@ -18,7 +18,10 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
           animate={animate ? { opacity: 1, y: 0 } : undefined}
           transition={{ duration: 0.4, ease: "easeOut" }}
           whileHover={hoverEffect ? { y: -3, boxShadow: "0 8px 30px -12px hsl(20 30% 30% / 0.15)" } : undefined}
-          className={cn("rounded-lg border bg-card text-card-foreground shadow-card", className)}
+          className={cn(
+            "rounded-lg border bg-card text-card-foreground shadow-card backdrop-blur-[var(--glass-blur)]",
+            className
+          )}
         >
           {children}
         </motion.div>
@@ -27,7 +30,10 @@ const Card = React.forwardRef<HTMLDivElement, CardProps>(
     return (
       <div
         ref={ref}
-        className={cn("rounded-lg border bg-card text-card-foreground shadow-sm", className)}
+        className={cn(
+          "rounded-lg border bg-card text-card-foreground shadow-sm backdrop-blur-[var(--glass-blur)]",
+          className
+        )}
         {...props}
       >
         {children}
