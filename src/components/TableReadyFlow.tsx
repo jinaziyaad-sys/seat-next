@@ -1268,7 +1268,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                   {filteredVenues.map((venue) => (
             <Card 
               key={venue.id}
-              className="cursor-pointer hover:bg-accent transition-colors"
+              className="group cursor-pointer hover:bg-accent transition-colors"
               onClick={() => handleVenueSelect(venue.id)}
             >
                       <CardContent className="p-4">
@@ -1276,12 +1276,12 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                           <div className="flex flex-col gap-1 flex-1">
                             <span className="font-medium">{venue.name}</span>
                             {(venue.display_address || venue.address) && (
-                              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1 text-sm text-muted-foreground group-hover:text-accent-foreground transition-colors">
                                 <MapPin size={14} />
                                 <span>{venue.display_address || venue.address}</span>
                               </div>
                             )}
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1 text-sm text-muted-foreground group-hover:text-accent-foreground transition-colors">
                               <Clock size={14} />
                               <span>Wait: {venue.waitTime}</span>
                             </div>
