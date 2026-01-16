@@ -32,11 +32,15 @@ All colors MUST be HSL.
     --muted: 30 15% 95%;
     --muted-foreground: 20 10% 45%;
     
-    --card: 0 0% 100%;
+    --card: 0 0% 100% / 0.85;
     --card-foreground: 20 20% 25%;
     
-    --popover: 0 0% 100%;
+    --popover: 0 0% 100% / 0.92;
     --popover-foreground: 20 20% 25%;
+    
+    /* Glass morphism */
+    --glass-blur: 16px;
+    --glass-border: 0 0% 100% / 0.2;
     
     --border: 30 15% 90%;
     --input: 30 20% 97%;
@@ -98,11 +102,15 @@ All colors MUST be HSL.
     --muted: 25 15% 18%;
     --muted-foreground: 30 15% 60%;
     
-    --card: 25 18% 13%;
+    --card: 25 18% 13% / 0.85;
     --card-foreground: 35 25% 92%;
     
-    --popover: 25 18% 15%;
+    --popover: 25 18% 15% / 0.92;
     --popover-foreground: 35 25% 92%;
+    
+    /* Glass morphism - dark mode */
+    --glass-blur: 20px;
+    --glass-border: 0 0% 100% / 0.1;
     
     --border: 25 15% 22%;
     --input: 25 15% 18%;
@@ -132,5 +140,23 @@ All colors MUST be HSL.
 
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  /* Glass morphism utility classes */
+  .glass {
+    @apply backdrop-blur-[var(--glass-blur)] border-[hsl(var(--glass-border))];
+    background: hsl(var(--card));
+  }
+  
+  .glass-popover {
+    @apply backdrop-blur-[var(--glass-blur)] border-[hsl(var(--glass-border))];
+    background: hsl(var(--popover));
+  }
+  
+  .glass-strong {
+    @apply backdrop-blur-xl;
+    background: hsl(var(--card));
   }
 }
