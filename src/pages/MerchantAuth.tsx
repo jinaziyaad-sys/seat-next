@@ -26,12 +26,13 @@ export default function MerchantAuth() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
-        // Check user role
+        // Check user role - use .limit(1) instead of .maybeSingle() to handle users with multiple roles
         const { data: roles } = await supabase
           .from("user_roles")
           .select("role, venue_id")
           .eq("user_id", session.user.id)
-          .maybeSingle();
+          .limit(1)
+          .single();
 
         if (!roles) {
           // User is a patron - deny access
@@ -128,12 +129,13 @@ export default function MerchantAuth() {
     }
 
     if (data.session) {
-      // Check user role
+      // Check user role - use .limit(1) instead of .maybeSingle() to handle users with multiple roles
       const { data: roles } = await supabase
         .from("user_roles")
         .select("role")
         .eq("user_id", data.session.user.id)
-        .maybeSingle();
+        .limit(1)
+        .single();
 
       if (!roles) {
         toast({
