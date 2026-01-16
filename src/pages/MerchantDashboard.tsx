@@ -45,6 +45,11 @@ const MerchantDashboard = () => {
   const [pendingTabChange, setPendingTabChange] = useState<string | null>(null);
   const [showUnsavedDialog, setShowUnsavedDialog] = useState(false);
   
+  // Tab notification counts
+  const [kitchenCount, setKitchenCount] = useState(0);
+  const [waitlistCount, setWaitlistCount] = useState(0);
+  const [reservationCount, setReservationCount] = useState(0);
+  
   // Help system state
   const [helpOpen, setHelpOpen] = useState(false);
   const [helpTab, setHelpTab] = useState<'faq' | 'chat' | 'tour' | 'report'>('faq');
@@ -76,6 +81,46 @@ const MerchantDashboard = () => {
     }
   };
 
+  // Fetch tab notification counts
+  const fetchKitchenCount = useCallback(async () => {
+    if (!userRole?.venue_id) return;
+    const { count } = await supabase
+      .from("orders")
+      .select("*", { count: "exact", head: true })
+      .eq("venue_id", userRole.venue_id)
+      .in("status", ["awaiting_verification", "placed", "in_prep", "ready"]);
+    setKitchenCount(count || 0);
+  }, [userRole?.venue_id]);
+
+  const fetchWaitlistCount = useCallback(async () => {
+    if (!userRole?.venue_id) return;
+    const { count } = await supabase
+      .from("waitlist_entries")
+      .select("*", { count: "exact", head: true })
+      .eq("venue_id", userRole.venue_id)
+      .in("status", ["waiting", "ready"])
+      .neq("reservation_type", "reservation");
+    setWaitlistCount(count || 0);
+  }, [userRole?.venue_id]);
+
+  const fetchReservationCount = useCallback(async () => {
+    if (!userRole?.venue_id) return;
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const { count } = await supabase
+      .from("waitlist_entries")
+      .select("*", { count: "exact", head: true })
+      .eq("venue_id", userRole.venue_id)
+      .eq("reservation_type", "reservation")
+      .in("status", ["waiting", "ready"])
+      .gte("reservation_time", startOfDay.toISOString())
+      .lte("reservation_time", endOfDay.toISOString());
+    setReservationCount(count || 0);
+  }, [userRole?.venue_id]);
+
   // Fetch venue data
   useEffect(() => {
     const fetchVenueData = async () => {
@@ -99,6 +144,46 @@ const MerchantDashboard = () => {
       fetchVenueData();
     }
   }, [userRole?.venue_id]);
+
+  // Fetch initial counts and subscribe to real-time updates
+  useEffect(() => {
+    if (!userRole?.venue_id) return;
+
+    // Initial fetch
+    fetchKitchenCount();
+    fetchWaitlistCount();
+    fetchReservationCount();
+
+    // Subscribe to orders table for kitchen count updates
+    const ordersCountChannel = supabase
+      .channel(`orders-count-${userRole.venue_id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'orders',
+        filter: `venue_id=eq.${userRole.venue_id}`
+      }, () => fetchKitchenCount())
+      .subscribe();
+
+    // Subscribe to waitlist_entries for waitlist + reservation count updates
+    const waitlistCountChannel = supabase
+      .channel(`waitlist-count-${userRole.venue_id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'waitlist_entries',
+        filter: `venue_id=eq.${userRole.venue_id}`
+      }, () => {
+        fetchWaitlistCount();
+        fetchReservationCount();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(ordersCountChannel);
+      supabase.removeChannel(waitlistCountChannel);
+    };
+  }, [userRole?.venue_id, fetchKitchenCount, fetchWaitlistCount, fetchReservationCount]);
 
   // Track items we've already played sounds for
   const soundStartedForWaitlist = useRef<Set<string>>(new Set());
@@ -328,18 +413,33 @@ const MerchantDashboard = () => {
               <TabsTrigger value="kitchen" data-tour="tab-kitchen" className="flex items-center gap-2">
                 <ChefHat size={16} />
                 Kitchen Orders
+                {kitchenCount > 0 && (
+                  <Badge variant="destructive" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                    {kitchenCount}
+                  </Badge>
+                )}
               </TabsTrigger>
             )}
             {hasTableReady && (
               <TabsTrigger value="waitlist" data-tour="tab-waitlist" className="flex items-center gap-2">
                 <Users size={16} />
                 Waitlist
+                {waitlistCount > 0 && (
+                  <Badge variant="secondary" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                    {waitlistCount}
+                  </Badge>
+                )}
               </TabsTrigger>
             )}
             {hasReservations && (
               <TabsTrigger value="reservations" data-tour="tab-reservations" className="flex items-center gap-2">
                 <Calendar size={16} />
                 Reservations
+                {reservationCount > 0 && (
+                  <Badge variant="outline" className="ml-1 h-5 min-w-5 px-1.5 text-xs">
+                    {reservationCount}
+                  </Badge>
+                )}
               </TabsTrigger>
             )}
             {userRole.role === "admin" && (
