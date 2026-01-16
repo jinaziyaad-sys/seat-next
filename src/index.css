@@ -8,56 +8,56 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* ReadyUp Design System - Orange Brand Palette */
-    --background: 0 0% 98%; /* #fafafa */
-    --foreground: 24 45% 25%; /* #5A3825 - Dark brown */
+    /* ReadyUp Design System - Modern Pastel Orange */
+    --background: 30 20% 99%;
+    --foreground: 20 25% 25%;
     
-    /* Core Brand Colors - Orange Palette from Logo */
-    --primary-orange: 14 100% 60%; /* #FF6B35 - Vibrant orange */
-    --burnt-orange: 14 67% 40%; /* #A94122 - Darker burnt orange */
-    --light-orange: 22 100% 62%; /* #FF8D3F - Accent orange */
-    --cream: 39 33% 95%; /* #F9F5F0 - Warm cream */
-    --dark-brown: 24 45% 25%; /* #5A3825 - Text brown */
+    /* Core Brand Colors - Softer Pastel Orange */
+    --primary-orange: 18 85% 62%;
+    --burnt-orange: 15 60% 45%;
+    --light-orange: 25 90% 72%;
+    --cream: 35 40% 97%;
+    --dark-brown: 20 20% 30%;
     
-    /* Semantic Tokens */
-    --primary: 14 100% 60%; /* Vibrant Orange #FF6B35 */
-    --primary-foreground: 0 0% 100%; /* White text */
-    --primary-muted: 14 80% 70%; /* Lighter orange */
+    /* Semantic Tokens - Pastel */
+    --primary: 18 85% 62%;
+    --primary-foreground: 0 0% 100%;
+    --primary-muted: 20 70% 85%;
     
-    --secondary: 39 33% 95%; /* Cream #F9F5F0 */
-    --secondary-foreground: 24 45% 25%; /* Dark Brown */
+    --secondary: 35 30% 96%;
+    --secondary-foreground: 20 20% 35%;
     
-    --accent: 22 100% 62%; /* Light Orange #FF8D3F */
-    --accent-foreground: 0 0% 100%; /* White */
+    --accent: 25 80% 68%;
+    --accent-foreground: 20 20% 20%;
     
-    --muted: 39 33% 95%; /* Cream */
-    --muted-foreground: 24 45% 25%; /* Dark Brown */
+    --muted: 30 15% 95%;
+    --muted-foreground: 20 10% 45%;
     
     --card: 0 0% 100%;
-    --card-foreground: 24 45% 25%;
+    --card-foreground: 20 20% 25%;
     
     --popover: 0 0% 100%;
-    --popover-foreground: 24 45% 25%;
+    --popover-foreground: 20 20% 25%;
     
-    --border: 39 33% 85%;
-    --input: 39 33% 93%;
-    --ring: 14 100% 60%;
+    --border: 30 15% 90%;
+    --input: 30 20% 97%;
+    --ring: 18 80% 65%;
     
-    --destructive: 0 72% 51%; /* Red */
+    --destructive: 0 65% 55%;
     --destructive-foreground: 0 0% 100%;
     
-    --success: 142 71% 45%;
-    --warning: 38 92% 50%;
+    --success: 150 50% 45%;
+    --warning: 40 80% 55%;
     
-    /* Gradients - Orange Themed */
-    --gradient-primary: linear-gradient(135deg, hsl(14 100% 60%), hsl(22 100% 62%));
-    --gradient-hero: linear-gradient(135deg, hsl(24 45% 25%), hsl(14 67% 40%), hsl(14 100% 60%));
-    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(39 33% 97%));
+    /* Modern Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(18 85% 62%), hsl(25 80% 68%));
+    --gradient-hero: linear-gradient(135deg, hsl(20 20% 30%), hsl(15 50% 50%), hsl(18 85% 62%));
+    --gradient-card: linear-gradient(180deg, hsl(0 0% 100%), hsl(35 30% 98%));
     
-    /* Shadows - Orange Tinted */
-    --shadow-card: 0 4px 20px -8px hsl(14 50% 40% / 0.15);
-    --shadow-button: 0 2px 8px -2px hsl(14 100% 60% / 0.4);
-    --shadow-floating: 0 8px 32px -8px hsl(14 50% 40% / 0.2);
+    /* Softer Shadows */
+    --shadow-card: 0 4px 24px -8px hsl(20 30% 30% / 0.08);
+    --shadow-button: 0 2px 12px -2px hsl(18 80% 50% / 0.25);
+    --shadow-floating: 0 12px 40px -12px hsl(20 30% 30% / 0.12);
     
     /* Animation */
     --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -65,62 +65,64 @@ All colors MUST be HSL.
     
     --radius: 1rem;
 
-    --sidebar-background: 0 0% 98%;
-
-    --sidebar-foreground: 240 5.3% 26.1%;
-
-    --sidebar-primary: 240 5.9% 10%;
-
+    --sidebar-background: 30 20% 99%;
+    --sidebar-foreground: 20 15% 35%;
+    --sidebar-primary: 20 20% 15%;
     --sidebar-primary-foreground: 0 0% 98%;
-
-    --sidebar-accent: 240 4.8% 95.9%;
-
-    --sidebar-accent-foreground: 240 5.9% 10%;
-
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --sidebar-accent: 30 20% 96%;
+    --sidebar-accent-foreground: 20 20% 15%;
+    --sidebar-border: 30 15% 92%;
+    --sidebar-ring: 18 80% 65%;
   }
 
   .dark {
-    /* Dark Mode - Orange Dark */
-    --background: 24 25% 12%; /* #1F1813 - Dark brown-black */
-    --foreground: 39 33% 95%; /* Cream */
+    /* Dark Mode - Modern Warm Charcoal */
+    --background: 25 20% 10%;
+    --foreground: 35 25% 92%;
     
-    --primary-orange: 14 100% 65%; /* Brighter orange for dark */
-    --burnt-orange: 14 67% 45%; /* Lighter burnt orange */
-    --light-orange: 22 100% 65%; /* Lighter accent orange */
-    --cream: 39 33% 95%;
-    --dark-brown: 24 25% 12%;
+    --primary-orange: 18 80% 65%;
+    --burnt-orange: 15 55% 50%;
+    --light-orange: 25 85% 70%;
+    --cream: 35 30% 90%;
+    --dark-brown: 25 20% 10%;
     
-    --primary: 14 100% 65%; /* Brighter orange for dark mode */
-    --primary-foreground: 24 25% 12%;
-    --primary-muted: 14 80% 30%;
+    --primary: 18 80% 65%;
+    --primary-foreground: 25 20% 10%;
+    --primary-muted: 18 60% 25%;
     
-    --secondary: 24 30% 20%; /* Dark brown */
-    --secondary-foreground: 39 33% 95%;
+    --secondary: 25 18% 16%;
+    --secondary-foreground: 35 25% 90%;
     
-    --accent: 22 100% 65%; /* Bright accent orange */
-    --accent-foreground: 24 25% 12%;
+    --accent: 25 75% 65%;
+    --accent-foreground: 25 20% 10%;
     
-    --muted: 24 30% 20%;
-    --muted-foreground: 39 25% 70%;
+    --muted: 25 15% 18%;
+    --muted-foreground: 30 15% 60%;
     
-    --card: 24 25% 15%;
-    --card-foreground: 39 33% 95%;
+    --card: 25 18% 13%;
+    --card-foreground: 35 25% 92%;
     
-    --popover: 24 25% 18%;
-    --popover-foreground: 39 33% 95%;
+    --popover: 25 18% 15%;
+    --popover-foreground: 35 25% 92%;
     
-    --border: 24 20% 25%;
-    --input: 24 20% 20%;
-    --ring: 14 100% 65%;
+    --border: 25 15% 22%;
+    --input: 25 15% 18%;
+    --ring: 18 75% 60%;
     
-    --destructive: 0 72% 51%;
+    --destructive: 0 60% 50%;
     --destructive-foreground: 0 0% 100%;
     
-    --success: 142 71% 45%;
-    --warning: 38 92% 50%;
+    --success: 150 45% 50%;
+    --warning: 40 75% 55%;
+
+    --sidebar-background: 25 20% 10%;
+    --sidebar-foreground: 35 20% 85%;
+    --sidebar-primary: 35 25% 92%;
+    --sidebar-primary-foreground: 25 20% 10%;
+    --sidebar-accent: 25 18% 16%;
+    --sidebar-accent-foreground: 35 25% 90%;
+    --sidebar-border: 25 15% 22%;
+    --sidebar-ring: 18 75% 60%;
   }
 }
 
