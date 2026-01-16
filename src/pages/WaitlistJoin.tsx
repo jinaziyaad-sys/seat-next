@@ -18,7 +18,7 @@ interface WaitlistPreference {
 }
 
 interface VenueSettings {
-  business_hours?: Record<string, BusinessHours>;
+  business_hours?: BusinessHours;
   holiday_closures?: HolidayClosure[];
   grace_periods?: {
     last_reservation: number;

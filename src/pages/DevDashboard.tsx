@@ -284,6 +284,37 @@ export default function DevDashboard() {
     setLoading(true);
 
     try {
+      // Default settings for new venues - sensible defaults for business hours and operations
+      const DEFAULT_VENUE_SETTINGS = {
+        business_hours: {
+          monday: { open: "09:00", close: "22:00", is_closed: false, breaks: [] },
+          tuesday: { open: "09:00", close: "22:00", is_closed: false, breaks: [] },
+          wednesday: { open: "09:00", close: "22:00", is_closed: false, breaks: [] },
+          thursday: { open: "09:00", close: "22:00", is_closed: false, breaks: [] },
+          friday: { open: "09:00", close: "22:00", is_closed: false, breaks: [] },
+          saturday: { open: "09:00", close: "22:00", is_closed: false, breaks: [] },
+          sunday: { open: "09:00", close: "22:00", is_closed: true, breaks: [] }
+        },
+        holiday_closures: [],
+        grace_periods: {
+          last_reservation: 0,
+          last_order: 15,
+          last_waitlist_join: 30
+        },
+        venue_capacity: "40",
+        tables_per_interval: "4",
+        default_prep_time: "10",
+        max_extension_time: "45",
+        pickup_instructions: "Please collect your order from the main counter. Show your order number to staff.",
+        auto_no_show_time: "15",
+        order_number_refresh_minutes: "15",
+        cob_time: "23:00",
+        auto_cleanup_cancelled_waitlist: true,
+        auto_cleanup_rejected: true,
+        prep_time_mode: "analytics",
+        table_configuration: []
+      };
+
       const { error } = await supabase
         .from("venues")
         .insert({
@@ -294,6 +325,7 @@ export default function DevDashboard() {
           service_types: serviceTypes,
           latitude: validatedAddress?.latitude || null,
           longitude: validatedAddress?.longitude || null,
+          settings: DEFAULT_VENUE_SETTINGS
         });
 
       if (error) throw error;

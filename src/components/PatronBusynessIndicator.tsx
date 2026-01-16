@@ -7,7 +7,7 @@ import { checkVenueStatus, BusinessHours, HolidayClosure } from "@/utils/busines
 interface PatronBusynessIndicatorProps {
   venueId: string;
   settings?: {
-    business_hours?: Record<string, BusinessHours>;
+    business_hours?: BusinessHours;
     holiday_closures?: HolidayClosure[];
     grace_periods?: {
       last_reservation: number;
@@ -74,18 +74,9 @@ export function PatronBusynessIndicator({ venueId, settings }: PatronBusynessInd
         last_waitlist_join: 30,
       };
 
-      // Get today's day name
-      const days = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
-      const today = days[new Date().getDay()];
-      const todayHours = settings.business_hours[today];
-
-      if (!todayHours) {
-        setIsOpen(true);
-        return;
-      }
-
+      // Pass full business_hours object - checkVenueStatus handles day lookup internally
       const status = checkVenueStatus(
-        todayHours,
+        settings.business_hours,
         settings.holiday_closures || [],
         gracePeriods,
         "waitlist"
