@@ -501,7 +501,7 @@ const Index = () => {
               <Card 
                 key={order.id} 
                 className={cn(
-                  "shadow-card transition-all cursor-pointer hover:shadow-floating",
+                  "shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01]",
                   order.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
                   order.status === 'rejected' && "bg-destructive/10 border-destructive",
                   order.status === 'collected' && "bg-success/10 border-success"
@@ -635,7 +635,7 @@ const Index = () => {
               <Card 
                 key={entry.id} 
                 className={cn(
-                  "shadow-card transition-all cursor-pointer hover:shadow-floating",
+                  "shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01]",
                   entry.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
                   entry.status === 'cancelled' && "bg-destructive/10 border-destructive",
                   entry.status === 'seated' && "bg-success/10 border-success"
@@ -818,7 +818,7 @@ const Index = () => {
               onClick={() => setActiveTab("table-ready")}
             >
               <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
                   <Users size={28} />
                 </div>
                 <div>
