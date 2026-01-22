@@ -51,7 +51,7 @@ export function HelpPanel({
 
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <SheetContent className="flex w-full flex-col sm:max-w-md">
+      <SheetContent className="flex w-full flex-col sm:max-w-md min-h-0 overflow-hidden">
         <SheetHeader className="border-b pb-4">
           <div className="flex items-center justify-between">
             <SheetTitle className="flex items-center gap-2">
@@ -64,7 +64,7 @@ export function HelpPanel({
         <Tabs
           value={activeTab}
           onValueChange={(v) => onTabChange(v as 'faq' | 'chat' | 'tour' | 'report')}
-          className="mt-4 flex flex-1 flex-col"
+          className="mt-4 flex flex-1 flex-col min-h-0"
         >
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="faq" className="gap-2">
@@ -85,15 +85,15 @@ export function HelpPanel({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="faq" className="mt-4 flex-1 overflow-y-auto">
+          <TabsContent value="faq" className="mt-4 flex-1 min-h-0 overflow-y-auto">
             <FAQSection faqs={faqs} categories={categories} />
           </TabsContent>
 
-          <TabsContent value="chat" className="mt-4 flex-1 overflow-y-auto">
+          <TabsContent value="chat" className="mt-4 flex-1 min-h-0 overflow-y-auto">
             <AIAssistant variant={variant} onNavigate={onNavigate} />
           </TabsContent>
 
-          <TabsContent value="tour" className="mt-4 flex-1">
+          <TabsContent value="tour" className="mt-4 flex-1 min-h-0 overflow-y-auto">
             <div className="flex flex-col items-center gap-4 py-8 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                 <PlayCircle className="h-8 w-8 text-primary" />
@@ -112,7 +112,7 @@ export function HelpPanel({
           </div>
         </TabsContent>
 
-        <TabsContent value="report" className="mt-4 flex-1 overflow-auto">
+        <TabsContent value="report" className="mt-4 flex-1 min-h-0 overflow-y-auto">
           <ReportIssueForm 
             source={variant === 'merchant' ? 'merchant' : 'patron'}
             venueId={venueId}
