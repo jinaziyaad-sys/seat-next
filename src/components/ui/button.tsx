@@ -48,6 +48,23 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       );
     }
 
+    // Framer Motion's `motion.button` uses a different type for `onAnimationStart`.
+    // Filter out DOM animation event handlers to avoid TS incompatibilities while still
+    // forwarding important props (e.g., Radix DropdownMenuTrigger's pointer/aria props).
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const {
+      onAnimationStart,
+      onAnimationEnd,
+      onAnimationIteration,
+      onDrag,
+      onDragStart,
+      onDragEnd,
+      onDragCapture,
+      onDragStartCapture,
+      onDragEndCapture,
+      ...restProps
+    } = props;
+
     // Use motion button with subtle animations
     return (
       <motion.button
@@ -56,6 +73,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(buttonVariants({ variant, size, className }))}
         disabled={disabled}
         onClick={onClick}
+        {...restProps}
         whileHover={animate && !disabled ? { scale: 1.02 } : undefined}
         whileTap={animate && !disabled ? { scale: 0.98 } : undefined}
         transition={{ duration: 0.15, ease: "easeOut" }}
