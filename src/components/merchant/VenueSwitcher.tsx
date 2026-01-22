@@ -35,12 +35,10 @@ export const VenueSwitcher = ({ currentVenue, allVenues, onVenueChange }: VenueS
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="h-auto p-0 hover:bg-transparent">
-          <div className="flex items-center gap-2">
-            <Building2 className="h-5 w-5 text-muted-foreground" />
-            <h1 className="text-2xl font-bold text-primary">{currentVenue.venue_name}</h1>
-            <ChevronDown className="h-4 w-4 text-muted-foreground" />
-          </div>
+        <Button variant="ghost" className="h-auto p-2 hover:bg-accent/50 gap-2" animate={false}>
+          <Building2 className="h-5 w-5 text-muted-foreground" />
+          <h1 className="text-2xl font-bold text-primary">{currentVenue.venue_name}</h1>
+          <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start" className="w-64">
