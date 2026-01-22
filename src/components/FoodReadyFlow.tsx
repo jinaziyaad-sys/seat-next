@@ -450,23 +450,93 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
         return;
       }
 
-      // Check for duplicate orders within the refresh window
+      // Check for existing orders within the refresh window
       const refreshMinutes = venue.settings?.order_number_refresh_minutes || 15;
       const refreshTime = new Date(Date.now() - refreshMinutes * 60 * 1000);
 
       const { data: existingOrders, error: duplicateError } = await supabase
         .from('orders')
-        .select('id, created_at, status')
+        .select('id, created_at, status, user_id, eta, confidence, items, notes, original_eta')
         .eq('venue_id', venue.id)
         .eq('order_number', orderNumber.toUpperCase())
-        .gte('created_at', refreshTime.toISOString());
+        .gte('created_at', refreshTime.toISOString())
+        .not('status', 'in', '(rejected,cancelled)');
 
       if (duplicateError) {
         console.error('Error checking for duplicates:', duplicateError);
       }
 
       if (existingOrders && existingOrders.length > 0) {
-        const minutesAgo = Math.round((Date.now() - new Date(existingOrders[0].created_at).getTime()) / 60000);
+        const existingOrder = existingOrders[0];
+        
+        // Case 1: Merchant-created order (no user_id) - Allow patron to claim it
+        if (!existingOrder.user_id) {
+          const { error: claimError } = await supabase
+            .from('orders')
+            .update({ user_id: userId })
+            .eq('id', existingOrder.id);
+          
+          if (claimError) {
+            console.error('Error claiming order:', claimError);
+            toast({
+              title: "Error",
+              description: "Could not link order to your account",
+              variant: "destructive"
+            });
+            return;
+          }
+          
+          // Set the current order and navigate to tracking
+          const claimedOrder: Order = {
+            id: existingOrder.id,
+            order_number: orderNumber.toUpperCase(),
+            venue: selectedVenue,
+            venue_id: venue.id,
+            status: existingOrder.status as OrderStatus,
+            eta: existingOrder.eta,
+            instructions: venueSettings?.pickup_instructions || "Please collect from the main counter",
+            items: existingOrder.items as any[] || [],
+            notes: existingOrder.notes || "",
+            updated_at: existingOrder.created_at,
+          };
+          
+          setCurrentOrder(claimedOrder);
+          setStep('tracking');
+          
+          toast({
+            title: "Order Found!",
+            description: `You're now tracking Order #${orderNumber.toUpperCase()}`,
+          });
+          return;
+        }
+        
+        // Case 2: Already owned by the same user - redirect to tracking
+        if (existingOrder.user_id === userId) {
+          const ownedOrder: Order = {
+            id: existingOrder.id,
+            order_number: orderNumber.toUpperCase(),
+            venue: selectedVenue,
+            venue_id: venue.id,
+            status: existingOrder.status as OrderStatus,
+            eta: existingOrder.eta,
+            instructions: venueSettings?.pickup_instructions || "Please collect from the main counter",
+            items: existingOrder.items as any[] || [],
+            notes: existingOrder.notes || "",
+            updated_at: existingOrder.created_at,
+          };
+          
+          setCurrentOrder(ownedOrder);
+          setStep('tracking');
+          
+          toast({
+            title: "Already Tracking",
+            description: `You're already tracking Order #${orderNumber.toUpperCase()}`,
+          });
+          return;
+        }
+        
+        // Case 3: Different user owns this order - show duplicate error
+        const minutesAgo = Math.round((Date.now() - new Date(existingOrder.created_at).getTime()) / 60000);
         const minutesRemaining = refreshMinutes - minutesAgo;
         toast({
           title: "Duplicate Order",
