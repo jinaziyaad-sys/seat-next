@@ -45,7 +45,7 @@ export function FAQSection({ faqs, categories }: FAQSectionProps) {
   }, [filteredFAQs]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 min-h-0">
       {/* Search */}
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -79,7 +79,7 @@ export function FAQSection({ faqs, categories }: FAQSectionProps) {
       </div>
 
       {/* FAQ Accordion */}
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 min-h-0 overflow-y-auto">
         {Object.keys(groupedFAQs).length === 0 ? (
           <div className="py-8 text-center text-muted-foreground">
             No FAQs match your search. Try different keywords or ask our AI assistant!

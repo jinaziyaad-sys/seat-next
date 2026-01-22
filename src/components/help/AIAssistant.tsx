@@ -106,9 +106,9 @@ export function AIAssistant({ variant, onNavigate }: AIAssistantProps) {
   };
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="flex h-full min-h-0 flex-col">
       {/* Messages Area */}
-      <ScrollArea className="flex-1 pr-4" ref={scrollRef}>
+      <ScrollArea className="flex-1 min-h-0 pr-4" ref={scrollRef}>
         {messages.length === 0 ? (
           <div className="flex flex-col items-center gap-4 py-8">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
