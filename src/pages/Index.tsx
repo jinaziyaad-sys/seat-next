@@ -532,6 +532,9 @@ const Index = () => {
                         )} />
                       </div>
                       <div>
+                        <span className="inline-block text-xs font-bold uppercase tracking-wider text-white bg-primary px-2 py-0.5 rounded mb-1">
+                          Order
+                        </span>
                         <h3 className="font-semibold">{order.venues?.name}</h3>
                         <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">Order #{order.order_number}</p>
                         {order.status === 'rejected' && (
@@ -666,6 +669,14 @@ const Index = () => {
                         )} />
                       </div>
                       <div>
+                        <span className={cn(
+                          "inline-block text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded mb-1",
+                          isUpcomingReservation 
+                            ? "bg-purple-600 text-white" 
+                            : "bg-secondary text-secondary-foreground"
+                        )}>
+                          {isUpcomingReservation ? 'Reservation' : 'Waitlist'}
+                        </span>
                         <h3 className="font-semibold">{entry.venues?.name}</h3>
                         {entry.customer_name && (
                           <p className="text-xs font-medium text-primary">{entry.customer_name}</p>
