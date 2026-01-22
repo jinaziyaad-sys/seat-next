@@ -85,11 +85,11 @@ export function HelpPanel({
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="faq" className="mt-4 flex-1 overflow-hidden">
+          <TabsContent value="faq" className="mt-4 flex-1 overflow-y-auto">
             <FAQSection faqs={faqs} categories={categories} />
           </TabsContent>
 
-          <TabsContent value="chat" className="mt-4 flex-1 overflow-hidden">
+          <TabsContent value="chat" className="mt-4 flex-1 overflow-y-auto">
             <AIAssistant variant={variant} onNavigate={onNavigate} />
           </TabsContent>
 
