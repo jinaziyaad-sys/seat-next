@@ -12,8 +12,8 @@ import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { cn, formatTimeUntil } from "@/lib/utils";
+import { format, isTomorrow } from "date-fns";
 import logo from "@/assets/logo.png";
 import { useToast } from "@/hooks/use-toast";
 import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
@@ -689,9 +689,16 @@ const Index = () => {
                             <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors mt-1">
                               <CalendarIcon size={12} />
                               <span>
-                                {isToday ? 'Today' : format(new Date(entry.reservation_time), 'MMM d')} 
+                                {isTomorrow(new Date(entry.reservation_time)) 
+                                  ? 'Tomorrow' 
+                                  : isToday 
+                                    ? 'Today' 
+                                    : format(new Date(entry.reservation_time), 'MMM d')
+                                } 
                                 {' at '}
                                 {format(new Date(entry.reservation_time), 'HH:mm')}
+                                {' • '}
+                                {formatTimeUntil(new Date(entry.reservation_time))}
                               </span>
                             </div>
                           </>
