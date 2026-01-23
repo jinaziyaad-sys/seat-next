@@ -239,7 +239,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         venue: initialEntry.venues?.name || "",
         venue_id: initialEntry.venue_id,
         party_size: initialEntry.party_size,
-        position: initialEntry.position || 0,
+        position: initialEntry.position ?? null,
         eta: initialEntry.eta,
         preferences: initialEntry.preferences || [],
         status: mapDatabaseStatus(initialEntry.status),
@@ -252,6 +252,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         cancelled_by: initialEntry.cancelled_by,
         updated_at: initialEntry.updated_at,
         notes: initialEntry.notes,
+        reservation_type: initialEntry.reservation_type,
+        reservation_time: initialEntry.reservation_time,
       };
       setWaitlistEntry(entry);
       
@@ -845,7 +847,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           venue: venue.name,
           venue_id: newEntries[0].venue_id,
           party_size: newEntries[0].party_size,
-          position: 0,
+          position: null,
           eta: newEntries[0].eta,
           preferences: newEntries[0].preferences || [],
           status: mapDatabaseStatus(newEntries[0].status),
