@@ -225,34 +225,38 @@ function notifySnoozeListeners() {
 
 // Immediately silence any in-progress audio (does not cancel intervals; just stops current playback)
 const stopAllCurrentlyPlayingAudio = () => {
-  // Stop audio tracked globally (includes one-off sounds)
-  let stoppedCount = 0;
-  allActiveAudios.forEach((audio) => {
+  const hardStop = (audio: HTMLAudioElement) => {
     try {
       // Mute immediately (helps on Safari/Chrome edge cases)
       audio.muted = true;
       audio.volume = 0;
+
+      // Pause/reset
       audio.pause();
       audio.currentTime = 0;
-      stoppedCount++;
+
+      // Hard stop: detach src so the browser can't keep decoding/playing.
+      // (We always create fresh Audio() instances for new plays anyway.)
+      audio.src = "";
+      audio.load?.();
     } catch {
       // ignore
     }
+  };
+
+  // Stop audio tracked globally (includes one-off sounds)
+  let stoppedCount = 0;
+  allActiveAudios.forEach((audio) => {
+    hardStop(audio);
+    stoppedCount++;
   });
 
   // Also stop any audio tracked by keyed sounds (covers the case where HMR updated
   // playSound tracking while previously created audio instances are only in activeAudios)
   activeAudios.forEach((audios) => {
     audios.forEach((audio) => {
-      try {
-        audio.muted = true;
-        audio.volume = 0;
-        audio.pause();
-        audio.currentTime = 0;
-        stoppedCount++;
-      } catch {
-        // ignore
-      }
+      hardStop(audio);
+      stoppedCount++;
     });
   });
 
@@ -263,6 +267,30 @@ const stopAllCurrentlyPlayingAudio = () => {
 
 // Hard stop for any audio elements that ever attempted to play (across HMR instances)
 const stopAllGlobalAudio = () => {
+  const hardStopMedia = (el: HTMLMediaElement) => {
+    try {
+      (el as any).muted = true;
+      (el as any).volume = 0;
+      el.pause?.();
+      try {
+        el.currentTime = 0;
+      } catch {
+        // ignore
+      }
+
+      // Hard stop: clear src + load to cancel decoding/playback.
+      // This is more reliable than pause() alone on some browsers.
+      try {
+        (el as any).src = "";
+        (el as any).load?.();
+      } catch {
+        // ignore
+      }
+    } catch {
+      // ignore
+    }
+  };
+
   const set = getGlobalAudioSet();
   let stopped = 0;
   set.forEach((el) => {
@@ -270,11 +298,7 @@ const stopAllGlobalAudio = () => {
       const src = (el as any).currentSrc || (el as any).src;
       // Only affect our notification sounds.
       if (typeof src !== "string" || !src.includes("/sounds/")) return;
-      // Mute first, then pause/reset.
-      (el as any).muted = true;
-      (el as any).volume = 0;
-      el.pause?.();
-      el.currentTime = 0;
+      hardStopMedia(el);
       stopped++;
     } catch {
       // ignore
