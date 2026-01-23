@@ -43,11 +43,17 @@ const SNOOZE_END_KEY = "__lovable_sounds_snooze_end__";
 const PLAY_PATCH_KEY = "__lovable_sounds_play_patched__";
 const GLOBAL_AUDIO_SET_KEY = "__lovable_active_audio_elements__";
 const SNOOZE_ENFORCER_KEY = "__lovable_snooze_enforcer_interval__";
+const FORCE_MUTE_KEY = "__lovable_sounds_force_mute__";
 
 const getGlobalSnoozed = (): boolean => (globalThis as any)[SNOOZE_FLAG_KEY] === true;
 const setGlobalSnoozed = (value: boolean) => {
   (globalThis as any)[SNOOZE_FLAG_KEY] = value;
   soundsSnoozed = value;
+};
+
+const getForceMute = (): boolean => (globalThis as any)[FORCE_MUTE_KEY] === true;
+const setForceMute = (value: boolean) => {
+  (globalThis as any)[FORCE_MUTE_KEY] = value;
 };
 const getGlobalSnoozeEnd = (): number | null => {
   const v = (globalThis as any)[SNOOZE_END_KEY];
@@ -89,8 +95,13 @@ if ((globalThis as any)[PLAY_PATCH_KEY] !== true && typeof HTMLMediaElement !== 
       getGlobalAudioSet().add(this as unknown as HTMLMediaElement);
 
       const src = (this as any).currentSrc || (this as any).src;
-      if (getGlobalSnoozed() && typeof src === "string" && src.includes("/sounds/")) {
+      // During snooze we enforce a hard mute for our notification MP3s.
+      // This avoids race conditions where a sound starts in the same tick as snooze.
+      if ((getGlobalSnoozed() || getForceMute()) && typeof src === "string" && src.includes("/sounds/")) {
         try {
+          // Mute first (instant), then pause/reset.
+          (this as any).muted = true;
+          (this as any).volume = 0;
           (this as any).pause?.();
           (this as any).currentTime = 0;
         } catch {
@@ -116,6 +127,9 @@ const stopAllCurrentlyPlayingAudio = () => {
   let stoppedCount = 0;
   allActiveAudios.forEach((audio) => {
     try {
+      // Mute immediately (helps on Safari/Chrome edge cases)
+      audio.muted = true;
+      audio.volume = 0;
       audio.pause();
       audio.currentTime = 0;
       stoppedCount++;
@@ -129,6 +143,8 @@ const stopAllCurrentlyPlayingAudio = () => {
   activeAudios.forEach((audios) => {
     audios.forEach((audio) => {
       try {
+        audio.muted = true;
+        audio.volume = 0;
         audio.pause();
         audio.currentTime = 0;
         stoppedCount++;
@@ -152,6 +168,9 @@ const stopAllGlobalAudio = () => {
       const src = (el as any).currentSrc || (el as any).src;
       // Only affect our notification sounds.
       if (typeof src !== "string" || !src.includes("/sounds/")) return;
+      // Mute first, then pause/reset.
+      (el as any).muted = true;
+      (el as any).volume = 0;
       el.pause?.();
       el.currentTime = 0;
       stopped++;
@@ -182,6 +201,8 @@ export const snoozeSounds = (durationMinutes: number) => {
     snoozeTimeout = null;
   }
   
+  // Force-mute first so anything that tries to play in the same tick is silent.
+  setForceMute(true);
   setGlobalSnoozed(true);
   setGlobalSnoozeEnd(Date.now() + durationMinutes * 60 * 1000);
 
@@ -197,6 +218,7 @@ export const snoozeSounds = (durationMinutes: number) => {
   snoozeTimeout = setTimeout(() => {
     setGlobalSnoozed(false);
     setGlobalSnoozeEnd(null);
+    setForceMute(false);
     clearSnoozeEnforcer();
     snoozeTimeout = null;
     console.log(`🔔 Snooze ended - sounds re-enabled`);
@@ -214,6 +236,7 @@ export const cancelSnooze = () => {
   }
   setGlobalSnoozed(false);
   setGlobalSnoozeEnd(null);
+  setForceMute(false);
   clearSnoozeEnforcer();
   console.log(`🔔 Snooze cancelled - sounds re-enabled`);
   notifySnoozeListeners();
@@ -267,7 +290,7 @@ const unregisterAudio = (key: string, audio: HTMLAudioElement) => {
 const playSound = (type: NotificationSoundType, key?: string): Promise<void> => {
   return new Promise((resolve) => {
     // Check if sounds are snoozed
-    if (getGlobalSnoozed()) {
+    if (getGlobalSnoozed() || getForceMute()) {
       console.log(`🔕 Sound ${type} skipped - sounds are snoozed`);
       resolve();
       return;
@@ -282,7 +305,13 @@ const playSound = (type: NotificationSoundType, key?: string): Promise<void> => 
 
     try {
       const audio = new Audio(SOUND_FILES[type]);
-      audio.volume = 1.0;
+      // Even if snooze flips between check and play(), this ensures silence.
+      if (getGlobalSnoozed() || getForceMute()) {
+        audio.muted = true;
+        audio.volume = 0;
+      } else {
+        audio.volume = 1.0;
+      }
 
       // Track one-off + keyed sounds so snooze can immediately silence any in-progress playback.
       allActiveAudios.add(audio);
