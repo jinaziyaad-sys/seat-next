@@ -909,8 +909,10 @@ export type Database = {
           customer_name: string
           customer_phone: string | null
           delayed_until: string | null
+          edit_summary: string | null
           eta: string | null
           id: string
+          last_edited_at: string | null
           linked_reservation_id: string | null
           merchant_acknowledged: boolean | null
           notes: string | null
@@ -939,8 +941,10 @@ export type Database = {
           customer_name: string
           customer_phone?: string | null
           delayed_until?: string | null
+          edit_summary?: string | null
           eta?: string | null
           id?: string
+          last_edited_at?: string | null
           linked_reservation_id?: string | null
           merchant_acknowledged?: boolean | null
           notes?: string | null
@@ -969,8 +973,10 @@ export type Database = {
           customer_name?: string
           customer_phone?: string | null
           delayed_until?: string | null
+          edit_summary?: string | null
           eta?: string | null
           id?: string
+          last_edited_at?: string | null
           linked_reservation_id?: string | null
           merchant_acknowledged?: boolean | null
           notes?: string | null

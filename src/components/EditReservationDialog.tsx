@@ -170,6 +170,24 @@ export function EditReservationDialog({
       // Check table availability if party size changed or time changed
       const partySizeChanged = partySize !== entry.party_size;
       const timeChanged = newReservationTime !== entry.reservation_time;
+      const preferencesChanged = JSON.stringify(newPreferences.sort()) !== JSON.stringify((entry.preferences || []).sort());
+
+      // Build edit summary for merchant notification
+      const changes: string[] = [];
+      if (partySizeChanged) {
+        changes.push(`Party size: ${entry.party_size}→${partySize}`);
+      }
+      if (timeChanged && entry.reservation_time) {
+        const oldTime = format(parseISO(entry.reservation_time), "HH:mm");
+        const newTime = reservationTime;
+        changes.push(`Time: ${oldTime}→${newTime}`);
+      }
+      if (preferencesChanged) {
+        const oldPrefs = (entry.preferences || []).join(", ") || "none";
+        const newPrefs = newPreferences.join(", ") || "none";
+        changes.push(`Seating: ${oldPrefs}→${newPrefs}`);
+      }
+      const editSummary = changes.length > 0 ? changes.join(", ") : "Notes updated";
 
       if (partySizeChanged || timeChanged) {
         // Call find-available-table to check availability
@@ -218,7 +236,7 @@ export function EditReservationDialog({
           return;
         }
 
-        // Update with new table assignment
+        // Update with new table assignment and edit tracking
         const { error: updateError } = await supabase
           .from("waitlist_entries")
           .update({
@@ -228,6 +246,8 @@ export function EditReservationDialog({
             preferences: newPreferences,
             notes: notes.trim() || null,
             assigned_table_id: tableResult?.tables?.[0]?.id || null,
+            last_edited_at: new Date().toISOString(),
+            edit_summary: editSummary,
           })
           .eq("id", entry.id);
 
@@ -239,6 +259,8 @@ export function EditReservationDialog({
           .update({
             preferences: newPreferences,
             notes: notes.trim() || null,
+            last_edited_at: new Date().toISOString(),
+            edit_summary: editSummary,
           })
           .eq("id", entry.id);
 
