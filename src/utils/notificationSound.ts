@@ -44,6 +44,8 @@ const PLAY_PATCH_KEY = "__lovable_sounds_play_patched__";
 const GLOBAL_AUDIO_SET_KEY = "__lovable_active_audio_elements__";
 const SNOOZE_ENFORCER_KEY = "__lovable_snooze_enforcer_interval__";
 const FORCE_MUTE_KEY = "__lovable_sounds_force_mute__";
+const SNOOZE_STORAGE_KEY = "__lovable_sounds_snooze_state_v1__";
+const STORAGE_LISTENER_KEY = "__lovable_sounds_storage_listener__";
 
 const getGlobalSnoozed = (): boolean => (globalThis as any)[SNOOZE_FLAG_KEY] === true;
 const setGlobalSnoozed = (value: boolean) => {
@@ -80,9 +82,109 @@ const clearSnoozeEnforcer = () => {
   }
 };
 
+const clearLocalSnoozeTimeout = () => {
+  if (snoozeTimeout) {
+    clearTimeout(snoozeTimeout);
+    snoozeTimeout = null;
+  }
+};
+
+const restoreNotificationAudioDefaults = () => {
+  // If any old audio elements were muted during snooze, make sure they can play again.
+  // (We only touch our /sounds/ audio.)
+  const set = getGlobalAudioSet();
+  set.forEach((el) => {
+    try {
+      const src = (el as any).currentSrc || (el as any).src;
+      if (typeof src !== "string" || !src.includes("/sounds/")) return;
+      (el as any).muted = false;
+      // If volume was forced to 0 during snooze, restore to full volume.
+      // Our playSound() also sets volume per play, so this is mainly defensive.
+      (el as any).volume = 1;
+    } catch {
+      // ignore
+    }
+  });
+};
+
+const writeSnoozeToStorage = (snoozed: boolean, end: number | null) => {
+  try {
+    if (!snoozed || !end) {
+      localStorage.removeItem(SNOOZE_STORAGE_KEY);
+      return;
+    }
+    localStorage.setItem(
+      SNOOZE_STORAGE_KEY,
+      JSON.stringify({ snoozed: true, end })
+    );
+  } catch {
+    // ignore (storage may be blocked)
+  }
+};
+
+const readSnoozeFromStorage = (): { snoozed: boolean; end: number | null } | null => {
+  try {
+    const raw = localStorage.getItem(SNOOZE_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    const end = typeof parsed?.end === "number" ? parsed.end : null;
+    const snoozed = parsed?.snoozed === true && !!end && end > Date.now();
+    return { snoozed, end: snoozed ? end : null };
+  } catch {
+    return null;
+  }
+};
+
 // Initialize local state from global (important after HMR)
 soundsSnoozed = getGlobalSnoozed();
 snoozeEndTime = getGlobalSnoozeEnd();
+
+const applySnoozeState = (snoozed: boolean, end: number | null, persist: boolean) => {
+  // Keep global flags in sync for stale closures + HMR.
+  setForceMute(snoozed);
+  setGlobalSnoozed(snoozed);
+  setGlobalSnoozeEnd(snoozed ? end : null);
+
+  if (snoozed && end) {
+    // Stop immediately in *this* tab.
+    stopAllCurrentlyPlayingAudio();
+    stopAllGlobalAudio();
+    startSnoozeEnforcer();
+
+    // Make sure this tab also ends snooze at the right time.
+    clearLocalSnoozeTimeout();
+    const ms = Math.max(0, end - Date.now());
+    snoozeTimeout = setTimeout(() => {
+      applySnoozeState(false, null, true);
+      console.log(`🔔 Snooze ended - sounds re-enabled`);
+      notifySnoozeListeners();
+    }, ms);
+  } else {
+    clearLocalSnoozeTimeout();
+    clearSnoozeEnforcer();
+    restoreNotificationAudioDefaults();
+  }
+
+  if (persist) writeSnoozeToStorage(snoozed, snoozed ? end : null);
+};
+
+// Cross-tab sync: if another tab snoozes, this tab must mute too.
+if (typeof window !== "undefined" && (globalThis as any)[STORAGE_LISTENER_KEY] !== true) {
+  (globalThis as any)[STORAGE_LISTENER_KEY] = true;
+  window.addEventListener("storage", (e) => {
+    if (e.key !== SNOOZE_STORAGE_KEY) return;
+    const state = readSnoozeFromStorage();
+    applySnoozeState(state?.snoozed === true, state?.end ?? null, false);
+    notifySnoozeListeners();
+  });
+}
+
+// If another tab already snoozed before this module loaded, honor it.
+const existingCrossTab = typeof window !== "undefined" ? readSnoozeFromStorage() : null;
+if (existingCrossTab?.snoozed && existingCrossTab.end) {
+  applySnoozeState(true, existingCrossTab.end, false);
+  notifySnoozeListeners();
+}
 
 // Patch media playback so that any Audio created anywhere in the app (including
 // stale HMR closures) cannot play our notification MP3s while snoozed.
@@ -116,10 +218,10 @@ if ((globalThis as any)[PLAY_PATCH_KEY] !== true && typeof HTMLMediaElement !== 
   };
 }
 
-const notifySnoozeListeners = () => {
+function notifySnoozeListeners() {
   const remaining = snoozeEndTime ? Math.max(0, snoozeEndTime - Date.now()) : null;
-  snoozeListeners.forEach(listener => listener(soundsSnoozed, remaining));
-};
+  snoozeListeners.forEach((listener) => listener(soundsSnoozed, remaining));
+}
 
 // Immediately silence any in-progress audio (does not cancel intervals; just stops current playback)
 const stopAllCurrentlyPlayingAudio = () => {
@@ -195,49 +297,17 @@ const startSnoozeEnforcer = () => {
  * Snooze all sounds for a specified duration in minutes
  */
 export const snoozeSounds = (durationMinutes: number) => {
-  // Clear any existing snooze timeout
-  if (snoozeTimeout) {
-    clearTimeout(snoozeTimeout);
-    snoozeTimeout = null;
-  }
-  
-  // Force-mute first so anything that tries to play in the same tick is silent.
-  setForceMute(true);
-  setGlobalSnoozed(true);
-  setGlobalSnoozeEnd(Date.now() + durationMinutes * 60 * 1000);
-
-  // If something is already ringing, stop it immediately.
-  stopAllCurrentlyPlayingAudio();
-  stopAllGlobalAudio();
-  startSnoozeEnforcer();
-
+  const end = Date.now() + durationMinutes * 60 * 1000;
+  applySnoozeState(true, end, true);
   console.log(`🔕 Sounds snoozed for ${durationMinutes} minutes`);
   notifySnoozeListeners();
-  
-  // Auto-unsnooze after duration
-  snoozeTimeout = setTimeout(() => {
-    setGlobalSnoozed(false);
-    setGlobalSnoozeEnd(null);
-    setForceMute(false);
-    clearSnoozeEnforcer();
-    snoozeTimeout = null;
-    console.log(`🔔 Snooze ended - sounds re-enabled`);
-    notifySnoozeListeners();
-  }, durationMinutes * 60 * 1000);
 };
 
 /**
  * Cancel snooze and re-enable sounds immediately
  */
 export const cancelSnooze = () => {
-  if (snoozeTimeout) {
-    clearTimeout(snoozeTimeout);
-    snoozeTimeout = null;
-  }
-  setGlobalSnoozed(false);
-  setGlobalSnoozeEnd(null);
-  setForceMute(false);
-  clearSnoozeEnforcer();
+  applySnoozeState(false, null, true);
   console.log(`🔔 Snooze cancelled - sounds re-enabled`);
   notifySnoozeListeners();
 };
