@@ -178,9 +178,21 @@ export function EditReservationDialog({
         changes.push(`Party size: ${entry.party_size}→${partySize}`);
       }
       if (timeChanged && entry.reservation_time) {
-        const oldTime = format(parseISO(entry.reservation_time), "HH:mm");
+        const oldDateTime = parseISO(entry.reservation_time);
+        const newDateTime = newReservationTime ? parseISO(newReservationTime) : null;
+        
+        // Check if date changed vs just time changed
+        const oldDate = format(oldDateTime, "MMM d");
+        const newDate = newDateTime ? format(newDateTime, "MMM d") : oldDate;
+        const oldTime = format(oldDateTime, "HH:mm");
         const newTime = reservationTime;
-        changes.push(`Time: ${oldTime}→${newTime}`);
+        
+        if (oldDate !== newDate) {
+          changes.push(`Date: ${oldDate}→${newDate}`);
+        }
+        if (oldTime !== newTime) {
+          changes.push(`Time: ${oldTime}→${newTime}`);
+        }
       }
       if (preferencesChanged) {
         const oldPrefs = (entry.preferences || []).join(", ") || "none";
