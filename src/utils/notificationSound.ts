@@ -41,6 +41,7 @@ const snoozeListeners: Set<(snoozed: boolean, remainingMs: number | null) => voi
 const SNOOZE_FLAG_KEY = "__lovable_sounds_snoozed__";
 const SNOOZE_END_KEY = "__lovable_sounds_snooze_end__";
 const PLAY_PATCH_KEY = "__lovable_sounds_play_patched__";
+const GLOBAL_AUDIO_SET_KEY = "__lovable_active_audio_elements__";
 
 const getGlobalSnoozed = (): boolean => (globalThis as any)[SNOOZE_FLAG_KEY] === true;
 const setGlobalSnoozed = (value: boolean) => {
@@ -56,6 +57,14 @@ const setGlobalSnoozeEnd = (value: number | null) => {
   snoozeEndTime = value;
 };
 
+const getGlobalAudioSet = (): Set<HTMLMediaElement> => {
+  const existing = (globalThis as any)[GLOBAL_AUDIO_SET_KEY];
+  if (existing && existing instanceof Set) return existing as Set<HTMLMediaElement>;
+  const created = new Set<HTMLMediaElement>();
+  (globalThis as any)[GLOBAL_AUDIO_SET_KEY] = created;
+  return created;
+};
+
 // Initialize local state from global (important after HMR)
 soundsSnoozed = getGlobalSnoozed();
 snoozeEndTime = getGlobalSnoozeEnd();
@@ -67,8 +76,17 @@ if ((globalThis as any)[PLAY_PATCH_KEY] !== true && typeof HTMLMediaElement !== 
   const originalPlay = HTMLMediaElement.prototype.play;
   HTMLMediaElement.prototype.play = function (...args: any[]) {
     try {
+      // Track any media element that attempts to play so we can silence it on snooze.
+      getGlobalAudioSet().add(this as unknown as HTMLMediaElement);
+
       const src = (this as any).currentSrc || (this as any).src;
       if (getGlobalSnoozed() && typeof src === "string" && src.includes("/sounds/")) {
+        try {
+          (this as any).pause?.();
+          (this as any).currentTime = 0;
+        } catch {
+          // ignore
+        }
         return Promise.resolve();
       }
     } catch {
@@ -116,6 +134,23 @@ const stopAllCurrentlyPlayingAudio = () => {
   activeAudios.clear();
 };
 
+// Hard stop for any audio elements that ever attempted to play (across HMR instances)
+const stopAllGlobalAudio = () => {
+  const set = getGlobalAudioSet();
+  let stopped = 0;
+  set.forEach((el) => {
+    try {
+      el.pause?.();
+      el.currentTime = 0;
+      stopped++;
+    } catch {
+      // ignore
+    }
+  });
+  // Keep the set around; new audio elements will be added over time.
+  console.log(`🔕 Snooze: globally stopped ${stopped} media element(s)`);
+};
+
 /**
  * Snooze all sounds for a specified duration in minutes
  */
@@ -131,6 +166,7 @@ export const snoozeSounds = (durationMinutes: number) => {
 
   // If something is already ringing, stop it immediately.
   stopAllCurrentlyPlayingAudio();
+  stopAllGlobalAudio();
 
   console.log(`🔕 Sounds snoozed for ${durationMinutes} minutes`);
   notifySnoozeListeners();
