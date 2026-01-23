@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, addDays } from "date-fns";
-import { cn } from "@/lib/utils";
+import { cn, formatTimeUntil } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { z } from "zod";
@@ -1685,21 +1685,55 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
         <Card className="shadow-card">
           <CardContent className="p-8 text-center space-y-6">
+            {waitlistEntry.reservation_type === 'reservation' ? (
+              <>
+                <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
+                  <CalendarIcon className="w-10 h-10 text-primary" />
+                </div>
+                
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-bold text-primary">
+                    {waitlistEntry.reservation_time 
+                      ? format(new Date(waitlistEntry.reservation_time), 'MMM d')
+                      : 'Scheduled'}
+                  </h2>
+                  <p className="text-lg text-muted-foreground">
+                    at {waitlistEntry.reservation_time 
+                      ? format(new Date(waitlistEntry.reservation_time), 'HH:mm')
+                      : '--:--'}
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-center gap-2 text-lg">
+                  <Clock size={20} />
+                  <span className="font-semibold">
+                    {waitlistEntry.reservation_time 
+                      ? formatTimeUntil(new Date(waitlistEntry.reservation_time))
+                      : 'Calculating...'}
+                  </span>
+                </div>
+              </>
+            ) : (
+              <>
                 <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
                   <Clock className="w-10 h-10 text-primary" />
                 </div>
-            
-            <div className="space-y-2">
-              <h2 className="text-3xl font-bold text-primary">#{waitlistEntry.position}</h2>
-              <p className="text-lg text-muted-foreground">in line</p>
-            </div>
+                
+                <div className="space-y-2">
+                  <h2 className="text-3xl font-bold text-primary">#{waitlistEntry.position}</h2>
+                  <p className="text-lg text-muted-foreground">in line</p>
+                </div>
 
-            <div className="flex items-center justify-center gap-2 text-lg">
-              <Clock size={20} />
-              <span className="font-semibold">
-                {waitlistEntry.eta ? Math.ceil((new Date(waitlistEntry.eta).getTime() - new Date().getTime()) / (1000 * 60)) : 0} minutes • ETA {waitlistEntry.eta ? new Date(waitlistEntry.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }) : "--:--"}
-              </span>
-            </div>
+                <div className="flex items-center justify-center gap-2 text-lg">
+                  <Clock size={20} />
+                  <span className="font-semibold">
+                    {waitlistEntry.eta 
+                      ? formatTimeUntil(new Date(waitlistEntry.eta))
+                      : 'Calculating...'} • ETA {waitlistEntry.eta ? new Date(waitlistEntry.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false }) : "--:--"}
+                  </span>
+                </div>
+              </>
+            )}
 
             {waitlistEntry.notes && extractExtensionReason(waitlistEntry.notes) && (
               <div className="p-4 bg-amber-50 dark:bg-amber-950 rounded-lg border border-amber-200 dark:border-amber-800">
@@ -1741,8 +1775,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               <div className="space-y-3">
                 {partiesAhead.map((party, index) => {
                   const estimatedWait = party.eta 
-                    ? Math.ceil((new Date(party.eta).getTime() - new Date().getTime()) / (1000 * 60))
-                    : 15;
+                    ? formatTimeUntil(new Date(party.eta))
+                    : '~15 min';
                   
                   return (
                     <div key={party.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
@@ -1756,7 +1790,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                         </div>
                         <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
                           <Clock size={12} />
-                          <span>~{estimatedWait} min</span>
+                          <span>{estimatedWait}</span>
                         </div>
                       </div>
                       <Progress value={((index + 1) / (partiesAhead.length + 1)) * 100} className="w-16 h-2" />
