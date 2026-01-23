@@ -107,6 +107,69 @@ const restoreNotificationAudioDefaults = () => {
   });
 };
 
+const stopAllDOMMedia = (reason: string) => {
+  if (typeof document === "undefined") return;
+  try {
+    const els = Array.from(document.querySelectorAll("audio, video")) as HTMLMediaElement[];
+    let stopped = 0;
+    els.forEach((el) => {
+      try {
+        // Hard stop anything in-flight. This is intentionally broad: in this app
+        // we only use media elements for notification sounds.
+        (el as any).muted = true;
+        (el as any).volume = 0;
+        el.pause?.();
+        try {
+          el.currentTime = 0;
+        } catch {
+          // ignore
+        }
+        try {
+          (el as any).src = "";
+          (el as any).load?.();
+        } catch {
+          // ignore
+        }
+        stopped++;
+      } catch {
+        // ignore
+      }
+    });
+    if (stopped > 0) {
+      console.log(`🔕 Snooze: DOM-stopped ${stopped} media element(s) (${reason})`);
+    }
+  } catch {
+    // ignore
+  }
+};
+
+const debugListDOMMedia = (label: string) => {
+  if (typeof document === "undefined") return;
+  try {
+    const els = Array.from(document.querySelectorAll("audio, video")) as HTMLMediaElement[];
+    const snapshot = els.map((el) => {
+      const src = (el as any).currentSrc || (el as any).src;
+      return {
+        tag: el.tagName,
+        src: typeof src === "string" ? src : null,
+        paused: (el as any).paused,
+        muted: (el as any).muted,
+        volume: (el as any).volume,
+        currentTime: (() => {
+          try {
+            return (el as any).currentTime;
+          } catch {
+            return null;
+          }
+        })(),
+      };
+    });
+    console.log(`🔎 Media snapshot (${label})`, snapshot);
+  } catch {
+    // ignore
+  }
+};
+
 const writeSnoozeToStorage = (snoozed: boolean, end: number | null) => {
   try {
     if (!snoozed || !end) {
@@ -147,9 +210,12 @@ const applySnoozeState = (snoozed: boolean, end: number | null, persist: boolean
 
   if (snoozed && end) {
     // Stop immediately in *this* tab.
+    debugListDOMMedia("before-snooze-stop");
     stopAllCurrentlyPlayingAudio();
     stopAllGlobalAudio();
+    stopAllDOMMedia("applySnoozeState");
     startSnoozeEnforcer();
+    debugListDOMMedia("after-snooze-stop");
 
     // Make sure this tab also ends snooze at the right time.
     clearLocalSnoozeTimeout();
@@ -314,6 +380,7 @@ const startSnoozeEnforcer = () => {
   (globalThis as any)[SNOOZE_ENFORCER_KEY] = setInterval(() => {
     if (!getGlobalSnoozed()) return;
     stopAllGlobalAudio();
+    stopAllDOMMedia("enforcer");
   }, 250);
 };
 
