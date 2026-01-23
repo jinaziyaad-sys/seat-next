@@ -27,6 +27,9 @@ const cancelledSounds: Set<string> = new Set();
 // Track currently playing audio elements so we can stop mid-play (prevents "echo" overlap)
 const activeAudios: Map<string, Set<HTMLAudioElement>> = new Map();
 
+// Track ALL currently playing audio elements (including one-off sounds without a key)
+const allActiveAudios: Set<HTMLAudioElement> = new Set();
+
 // Snooze state management
 let soundsSnoozed = false;
 let snoozeTimeout: NodeJS.Timeout | null = null;
@@ -36,6 +39,20 @@ const snoozeListeners: Set<(snoozed: boolean, remainingMs: number | null) => voi
 const notifySnoozeListeners = () => {
   const remaining = snoozeEndTime ? Math.max(0, snoozeEndTime - Date.now()) : null;
   snoozeListeners.forEach(listener => listener(soundsSnoozed, remaining));
+};
+
+// Immediately silence any in-progress audio (does not cancel intervals; just stops current playback)
+const stopAllCurrentlyPlayingAudio = () => {
+  allActiveAudios.forEach((audio) => {
+    try {
+      audio.pause();
+      audio.currentTime = 0;
+    } catch {
+      // ignore
+    }
+  });
+  allActiveAudios.clear();
+  activeAudios.clear();
 };
 
 /**
@@ -50,6 +67,10 @@ export const snoozeSounds = (durationMinutes: number) => {
   
   soundsSnoozed = true;
   snoozeEndTime = Date.now() + durationMinutes * 60 * 1000;
+
+  // If something is already ringing, stop it immediately.
+  stopAllCurrentlyPlayingAudio();
+
   console.log(`🔕 Sounds snoozed for ${durationMinutes} minutes`);
   notifySnoozeListeners();
   
@@ -141,9 +162,13 @@ const playSound = (type: NotificationSoundType, key?: string): Promise<void> => 
       const audio = new Audio(SOUND_FILES[type]);
       audio.volume = 1.0;
 
+      // Track one-off + keyed sounds so snooze can immediately silence any in-progress playback.
+      allActiveAudios.add(audio);
+
       if (key) registerAudio(key, audio);
 
       const cleanup = () => {
+        allActiveAudios.delete(audio);
         if (key) unregisterAudio(key, audio);
         resolve();
       };
