@@ -290,7 +290,7 @@ function notifySnoozeListeners() {
 }
 
 // Immediately silence any in-progress audio (does not cancel intervals; just stops current playback)
-const stopAllCurrentlyPlayingAudio = () => {
+function stopAllCurrentlyPlayingAudio() {
   const hardStop = (audio: HTMLAudioElement) => {
     try {
       // Mute immediately (helps on Safari/Chrome edge cases)
@@ -329,10 +329,10 @@ const stopAllCurrentlyPlayingAudio = () => {
   console.log(`🔕 Snooze: stopped ${stoppedCount} in-progress audio instance(s)`);
   allActiveAudios.clear();
   activeAudios.clear();
-};
+}
 
 // Hard stop for any audio elements that ever attempted to play (across HMR instances)
-const stopAllGlobalAudio = () => {
+function stopAllGlobalAudio() {
   const hardStopMedia = (el: HTMLMediaElement) => {
     try {
       (el as any).muted = true;
@@ -372,9 +372,9 @@ const stopAllGlobalAudio = () => {
   });
   // Keep the set around; new audio elements will be added over time.
   console.log(`🔕 Snooze: globally stopped ${stopped} media element(s)`);
-};
+}
 
-const startSnoozeEnforcer = () => {
+function startSnoozeEnforcer() {
   clearSnoozeEnforcer();
   // While snoozed, keep silencing any notification audio that attempts to play.
   (globalThis as any)[SNOOZE_ENFORCER_KEY] = setInterval(() => {
@@ -382,7 +382,7 @@ const startSnoozeEnforcer = () => {
     stopAllGlobalAudio();
     stopAllDOMMedia("enforcer");
   }, 250);
-};
+}
 
 /**
  * Snooze all sounds for a specified duration in minutes
