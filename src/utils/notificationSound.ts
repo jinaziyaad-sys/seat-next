@@ -27,6 +27,78 @@ const cancelledSounds: Set<string> = new Set();
 // Track currently playing audio elements so we can stop mid-play (prevents "echo" overlap)
 const activeAudios: Map<string, Set<HTMLAudioElement>> = new Map();
 
+// Snooze state management
+let soundsSnoozed = false;
+let snoozeTimeout: NodeJS.Timeout | null = null;
+let snoozeEndTime: number | null = null;
+const snoozeListeners: Set<(snoozed: boolean, remainingMs: number | null) => void> = new Set();
+
+const notifySnoozeListeners = () => {
+  const remaining = snoozeEndTime ? Math.max(0, snoozeEndTime - Date.now()) : null;
+  snoozeListeners.forEach(listener => listener(soundsSnoozed, remaining));
+};
+
+/**
+ * Snooze all sounds for a specified duration in minutes
+ */
+export const snoozeSounds = (durationMinutes: number) => {
+  // Clear any existing snooze timeout
+  if (snoozeTimeout) {
+    clearTimeout(snoozeTimeout);
+    snoozeTimeout = null;
+  }
+  
+  soundsSnoozed = true;
+  snoozeEndTime = Date.now() + durationMinutes * 60 * 1000;
+  console.log(`🔕 Sounds snoozed for ${durationMinutes} minutes`);
+  notifySnoozeListeners();
+  
+  // Auto-unsnooze after duration
+  snoozeTimeout = setTimeout(() => {
+    soundsSnoozed = false;
+    snoozeEndTime = null;
+    snoozeTimeout = null;
+    console.log(`🔔 Snooze ended - sounds re-enabled`);
+    notifySnoozeListeners();
+  }, durationMinutes * 60 * 1000);
+};
+
+/**
+ * Cancel snooze and re-enable sounds immediately
+ */
+export const cancelSnooze = () => {
+  if (snoozeTimeout) {
+    clearTimeout(snoozeTimeout);
+    snoozeTimeout = null;
+  }
+  soundsSnoozed = false;
+  snoozeEndTime = null;
+  console.log(`🔔 Snooze cancelled - sounds re-enabled`);
+  notifySnoozeListeners();
+};
+
+/**
+ * Check if sounds are currently snoozed
+ */
+export const isSnoozed = (): boolean => soundsSnoozed;
+
+/**
+ * Get remaining snooze time in milliseconds
+ */
+export const getSnoozeRemaining = (): number | null => {
+  if (!snoozeEndTime) return null;
+  const remaining = snoozeEndTime - Date.now();
+  return remaining > 0 ? remaining : null;
+};
+
+/**
+ * Subscribe to snooze state changes
+ */
+export const subscribeToSnooze = (callback: (snoozed: boolean, remainingMs: number | null) => void) => {
+  snoozeListeners.add(callback);
+  return () => snoozeListeners.delete(callback);
+};
+
 // Vibrate phone with pattern
 const vibratePattern = (pattern: number[]) => {
   if ('vibrate' in navigator) {
@@ -50,6 +122,13 @@ const unregisterAudio = (key: string, audio: HTMLAudioElement) => {
 // Play a sound file once
 const playSound = (type: NotificationSoundType, key?: string): Promise<void> => {
   return new Promise((resolve) => {
+    // Check if sounds are snoozed
+    if (soundsSnoozed) {
+      console.log(`🔕 Sound ${type} skipped - sounds are snoozed`);
+      resolve();
+      return;
+    }
+
     // Check if this sound has been cancelled before playing
     if (key && cancelledSounds.has(key)) {
       console.log(`🔇 Sound ${key} was cancelled, skipping play`);

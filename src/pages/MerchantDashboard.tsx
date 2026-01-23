@@ -12,6 +12,7 @@ import { MerchantReports } from "@/components/merchant/MerchantReports";
 import { VenueStatusIndicator } from "@/components/merchant/VenueStatusIndicator";
 import { VenueSwitcher } from "@/components/merchant/VenueSwitcher";
 import { VenueNotificationBell } from "@/components/merchant/VenueNotificationBell";
+import { SoundSnoozeButton } from "@/components/merchant/SoundSnoozeButton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -431,6 +432,7 @@ const MerchantDashboard = () => {
               </div>
             </div>
             <div className="flex gap-2">
+              <SoundSnoozeButton />
               <ThemeToggle />
               <PasswordResetDialog />
               <Button variant="outline" onClick={handleLogout}>
