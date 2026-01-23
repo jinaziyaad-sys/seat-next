@@ -42,6 +42,7 @@ const SNOOZE_FLAG_KEY = "__lovable_sounds_snoozed__";
 const SNOOZE_END_KEY = "__lovable_sounds_snooze_end__";
 const PLAY_PATCH_KEY = "__lovable_sounds_play_patched__";
 const GLOBAL_AUDIO_SET_KEY = "__lovable_active_audio_elements__";
+const SNOOZE_ENFORCER_KEY = "__lovable_snooze_enforcer_interval__";
 
 const getGlobalSnoozed = (): boolean => (globalThis as any)[SNOOZE_FLAG_KEY] === true;
 const setGlobalSnoozed = (value: boolean) => {
@@ -63,6 +64,14 @@ const getGlobalAudioSet = (): Set<HTMLMediaElement> => {
   const created = new Set<HTMLMediaElement>();
   (globalThis as any)[GLOBAL_AUDIO_SET_KEY] = created;
   return created;
+};
+
+const clearSnoozeEnforcer = () => {
+  const existing = (globalThis as any)[SNOOZE_ENFORCER_KEY];
+  if (existing) {
+    clearInterval(existing);
+    (globalThis as any)[SNOOZE_ENFORCER_KEY] = null;
+  }
 };
 
 // Initialize local state from global (important after HMR)
@@ -140,6 +149,9 @@ const stopAllGlobalAudio = () => {
   let stopped = 0;
   set.forEach((el) => {
     try {
+      const src = (el as any).currentSrc || (el as any).src;
+      // Only affect our notification sounds.
+      if (typeof src !== "string" || !src.includes("/sounds/")) return;
       el.pause?.();
       el.currentTime = 0;
       stopped++;
@@ -149,6 +161,15 @@ const stopAllGlobalAudio = () => {
   });
   // Keep the set around; new audio elements will be added over time.
   console.log(`🔕 Snooze: globally stopped ${stopped} media element(s)`);
+};
+
+const startSnoozeEnforcer = () => {
+  clearSnoozeEnforcer();
+  // While snoozed, keep silencing any notification audio that attempts to play.
+  (globalThis as any)[SNOOZE_ENFORCER_KEY] = setInterval(() => {
+    if (!getGlobalSnoozed()) return;
+    stopAllGlobalAudio();
+  }, 250);
 };
 
 /**
@@ -167,6 +188,7 @@ export const snoozeSounds = (durationMinutes: number) => {
   // If something is already ringing, stop it immediately.
   stopAllCurrentlyPlayingAudio();
   stopAllGlobalAudio();
+  startSnoozeEnforcer();
 
   console.log(`🔕 Sounds snoozed for ${durationMinutes} minutes`);
   notifySnoozeListeners();
@@ -175,6 +197,7 @@ export const snoozeSounds = (durationMinutes: number) => {
   snoozeTimeout = setTimeout(() => {
     setGlobalSnoozed(false);
     setGlobalSnoozeEnd(null);
+    clearSnoozeEnforcer();
     snoozeTimeout = null;
     console.log(`🔔 Snooze ended - sounds re-enabled`);
     notifySnoozeListeners();
@@ -191,6 +214,7 @@ export const cancelSnooze = () => {
   }
   setGlobalSnoozed(false);
   setGlobalSnoozeEnd(null);
+  clearSnoozeEnforcer();
   console.log(`🔔 Snooze cancelled - sounds re-enabled`);
   notifySnoozeListeners();
 };
