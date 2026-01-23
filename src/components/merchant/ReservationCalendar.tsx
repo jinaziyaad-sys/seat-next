@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { format, isSameDay } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, Users, Utensils, X } from "lucide-react";
+import { Clock, Users, Utensils, X, Pencil } from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
 
 interface Reservation {
   id: string;
@@ -16,6 +17,8 @@ interface Reservation {
   preferences?: string[];
   assigned_table_id?: string;
   linked_reservation_id?: string;
+  last_edited_at?: string;
+  edit_summary?: string;
 }
 
 interface TableOccupancy {
@@ -236,6 +239,15 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
                               <p className="text-xs text-primary mt-1">
                                 ℹ️ {linkedReservations.length} tables reserved together
                               </p>
+                              {firstRes.last_edited_at && (
+                                <div className="flex items-center gap-1 mt-2 p-2 bg-amber-50 dark:bg-amber-950/30 rounded border border-amber-200 dark:border-amber-800">
+                                  <Pencil size={12} className="text-amber-600 dark:text-amber-400" />
+                                  <span className="text-xs text-amber-700 dark:text-amber-300">
+                                    Edited {formatDistanceToNow(new Date(firstRes.last_edited_at), { addSuffix: true })}
+                                    {firstRes.edit_summary && `: ${firstRes.edit_summary}`}
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             <div className="flex items-center gap-2">
                               <Badge variant={getStatusColor(firstRes.status)}>
@@ -296,6 +308,15 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
                                 <p className="text-xs text-muted-foreground mt-1">
                                   {reservation.preferences.join(", ")}
                                 </p>
+                              )}
+                              {reservation.last_edited_at && (
+                                <div className="flex items-center gap-1 mt-2 p-2 bg-amber-50 dark:bg-amber-950/30 rounded border border-amber-200 dark:border-amber-800">
+                                  <Pencil size={12} className="text-amber-600 dark:text-amber-400" />
+                                  <span className="text-xs text-amber-700 dark:text-amber-300">
+                                    Edited {formatDistanceToNow(new Date(reservation.last_edited_at), { addSuffix: true })}
+                                    {reservation.edit_summary && `: ${reservation.edit_summary}`}
+                                  </span>
+                                </div>
                               )}
                             </div>
                             <div className="flex items-center gap-2">
