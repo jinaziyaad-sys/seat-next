@@ -177,21 +177,22 @@ export function EditReservationDialog({
       if (partySizeChanged) {
         changes.push(`Party size: ${entry.party_size}→${partySize}`);
       }
-      if (timeChanged && entry.reservation_time) {
+      if (timeChanged && entry.reservation_time && newReservationTime) {
         const oldDateTime = parseISO(entry.reservation_time);
-        const newDateTime = newReservationTime ? parseISO(newReservationTime) : null;
+        const newDateTime = parseISO(newReservationTime);
         
-        // Check if date changed vs just time changed
-        const oldDate = format(oldDateTime, "MMM d");
-        const newDate = newDateTime ? format(newDateTime, "MMM d") : oldDate;
-        const oldTime = format(oldDateTime, "HH:mm");
-        const newTime = reservationTime;
-        
-        if (oldDate !== newDate) {
-          changes.push(`Date: ${oldDate}→${newDate}`);
+        // Check if date changed
+        const oldDateStr = format(oldDateTime, "yyyy-MM-dd");
+        const newDateStr = format(newDateTime, "yyyy-MM-dd");
+        if (oldDateStr !== newDateStr) {
+          changes.push(`Date: ${format(oldDateTime, "MMM d")}→${format(newDateTime, "MMM d")}`);
         }
-        if (oldTime !== newTime) {
-          changes.push(`Time: ${oldTime}→${newTime}`);
+        
+        // Check if time changed
+        const oldTimeStr = format(oldDateTime, "HH:mm");
+        const newTimeStr = format(newDateTime, "HH:mm");
+        if (oldTimeStr !== newTimeStr) {
+          changes.push(`Time: ${oldTimeStr}→${newTimeStr}`);
         }
       }
       if (preferencesChanged) {
