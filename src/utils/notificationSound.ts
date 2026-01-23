@@ -36,6 +36,48 @@ let snoozeTimeout: NodeJS.Timeout | null = null;
 let snoozeEndTime: number | null = null;
 const snoozeListeners: Set<(snoozed: boolean, remainingMs: number | null) => void> = new Set();
 
+// Keep snooze state on globalThis so it survives Vite HMR and also applies to any
+// legacy intervals/callbacks that may still be running.
+const SNOOZE_FLAG_KEY = "__lovable_sounds_snoozed__";
+const SNOOZE_END_KEY = "__lovable_sounds_snooze_end__";
+const PLAY_PATCH_KEY = "__lovable_sounds_play_patched__";
+
+const getGlobalSnoozed = (): boolean => (globalThis as any)[SNOOZE_FLAG_KEY] === true;
+const setGlobalSnoozed = (value: boolean) => {
+  (globalThis as any)[SNOOZE_FLAG_KEY] = value;
+  soundsSnoozed = value;
+};
+const getGlobalSnoozeEnd = (): number | null => {
+  const v = (globalThis as any)[SNOOZE_END_KEY];
+  return typeof v === "number" ? v : null;
+};
+const setGlobalSnoozeEnd = (value: number | null) => {
+  (globalThis as any)[SNOOZE_END_KEY] = value;
+  snoozeEndTime = value;
+};
+
+// Initialize local state from global (important after HMR)
+soundsSnoozed = getGlobalSnoozed();
+snoozeEndTime = getGlobalSnoozeEnd();
+
+// Patch media playback so that any Audio created anywhere in the app (including
+// stale HMR closures) cannot play our notification MP3s while snoozed.
+if ((globalThis as any)[PLAY_PATCH_KEY] !== true && typeof HTMLMediaElement !== "undefined") {
+  (globalThis as any)[PLAY_PATCH_KEY] = true;
+  const originalPlay = HTMLMediaElement.prototype.play;
+  HTMLMediaElement.prototype.play = function (...args: any[]) {
+    try {
+      const src = (this as any).currentSrc || (this as any).src;
+      if (getGlobalSnoozed() && typeof src === "string" && src.includes("/sounds/")) {
+        return Promise.resolve();
+      }
+    } catch {
+      // ignore
+    }
+    return originalPlay.apply(this, args as any);
+  };
+}
+
 const notifySnoozeListeners = () => {
   const remaining = snoozeEndTime ? Math.max(0, snoozeEndTime - Date.now()) : null;
   snoozeListeners.forEach(listener => listener(soundsSnoozed, remaining));
@@ -84,8 +126,8 @@ export const snoozeSounds = (durationMinutes: number) => {
     snoozeTimeout = null;
   }
   
-  soundsSnoozed = true;
-  snoozeEndTime = Date.now() + durationMinutes * 60 * 1000;
+  setGlobalSnoozed(true);
+  setGlobalSnoozeEnd(Date.now() + durationMinutes * 60 * 1000);
 
   // If something is already ringing, stop it immediately.
   stopAllCurrentlyPlayingAudio();
@@ -95,8 +137,8 @@ export const snoozeSounds = (durationMinutes: number) => {
   
   // Auto-unsnooze after duration
   snoozeTimeout = setTimeout(() => {
-    soundsSnoozed = false;
-    snoozeEndTime = null;
+    setGlobalSnoozed(false);
+    setGlobalSnoozeEnd(null);
     snoozeTimeout = null;
     console.log(`🔔 Snooze ended - sounds re-enabled`);
     notifySnoozeListeners();
@@ -111,8 +153,8 @@ export const cancelSnooze = () => {
     clearTimeout(snoozeTimeout);
     snoozeTimeout = null;
   }
-  soundsSnoozed = false;
-  snoozeEndTime = null;
+  setGlobalSnoozed(false);
+  setGlobalSnoozeEnd(null);
   console.log(`🔔 Snooze cancelled - sounds re-enabled`);
   notifySnoozeListeners();
 };
@@ -120,14 +162,15 @@ export const cancelSnooze = () => {
 /**
  * Check if sounds are currently snoozed
  */
-export const isSnoozed = (): boolean => soundsSnoozed;
+export const isSnoozed = (): boolean => getGlobalSnoozed();
 
 /**
  * Get remaining snooze time in milliseconds
  */
 export const getSnoozeRemaining = (): number | null => {
-  if (!snoozeEndTime) return null;
-  const remaining = snoozeEndTime - Date.now();
+  const end = getGlobalSnoozeEnd();
+  if (!end) return null;
+  const remaining = end - Date.now();
   return remaining > 0 ? remaining : null;
 };
 
@@ -141,7 +184,7 @@ export const subscribeToSnooze = (callback: (snoozed: boolean, remainingMs: numb
 
 // Vibrate phone with pattern (respects snooze)
 const vibratePattern = (pattern: number[]) => {
-  if (soundsSnoozed) return; // Skip vibration when snoozed
+  if (getGlobalSnoozed()) return; // Skip vibration when snoozed
   if ('vibrate' in navigator) {
     navigator.vibrate(pattern);
   }
@@ -164,7 +207,7 @@ const unregisterAudio = (key: string, audio: HTMLAudioElement) => {
 const playSound = (type: NotificationSoundType, key?: string): Promise<void> => {
   return new Promise((resolve) => {
     // Check if sounds are snoozed
-    if (soundsSnoozed) {
+    if (getGlobalSnoozed()) {
       console.log(`🔕 Sound ${type} skipped - sounds are snoozed`);
       resolve();
       return;
