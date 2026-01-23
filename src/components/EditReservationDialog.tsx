@@ -1,0 +1,373 @@
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { format, addDays, differenceInHours, parseISO } from "date-fns";
+import { Calendar as CalendarIcon, Loader2, Users, Clock, AlertCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { getAvailableReservationTimes, BusinessHours, HolidayClosure } from "@/utils/businessHours";
+import { invokeSupabaseFunctionWithTimeout } from "@/utils/invokeWithTimeout";
+
+interface EditReservationDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  entry: {
+    id: string;
+    venue: string;
+    venue_id: string;
+    party_size: number;
+    reservation_time: string | null;
+    preferences?: string[];
+    notes?: string;
+    customer_name: string;
+  };
+  venueSettings?: {
+    business_hours?: BusinessHours;
+    holiday_closures?: HolidayClosure[];
+  };
+  onSuccess: (updatedEntry: any) => void;
+}
+
+export function EditReservationDialog({
+  open,
+  onOpenChange,
+  entry,
+  venueSettings,
+  onSuccess,
+}: EditReservationDialogProps) {
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+  const [partySize, setPartySize] = useState(entry.party_size);
+  const [reservationDate, setReservationDate] = useState<Date | undefined>(
+    entry.reservation_time ? parseISO(entry.reservation_time) : undefined
+  );
+  const [reservationTime, setReservationTime] = useState<string>(
+    entry.reservation_time ? format(parseISO(entry.reservation_time), "HH:mm") : ""
+  );
+  const [seatingPreference, setSeatingPreference] = useState<"indoor" | "outdoor" | "no-preference">(
+    entry.preferences?.includes("outdoor") ? "outdoor" :
+    entry.preferences?.includes("indoor") ? "indoor" : "no-preference"
+  );
+  const [notes, setNotes] = useState(entry.notes || "");
+  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
+  const [isLoadingTimes, setIsLoadingTimes] = useState(false);
+
+  // Reset state when dialog opens with new entry data
+  useEffect(() => {
+    if (open) {
+      setPartySize(entry.party_size);
+      setReservationDate(entry.reservation_time ? parseISO(entry.reservation_time) : undefined);
+      setReservationTime(entry.reservation_time ? format(parseISO(entry.reservation_time), "HH:mm") : "");
+      setSeatingPreference(
+        entry.preferences?.includes("outdoor") ? "outdoor" :
+        entry.preferences?.includes("indoor") ? "indoor" : "no-preference"
+      );
+      setNotes(entry.notes || "");
+    }
+  }, [open, entry]);
+
+  // Fetch available times when date changes
+  useEffect(() => {
+    if (!reservationDate || !venueSettings) return;
+
+    setIsLoadingTimes(true);
+    try {
+      const businessHours = venueSettings.business_hours || {};
+      const holidayClosures = venueSettings.holiday_closures || [];
+      const times = getAvailableReservationTimes(reservationDate, businessHours, holidayClosures, 15, 0);
+      setAvailableTimes(times);
+    } catch (err) {
+      console.error("Error fetching available times:", err);
+    } finally {
+      setIsLoadingTimes(false);
+    }
+  }, [reservationDate, venueSettings]);
+
+  const hoursUntilReservation = entry.reservation_time 
+    ? differenceInHours(parseISO(entry.reservation_time), new Date())
+    : Infinity;
+  
+  const canEdit = hoursUntilReservation > 2;
+
+  const handleSave = async () => {
+    if (!canEdit) return;
+    
+    setIsLoading(true);
+    try {
+      // Build the new reservation datetime
+      let newReservationTime = entry.reservation_time;
+      if (reservationDate && reservationTime) {
+        const [hours, minutes] = reservationTime.split(":").map(Number);
+        const newDateTime = new Date(reservationDate);
+        newDateTime.setHours(hours, minutes, 0, 0);
+        newReservationTime = newDateTime.toISOString();
+      }
+
+      // Build preferences array
+      const newPreferences: string[] = [];
+      if (seatingPreference === "indoor") newPreferences.push("indoor");
+      if (seatingPreference === "outdoor") newPreferences.push("outdoor");
+
+      // Check table availability if party size changed or time changed
+      const partySizeChanged = partySize !== entry.party_size;
+      const timeChanged = newReservationTime !== entry.reservation_time;
+
+      if (partySizeChanged || timeChanged) {
+        // Call find-available-table to check availability
+        const { data: tableResult, error: tableError } = await invokeSupabaseFunctionWithTimeout<{
+          available: boolean;
+          reason?: string;
+          tables?: Array<{ id: string; name: string; capacity: number }>;
+        }>(
+          "find-available-table",
+          {
+            venue_id: entry.venue_id,
+            reservation_time: newReservationTime,
+            party_size: partySize,
+          },
+          15000
+        );
+
+        if (tableError) {
+          toast({
+            title: "Error Checking Availability",
+            description: "Unable to verify table availability. Please try again.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        if (!tableResult?.available) {
+          toast({
+            title: "Time Slot Unavailable",
+            description: tableResult?.reason || "No tables available for this party size at the selected time.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Handle multi-table case - for now, show error and require cancel/rebook
+        if (tableResult?.tables && tableResult.tables.length > 1) {
+          toast({
+            title: "Multiple Tables Required",
+            description: "This party size requires multiple tables. Please cancel and create a new reservation.",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Update with new table assignment
+        const { error: updateError } = await supabase
+          .from("waitlist_entries")
+          .update({
+            party_size: partySize,
+            reservation_time: newReservationTime,
+            eta: newReservationTime,
+            preferences: newPreferences,
+            notes: notes.trim() || null,
+            assigned_table_id: tableResult?.tables?.[0]?.id || null,
+          })
+          .eq("id", entry.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Just update preferences and notes
+        const { error: updateError } = await supabase
+          .from("waitlist_entries")
+          .update({
+            preferences: newPreferences,
+            notes: notes.trim() || null,
+          })
+          .eq("id", entry.id);
+
+        if (updateError) throw updateError;
+      }
+
+      toast({
+        title: "Reservation Updated",
+        description: "Your changes have been saved.",
+      });
+
+      onSuccess({
+        ...entry,
+        party_size: partySize,
+        reservation_time: newReservationTime,
+        preferences: newPreferences,
+        notes: notes.trim() || null,
+      });
+
+      onOpenChange(false);
+    } catch (err) {
+      console.error("Error updating reservation:", err);
+      toast({
+        title: "Update Failed",
+        description: "Unable to save changes. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[425px]">
+        <DialogHeader>
+          <DialogTitle>Edit Reservation</DialogTitle>
+          <DialogDescription>
+            {entry.venue}
+          </DialogDescription>
+        </DialogHeader>
+
+        {!canEdit ? (
+          <div className="flex items-center gap-3 p-4 bg-destructive/10 rounded-lg">
+            <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
+            <p className="text-sm text-destructive">
+              Changes cannot be made within 2 hours of your reservation time. 
+              Please contact the restaurant directly.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4 py-4">
+            {/* Party Size */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Party Size
+              </Label>
+              <Select value={partySize.toString()} onValueChange={(v) => setPartySize(parseInt(v))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: 12 }, (_, i) => i + 1).map((size) => (
+                    <SelectItem key={size} value={size.toString()}>
+                      {size} {size === 1 ? "Guest" : "Guests"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Date */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <CalendarIcon className="h-4 w-4" />
+                Date
+              </Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !reservationDate && "text-muted-foreground"
+                    )}
+                  >
+                    {reservationDate ? format(reservationDate, "PPP") : "Select date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={reservationDate}
+                    onSelect={setReservationDate}
+                    disabled={(date) => date < new Date() || date > addDays(new Date(), 30)}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            {/* Time */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                Time
+              </Label>
+              <Select 
+                value={reservationTime} 
+                onValueChange={setReservationTime}
+                disabled={isLoadingTimes || availableTimes.length === 0}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder={isLoadingTimes ? "Loading times..." : "Select time"} />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableTimes.map((time) => (
+                    <SelectItem key={time} value={time}>
+                      {time}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Seating Preference */}
+            <div className="space-y-2">
+              <Label>Seating Preference</Label>
+              <ToggleGroup 
+                type="single" 
+                value={seatingPreference}
+                onValueChange={(v) => v && setSeatingPreference(v as "indoor" | "outdoor" | "no-preference")}
+                className="justify-start"
+              >
+                <ToggleGroupItem value="indoor" variant="outline">
+                  Indoor
+                </ToggleGroupItem>
+                <ToggleGroupItem value="outdoor" variant="outline">
+                  Outdoor
+                </ToggleGroupItem>
+                <ToggleGroupItem value="no-preference" variant="outline">
+                  No Preference
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
+
+            {/* Special Requests */}
+            <div className="space-y-2">
+              <Label>Special Requests (Optional)</Label>
+              <Textarea
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Any special requests or notes..."
+                className="resize-none"
+                maxLength={500}
+              />
+              <p className="text-xs text-muted-foreground text-right">
+                {notes.length}/500
+              </p>
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSave} disabled={!canEdit || isLoading}>
+            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Save Changes
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

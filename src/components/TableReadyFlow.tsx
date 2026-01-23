@@ -6,12 +6,12 @@ import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin, Loader2, Star, Calendar as CalendarIcon, XCircle, Navigation } from "lucide-react";
+import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin, Loader2, Star, Calendar as CalendarIcon, XCircle, Navigation, Pencil } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, addDays } from "date-fns";
+import { format, addDays, differenceInHours, parseISO } from "date-fns";
 import { cn, formatTimeUntil } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -20,6 +20,7 @@ import { sendBrowserNotification, vibratePhone, initializePushNotifications } fr
 import { checkVenueStatus, getAvailableReservationTimes } from "@/utils/businessHours";
 import { calculateDistance, formatDistance, getUserLocation, type UserLocation } from "@/utils/geolocation";
 import { playTableReadySound, stopSoundForId, isSoundActive } from "@/utils/notificationSound";
+import { EditReservationDialog } from "@/components/EditReservationDialog";
 
 type WaitlistStatus = "waiting" | "ready" | "seated" | "cancelled";
 type DatabaseWaitlistStatus = "waiting" | "ready" | "seated" | "cancelled" | "no_show";
@@ -93,6 +94,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [requiresMultipleTables, setRequiresMultipleTables] = useState(false);
   const [tablesNeeded, setTablesNeeded] = useState<any[]>([]);
   const [pendingReservationData, setPendingReservationData] = useState<any>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
   const soundStartedRef = useRef(false);
 
@@ -1835,7 +1837,29 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         </Card>
 
         <Card className="shadow-card">
-          <CardContent className="p-4">
+          <CardContent className="p-4 space-y-3">
+            {isReservation && (
+              <>
+                {(() => {
+                  const hoursUntil = waitlistEntry.reservation_time 
+                    ? differenceInHours(parseISO(waitlistEntry.reservation_time), new Date())
+                    : Infinity;
+                  const canEdit = hoursUntil > 2;
+                  
+                  return (
+                    <Button 
+                      variant="outline" 
+                      className="w-full h-12"
+                      onClick={() => setIsEditDialogOpen(true)}
+                      disabled={!canEdit}
+                    >
+                      <Pencil className="mr-2 h-4 w-4" />
+                      {canEdit ? "Edit Reservation" : "Edit unavailable (< 2 hours)"}
+                    </Button>
+                  );
+                })()}
+              </>
+            )}
             <Button 
               variant="outline" 
               className="w-full h-12 text-destructive hover:bg-destructive/10"
@@ -1845,6 +1869,35 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             </Button>
           </CardContent>
         </Card>
+
+        {/* Edit Reservation Dialog */}
+        {isReservation && waitlistEntry && (
+          <EditReservationDialog
+            open={isEditDialogOpen}
+            onOpenChange={setIsEditDialogOpen}
+            entry={{
+              id: waitlistEntry.id,
+              venue: waitlistEntry.venue,
+              venue_id: waitlistEntry.venue_id,
+              party_size: waitlistEntry.party_size,
+              reservation_time: waitlistEntry.reservation_time || null,
+              preferences: waitlistEntry.preferences,
+              notes: waitlistEntry.notes,
+              customer_name: waitlistEntry.customer_name,
+            }}
+            venueSettings={selectedVenueData?.settings}
+            onSuccess={(updatedEntry) => {
+              setWaitlistEntry(prev => prev ? {
+                ...prev,
+                party_size: updatedEntry.party_size,
+                reservation_time: updatedEntry.reservation_time,
+                eta: updatedEntry.reservation_time,
+                preferences: updatedEntry.preferences,
+                notes: updatedEntry.notes,
+              } : null);
+            }}
+          />
+        )}
       </div>
     );
   }
