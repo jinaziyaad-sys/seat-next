@@ -43,14 +43,33 @@ const notifySnoozeListeners = () => {
 
 // Immediately silence any in-progress audio (does not cancel intervals; just stops current playback)
 const stopAllCurrentlyPlayingAudio = () => {
+  // Stop audio tracked globally (includes one-off sounds)
+  let stoppedCount = 0;
   allActiveAudios.forEach((audio) => {
     try {
       audio.pause();
       audio.currentTime = 0;
+      stoppedCount++;
     } catch {
       // ignore
     }
   });
+
+  // Also stop any audio tracked by keyed sounds (covers the case where HMR updated
+  // playSound tracking while previously created audio instances are only in activeAudios)
+  activeAudios.forEach((audios) => {
+    audios.forEach((audio) => {
+      try {
+        audio.pause();
+        audio.currentTime = 0;
+        stoppedCount++;
+      } catch {
+        // ignore
+      }
+    });
+  });
+
+  console.log(`🔕 Snooze: stopped ${stoppedCount} in-progress audio instance(s)`);
   allActiveAudios.clear();
   activeAudios.clear();
 };
