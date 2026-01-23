@@ -177,22 +177,21 @@ export function EditReservationDialog({
       if (partySizeChanged) {
         changes.push(`Party size: ${entry.party_size}→${partySize}`);
       }
-      if (timeChanged && entry.reservation_time && newReservationTime) {
+      // Always compare old vs new date/time when possible (covers date-only moves reliably)
+      if (entry.reservation_time && newReservationTime) {
         const oldDateTime = parseISO(entry.reservation_time);
-        const newDateTime = parseISO(newReservationTime);
-        
-        // Check if date changed
+        const nextDateTime = parseISO(newReservationTime);
+
         const oldDateStr = format(oldDateTime, "yyyy-MM-dd");
-        const newDateStr = format(newDateTime, "yyyy-MM-dd");
-        if (oldDateStr !== newDateStr) {
-          changes.push(`Date: ${format(oldDateTime, "MMM d")}→${format(newDateTime, "MMM d")}`);
+        const nextDateStr = format(nextDateTime, "yyyy-MM-dd");
+        if (oldDateStr !== nextDateStr) {
+          changes.push(`Date: ${format(oldDateTime, "MMM d")}→${format(nextDateTime, "MMM d")}`);
         }
-        
-        // Check if time changed
+
         const oldTimeStr = format(oldDateTime, "HH:mm");
-        const newTimeStr = format(newDateTime, "HH:mm");
-        if (oldTimeStr !== newTimeStr) {
-          changes.push(`Time: ${oldTimeStr}→${newTimeStr}`);
+        const nextTimeStr = format(nextDateTime, "HH:mm");
+        if (oldTimeStr !== nextTimeStr) {
+          changes.push(`Time: ${oldTimeStr}→${nextTimeStr}`);
         }
       }
       if (preferencesChanged) {
@@ -201,6 +200,17 @@ export function EditReservationDialog({
         changes.push(`Seating: ${oldPrefs}→${newPrefs}`);
       }
       const editSummary = changes.length > 0 ? changes.join(", ") : "Notes updated";
+
+      // Debug aid: helps confirm date/time diffs were computed (remove later if noisy)
+      console.log("[EditReservationDialog] edit_summary", {
+        entryId: entry.id,
+        oldReservationTime: entry.reservation_time,
+        newReservationTime,
+        partySizeChanged,
+        timeChanged,
+        preferencesChanged,
+        editSummary,
+      });
 
       if (partySizeChanged || timeChanged) {
         // Call find-available-table to check availability

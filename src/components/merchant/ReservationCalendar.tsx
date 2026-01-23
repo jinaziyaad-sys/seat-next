@@ -94,6 +94,10 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
       .order('reservation_time', { ascending: true });
 
     setReservations(data || []);
+
+    // If a reservation is edited/moved to another day, refresh the calendar markers
+    // so the newly-booked day is highlighted without requiring a full page reload.
+    fetchReservationDates();
   };
 
   const getStatusColor = (status: string) => {
