@@ -99,8 +99,9 @@ export const subscribeToSnooze = (callback: (snoozed: boolean, remainingMs: numb
   return () => snoozeListeners.delete(callback);
 };
 
-// Vibrate phone with pattern
+// Vibrate phone with pattern (respects snooze)
 const vibratePattern = (pattern: number[]) => {
+  if (soundsSnoozed) return; // Skip vibration when snoozed
   if ('vibrate' in navigator) {
     navigator.vibrate(pattern);
   }
