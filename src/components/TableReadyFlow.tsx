@@ -34,7 +34,7 @@ interface WaitlistEntry {
   venue: string;
   venue_id: string;
   party_size: number;
-  position: number;
+  position: number | null;
   eta: string | null;
   preferences?: string[];
   status: WaitlistStatus;
@@ -1674,18 +1674,19 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   }
 
   if (step === "waiting" && waitlistEntry) {
+    const isReservation = !!waitlistEntry.reservation_time || waitlistEntry.reservation_type === "reservation";
     return (
       <div className="space-y-6 p-6 pb-24">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="text-2xl font-bold">Waitlist Status</h1>
+          <h1 className="text-2xl font-bold">{isReservation ? "Reservation" : "Waitlist"} Status</h1>
         </div>
 
         <Card className="shadow-card">
           <CardContent className="p-8 text-center space-y-6">
-            {waitlistEntry.reservation_type === 'reservation' ? (
+            {isReservation ? (
               <>
                 <div className="w-20 h-20 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
                   <CalendarIcon className="w-10 h-10 text-primary" />
@@ -1720,7 +1721,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 </div>
                 
                 <div className="space-y-2">
-                  <h2 className="text-3xl font-bold text-primary">#{waitlistEntry.position}</h2>
+                  <h2 className="text-3xl font-bold text-primary">#{waitlistEntry.position ?? "-"}</h2>
                   <p className="text-lg text-muted-foreground">in line</p>
                 </div>
 
@@ -1763,7 +1764,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           </CardContent>
         </Card>
 
-        {partiesAhead.length > 0 && (
+        {!isReservation && partiesAhead.length > 0 && (
           <Card className="shadow-card">
             <CardHeader>
               <CardTitle>Parties Ahead of You</CardTitle>
@@ -1781,7 +1782,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                   return (
                     <div key={party.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                       <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm">
-                        #{party.position}
+                          #{party.position ?? "-"}
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
