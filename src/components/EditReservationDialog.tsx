@@ -65,6 +65,31 @@ export function EditReservationDialog({
   const [notes, setNotes] = useState(entry.notes || "");
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [isLoadingTimes, setIsLoadingTimes] = useState(false);
+  const [fetchedSettings, setFetchedSettings] = useState<{
+    business_hours?: BusinessHours;
+    holiday_closures?: HolidayClosure[];
+  } | null>(null);
+
+  // Use provided venueSettings or fetch them
+  const effectiveSettings = venueSettings || fetchedSettings;
+
+  // Fetch venue settings if not provided
+  useEffect(() => {
+    if (open && !venueSettings && entry.venue_id) {
+      const fetchSettings = async () => {
+        const { data } = await supabase
+          .from("venues")
+          .select("settings")
+          .eq("id", entry.venue_id)
+          .single();
+        
+        if (data?.settings) {
+          setFetchedSettings(data.settings as any);
+        }
+      };
+      fetchSettings();
+    }
+  }, [open, venueSettings, entry.venue_id]);
 
   // Reset state when dialog opens with new entry data
   useEffect(() => {
@@ -82,20 +107,40 @@ export function EditReservationDialog({
 
   // Fetch available times when date changes
   useEffect(() => {
-    if (!reservationDate || !venueSettings) return;
+    if (!reservationDate) return;
 
     setIsLoadingTimes(true);
     try {
-      const businessHours = venueSettings.business_hours || {};
-      const holidayClosures = venueSettings.holiday_closures || [];
-      const times = getAvailableReservationTimes(reservationDate, businessHours, holidayClosures, 15, 0);
-      setAvailableTimes(times);
+      if (effectiveSettings) {
+        const businessHours = effectiveSettings.business_hours || {};
+        const holidayClosures = effectiveSettings.holiday_closures || [];
+        const times = getAvailableReservationTimes(reservationDate, businessHours, holidayClosures, 15, 0);
+        
+        // Include current reservation time if not in list
+        const currentTime = entry.reservation_time ? format(parseISO(entry.reservation_time), "HH:mm") : "";
+        if (currentTime && !times.includes(currentTime)) {
+          times.push(currentTime);
+          times.sort();
+        }
+        
+        setAvailableTimes(times);
+      } else {
+        // No settings - generate default time slots (every 15 min from 09:00 to 22:00)
+        const defaultTimes: string[] = [];
+        for (let h = 9; h <= 22; h++) {
+          for (let m = 0; m < 60; m += 15) {
+            if (h === 22 && m > 0) break;
+            defaultTimes.push(`${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`);
+          }
+        }
+        setAvailableTimes(defaultTimes);
+      }
     } catch (err) {
       console.error("Error fetching available times:", err);
     } finally {
       setIsLoadingTimes(false);
     }
-  }, [reservationDate, venueSettings]);
+  }, [reservationDate, effectiveSettings, entry.reservation_time]);
 
   const hoursUntilReservation = entry.reservation_time 
     ? differenceInHours(parseISO(entry.reservation_time), new Date())
