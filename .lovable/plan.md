@@ -1,194 +1,156 @@
 
-# Patron Yearly Recap - "Your Year in Review"
+
+# Duplicate Booking Confirmation Dialog
 
 ## Overview
-Build a Spotify Wrapped-style yearly recap experience for patrons, showing personalized statistics about their activity over the year. The recap will be a fullscreen, multi-slide animated experience that patrons can tap through.
+Replace the hard block on duplicate reservations with a warning dialog that shows existing booking details and lets patrons confirm if they still want to proceed with the new booking.
 
-## What the Recap Will Show
+## Current Behavior
+When a patron tries to make a reservation within ±30 minutes of an existing booking at the same venue:
+- A toast error appears: "You already have a reservation at [time] for [X] people"
+- The booking is blocked entirely
 
-### Slide 1: Welcome
-- "Your 2025 in Review" with animated entrance
-- Patron's name personalized greeting
-
-### Slide 2: Total Activity
-- Total orders placed this year
-- Total waitlist joins / reservations
-- "You were quite the regular!" type messaging
-
-### Slide 3: Favorite Venue
-- Most visited venue name
-- Number of visits to that venue
-- "This was your go-to spot!"
-
-### Slide 4: Time Stats
-- Busiest month for the patron
-- Most active day of the week
-- "Saturdays were your thing!"
-
-### Slide 5: Speed Stats
-- Average wait time for food orders
-- Average wait time for tables
-- Fun comparison messaging
-
-### Slide 6: Rating Summary
-- Average rating given
-- Total ratings submitted
-- "You're a generous rater!" or "You have high standards!"
-
-### Slide 7: Thank You / Share
-- "Thanks for a great year!"
-- Option to share or close
+## New Behavior
+- Show a confirmation dialog with the existing booking details
+- Allow patron to choose: "Go Back" or "Book Anyway"
+- If confirmed, proceed with the new reservation
 
 ---
 
 ## Technical Implementation
 
-### 1. New Edge Function: `get-patron-yearly-recap`
-Creates an edge function that calculates all recap statistics for a patron for a given year.
+### 1. Add New State Variables
 
-**Data Gathered:**
-- Total orders (from `orders` table where `user_id` = patron and `created_at` in year)
-- Total waitlist joins (from `waitlist_entries` table)
-- Favorite venue (venue with most combined orders + waitlist)
-- Busiest month (month with most activity)
-- Busiest day of week (from analytics tables)
-- Average prep/wait times (from `order_analytics` and `waitlist_analytics`)
-- Ratings given (from `order_ratings` and `waitlist_ratings`)
-- Member since date (from `profiles.created_at`)
+Add two new state variables to track the duplicate warning state:
 
-**Response Structure:**
-```json
-{
-  "year": 2025,
-  "patron_name": "John",
-  "member_since": "2024-03-15",
-  "stats": {
-    "total_orders": 47,
-    "total_waitlist_joins": 23,
-    "total_reservations": 12,
-    "favorite_venue": { "name": "Cafe Luna", "visits": 18 },
-    "busiest_month": { "month": 7, "count": 12 },
-    "busiest_day": { "day": 6, "day_name": "Saturday", "count": 15 },
-    "avg_order_wait_minutes": 12,
-    "avg_table_wait_minutes": 8,
-    "ratings_given": 31,
-    "avg_rating_given": 4.2,
-    "venues_visited": 5
-  }
+```typescript
+const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+const [existingBooking, setExistingBooking] = useState<{
+  time: string;
+  partySize: number;
+} | null>(null);
+```
+
+### 2. Modify Duplicate Check Logic
+
+Change the duplicate detection code (lines 598-621) from blocking to warning:
+
+**Before:**
+```typescript
+if (existingReservations && existingReservations.length > 0) {
+  toast({ title: "Duplicate Booking Detected", ... });
+  return; // Hard block
 }
 ```
 
-### 2. New Component: `YearlyRecap.tsx`
-A fullscreen overlay component with multiple animated slides.
-
-**Features:**
-- Fullscreen black/gradient background with animated elements
-- Tap/swipe to advance through slides (or auto-advance with pause on tap)
-- Progress dots at bottom showing current slide
-- Framer Motion animations for each slide entrance
-- Close button to exit
-- Uses existing motion utilities from `src/components/ui/motion.tsx`
-
-**Slide Navigation:**
-- Tap anywhere to go to next slide
-- Swipe gestures supported
-- Back button on each slide
-- Skip to end option
-
-### 3. New Hook: `useYearlyRecap.ts`
-Custom hook to fetch and manage recap data.
-
-**Functions:**
-- `fetchRecap(year: number)` - Calls edge function
-- `hasSeenRecap(year: number)` - Checks localStorage
-- `markRecapSeen(year: number)` - Saves to localStorage
-- `shouldShowRecap()` - Logic for auto-display at year end
-
-### 4. Trigger Logic in `Index.tsx`
-
-**Test Mode (Temporary):**
-- Add a "Preview Your Year" button in the Profile section
-- Button calls the recap with current year data
-- Visible during development, can be hidden via platform_config flag
-
-**Production Mode (Year-End):**
-- Automatically shows recap in late December/early January
-- Only shows once per year (localStorage flag)
-- Checks if patron has sufficient activity (at least 1 order or waitlist join)
-- Can be dismissed and accessed later from Profile
-
-**Year-End Trigger Logic:**
-```
-- Current date is between Dec 26 and Jan 7
-- Patron hasn't seen recap for completed year
-- Patron has at least 1 order OR 1 waitlist join in that year
+**After:**
+```typescript
+if (existingReservations && existingReservations.length > 0) {
+  const existingTime = format(new Date(existingReservations[0].reservation_time), 'h:mm a');
+  setExistingBooking({
+    time: existingTime,
+    partySize: existingReservations[0].party_size
+  });
+  setPendingReservationData({
+    venue,
+    reservationDateTime,
+    finalPreferences,
+    partyName: partyName.trim(),
+    partySize
+  });
+  setShowDuplicateWarning(true);
+  return; // Stop and show confirmation
+}
 ```
 
-### 5. Platform Config Flag (Optional)
-Add to `platform_config` table:
-- `feature.yearly_recap_enabled` - Master toggle
-- `yearly_recap.test_mode` - Enables test button in Profile
+### 3. Add Confirmation Handler
 
-### 6. Profile Section Integration
-Add a "Your Year in Review" card to `ProfileSection.tsx`:
-- Shows when recap is available
-- "View My 2025 Recap" button
-- Indicates if already viewed
+Create a new function to proceed after confirmation:
+
+```typescript
+const handleConfirmDuplicateBooking = async () => {
+  if (!pendingReservationData) return;
+  
+  setShowDuplicateWarning(false);
+  setExistingBooking(null);
+  
+  // Continue with the booking flow using pendingReservationData
+  // Call availability check and insert reservation
+  await proceedWithBooking(pendingReservationData);
+};
+
+const handleCancelDuplicateBooking = () => {
+  setShowDuplicateWarning(false);
+  setExistingBooking(null);
+  setPendingReservationData(null);
+};
+```
+
+### 4. Add Confirmation Dialog UI
+
+Add a conditional render block (similar to multi-table confirmation) that shows when `showDuplicateWarning` is true:
+
+```
++------------------------------------------+
+|  ← Back                                  |
+|                                          |
+|  ⚠️ Existing Booking Found               |
+|                                          |
+|  You already have a reservation at       |
+|  this venue:                             |
+|                                          |
+|  ┌────────────────────────────────────┐  |
+|  │  📅 Today at 7:30 PM               │  |
+|  │     Party of 4                     │  |
+|  └────────────────────────────────────┘  |
+|                                          |
+|  You're about to book another table:     |
+|                                          |
+|  ┌────────────────────────────────────┐  |
+|  │  📅 Today at 7:45 PM               │  |
+|  │     Party of 2                     │  |
+|  └────────────────────────────────────┘  |
+|                                          |
+|  ℹ️ Both bookings will be active. You   |
+|     can manage them from your profile.   |
+|                                          |
+|  [ Book Anyway ]  (primary button)       |
+|  [ Go Back ]      (outline button)       |
++------------------------------------------+
+```
+
+### 5. Extract Booking Logic
+
+Refactor the booking insertion logic into a reusable `proceedWithBooking()` function that:
+- Checks table availability
+- Handles multi-table scenarios (if triggered)
+- Inserts the reservation
+- Updates state and shows success toast
+
+This allows both the normal flow and the duplicate-confirmed flow to share the same code.
 
 ---
 
-## File Changes Summary
+## File Changes
 
-### New Files:
-1. `src/components/YearlyRecap.tsx` - Main recap overlay component
-2. `src/hooks/useYearlyRecap.ts` - Data fetching and state management
-3. `supabase/functions/get-patron-yearly-recap/index.ts` - Edge function for stats
+### Modified File: `src/components/TableReadyFlow.tsx`
 
-### Modified Files:
-1. `src/pages/Index.tsx` - Add auto-trigger logic for year-end display
-2. `src/components/ProfileSection.tsx` - Add "View Recap" button/card
+1. **Lines ~94-97**: Add `showDuplicateWarning` and `existingBooking` state variables
 
----
+2. **Lines ~598-621**: Modify duplicate check to set warning state instead of blocking
 
-## UI/UX Design Details
+3. **Lines ~806**: Add `handleConfirmDuplicateBooking` and `handleCancelDuplicateBooking` functions
 
-### Visual Style:
-- Dark gradient background (black to deep purple/blue)
-- Large, bold white typography
-- Accent color highlights for numbers
-- Subtle particle/confetti animations
-- Smooth fade/scale transitions between slides
+4. **Lines ~1142**: Add conditional render for duplicate warning dialog (before multi-table check)
 
-### Animations (using Framer Motion):
-- Numbers count up from 0
-- Text fades in with slight upward motion
-- Venue name reveals with a slight delay
-- Progress dots pulse on current slide
-
-### Mobile-First:
-- Full viewport height
-- Touch-friendly tap zones
-- Swipe gestures for navigation
-- Safe area handling for notched devices
+5. **Refactor**: Extract booking creation logic into a shared `proceedWithBooking()` function
 
 ---
 
-## Testing Plan
+## Edge Cases Handled
 
-1. **Test Button:** During development, a "Preview Yearly Recap" button in Profile allows triggering the recap at any time with current year data.
+- If patron confirms duplicate, normal availability check still runs
+- Multi-table scenarios still work after duplicate confirmation
+- Pending data is properly cleaned up on cancel
+- Both bookings remain independent (no linking)
 
-2. **Empty State:** If patron has no activity, show a friendly "Start your journey!" message instead of stats.
-
-3. **Edge Cases:**
-   - New patron with only 1 order
-   - Patron who only used waitlist (no orders)
-   - Patron with no ratings given
-   - Patron who visited only 1 venue
-
----
-
-## Future Enhancements (Not in Initial Scope)
-- Social sharing with generated image
-- Comparison to previous year
-- "Top X%" messaging (compared to other patrons)
-- Push notification reminder to view recap
