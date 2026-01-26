@@ -143,6 +143,7 @@ export function DateRangePicker({
       <Popover open={isOpen} onOpenChange={setIsOpen}>
         <PopoverTrigger asChild>
           <Button
+            type="button"
             variant="outline"
             className={cn(
               "w-[260px] justify-start text-left font-normal",
@@ -160,6 +161,7 @@ export function DateRangePicker({
               {presets.map((preset) => (
                 <Button
                   key={preset.key}
+                  type="button"
                   variant={activePreset === preset.key ? "default" : "ghost"}
                   size="sm"
                   className="justify-start w-full text-xs"
