@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Clock, CheckCircle2, TrendingUp, Calendar } from "lucide-react";
+import { startOfDay, subDays, endOfDay, startOfToday } from "date-fns";
+import { DateRangePicker } from "./DateRangePicker";
 import { ComparativeMetrics } from "./ComparativeMetrics";
 import { SmartInsights } from "./SmartInsights";
 import {
@@ -37,11 +38,14 @@ interface StaffMember {
 
 interface OperationsEfficiencyProps {
   venueId: string;
+  venueCreatedAt?: string;
 }
 
-export const OperationsEfficiency = ({ venueId }: OperationsEfficiencyProps) => {
+export const OperationsEfficiency = ({ venueId, venueCreatedAt }: OperationsEfficiencyProps) => {
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState("30days");
+  const today = startOfToday();
+  const [startDate, setStartDate] = useState<Date>(startOfDay(subDays(today, 30)));
+  const [endDate, setEndDate] = useState<Date>(endOfDay(today));
   const [summary, setSummary] = useState<EfficiencySummary | null>(null);
   const [previousSummary, setPreviousSummary] = useState<EfficiencySummary | null>(null);
   const [peakHours, setPeakHours] = useState<PeakHour[]>([]);
@@ -50,11 +54,16 @@ export const OperationsEfficiency = ({ venueId }: OperationsEfficiencyProps) => 
   const [prepTimeTrend, setPrepTimeTrend] = useState<any[]>([]);
   const [staffLeaderboard, setStaffLeaderboard] = useState<StaffMember[]>([]);
 
+  const handleDateChange = (start: Date, end: Date) => {
+    setStartDate(start);
+    setEndDate(end);
+  };
+
   useEffect(() => {
     if (venueId) {
       fetchEfficiencyAnalytics();
     }
-  }, [venueId, timeRange]);
+  }, [venueId, startDate, endDate]);
 
   const fetchEfficiencyAnalytics = async () => {
     try {
@@ -67,7 +76,11 @@ export const OperationsEfficiency = ({ venueId }: OperationsEfficiencyProps) => 
       }
 
       const { data, error } = await supabase.functions.invoke('get-venue-efficiency-analytics', {
-        body: { venue_id: venueId, time_range: timeRange },
+        body: { 
+          venue_id: venueId, 
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString(),
+        },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
@@ -91,11 +104,12 @@ export const OperationsEfficiency = ({ venueId }: OperationsEfficiencyProps) => 
 
   const fetchComparisonData = async () => {
     try {
-      const daysBack = timeRange === '7days' ? 7 : timeRange === '30days' ? 30 : timeRange === '90days' ? 90 : 1;
-      const compareStartDate = new Date();
-      compareStartDate.setDate(compareStartDate.getDate() - (daysBack * 2));
-      const compareEndDate = new Date();
-      compareEndDate.setDate(compareEndDate.getDate() - daysBack);
+      // Calculate days in selected range for comparison period
+      const daysInRange = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const compareEndDate = new Date(startDate);
+      compareEndDate.setDate(compareEndDate.getDate() - 1);
+      const compareStartDate = new Date(compareEndDate);
+      compareStartDate.setDate(compareStartDate.getDate() - daysInRange);
 
       const { data: snapshots } = await supabase
         .from('daily_venue_snapshots')
@@ -167,19 +181,14 @@ export const OperationsEfficiency = ({ venueId }: OperationsEfficiencyProps) => 
         </Card>
       )}
 
-      {/* Time Range Selector */}
+      {/* Date Range Selector */}
       <div className="flex justify-end">
-        <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="7days">Last 7 Days</SelectItem>
-            <SelectItem value="30days">Last 30 Days</SelectItem>
-            <SelectItem value="90days">Last 90 Days</SelectItem>
-          </SelectContent>
-        </Select>
+        <DateRangePicker
+          venueCreatedAt={venueCreatedAt}
+          startDate={startDate}
+          endDate={endDate}
+          onDateChange={handleDateChange}
+        />
       </div>
 
       {/* Summary Cards with Comparisons */}

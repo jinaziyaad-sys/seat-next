@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, subDays, startOfDay, endOfDay, startOfToday } from "date-fns";
 import { XCircle, Clock, User, ShoppingBag, Users } from "lucide-react";
+import { DateRangePicker } from "./DateRangePicker";
 
 interface CancellationEntry {
   id: string;
@@ -18,17 +19,27 @@ interface CancellationEntry {
 
 interface CancellationHistoryProps {
   venueId: string;
+  venueCreatedAt?: string;
 }
 
-export function CancellationHistory({ venueId }: CancellationHistoryProps) {
+export function CancellationHistory({ venueId, venueCreatedAt }: CancellationHistoryProps) {
   const [cancellations, setCancellations] = useState<CancellationEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const today = startOfToday();
+  const [startDate, setStartDate] = useState<Date>(startOfDay(subDays(today, 30)));
+  const [endDate, setEndDate] = useState<Date>(endOfDay(today));
+
+  const handleDateChange = (start: Date, end: Date) => {
+    setStartDate(start);
+    setEndDate(end);
+  };
 
   useEffect(() => {
     const fetchCancellations = async () => {
       setIsLoading(true);
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      
+      const queryStartDate = startDate.toISOString();
+      const queryEndDate = endDate.toISOString();
 
       // Fetch cancelled orders
       const { data: orders } = await supabase
@@ -36,7 +47,8 @@ export function CancellationHistory({ venueId }: CancellationHistoryProps) {
         .select("id, order_number, customer_name, cancelled_by, cancellation_type, updated_at")
         .eq("venue_id", venueId)
         .eq("status", "cancelled")
-        .gte("updated_at", sevenDaysAgo.toISOString())
+        .gte("updated_at", queryStartDate)
+        .lte("updated_at", queryEndDate)
         .order("updated_at", { ascending: false });
 
       // Fetch cancelled waitlist entries
@@ -45,7 +57,8 @@ export function CancellationHistory({ venueId }: CancellationHistoryProps) {
         .select("id, customer_name, cancelled_by, cancellation_reason, party_size, updated_at")
         .eq("venue_id", venueId)
         .eq("status", "cancelled")
-        .gte("updated_at", sevenDaysAgo.toISOString())
+        .gte("updated_at", queryStartDate)
+        .lte("updated_at", queryEndDate)
         .order("updated_at", { ascending: false });
 
       const entries: CancellationEntry[] = [];
@@ -125,7 +138,7 @@ export function CancellationHistory({ venueId }: CancellationHistoryProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [venueId]);
+  }, [venueId, startDate, endDate]);
 
   const getCancelledByLabel = (cancelledBy: string) => {
     switch (cancelledBy?.toLowerCase()) {
@@ -152,12 +165,12 @@ export function CancellationHistory({ venueId }: CancellationHistoryProps) {
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <CardTitle className="flex items-center gap-2">
             <XCircle size={20} className="text-destructive" />
             Cancellation History
           </CardTitle>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Badge variant="secondary" className="text-xs">
               <User size={12} className="mr-1" />
               {patronCancellations} patron
@@ -167,7 +180,12 @@ export function CancellationHistory({ venueId }: CancellationHistoryProps) {
             </Badge>
           </div>
         </div>
-        <p className="text-sm text-muted-foreground">Last 7 days</p>
+        <DateRangePicker
+          venueCreatedAt={venueCreatedAt}
+          startDate={startDate}
+          endDate={endDate}
+          onDateChange={handleDateChange}
+        />
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -177,7 +195,7 @@ export function CancellationHistory({ venueId }: CancellationHistoryProps) {
         ) : cancellations.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <XCircle size={40} className="text-muted-foreground/30 mb-2" />
-            <p className="text-muted-foreground">No cancellations in the last 7 days</p>
+            <p className="text-muted-foreground">No cancellations in selected period</p>
             <p className="text-xs text-muted-foreground">Great job!</p>
           </div>
         ) : (

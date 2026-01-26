@@ -16,7 +16,7 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { venue_id, time_range = '30days' } = await req.json();
+    const { venue_id, time_range, start_date, end_date } = await req.json();
 
     if (!venue_id) {
       return new Response(
@@ -25,25 +25,35 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Fetching customer insights for venue ${venue_id}, range: ${time_range}`);
-
-    // Calculate date range
+    // Calculate date range - support both explicit dates and presets
     const now = new Date();
-    let startDate = new Date();
-    switch (time_range) {
-      case 'today':
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case '7days':
-        startDate.setDate(now.getDate() - 7);
-        break;
-      case '30days':
-        startDate.setDate(now.getDate() - 30);
-        break;
-      case '90days':
-        startDate.setDate(now.getDate() - 90);
-        break;
+    let startDate: Date;
+    let endDate: Date = now;
+
+    if (start_date && end_date) {
+      // Use explicit date range
+      startDate = new Date(start_date);
+      endDate = new Date(end_date);
+    } else {
+      // Fall back to preset time_range for backward compatibility
+      startDate = new Date();
+      switch (time_range || '30days') {
+        case 'today':
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case '7days':
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case '30days':
+          startDate.setDate(now.getDate() - 30);
+          break;
+        case '90days':
+          startDate.setDate(now.getDate() - 90);
+          break;
+      }
     }
+
+    console.log(`Fetching customer insights for venue ${venue_id}, range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
     // Fetch customer analytics for this venue
     const { data: customers, error: customersError } = await supabase

@@ -2,22 +2,44 @@ import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Download, FileSpreadsheet } from "lucide-react";
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "sonner";
+import { startOfDay, subDays, endOfDay, startOfToday, format } from "date-fns";
+import { DateRangePicker } from "./DateRangePicker";
 import * as XLSX from "xlsx";
 
 interface MerchantExportProps {
   venueId: string;
   venueName: string;
+  venueCreatedAt?: string;
 }
 
-export const MerchantExport = ({ venueId, venueName }: MerchantExportProps) => {
+export const MerchantExport = ({ venueId, venueName, venueCreatedAt }: MerchantExportProps) => {
   const [exporting, setExporting] = useState(false);
+  const [exportingCsv, setExportingCsv] = useState(false);
+  const today = startOfToday();
+  const [startDate, setStartDate] = useState<Date>(startOfDay(subDays(today, 30)));
+  const [endDate, setEndDate] = useState<Date>(endOfDay(today));
+  const [exportAll, setExportAll] = useState(false);
+
+  const handleDateChange = (start: Date, end: Date) => {
+    setStartDate(start);
+    setEndDate(end);
+    setExportAll(false);
+  };
+
+  const handleExportAll = () => {
+    if (venueCreatedAt) {
+      setStartDate(startOfDay(new Date(venueCreatedAt)));
+      setEndDate(endOfDay(today));
+      setExportAll(true);
+    }
+  };
 
   const exportToExcel = async () => {
     try {
       setExporting(true);
-      toast.info("Generating export...");
+      toast.info("Generating Excel export...");
 
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
@@ -25,27 +47,54 @@ export const MerchantExport = ({ venueId, venueName }: MerchantExportProps) => {
         return;
       }
 
-      // Fetch all data in parallel
-      const [customerInsights, efficiencyData, dailySnapshots] = await Promise.all([
+      // Use the selected date range
+      const queryStartDate = startDate.toISOString();
+      const queryEndDate = endDate.toISOString();
+
+      // Fetch all data in parallel using selected date range
+      const [customerInsights, efficiencyData, dailySnapshots, ordersData, waitlistData, ratingsData] = await Promise.all([
         supabase.functions.invoke('get-venue-customer-insights', {
-          body: { venue_id: venueId, time_range: '30days' },
+          body: { venue_id: venueId, start_date: queryStartDate, end_date: queryEndDate },
           headers: { Authorization: `Bearer ${session.access_token}` },
         }),
         supabase.functions.invoke('get-venue-efficiency-analytics', {
-          body: { venue_id: venueId, time_range: '30days' },
+          body: { venue_id: venueId, start_date: queryStartDate, end_date: queryEndDate },
           headers: { Authorization: `Bearer ${session.access_token}` },
         }),
         supabase
           .from('daily_venue_snapshots')
           .select('*')
           .eq('venue_id', venueId)
-          .order('snapshot_date', { ascending: false })
-          .limit(90),
+          .gte('snapshot_date', queryStartDate.split('T')[0])
+          .lte('snapshot_date', queryEndDate.split('T')[0])
+          .order('snapshot_date', { ascending: false }),
+        supabase
+          .from('orders')
+          .select('*')
+          .eq('venue_id', venueId)
+          .gte('created_at', queryStartDate)
+          .lte('created_at', queryEndDate)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('waitlist_entries')
+          .select('*')
+          .eq('venue_id', venueId)
+          .gte('created_at', queryStartDate)
+          .lte('created_at', queryEndDate)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('order_ratings')
+          .select('*')
+          .eq('venue_id', venueId)
+          .gte('created_at', queryStartDate)
+          .lte('created_at', queryEndDate)
+          .order('created_at', { ascending: false }),
       ]);
 
-      if (customerInsights.error) throw customerInsights.error;
-      if (efficiencyData.error) throw efficiencyData.error;
-      if (dailySnapshots.error) throw dailySnapshots.error;
+      if (customerInsights.error) console.error('Customer insights error:', customerInsights.error);
+      if (efficiencyData.error) console.error('Efficiency data error:', efficiencyData.error);
+      if (dailySnapshots.error) console.error('Daily snapshots error:', dailySnapshots.error);
+      // Don't throw on missing data - some sheets may just be empty
 
       // Create workbook
       const wb = XLSX.utils.book_new();
@@ -157,17 +206,141 @@ export const MerchantExport = ({ venueId, venueName }: MerchantExportProps) => {
         XLSX.utils.book_append_sheet(wb, ws7, 'Daily Snapshots');
       }
 
-      // Generate file
-      const fileName = `${venueName.replace(/\s+/g, '_')}_Analytics_${new Date().toISOString().split('T')[0]}.xlsx`;
+      // Sheet 8: Raw Orders
+      if (ordersData.data && ordersData.data.length > 0) {
+        const ordersSheet = XLSX.utils.json_to_sheet(ordersData.data.map((o: any) => ({
+          'Order Number': o.order_number,
+          'Customer': o.customer_name || 'Anonymous',
+          'Status': o.status,
+          'Items': JSON.stringify(o.items),
+          'ETA': o.eta ? new Date(o.eta).toLocaleString() : '-',
+          'Notes': o.notes || '',
+          'Created': new Date(o.created_at).toLocaleString(),
+        })));
+        XLSX.utils.book_append_sheet(wb, ordersSheet, 'Orders');
+      }
+
+      // Sheet 9: Raw Waitlist
+      if (waitlistData.data && waitlistData.data.length > 0) {
+        const waitlistSheet = XLSX.utils.json_to_sheet(waitlistData.data.map((w: any) => ({
+          'Customer': w.customer_name,
+          'Party Size': w.party_size,
+          'Status': w.status,
+          'ETA': w.eta ? new Date(w.eta).toLocaleString() : '-',
+          'Notes': w.notes || '',
+          'Preferences': w.preferences?.join(', ') || '',
+          'Created': new Date(w.created_at).toLocaleString(),
+        })));
+        XLSX.utils.book_append_sheet(wb, waitlistSheet, 'Waitlist');
+      }
+
+      // Sheet 10: Ratings
+      if (ratingsData.data && ratingsData.data.length > 0) {
+        const ratingsSheet = XLSX.utils.json_to_sheet(ratingsData.data.map((r: any) => ({
+          'Rating': r.rating,
+          'Feedback': r.feedback_text || '',
+          'Created': new Date(r.created_at).toLocaleString(),
+        })));
+        XLSX.utils.book_append_sheet(wb, ratingsSheet, 'Ratings');
+      }
+
+      // Generate file with date range in filename
+      const startStr = format(startDate, 'yyyy-MM-dd');
+      const endStr = format(endDate, 'yyyy-MM-dd');
+      const fileName = `${venueName.replace(/\s+/g, '_')}_${startStr}_to_${endStr}.xlsx`;
       XLSX.writeFile(wb, fileName);
 
-      toast.success("Export complete!");
+      toast.success("Excel export complete!");
     } catch (error: any) {
       console.error("Export error:", error);
       toast.error(error.message || "Failed to export data");
     } finally {
       setExporting(false);
     }
+  };
+
+  // CSV export function for simpler data
+  const exportToCsv = async () => {
+    try {
+      setExportingCsv(true);
+      toast.info("Generating CSV export...");
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Not authenticated");
+        return;
+      }
+
+      const queryStartDate = startDate.toISOString();
+      const queryEndDate = endDate.toISOString();
+
+      // Fetch orders and waitlist for CSV
+      const [ordersData, waitlistData] = await Promise.all([
+        supabase
+          .from('orders')
+          .select('order_number, customer_name, status, items, eta, notes, created_at')
+          .eq('venue_id', venueId)
+          .gte('created_at', queryStartDate)
+          .lte('created_at', queryEndDate)
+          .order('created_at', { ascending: false }),
+        supabase
+          .from('waitlist_entries')
+          .select('customer_name, party_size, status, eta, notes, created_at')
+          .eq('venue_id', venueId)
+          .gte('created_at', queryStartDate)
+          .lte('created_at', queryEndDate)
+          .order('created_at', { ascending: false }),
+      ]);
+
+      const startStr = format(startDate, 'yyyy-MM-dd');
+      const endStr = format(endDate, 'yyyy-MM-dd');
+
+      // Export orders CSV
+      if (ordersData.data && ordersData.data.length > 0) {
+        const ordersCsv = ordersData.data.map((o: any) => ({
+          order_number: o.order_number,
+          customer: o.customer_name || 'Anonymous',
+          status: o.status,
+          items: JSON.stringify(o.items),
+          eta: o.eta || '',
+          notes: o.notes || '',
+          created_at: o.created_at,
+        }));
+        const ws = XLSX.utils.json_to_sheet(ordersCsv);
+        const csv = XLSX.utils.sheet_to_csv(ws);
+        downloadCsv(csv, `${venueName.replace(/\s+/g, '_')}_Orders_${startStr}_to_${endStr}.csv`);
+      }
+
+      // Export waitlist CSV
+      if (waitlistData.data && waitlistData.data.length > 0) {
+        const waitlistCsv = waitlistData.data.map((w: any) => ({
+          customer: w.customer_name,
+          party_size: w.party_size,
+          status: w.status,
+          eta: w.eta || '',
+          notes: w.notes || '',
+          created_at: w.created_at,
+        }));
+        const ws = XLSX.utils.json_to_sheet(waitlistCsv);
+        const csv = XLSX.utils.sheet_to_csv(ws);
+        downloadCsv(csv, `${venueName.replace(/\s+/g, '_')}_Waitlist_${startStr}_to_${endStr}.csv`);
+      }
+
+      toast.success("CSV export complete!");
+    } catch (error: any) {
+      console.error("CSV export error:", error);
+      toast.error(error.message || "Failed to export CSV");
+    } finally {
+      setExportingCsv(false);
+    }
+  };
+
+  const downloadCsv = (csvContent: string, filename: string) => {
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
   };
 
   return (
@@ -178,18 +351,47 @@ export const MerchantExport = ({ venueId, venueName }: MerchantExportProps) => {
           Export Analytics
         </CardTitle>
         <CardDescription>
-          Download comprehensive analytics report including customer insights, operations data, and daily snapshots
+          Download comprehensive analytics report including customer insights, operations data, orders, waitlist, and ratings
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <Button
-          onClick={exportToExcel}
-          disabled={exporting}
-          className="w-full sm:w-auto"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          {exporting ? "Generating..." : "Export to Excel"}
-        </Button>
+      <CardContent className="space-y-4">
+        {/* Date Range Selection */}
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+          <DateRangePicker
+            venueCreatedAt={venueCreatedAt}
+            startDate={startDate}
+            endDate={endDate}
+            onDateChange={handleDateChange}
+          />
+          {venueCreatedAt && (
+            <Button
+              variant={exportAll ? "default" : "outline"}
+              size="sm"
+              onClick={handleExportAll}
+            >
+              Export All History
+            </Button>
+          )}
+        </div>
+
+        {/* Export Buttons */}
+        <div className="flex flex-wrap gap-2">
+          <Button
+            onClick={exportToExcel}
+            disabled={exporting}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {exporting ? "Generating Excel..." : "Export to Excel"}
+          </Button>
+          <Button
+            variant="outline"
+            onClick={exportToCsv}
+            disabled={exportingCsv}
+          >
+            <FileText className="mr-2 h-4 w-4" />
+            {exportingCsv ? "Generating CSV..." : "Export to CSV"}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

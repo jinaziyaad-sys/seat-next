@@ -1,14 +1,15 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { TrendingUp, TrendingDown, Clock, Users, UtensilsCrossed, AlertTriangle, Loader2, Info, Download, XCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { startOfDay, subDays, endOfDay, startOfToday } from "date-fns";
+import { DateRangePicker } from "./DateRangePicker";
 import { RatingsView } from "./RatingsView";
 import { CustomerInsights } from "./CustomerInsights";
 import { OperationsEfficiency } from "./OperationsEfficiency";
@@ -78,11 +79,18 @@ interface AnalyticsData {
 }
 
 export const MerchantReports = ({ venue }: { venue: any }) => {
-  const [timeRange, setTimeRange] = useState("today");
+  const today = startOfToday();
+  const [startDate, setStartDate] = useState<Date>(startOfDay(today));
+  const [endDate, setEndDate] = useState<Date>(endOfDay(today));
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [exportLoading, setExportLoading] = useState(false);
   const { toast } = useToast();
+
+  const handleDateChange = (start: Date, end: Date) => {
+    setStartDate(start);
+    setEndDate(end);
+  };
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -90,7 +98,11 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
       
       setLoading(true);
       const { data, error } = await supabase.functions.invoke('get-venue-analytics', {
-        body: { venue_id: venue.id, time_range: timeRange }
+        body: { 
+          venue_id: venue.id, 
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString(),
+        }
       });
 
       if (error) {
@@ -109,28 +121,14 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
     };
 
     fetchAnalytics();
-  }, [venue?.id, timeRange, toast]);
+  }, [venue?.id, startDate, endDate, toast]);
 
   const handleExportData = async () => {
     if (!venue?.id) return;
     
     setExportLoading(true);
     try {
-      // Calculate date range based on timeRange state
-      const now = new Date();
-      let startDate = new Date();
-      
-      switch (timeRange) {
-        case 'today':
-          startDate.setHours(0, 0, 0, 0);
-          break;
-        case '7days':
-          startDate.setDate(now.getDate() - 7);
-          break;
-        case '30days':
-          startDate.setDate(now.getDate() - 30);
-          break;
-      }
+      // Use the selected date range for exports
 
       // Fetch all data in parallel
       const [ordersData, orderAnalyticsData, waitlistData, waitlistAnalyticsData, ratingsData] = await Promise.all([
@@ -251,9 +249,10 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
         XLSX.utils.book_append_sheet(wb, ratingsSheet, 'Ratings');
       }
 
-      // Generate filename
-      const timeRangeLabel = timeRange === 'today' ? 'Today' : timeRange === '7days' ? 'Last-7-Days' : 'Last-30-Days';
-      const filename = `${venue.name.replace(/[^a-z0-9]/gi, '_')}_${timeRangeLabel}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      // Generate filename with date range
+      const startStr = startDate.toISOString().split('T')[0];
+      const endStr = endDate.toISOString().split('T')[0];
+      const filename = `${venue.name.replace(/[^a-z0-9]/gi, '_')}_${startStr}_to_${endStr}.xlsx`;
 
       // Download
       XLSX.writeFile(wb, filename);
@@ -321,9 +320,9 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-4">
         <h2 className="text-2xl font-bold">Reports & Analytics</h2>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button 
             onClick={handleExportData} 
             disabled={exportLoading}
@@ -332,16 +331,12 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
             <Download className="mr-2 h-4 w-4" />
             {exportLoading ? "Exporting..." : "Export to Excel"}
           </Button>
-          <Select value={timeRange} onValueChange={setTimeRange}>
-            <SelectTrigger className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="today">Today</SelectItem>
-              <SelectItem value="7days">Last 7 Days</SelectItem>
-              <SelectItem value="30days">Last 30 Days</SelectItem>
-            </SelectContent>
-          </Select>
+          <DateRangePicker
+            venueCreatedAt={venue?.created_at}
+            startDate={startDate}
+            endDate={endDate}
+            onDateChange={handleDateChange}
+          />
         </div>
       </div>
 
@@ -655,7 +650,7 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
         </TabsContent>
 
         <TabsContent value="export" className="space-y-6">
-          <MerchantExport venueId={venue.id} venueName={venue.name} />
+          <MerchantExport venueId={venue.id} venueName={venue.name} venueCreatedAt={venue?.created_at} />
         </TabsContent>
 
         <TabsContent value="overview" className="space-y-6">
@@ -727,16 +722,16 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
               </CardContent>
             </Card>
 
-            <CancellationHistory venueId={venue.id} />
+            <CancellationHistory venueId={venue.id} venueCreatedAt={venue?.created_at} />
           </div>
         </TabsContent>
 
         <TabsContent value="customer-insights">
-          <CustomerInsights venueId={venue.id} />
+          <CustomerInsights venueId={venue.id} venueCreatedAt={venue?.created_at} />
         </TabsContent>
 
         <TabsContent value="operations">
-          <OperationsEfficiency venueId={venue.id} />
+          <OperationsEfficiency venueId={venue.id} venueCreatedAt={venue?.created_at} />
         </TabsContent>
       </Tabs>
     </div>
