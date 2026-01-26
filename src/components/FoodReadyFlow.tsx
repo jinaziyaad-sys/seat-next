@@ -1036,7 +1036,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
     const StatusIcon = config.icon;
 
     return (
-      <div className="space-y-6 p-6 pb-24">
+      <div className="space-y-6 p-6 pb-24" data-tour="food-content">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft size={20} />

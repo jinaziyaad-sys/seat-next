@@ -1930,7 +1930,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   if (step === "waiting" && waitlistEntry) {
     const isReservation = !!waitlistEntry.reservation_time || waitlistEntry.reservation_type === "reservation";
     return (
-      <div className="space-y-6 p-6 pb-24">
+      <div className="space-y-6 p-6 pb-24" data-tour="table-content">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft size={20} />

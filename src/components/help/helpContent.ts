@@ -375,26 +375,26 @@ export const patronTourSteps: TourStep[] = [
     nextStepTrigger: 'next-button',
   },
 
-  // Active Tracking Section
+  // Active Tracking Section with Demo Data
   {
     id: 'patron-tracking',
     target: '[data-tour="active-tracking"]',
     title: '📍 Active Tracking',
-    description: 'All your active orders and waitlist entries appear here. Cards show real-time status updates, estimated times, and quick actions. Tap any card for details!',
-    placement: 'bottom',
+    description: 'This is where all your active orders and waitlist entries appear. You can see demo data here showing what real tracking looks like - with real-time status updates, estimated times, and quick actions!',
+    placement: 'top',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
   },
 
-  // Food Ready Card - Click to navigate
+  // Food Ready Card - Always visible
   {
     id: 'patron-card-food',
     target: '[data-tour="card-food"]',
     title: '🍔 Food Orders',
-    description: 'Track your food orders in detail here. See prep progress, estimated ready time, and get notified when it\'s time to pick up!',
+    description: 'Tap this card to track your food orders. See prep progress, estimated ready time, and get notified when it\'s time to pick up!',
     placement: 'top',
     actionType: 'click',
-    actionLabel: '👆 Tap to see Food Orders',
+    actionLabel: '👆 Tap the Food Ready card',
     waitForClick: true,
     nextStepTrigger: 'click',
     highlightPulse: true,
@@ -409,15 +409,15 @@ export const patronTourSteps: TourStep[] = [
     nextStepTrigger: 'next-button',
   },
 
-  // Table Ready Card - Click to navigate
+  // Table Ready Card
   {
     id: 'patron-card-table',
     target: '[data-tour="card-table"]',
     title: '🍽️ Table Waitlist',
-    description: 'Track your table waitlist status here. See your position, estimated wait time, and get notified the moment your table is ready!',
+    description: 'Tap this card to join or track your table waitlist. See your position, estimated wait time, and get notified the moment your table is ready!',
     placement: 'top',
     actionType: 'click',
-    actionLabel: '👆 Tap to see Table Waitlist',
+    actionLabel: '👆 Tap the Table Ready card',
     waitForClick: true,
     nextStepTrigger: 'click',
     highlightPulse: true,
@@ -432,7 +432,7 @@ export const patronTourSteps: TourStep[] = [
     nextStepTrigger: 'next-button',
   },
 
-  // Explore Venues
+  // Explore Venues - Always visible
   {
     id: 'patron-card-explore',
     target: '[data-tour="card-explore"]',
@@ -440,7 +440,7 @@ export const patronTourSteps: TourStep[] = [
     description: 'Browse nearby restaurants that use ReadyUp. See real-time busyness indicators and join waitlists before you even arrive!',
     placement: 'top',
     actionType: 'click',
-    actionLabel: '👆 Tap to explore venues',
+    actionLabel: '👆 Tap the Explore card',
     waitForClick: true,
     nextStepTrigger: 'click',
     highlightPulse: true,
@@ -455,7 +455,7 @@ export const patronTourSteps: TourStep[] = [
     nextStepTrigger: 'next-button',
   },
 
-  // Profile
+  // Profile - via avatar button
   {
     id: 'patron-profile',
     target: '[data-tour="nav-profile"]',
@@ -463,7 +463,7 @@ export const patronTourSteps: TourStep[] = [
     description: 'Manage your account, dining preferences, and notification settings. Keep your contact info updated for the best experience!',
     placement: 'left',
     actionType: 'click',
-    actionLabel: '👆 Tap to open your Profile',
+    actionLabel: '👆 Tap your profile icon',
     waitForClick: true,
     nextStepTrigger: 'click',
     highlightPulse: true,

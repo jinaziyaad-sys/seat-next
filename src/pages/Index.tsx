@@ -29,6 +29,32 @@ import {
   isSoundActive
 } from "@/utils/notificationSound";
 
+// Demo data for tour mode
+const DEMO_ORDER = {
+  id: 'demo-order-1',
+  order_number: '42',
+  status: 'in_prep',
+  eta: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
+  confidence: 'high',
+  venue_id: 'demo-venue',
+  venues: { name: 'Demo Restaurant' },
+  items: [{ name: 'Demo Burger' }],
+  patron_dismissed: false,
+};
+
+const DEMO_WAITLIST = {
+  id: 'demo-waitlist-1',
+  customer_name: 'Demo Guest',
+  party_size: 4,
+  status: 'waiting',
+  position: 3,
+  eta: new Date(Date.now() + 25 * 60 * 1000).toISOString(),
+  confidence: 'medium',
+  venue_id: 'demo-venue',
+  venues: { name: 'Demo Restaurant' },
+  patron_dismissed: false,
+};
+
 const Index = () => {
   const [activeTab, setActiveTab] = useState("home");
   const [user, setUser] = useState<User | null>(null);
@@ -54,6 +80,9 @@ const Index = () => {
   const [helpTab, setHelpTab] = useState<'faq' | 'chat' | 'tour' | 'report'>('faq');
   const [tourOpen, setTourOpen] = useState(false);
   const [showTourPulse, setShowTourPulse] = useState(false);
+  
+  // Demo mode for tour - shows mock data
+  const isDemoMode = tourOpen;
 
   useEffect(() => {
     const hasSeenTour = localStorage.getItem('patronTourCompleted');
@@ -588,14 +617,77 @@ const Index = () => {
         </div>
       </div>
 
-      {/* Active Tracking Section */}
-      {user && (isLoadingTracking || activeOrders.length > 0 || activeWaitlist.length > 0) && (
+      {/* Active Tracking Section - Show demo data during tour or real data */}
+      {(user || isDemoMode) && (isLoadingTracking || activeOrders.length > 0 || activeWaitlist.length > 0 || isDemoMode) && (
         <div className="p-6 space-y-4" data-tour="active-tracking">
-          <h2 className="text-xl font-bold">Active Tracking</h2>
+          <h2 className="text-xl font-bold">
+            Active Tracking
+            {isDemoMode && <span className="ml-2 text-xs font-normal text-primary">(Demo Mode)</span>}
+          </h2>
           
           {/* Loading Skeleton */}
-          {isLoadingTracking && activeOrders.length === 0 && activeWaitlist.length === 0 && (
+          {isLoadingTracking && activeOrders.length === 0 && activeWaitlist.length === 0 && !isDemoMode && (
             <ActiveTrackingListSkeleton count={2} />
+          )}
+          
+          {/* Demo Order Card - only shown during tour */}
+          {isDemoMode && activeOrders.length === 0 && (
+            <Card 
+              className="group shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01] border-dashed border-2 border-primary/30"
+              data-tour="demo-order"
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center bg-primary/10">
+                      <UtensilsCrossed className="w-6 h-6 text-primary" />
+                    </div>
+                    <div>
+                      <span className="inline-block text-xs font-bold uppercase tracking-wider text-white bg-primary px-2 py-0.5 rounded mb-1">
+                        Order (Demo)
+                      </span>
+                      <h3 className="font-semibold">{DEMO_ORDER.venues?.name}</h3>
+                      <p className="text-sm text-muted-foreground">Order #{DEMO_ORDER.order_number}</p>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                        <Clock size={12} />
+                        <span>15 min • ETA {new Date(DEMO_ORDER.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Badge variant="default">Preparing</Badge>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+          
+          {/* Demo Waitlist Card - only shown during tour */}
+          {isDemoMode && activeWaitlist.length === 0 && (
+            <Card 
+              className="group shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01] border-dashed border-2 border-accent/30"
+              data-tour="demo-waitlist"
+            >
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3 flex-1">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center bg-accent/10">
+                      <Users className="w-6 h-6 text-accent" />
+                    </div>
+                    <div>
+                      <span className="inline-block text-xs font-bold uppercase tracking-wider bg-secondary text-secondary-foreground px-2 py-0.5 rounded mb-1">
+                        Waitlist (Demo)
+                      </span>
+                      <h3 className="font-semibold">{DEMO_WAITLIST.venues?.name}</h3>
+                      <p className="text-sm text-muted-foreground">Party of {DEMO_WAITLIST.party_size} • #{DEMO_WAITLIST.position}</p>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                        <Clock size={12} />
+                        <span>~25 min wait</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Badge variant="secondary">Waiting</Badge>
+                </div>
+              </CardContent>
+            </Card>
           )}
           
           {activeOrders.map((order) => {
@@ -1022,7 +1114,18 @@ const Index = () => {
         isOpen={tourOpen}
         onClose={() => setTourOpen(false)}
         onComplete={handleTourComplete}
-        onNavigate={(tab) => setActiveTab(tab)}
+        onNavigate={(target) => {
+          // Map tour targets to actual tabs
+          const tabMap: Record<string, string> = {
+            'food': 'food-ready',
+            'table': 'table-ready',
+            'explore': 'explore',
+            'profile': 'profile',
+            'home': 'home',
+          };
+          const tab = tabMap[target] || target;
+          setActiveTab(tab);
+        }}
       />
       
       {/* Notification Prompt for new users */}

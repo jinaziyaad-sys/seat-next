@@ -126,7 +126,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div className="space-y-6 p-6 pb-24">
+    <div className="space-y-6 p-6 pb-24" data-tour="profile-content">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={onBack}>
