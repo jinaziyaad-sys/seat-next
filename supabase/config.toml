@@ -104,3 +104,6 @@ verify_jwt = false
 
 [functions.request-password-reset]
 verify_jwt = false
+
+[functions.get-patron-yearly-recap]
+verify_jwt = true
