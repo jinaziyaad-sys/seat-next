@@ -1,122 +1,227 @@
 
-
-# Enhanced Cancellation Acknowledge Flow
+# Comprehensive Analytics Dashboard Overhaul
 
 ## Overview
-Make the cancelled entry cards more visually prominent so merchants immediately notice and can dismiss them, rather than having cancelled entries quietly persist on the waitlist board.
+This plan addresses three major concerns with the merchant reports:
+1. Data accuracy and reliability issues
+2. UI/visual glitches (especially the customer pie chart)
+3. Expanding analytics coverage with a flexible date range picker
 
-## Current Behavior
-- Cancelled entries show a "PATRON CANCELLED" badge and an "Acknowledge & Dismiss" button
-- The button is styled as a standard outline button at the bottom of the card
-- The card looks similar to other entries, making it easy to overlook
+---
 
-## New Behavior
-- Cancelled entries will have a visually distinct card style (red/destructive border + background tint)
-- The cancellation reason and dismiss button will be more prominent
-- A pulsing alert icon will draw attention to unacknowledged cancellations
-- Cards will be sorted to appear at the top of the list (after awaiting-confirmation entries)
+## Problem Analysis
+
+### 1. Accuracy Issues
+The current analytics have several potential accuracy problems:
+- Edge functions may return incorrect calculations when data is sparse
+- The "on-time rate" calculation in `get-venue-analytics` uses a +/- 5 minute window which may not match what's displayed
+- Customer segments are calculated in a scheduled job that may not have run recently
+- The `daily_venue_snapshots` table appears empty, meaning comparative metrics have no historical data
+
+### 2. UI Glitches (Customer Pie Chart)
+The pie chart in `CustomerInsights.tsx` has issues:
+- When segment data is all zeros or has very small values, the chart renders incorrectly
+- The `label` function may overflow when percentages round to 0%
+- No fallback for empty/invalid data states
+
+### 3. Limited Date Selection
+Current implementation:
+- Fixed presets: Today, 7 days, 30 days, 90 days
+- No ability to select custom date ranges
+- No awareness of when the venue was created
 
 ---
 
 ## Technical Implementation
 
-### 1. Add Visual Distinction to Cancelled Cards
+### Phase 1: Fix UI Glitches and Pie Chart
 
-Update the Card component wrapper (around line 1016) to apply distinct styling when the entry is cancelled:
+**File: `src/components/merchant/CustomerInsights.tsx`**
 
-```typescript
-<Card 
-  key={entry.id} 
-  className={cn(
-    "shadow-card",
-    entry.status === "cancelled" && entry.cancelled_by === "patron" && 
-      "border-2 border-destructive bg-destructive/5"
-  )}
->
+1. Add empty state handling for the pie chart:
+   - Check if all segment values are 0 before rendering
+   - Display a helpful message when no segment data exists
+
+2. Fix label rendering:
+   - Only show labels for segments with meaningful values (greater than 5%)
+   - Use a custom label renderer that handles edge cases
+
+3. Add proper chart sizing and responsiveness fixes
+
+### Phase 2: Implement Custom Date Range Picker
+
+**New Component: `src/components/merchant/DateRangePicker.tsx`**
+
+Create a reusable date range picker that:
+- Accepts the venue's `created_at` date
+- Disables dates before venue creation (greyed out)
+- Disables future dates
+- Provides preset quick selections (Today, Last 7 days, etc.)
+- Returns start and end dates
+
+**Updates to All Analytics Components:**
+
+Modify the following files to use the new date picker:
+- `MerchantReports.tsx` - Main reports page
+- `CustomerInsights.tsx` - Customer analytics tab
+- `OperationsEfficiency.tsx` - Operations tab
+- `RatingsView.tsx` - Ratings tab
+- `CancellationHistory.tsx` - Cancellation history
+
+Each component will:
+1. Receive `venueCreatedAt` as a prop
+2. Replace the Select dropdown with the DateRangePicker
+3. Pass explicit start/end dates to edge functions instead of preset strings
+
+### Phase 3: Update Edge Functions for Custom Date Ranges
+
+**Files to Update:**
+- `supabase/functions/get-venue-analytics/index.ts`
+- `supabase/functions/get-venue-customer-insights/index.ts`
+- `supabase/functions/get-venue-efficiency-analytics/index.ts`
+
+Changes:
+1. Accept `start_date` and `end_date` parameters instead of `time_range`
+2. Maintain backward compatibility with `time_range` presets
+3. Add validation to ensure dates are within valid bounds
+4. Improve edge case handling for empty data
+
+### Phase 4: Expand Analytics Coverage
+
+**New Metrics to Add:**
+
+1. **Revenue/Volume Trends** (if order values are tracked):
+   - Average order value
+   - Total volume by day/week/month
+
+2. **Wait List Conversion Rate**:
+   - Percentage of waitlist entries that become seated
+   - No-show trends over time
+
+3. **Table Turnover Analytics**:
+   - Average time tables are occupied
+   - Table utilization rate
+
+4. **Peak Analysis Enhancements**:
+   - Heatmap of busy hours by day of week
+   - Seasonal trends (if enough data)
+
+5. **Staff Performance Expansion**:
+   - Orders per staff member over time
+   - Average prep time per staff member
+
+### Phase 5: Enhanced Export Functionality
+
+**File: `src/components/merchant/MerchantExport.tsx`**
+
+Enhancements:
+1. Add date range selection for exports (using same DateRangePicker)
+2. Option to export all historical data
+3. Include additional sheets:
+   - Reservation analytics (if applicable)
+   - Rating breakdown by period
+   - Customer segment changes over time
+   - Daily snapshot history
+
+4. Add CSV export option alongside Excel
+
+---
+
+## Detailed Component Changes
+
+### DateRangePicker Component
+
+```text
+Props:
+- venueCreatedAt: Date
+- startDate: Date
+- endDate: Date
+- onDateChange: (start: Date, end: Date) => void
+
+Features:
+- Calendar UI with react-day-picker
+- Preset buttons: Today, Last 7 Days, Last 30 Days, Last 90 Days, All Time
+- Visual indication of disabled dates (before venue creation)
+- Responsive design for mobile
 ```
 
-### 2. Update Sort Order to Prioritize Cancelled Entries
+### CustomerInsights Pie Chart Fix
 
-Modify the `sortedWaitlist` logic (lines 783-794) to show patron-cancelled entries near the top:
-
-```typescript
-const sortedWaitlist = [...waitlist].sort((a, b) => {
-  // Highest priority: awaiting confirmation
-  if (a.awaiting_merchant_confirmation && !b.awaiting_merchant_confirmation) return -1;
-  if (b.awaiting_merchant_confirmation && !a.awaiting_merchant_confirmation) return 1;
-  
-  // Second priority: patron-cancelled (needs acknowledgment)
-  const aPatronCancelled = a.status === "cancelled" && a.cancelled_by === "patron";
-  const bPatronCancelled = b.status === "cancelled" && b.cancelled_by === "patron";
-  if (aPatronCancelled && !bPatronCancelled) return -1;
-  if (bPatronCancelled && !aPatronCancelled) return 1;
-  
-  // Third priority: ready status
-  if (a.status === "ready" && b.status !== "ready") return -1;
-  if (b.status === "ready" && a.status !== "ready") return 1;
-  
-  // Otherwise by creation time
-  return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
-});
+```text
+Changes:
+1. Filter out zero-value segments before rendering
+2. Handle edge case where all segments are 0
+3. Improve label positioning and readability
+4. Add legend below chart for accessibility
+5. Use consistent color scheme from chart variables
 ```
 
-### 3. Enhance the Cancellation Card Content
+### MerchantReports Header Update
 
-Update the cancelled entry section (lines 1064-1079) with:
-- Larger alert icon header
-- More prominent styling
-- Clearer call-to-action button
+```text
+Current:
+- Time range Select dropdown
+- Export button
 
-```typescript
-{entry.status === "cancelled" && entry.cancelled_by === "patron" && (
-  <div className="space-y-3">
-    <div className="flex items-center gap-2 text-destructive font-semibold">
-      <AlertTriangle className="h-5 w-5" />
-      <span>Patron Cancelled</span>
-    </div>
-    {entry.cancellation_reason && (
-      <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
-        <p className="text-sm text-foreground">"{entry.cancellation_reason}"</p>
-      </div>
-    )}
-    <Button
-      onClick={() => acknowledgeCancellation(entry.id)}
-      className="w-full bg-destructive hover:bg-destructive/90 text-white"
-    >
-      <Check className="h-4 w-4 mr-2" />
-      Acknowledge & Dismiss
-    </Button>
-  </div>
-)}
+New:
+- DateRangePicker with visual calendar
+- Export button (now respects selected date range)
+- Quick preset chips below the picker
 ```
 
-### 4. Add Import for New Icons
+---
 
-Add `AlertTriangle` and `Check` to the lucide-react import at the top of the file.
+## Database Considerations
+
+### Ensure Daily Snapshots Are Running
+
+The `daily_venue_snapshots` table is currently empty, which means:
+- Comparative metrics show no data
+- Historical trends cannot be calculated
+
+This requires setting up the cron job as documented in `ANALYTICS_SETUP.md`. The UI should gracefully handle missing snapshot data.
+
+### Optimize Queries for Large Date Ranges
+
+When users select "All Time":
+- Add pagination or chunking for very large datasets
+- Consider creating summary tables for old data
+- Implement query limits with pagination for exports
 
 ---
 
 ## File Changes Summary
 
-**Modified File: `src/components/merchant/WaitlistBoard.tsx`**
-
-| Location | Change |
-|----------|--------|
-| Line 11 | Add `AlertTriangle, Check` to lucide-react imports |
-| Lines 783-794 | Update sort to prioritize patron-cancelled entries |
-| Line 1016 | Add conditional destructive styling to cancelled cards |
-| Lines 1064-1079 | Enhance cancellation UI with icons and prominent button |
+| File | Changes |
+|------|---------|
+| `src/components/merchant/DateRangePicker.tsx` | NEW - Custom date range picker component |
+| `src/components/merchant/MerchantReports.tsx` | Replace Select with DateRangePicker, pass venueCreatedAt |
+| `src/components/merchant/CustomerInsights.tsx` | Fix pie chart, add DateRangePicker, improve empty states |
+| `src/components/merchant/OperationsEfficiency.tsx` | Add DateRangePicker, improve data handling |
+| `src/components/merchant/RatingsView.tsx` | Add date filtering capability |
+| `src/components/merchant/CancellationHistory.tsx` | Replace 7-day limit with custom date range |
+| `src/components/merchant/MerchantExport.tsx` | Add date range selection, expand export options |
+| `supabase/functions/get-venue-analytics/index.ts` | Accept start_date/end_date params |
+| `supabase/functions/get-venue-customer-insights/index.ts` | Accept start_date/end_date params |
+| `supabase/functions/get-venue-efficiency-analytics/index.ts` | Accept start_date/end_date params |
 
 ---
 
-## Visual Result
+## Implementation Priority
 
-Before:
-- Standard card with small badge and outline button
+1. **High Priority**: Fix pie chart UI glitches (immediate user-facing issue)
+2. **High Priority**: Implement date range picker with venue creation awareness
+3. **Medium Priority**: Update edge functions for custom date ranges
+4. **Medium Priority**: Expand export functionality
+5. **Lower Priority**: Add additional analytics metrics
 
-After:
-- Red-bordered card with tinted background
-- Alert icon header with "Patron Cancelled" text
-- Destructive (red) primary button for dismiss action
-- Sorted to top of list for visibility
+---
 
+## Expected Outcomes
+
+After implementation:
+- Charts will render correctly with proper empty states
+- Users can select any date range from venue creation to today
+- All analytics tabs will respect the selected date range
+- Exports will include full historical data
+- Comparative metrics will work once daily snapshots are populated
