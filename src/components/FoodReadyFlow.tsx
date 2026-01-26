@@ -15,6 +15,7 @@ import { checkVenueStatus } from "@/utils/businessHours";
 import { calculateDistance, formatDistance, getUserLocation, type UserLocation } from "@/utils/geolocation";
 import { format } from "date-fns";
 import { playFoodReadySound, stopSoundForId, isSoundActive } from "@/utils/notificationSound";
+import { CelebrationOverlay } from "@/components/ui/celebration-overlay";
 
 type OrderStatus = "awaiting_verification" | "placed" | "in_prep" | "ready" | "collected" | "rejected" | "cancelled";
 
@@ -74,6 +75,8 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
   const { toast } = useToast();
   const soundStartedRef = useRef(false);
   const submittingRef = useRef(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const celebrationShownRef = useRef(false);
 
   // Play sound when order is ready (on mount or status change)
   useEffect(() => {
@@ -1085,15 +1088,39 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
             )}
 
             {currentOrder.status === "ready" && (
-              <div className="space-y-4 pt-4 border-t">
-                <div className="text-left">
-                  <h3 className="font-semibold mb-2">Pickup Instructions</h3>
-                  <p className="text-muted-foreground">{currentOrder.instructions}</p>
+              <>
+                {/* Show celebration on first ready render */}
+                {(() => {
+                  if (!celebrationShownRef.current && !showCelebration) {
+                    celebrationShownRef.current = true;
+                    setTimeout(() => setShowCelebration(true), 100);
+                  }
+                  return null;
+                })()}
+                
+                <CelebrationOverlay
+                  open={showCelebration}
+                  type="food-ready"
+                  title="Your Order is Ready!"
+                  subtitle={`Order #${currentOrder.order_number} at ${currentOrder.venue}`}
+                  actionLabel="Mark as Collected"
+                  onAction={() => {
+                    setShowCelebration(false);
+                    handleMarkAsCollected();
+                  }}
+                  onDismiss={() => setShowCelebration(false)}
+                />
+
+                <div className="space-y-4 pt-4 border-t">
+                  <div className="text-left">
+                    <h3 className="font-semibold mb-2">Pickup Instructions</h3>
+                    <p className="text-muted-foreground">{currentOrder.instructions}</p>
+                  </div>
+                  <Button onClick={handleMarkAsCollected} className="w-full h-12">
+                    Mark as Collected
+                  </Button>
                 </div>
-                <Button onClick={handleMarkAsCollected} className="w-full h-12">
-                  Mark as Collected
-                </Button>
-              </div>
+              </>
             )}
 
             {currentOrder.status === "rejected" && (
