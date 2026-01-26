@@ -386,81 +386,70 @@ export const patronTourSteps: TourStep[] = [
     nextStepTrigger: 'next-button',
   },
 
-  // Food Ready Card - Always visible
+  // Demo Order Card
+  {
+    id: 'patron-demo-order',
+    target: '[data-tour="demo-order"]',
+    title: '🍔 Order Tracking Card',
+    description: 'Each order card shows the venue name, order number, current status, and estimated time. Tap any card to see full details, track progress, and get notified when ready!',
+    placement: 'bottom',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
+  },
+
+  // Demo Waitlist Card
+  {
+    id: 'patron-demo-waitlist',
+    target: '[data-tour="demo-waitlist"]',
+    title: '🍽️ Waitlist Tracking Card',
+    description: 'Waitlist cards show your position in line, party size, and estimated wait time. When your table is ready, you\'ll see a celebration with a countdown timer!',
+    placement: 'bottom',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
+  },
+
+  // Food Ready Card - Explain without navigating
   {
     id: 'patron-card-food',
     target: '[data-tour="card-food"]',
-    title: '🍔 Food Orders',
-    description: 'Tap this card to track your food orders. See prep progress, estimated ready time, and get notified when it\'s time to pick up!',
+    title: '🍔 Food Ready',
+    description: 'Tap here to track a new food order. Select your restaurant, enter your order number from the receipt, and track it in real-time. You\'ll be notified when it\'s ready for pickup!',
     placement: 'top',
-    actionType: 'click',
-    actionLabel: '👆 Tap the Food Ready card',
-    waitForClick: true,
-    nextStepTrigger: 'click',
-    highlightPulse: true,
-  },
-  {
-    id: 'patron-food-explain',
-    target: '[data-tour="food-content"]',
-    title: 'Order Tracking Flow',
-    description: 'Your order goes through stages: Placed → In Prep → Ready. When ready, you\'ll see a celebration screen with a countdown to collect. The venue is notified when you arrive!',
-    placement: 'bottom',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
+    highlightPulse: true,
   },
 
-  // Table Ready Card
+  // Table Ready Card - Explain without navigating
   {
     id: 'patron-card-table',
     target: '[data-tour="card-table"]',
-    title: '🍽️ Table Waitlist',
-    description: 'Tap this card to join or track your table waitlist. See your position, estimated wait time, and get notified the moment your table is ready!',
+    title: '🍽️ Table Ready',
+    description: 'Tap here to join a waitlist or make a reservation. Choose a restaurant, enter your party details, and we\'ll notify you when your table is ready - no need to wait in line!',
     placement: 'top',
-    actionType: 'click',
-    actionLabel: '👆 Tap the Table Ready card',
-    waitForClick: true,
-    nextStepTrigger: 'click',
-    highlightPulse: true,
-  },
-  {
-    id: 'patron-table-explain',
-    target: '[data-tour="table-content"]',
-    title: 'When Your Table is Ready',
-    description: 'You\'ll see a celebration with a countdown timer. Tap "I\'m Here - Get Seated" when you arrive, or "Need More Time" if running late. Don\'t miss the deadline!',
-    placement: 'bottom',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
+    highlightPulse: true,
   },
 
-  // Explore Venues - Always visible
+  // Explore Venues - Explain without navigating
   {
     id: 'patron-card-explore',
     target: '[data-tour="card-explore"]',
     title: '🔍 Discover Venues',
-    description: 'Browse nearby restaurants that use ReadyUp. See real-time busyness indicators and join waitlists before you even arrive!',
+    description: 'Browse nearby restaurants that use ReadyUp. See real-time busyness levels, estimated wait times, ratings, and join waitlists before you even arrive!',
     placement: 'top',
-    actionType: 'click',
-    actionLabel: '👆 Tap the Explore card',
-    waitForClick: true,
-    nextStepTrigger: 'click',
-    highlightPulse: true,
-  },
-  {
-    id: 'patron-explore-explain',
-    target: '[data-tour="explore-content"]',
-    title: 'Venue Discovery',
-    description: 'See which venues are busy, view estimated wait times, and join waitlists remotely. Perfect for planning your dining experience!',
-    placement: 'bottom',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
+    highlightPulse: true,
   },
 
-  // Profile - via avatar button
+  // Profile - Click to navigate
   {
     id: 'patron-profile',
     target: '[data-tour="nav-profile"]',
     title: '👤 Your Profile',
-    description: 'Manage your account, dining preferences, and notification settings. Keep your contact info updated for the best experience!',
+    description: 'Manage your account, dining preferences, and notification settings. Tap here to set up your profile!',
     placement: 'left',
     actionType: 'click',
     actionLabel: '👆 Tap your profile icon',
@@ -472,13 +461,13 @@ export const patronTourSteps: TourStep[] = [
     id: 'patron-profile-explain',
     target: '[data-tour="profile-content"]',
     title: 'Profile Features',
-    description: 'Update your name, phone, and dietary preferences. Enable notifications to never miss when your order or table is ready. View your annual recap here too!',
+    description: 'Update your name, phone, and dietary preferences. Enable notifications to never miss when your order or table is ready. View your annual dining recap here too!',
     placement: 'bottom',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
   },
 
-  // Help Button
+  // Help Button - Final step
   {
     id: 'patron-complete',
     target: '[data-tour="help-button"]',
