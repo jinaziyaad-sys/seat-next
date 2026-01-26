@@ -1,156 +1,122 @@
 
 
-# Duplicate Booking Confirmation Dialog
+# Enhanced Cancellation Acknowledge Flow
 
 ## Overview
-Replace the hard block on duplicate reservations with a warning dialog that shows existing booking details and lets patrons confirm if they still want to proceed with the new booking.
+Make the cancelled entry cards more visually prominent so merchants immediately notice and can dismiss them, rather than having cancelled entries quietly persist on the waitlist board.
 
 ## Current Behavior
-When a patron tries to make a reservation within ±30 minutes of an existing booking at the same venue:
-- A toast error appears: "You already have a reservation at [time] for [X] people"
-- The booking is blocked entirely
+- Cancelled entries show a "PATRON CANCELLED" badge and an "Acknowledge & Dismiss" button
+- The button is styled as a standard outline button at the bottom of the card
+- The card looks similar to other entries, making it easy to overlook
 
 ## New Behavior
-- Show a confirmation dialog with the existing booking details
-- Allow patron to choose: "Go Back" or "Book Anyway"
-- If confirmed, proceed with the new reservation
+- Cancelled entries will have a visually distinct card style (red/destructive border + background tint)
+- The cancellation reason and dismiss button will be more prominent
+- A pulsing alert icon will draw attention to unacknowledged cancellations
+- Cards will be sorted to appear at the top of the list (after awaiting-confirmation entries)
 
 ---
 
 ## Technical Implementation
 
-### 1. Add New State Variables
+### 1. Add Visual Distinction to Cancelled Cards
 
-Add two new state variables to track the duplicate warning state:
+Update the Card component wrapper (around line 1016) to apply distinct styling when the entry is cancelled:
 
 ```typescript
-const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
-const [existingBooking, setExistingBooking] = useState<{
-  time: string;
-  partySize: number;
-} | null>(null);
+<Card 
+  key={entry.id} 
+  className={cn(
+    "shadow-card",
+    entry.status === "cancelled" && entry.cancelled_by === "patron" && 
+      "border-2 border-destructive bg-destructive/5"
+  )}
+>
 ```
 
-### 2. Modify Duplicate Check Logic
+### 2. Update Sort Order to Prioritize Cancelled Entries
 
-Change the duplicate detection code (lines 598-621) from blocking to warning:
-
-**Before:**
-```typescript
-if (existingReservations && existingReservations.length > 0) {
-  toast({ title: "Duplicate Booking Detected", ... });
-  return; // Hard block
-}
-```
-
-**After:**
-```typescript
-if (existingReservations && existingReservations.length > 0) {
-  const existingTime = format(new Date(existingReservations[0].reservation_time), 'h:mm a');
-  setExistingBooking({
-    time: existingTime,
-    partySize: existingReservations[0].party_size
-  });
-  setPendingReservationData({
-    venue,
-    reservationDateTime,
-    finalPreferences,
-    partyName: partyName.trim(),
-    partySize
-  });
-  setShowDuplicateWarning(true);
-  return; // Stop and show confirmation
-}
-```
-
-### 3. Add Confirmation Handler
-
-Create a new function to proceed after confirmation:
+Modify the `sortedWaitlist` logic (lines 783-794) to show patron-cancelled entries near the top:
 
 ```typescript
-const handleConfirmDuplicateBooking = async () => {
-  if (!pendingReservationData) return;
+const sortedWaitlist = [...waitlist].sort((a, b) => {
+  // Highest priority: awaiting confirmation
+  if (a.awaiting_merchant_confirmation && !b.awaiting_merchant_confirmation) return -1;
+  if (b.awaiting_merchant_confirmation && !a.awaiting_merchant_confirmation) return 1;
   
-  setShowDuplicateWarning(false);
-  setExistingBooking(null);
+  // Second priority: patron-cancelled (needs acknowledgment)
+  const aPatronCancelled = a.status === "cancelled" && a.cancelled_by === "patron";
+  const bPatronCancelled = b.status === "cancelled" && b.cancelled_by === "patron";
+  if (aPatronCancelled && !bPatronCancelled) return -1;
+  if (bPatronCancelled && !aPatronCancelled) return 1;
   
-  // Continue with the booking flow using pendingReservationData
-  // Call availability check and insert reservation
-  await proceedWithBooking(pendingReservationData);
-};
-
-const handleCancelDuplicateBooking = () => {
-  setShowDuplicateWarning(false);
-  setExistingBooking(null);
-  setPendingReservationData(null);
-};
+  // Third priority: ready status
+  if (a.status === "ready" && b.status !== "ready") return -1;
+  if (b.status === "ready" && a.status !== "ready") return 1;
+  
+  // Otherwise by creation time
+  return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+});
 ```
 
-### 4. Add Confirmation Dialog UI
+### 3. Enhance the Cancellation Card Content
 
-Add a conditional render block (similar to multi-table confirmation) that shows when `showDuplicateWarning` is true:
+Update the cancelled entry section (lines 1064-1079) with:
+- Larger alert icon header
+- More prominent styling
+- Clearer call-to-action button
 
-```
-+------------------------------------------+
-|  ← Back                                  |
-|                                          |
-|  ⚠️ Existing Booking Found               |
-|                                          |
-|  You already have a reservation at       |
-|  this venue:                             |
-|                                          |
-|  ┌────────────────────────────────────┐  |
-|  │  📅 Today at 7:30 PM               │  |
-|  │     Party of 4                     │  |
-|  └────────────────────────────────────┘  |
-|                                          |
-|  You're about to book another table:     |
-|                                          |
-|  ┌────────────────────────────────────┐  |
-|  │  📅 Today at 7:45 PM               │  |
-|  │     Party of 2                     │  |
-|  └────────────────────────────────────┘  |
-|                                          |
-|  ℹ️ Both bookings will be active. You   |
-|     can manage them from your profile.   |
-|                                          |
-|  [ Book Anyway ]  (primary button)       |
-|  [ Go Back ]      (outline button)       |
-+------------------------------------------+
+```typescript
+{entry.status === "cancelled" && entry.cancelled_by === "patron" && (
+  <div className="space-y-3">
+    <div className="flex items-center gap-2 text-destructive font-semibold">
+      <AlertTriangle className="h-5 w-5" />
+      <span>Patron Cancelled</span>
+    </div>
+    {entry.cancellation_reason && (
+      <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+        <p className="text-sm text-foreground">"{entry.cancellation_reason}"</p>
+      </div>
+    )}
+    <Button
+      onClick={() => acknowledgeCancellation(entry.id)}
+      className="w-full bg-destructive hover:bg-destructive/90 text-white"
+    >
+      <Check className="h-4 w-4 mr-2" />
+      Acknowledge & Dismiss
+    </Button>
+  </div>
+)}
 ```
 
-### 5. Extract Booking Logic
+### 4. Add Import for New Icons
 
-Refactor the booking insertion logic into a reusable `proceedWithBooking()` function that:
-- Checks table availability
-- Handles multi-table scenarios (if triggered)
-- Inserts the reservation
-- Updates state and shows success toast
-
-This allows both the normal flow and the duplicate-confirmed flow to share the same code.
+Add `AlertTriangle` and `Check` to the lucide-react import at the top of the file.
 
 ---
 
-## File Changes
+## File Changes Summary
 
-### Modified File: `src/components/TableReadyFlow.tsx`
+**Modified File: `src/components/merchant/WaitlistBoard.tsx`**
 
-1. **Lines ~94-97**: Add `showDuplicateWarning` and `existingBooking` state variables
-
-2. **Lines ~598-621**: Modify duplicate check to set warning state instead of blocking
-
-3. **Lines ~806**: Add `handleConfirmDuplicateBooking` and `handleCancelDuplicateBooking` functions
-
-4. **Lines ~1142**: Add conditional render for duplicate warning dialog (before multi-table check)
-
-5. **Refactor**: Extract booking creation logic into a shared `proceedWithBooking()` function
+| Location | Change |
+|----------|--------|
+| Line 11 | Add `AlertTriangle, Check` to lucide-react imports |
+| Lines 783-794 | Update sort to prioritize patron-cancelled entries |
+| Line 1016 | Add conditional destructive styling to cancelled cards |
+| Lines 1064-1079 | Enhance cancellation UI with icons and prominent button |
 
 ---
 
-## Edge Cases Handled
+## Visual Result
 
-- If patron confirms duplicate, normal availability check still runs
-- Multi-table scenarios still work after duplicate confirmation
-- Pending data is properly cleaned up on cancel
-- Both bookings remain independent (no linking)
+Before:
+- Standard card with small badge and outline button
+
+After:
+- Red-bordered card with tinted background
+- Alert icon header with "Patron Cancelled" text
+- Destructive (red) primary button for dismiss action
+- Sorted to top of list for visibility
 
