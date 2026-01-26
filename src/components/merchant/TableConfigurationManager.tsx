@@ -132,6 +132,10 @@ export const TableConfigurationManager = ({ tables, onChange }: TableConfigurati
                         <SelectItem value="8">8 seats</SelectItem>
                         <SelectItem value="10">10 seats</SelectItem>
                         <SelectItem value="12">12 seats</SelectItem>
+                        <SelectItem value="14">14 seats</SelectItem>
+                        <SelectItem value="16">16 seats</SelectItem>
+                        <SelectItem value="18">18 seats</SelectItem>
+                        <SelectItem value="20">20 seats</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -212,6 +216,10 @@ export const TableConfigurationManager = ({ tables, onChange }: TableConfigurati
                         <SelectItem value="8">8 seats</SelectItem>
                         <SelectItem value="10">10 seats</SelectItem>
                         <SelectItem value="12">12 seats</SelectItem>
+                        <SelectItem value="14">14 seats</SelectItem>
+                        <SelectItem value="16">16 seats</SelectItem>
+                        <SelectItem value="18">18 seats</SelectItem>
+                        <SelectItem value="20">20 seats</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
