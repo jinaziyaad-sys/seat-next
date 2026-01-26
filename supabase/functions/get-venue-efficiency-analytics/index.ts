@@ -28,11 +28,12 @@ serve(async (req) => {
     // Calculate date range - support both explicit dates and presets
     const now = new Date();
     let startDate: Date;
+    let endDate: Date = now;
 
     if (start_date && end_date) {
       // Use explicit date range
       startDate = new Date(start_date);
-      // endDate is used for logging but queries use startDate as >= filter
+      endDate = new Date(end_date);
     } else {
       // Fall back to preset time_range for backward compatibility
       startDate = new Date();
@@ -52,7 +53,7 @@ serve(async (req) => {
       }
     }
 
-    console.log(`Fetching efficiency analytics for venue ${venue_id}, from: ${startDate.toISOString()}`);
+    console.log(`Fetching efficiency analytics for venue ${venue_id}, range: ${startDate.toISOString()} to ${endDate.toISOString()}`);
 
     // Fetch order analytics (exclude rejected orders)
     const { data: orderAnalytics, error: orderError } = await supabase
@@ -63,7 +64,8 @@ serve(async (req) => {
       `)
       .eq('venue_id', venue_id)
       .neq('orders.status', 'rejected')
-      .gte('placed_at', startDate.toISOString());
+      .gte('placed_at', startDate.toISOString())
+      .lte('placed_at', endDate.toISOString());
 
     if (orderError) {
       console.error('Error fetching order analytics:', orderError);
@@ -75,7 +77,8 @@ serve(async (req) => {
       .from('waitlist_analytics')
       .select('*')
       .eq('venue_id', venue_id)
-      .gte('joined_at', startDate.toISOString());
+      .gte('joined_at', startDate.toISOString())
+      .lte('joined_at', endDate.toISOString());
 
     if (waitlistError) {
       console.error('Error fetching waitlist analytics:', waitlistError);
@@ -156,7 +159,8 @@ serve(async (req) => {
       .select('status, created_at, updated_at')
       .eq('venue_id', venue_id)
       .eq('status', 'seated')
-      .gte('created_at', startDate.toISOString());
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString());
 
     if (entriesError) {
       console.error('Error fetching waitlist entries:', entriesError);
@@ -168,7 +172,8 @@ serve(async (req) => {
       .select('marked_ready_by_staff_id')
       .eq('venue_id', venue_id)
       .not('marked_ready_by_staff_id', 'is', null)
-      .gte('created_at', startDate.toISOString());
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString());
 
     const staffPerformance: Record<string, number> = {};
     ordersWithStaff?.forEach(o => {

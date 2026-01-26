@@ -15,7 +15,15 @@ interface Rating {
   party_size?: number;
 }
 
-export const RatingsView = ({ venueId }: { venueId: string }) => {
+export const RatingsView = ({
+  venueId,
+  startDate,
+  endDate,
+}: {
+  venueId: string;
+  startDate: Date;
+  endDate: Date;
+}) => {
   const [ratings, setRatings] = useState<Rating[]>([]);
   const [averageRating, setAverageRating] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -33,6 +41,8 @@ export const RatingsView = ({ venueId }: { venueId: string }) => {
           )
         `)
         .eq("venue_id", venueId)
+        .gte("created_at", startDate.toISOString())
+        .lte("created_at", endDate.toISOString())
         .order("created_at", { ascending: false });
 
       // Fetch waitlist ratings
@@ -45,6 +55,8 @@ export const RatingsView = ({ venueId }: { venueId: string }) => {
           )
         `)
         .eq("venue_id", venueId)
+        .gte("created_at", startDate.toISOString())
+        .lte("created_at", endDate.toISOString())
         .order("created_at", { ascending: false });
 
       if (orderError || waitlistError) {
@@ -117,7 +129,7 @@ export const RatingsView = ({ venueId }: { venueId: string }) => {
       supabase.removeChannel(orderChannel);
       supabase.removeChannel(waitlistChannel);
     };
-  }, [venueId, toast]);
+  }, [venueId, startDate, endDate, toast]);
 
   if (loading) {
     return <div className="text-center py-8">Loading ratings...</div>;
@@ -144,7 +156,7 @@ export const RatingsView = ({ venueId }: { venueId: string }) => {
                 <p className="text-sm text-muted-foreground">Average Rating</p>
                 <p className="text-3xl font-bold">{averageRating}</p>
               </div>
-              <Star size={32} className="text-yellow-400" />
+              <Star size={32} className="text-primary" />
             </div>
           </CardContent>
         </Card>
@@ -186,7 +198,7 @@ export const RatingsView = ({ venueId }: { venueId: string }) => {
             <div key={star} className="flex items-center gap-3">
               <div className="flex items-center gap-1 w-20">
                 <span className="font-medium">{star}</span>
-                <Star size={16} className="text-yellow-400 fill-yellow-400" />
+                <Star size={16} className="text-primary fill-primary" />
               </div>
               <div className="flex-1 bg-muted rounded-full h-4 overflow-hidden">
                 <div 
@@ -227,7 +239,7 @@ export const RatingsView = ({ venueId }: { venueId: string }) => {
                         <Star 
                           key={star} 
                           size={16}
-                          className={star <= rating.rating ? "text-yellow-400 fill-yellow-400" : "text-gray-300"}
+                          className={star <= rating.rating ? "text-primary fill-primary" : "text-muted-foreground"}
                         />
                       ))}
                     </div>
