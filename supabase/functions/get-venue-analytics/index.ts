@@ -26,13 +26,16 @@ serve(async (req) => {
     // Calculate date range - support both explicit dates and presets
     const now = new Date();
     let startDate: Date;
+    let endDate: Date;
 
     if (start_date && end_date) {
       // Use explicit date range
       startDate = new Date(start_date);
+      endDate = new Date(end_date);
     } else {
       // Fall back to preset time_range for backward compatibility
-      startDate = new Date();
+      startDate = new Date(now);
+      endDate = now;
       switch (time_range || 'today') {
         case 'today':
           startDate.setHours(0, 0, 0, 0);
@@ -59,6 +62,7 @@ serve(async (req) => {
       .eq('venue_id', venue_id)
       .neq('orders.status', 'rejected')
       .gte('placed_at', startDate.toISOString())
+      .lte('placed_at', endDate.toISOString())
       .order('placed_at', { ascending: false });
 
     // Get count of rejected orders in time range
@@ -67,7 +71,8 @@ serve(async (req) => {
       .select('*', { count: 'exact', head: true })
       .eq('venue_id', venue_id)
       .eq('status', 'rejected')
-      .gte('created_at', startDate.toISOString());
+      .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString());
 
     // Get cancelled orders with details (for reporting)
     const { data: cancelledOrders } = await supabase
@@ -76,6 +81,7 @@ serve(async (req) => {
       .eq('venue_id', venue_id)
       .eq('status', 'cancelled')
       .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
       .order('created_at', { ascending: false });
 
     if (orderError) throw orderError;
@@ -86,6 +92,7 @@ serve(async (req) => {
       .select('*')
       .eq('venue_id', venue_id)
       .gte('joined_at', startDate.toISOString())
+      .lte('joined_at', endDate.toISOString())
       .order('joined_at', { ascending: false });
 
     if (waitlistError) throw waitlistError;

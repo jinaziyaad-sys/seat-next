@@ -74,6 +74,7 @@ serve(async (req) => {
       .select('user_id, created_at, status')
       .eq('venue_id', venue_id)
       .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
       .not('user_id', 'is', null);
 
     if (ordersError) {
@@ -87,6 +88,7 @@ serve(async (req) => {
       .select('user_id, created_at')
       .eq('venue_id', venue_id)
       .gte('created_at', startDate.toISOString())
+      .lte('created_at', endDate.toISOString())
       .not('user_id', 'is', null);
 
     if (waitlistError) {
@@ -100,9 +102,17 @@ serve(async (req) => {
     // New customers (first activity in this period)
     const newCustomerIds = new Set<string>();
     customers?.forEach(c => {
-      if (c.first_order_date && new Date(c.first_order_date) >= startDate) {
+      if (
+        c.first_order_date &&
+        new Date(c.first_order_date) >= startDate &&
+        new Date(c.first_order_date) <= endDate
+      ) {
         newCustomerIds.add(c.user_id);
-      } else if (c.first_waitlist_date && new Date(c.first_waitlist_date) >= startDate) {
+      } else if (
+        c.first_waitlist_date &&
+        new Date(c.first_waitlist_date) >= startDate &&
+        new Date(c.first_waitlist_date) <= endDate
+      ) {
         newCustomerIds.add(c.user_id);
       }
     });
@@ -175,7 +185,7 @@ serve(async (req) => {
     const dailyNewCustomers: Record<string, number> = {};
     customers?.forEach(c => {
       const firstDate = c.first_order_date || c.first_waitlist_date;
-      if (firstDate && new Date(firstDate) >= startDate) {
+      if (firstDate && new Date(firstDate) >= startDate && new Date(firstDate) <= endDate) {
         const dateKey = new Date(firstDate).toISOString().split('T')[0];
         dailyNewCustomers[dateKey] = (dailyNewCustomers[dateKey] || 0) + 1;
       }

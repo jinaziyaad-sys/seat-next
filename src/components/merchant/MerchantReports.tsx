@@ -646,7 +646,7 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
         </TabsContent>
 
         <TabsContent value="ratings" className="space-y-6">
-          <RatingsView venueId={venue.id} />
+          <RatingsView venueId={venue.id} startDate={startDate} endDate={endDate} />
         </TabsContent>
 
         <TabsContent value="export" className="space-y-6">
