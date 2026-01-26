@@ -542,7 +542,7 @@ const Index = () => {
       )}
 
       {/* Hero Section - Black Background */}
-      <div className="relative overflow-hidden bg-black px-6 py-20 text-white">
+      <div className="relative overflow-hidden bg-black px-6 py-20 text-white" data-tour="patron-hero">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,107,53,0.08),transparent_70%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,rgba(255,107,53,0.05),transparent_60%)]" />
         
@@ -553,6 +553,7 @@ const Index = () => {
               size="icon"
               className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm transition-all"
               onClick={() => setActiveTab("profile")}
+              data-tour="nav-profile"
             >
               <Avatar className="h-9 w-9">
                 <AvatarFallback className="bg-coral/20 text-white font-semibold">
@@ -589,7 +590,7 @@ const Index = () => {
 
       {/* Active Tracking Section */}
       {user && (isLoadingTracking || activeOrders.length > 0 || activeWaitlist.length > 0) && (
-        <div className="p-6 space-y-4">
+        <div className="p-6 space-y-4" data-tour="active-tracking">
           <h2 className="text-xl font-bold">Active Tracking</h2>
           
           {/* Loading Skeleton */}
@@ -929,6 +930,7 @@ const Index = () => {
             <Card 
               className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
               onClick={() => setActiveTab("food-ready")}
+              data-tour="card-food"
             >
               <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -946,6 +948,7 @@ const Index = () => {
             <Card 
               className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
               onClick={() => setActiveTab("table-ready")}
+              data-tour="card-table"
             >
               <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
                 <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
@@ -963,6 +966,7 @@ const Index = () => {
           <Card 
             className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
             onClick={() => setActiveTab("explore")}
+            data-tour="card-explore"
           >
             <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-accent-foreground">
@@ -1018,6 +1022,7 @@ const Index = () => {
         isOpen={tourOpen}
         onClose={() => setTourOpen(false)}
         onComplete={handleTourComplete}
+        onNavigate={(tab) => setActiveTab(tab)}
       />
       
       {/* Notification Prompt for new users */}

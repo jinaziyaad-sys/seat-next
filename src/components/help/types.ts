@@ -11,6 +11,13 @@ export interface TourStep {
   title: string;
   description: string;
   placement?: 'top' | 'bottom' | 'left' | 'right';
+  // Interactive tour enhancements
+  actionType?: 'click' | 'observe' | 'navigate'; // What user should do
+  actionLabel?: string; // e.g., "Click here to continue" or "Tap to explore"
+  waitForClick?: boolean; // If true, user must click target to proceed
+  highlightPulse?: boolean; // Add pulsing animation to target
+  nextStepTrigger?: 'click' | 'next-button' | 'auto'; // How to proceed
+  autoAdvanceDelay?: number; // ms to wait before auto-advancing (for observe steps)
 }
 
 export interface ChatMessage {

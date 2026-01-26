@@ -1,7 +1,6 @@
-import { useState } from "react";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { UtensilsCrossed, Users, User } from "lucide-react";
+import { Home, UtensilsCrossed, Users, User } from "lucide-react";
 
 interface TabNavigationProps {
   activeTab: string;
@@ -9,8 +8,9 @@ interface TabNavigationProps {
 }
 
 const tabs = [
-  { id: "food-ready", label: "Food Ready", icon: UtensilsCrossed },
-  { id: "table-ready", label: "Table Ready", icon: Users },
+  { id: "home", label: "Home", icon: Home },
+  { id: "food-ready", label: "Food", icon: UtensilsCrossed },
+  { id: "table-ready", label: "Table", icon: Users },
   { id: "profile", label: "Profile", icon: User },
 ];
 
@@ -20,11 +20,12 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
       <nav className="flex items-center justify-around p-4">
         {tabs.map((tab) => {
           const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
+          const isActive = activeTab === tab.id || (activeTab === "explore" && tab.id === "home");
           
           return (
             <button
               key={tab.id}
+              data-tour={`nav-${tab.id === 'food-ready' ? 'food' : tab.id === 'table-ready' ? 'table' : tab.id}`}
               onClick={() => onTabChange(tab.id)}
               className={cn(
                 "flex flex-col items-center gap-1 p-3 rounded-xl transition-all duration-300",

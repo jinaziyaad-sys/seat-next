@@ -181,109 +181,313 @@ export const patronFAQs: FAQItem[] = [
   }
 ];
 
-// Merchant Dashboard Tour Steps
+// ============================================================================
+// MERCHANT TOUR STEPS - Interactive & Comprehensive
+// ============================================================================
 export const merchantTourSteps: TourStep[] = [
+  // Welcome & Overview
   {
     id: 'merchant-welcome',
     target: '[data-tour="merchant-header"]',
-    title: 'Welcome to Your Dashboard!',
-    description: 'This is your command center for managing orders, waitlist, and reservations. Let\'s take a quick tour of the key features.',
-    placement: 'bottom'
+    title: '👋 Welcome to Your Dashboard!',
+    description: 'This is your command center for managing orders, waitlist, and reservations. Let\'s explore each feature together. I\'ll guide you through - just follow my instructions!',
+    placement: 'bottom',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
+    highlightPulse: false,
   },
+  
+  // Kitchen Orders Tab
   {
-    id: 'merchant-kitchen',
+    id: 'merchant-kitchen-click',
     target: '[data-tour="tab-kitchen"]',
-    title: 'Kitchen Orders',
-    description: 'This tab shows all food orders. You\'ll see orders awaiting verification, in prep, and ready for pickup. New orders trigger a sound notification.',
-    placement: 'bottom'
+    title: '🍳 Kitchen Orders',
+    description: 'This is where all food orders appear. Click this tab to see incoming orders, prep queue, and ready orders.',
+    placement: 'bottom',
+    actionType: 'click',
+    actionLabel: '👆 Click the Kitchen Orders tab to continue',
+    waitForClick: true,
+    nextStepTrigger: 'click',
+    highlightPulse: true,
   },
   {
-    id: 'merchant-waitlist',
+    id: 'merchant-kitchen-explain',
+    target: '[data-tour="kitchen-content"]',
+    title: 'Managing Orders',
+    description: 'Orders flow through stages: Awaiting Verification → Placed → In Prep → Ready → Collected. Accept new orders, track prep times, and mark items ready when done. You\'ll hear sounds for new orders!',
+    placement: 'bottom',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
+    autoAdvanceDelay: 3000,
+  },
+
+  // Waitlist Tab
+  {
+    id: 'merchant-waitlist-click',
     target: '[data-tour="tab-waitlist"]',
-    title: 'Waitlist Management',
-    description: 'Manage your waitlist here. See who\'s waiting, mark tables as ready, and track no-shows. Patrons can join via QR code.',
-    placement: 'bottom'
+    title: '👥 Waitlist Management',
+    description: 'Manage your guest waitlist here. See who\'s waiting, notify them when ready, and track arrivals.',
+    placement: 'bottom',
+    actionType: 'click',
+    actionLabel: '👆 Click the Waitlist tab to explore',
+    waitForClick: true,
+    nextStepTrigger: 'click',
+    highlightPulse: true,
   },
   {
-    id: 'merchant-reservations',
+    id: 'merchant-waitlist-explain',
+    target: '[data-tour="waitlist-content"]',
+    title: 'Waitlist Actions',
+    description: 'Add guests manually or they can join via QR code. Mark tables as "Ready" to notify guests. When they arrive, confirm seating. Auto-cancellation handles no-shows for you!',
+    placement: 'bottom',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
+  },
+
+  // Reservations Tab
+  {
+    id: 'merchant-reservations-click',
     target: '[data-tour="tab-reservations"]',
-    title: 'Reservations Calendar',
-    description: 'View and manage all reservations. Upcoming reservations automatically convert to waitlist entries at the appropriate time.',
-    placement: 'bottom'
+    title: '📅 Reservations Calendar',
+    description: 'View and manage all table reservations in a calendar format.',
+    placement: 'bottom',
+    actionType: 'click',
+    actionLabel: '👆 Click Reservations to see the calendar',
+    waitForClick: true,
+    nextStepTrigger: 'click',
+    highlightPulse: true,
   },
   {
-    id: 'merchant-staff',
+    id: 'merchant-reservations-explain',
+    target: '[data-tour="reservations-content"]',
+    title: 'Reservation Features',
+    description: 'See daily/weekly bookings, edit or cancel reservations, and manage table assignments. Reservations auto-convert to waitlist entries 15 minutes before their time!',
+    placement: 'bottom',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
+  },
+
+  // Staff Tab (Admin only feature)
+  {
+    id: 'merchant-staff-click',
     target: '[data-tour="tab-staff"]',
-    title: 'Staff Management',
-    description: 'Add team members and assign roles. Admins have full access, while Staff can only manage orders and waitlist.',
-    placement: 'bottom'
+    title: '👨‍💼 Staff Management',
+    description: 'Add and manage your team members with different access levels.',
+    placement: 'bottom',
+    actionType: 'click',
+    actionLabel: '👆 Click Staff to manage your team',
+    waitForClick: true,
+    nextStepTrigger: 'click',
+    highlightPulse: true,
   },
   {
-    id: 'merchant-settings',
+    id: 'merchant-staff-explain',
+    target: '[data-tour="staff-content"]',
+    title: 'Team Roles',
+    description: 'Admins have full access including settings and reports. Staff can only manage kitchen orders and waitlist. Invite new members by email - they\'ll get login instructions automatically.',
+    placement: 'bottom',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
+  },
+
+  // Settings Tab
+  {
+    id: 'merchant-settings-click',
     target: '[data-tour="tab-settings"]',
-    title: 'Venue Settings',
-    description: 'Configure business hours, table layout, notification preferences, and more. This is where you customize how your venue operates.',
-    placement: 'bottom'
+    title: '⚙️ Venue Settings',
+    description: 'Configure how your venue operates - business hours, tables, notifications, and more.',
+    placement: 'bottom',
+    actionType: 'click',
+    actionLabel: '👆 Click Settings to customize your venue',
+    waitForClick: true,
+    nextStepTrigger: 'click',
+    highlightPulse: true,
   },
   {
-    id: 'merchant-reports',
-    target: '[data-tour="tab-reports"]',
-    title: 'Reports & Analytics',
-    description: 'Track performance with detailed analytics. See order trends, wait times, customer ratings, and export data for further analysis.',
-    placement: 'bottom'
+    id: 'merchant-settings-explain',
+    target: '[data-tour="settings-content"]',
+    title: 'Key Settings',
+    description: 'Set business hours, define your table layout, configure service types (dine-in, pickup), and customize notification preferences. Enable QR codes for easy waitlist joining!',
+    placement: 'bottom',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
   },
+
+  // Reports Tab
+  {
+    id: 'merchant-reports-click',
+    target: '[data-tour="tab-reports"]',
+    title: '📊 Reports & Analytics',
+    description: 'Track your venue\'s performance with detailed analytics and insights.',
+    placement: 'bottom',
+    actionType: 'click',
+    actionLabel: '👆 Click Reports to see your analytics',
+    waitForClick: true,
+    nextStepTrigger: 'click',
+    highlightPulse: true,
+  },
+  {
+    id: 'merchant-reports-explain',
+    target: '[data-tour="reports-content"]',
+    title: 'Analytics Dashboard',
+    description: 'View order trends, average wait times, customer ratings, and peak hours. Filter by date range and export data as CSV or Excel for deeper analysis.',
+    placement: 'bottom',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
+  },
+
+  // Quick Actions
+  {
+    id: 'merchant-notifications',
+    target: '[data-tour="sound-snooze"]',
+    title: '🔔 Notification Controls',
+    description: 'Mute sounds temporarily when needed. Different sounds play for new orders (urgent), new waitlist entries, patron arrivals, and overdue orders.',
+    placement: 'bottom',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
+  },
+
+  // Help Button
   {
     id: 'merchant-complete',
     target: '[data-tour="help-button"]',
-    title: 'Need Help?',
-    description: 'Click this button anytime to access FAQs, chat with our AI assistant, or restart this tour. We\'re here to help!',
-    placement: 'left'
+    title: '🎉 You\'re Ready!',
+    description: 'That\'s the tour! Click this Help button anytime for FAQs, AI assistance, or to replay this tour. You\'ve got this!',
+    placement: 'left',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
+    highlightPulse: true,
   }
 ];
 
-// Patron Dashboard Tour Steps
+// ============================================================================
+// PATRON TOUR STEPS - Interactive & Comprehensive  
+// ============================================================================
 export const patronTourSteps: TourStep[] = [
+  // Welcome
   {
     id: 'patron-welcome',
     target: '[data-tour="patron-hero"]',
-    title: 'Welcome to ReadyUp!',
-    description: 'Track your orders and waitlist status in real-time. No more waiting in line or wondering when your food will be ready.',
-    placement: 'bottom'
+    title: '👋 Welcome to ReadyUp!',
+    description: 'Say goodbye to waiting in lines! Track your orders and table waitlist in real-time. Let me show you around - just follow along!',
+    placement: 'bottom',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
   },
+
+  // Active Tracking Section
   {
-    id: 'patron-active',
+    id: 'patron-tracking',
     target: '[data-tour="active-tracking"]',
-    title: 'Active Tracking',
-    description: 'Your active orders and waitlist entries appear here. Watch the status update in real-time and get notified when ready.',
-    placement: 'bottom'
+    title: '📍 Active Tracking',
+    description: 'All your active orders and waitlist entries appear here. Cards show real-time status updates, estimated times, and quick actions. Tap any card for details!',
+    placement: 'bottom',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
+  },
+
+  // Food Ready Card - Click to navigate
+  {
+    id: 'patron-card-food',
+    target: '[data-tour="card-food"]',
+    title: '🍔 Food Orders',
+    description: 'Track your food orders in detail here. See prep progress, estimated ready time, and get notified when it\'s time to pick up!',
+    placement: 'top',
+    actionType: 'click',
+    actionLabel: '👆 Tap to see Food Orders',
+    waitForClick: true,
+    nextStepTrigger: 'click',
+    highlightPulse: true,
   },
   {
-    id: 'patron-food',
-    target: '[data-tour="food-ready"]',
-    title: 'Food Ready Flow',
-    description: 'When placing a food order, you\'ll track it from confirmation through preparation to pickup. Sound alerts tell you when it\'s ready!',
-    placement: 'bottom'
+    id: 'patron-food-explain',
+    target: '[data-tour="food-content"]',
+    title: 'Order Tracking Flow',
+    description: 'Your order goes through stages: Placed → In Prep → Ready. When ready, you\'ll see a celebration screen with a countdown to collect. The venue is notified when you arrive!',
+    placement: 'bottom',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
+  },
+
+  // Table Ready Card - Click to navigate
+  {
+    id: 'patron-card-table',
+    target: '[data-tour="card-table"]',
+    title: '🍽️ Table Waitlist',
+    description: 'Track your table waitlist status here. See your position, estimated wait time, and get notified the moment your table is ready!',
+    placement: 'top',
+    actionType: 'click',
+    actionLabel: '👆 Tap to see Table Waitlist',
+    waitForClick: true,
+    nextStepTrigger: 'click',
+    highlightPulse: true,
   },
   {
-    id: 'patron-table',
-    target: '[data-tour="table-ready"]',
-    title: 'Table Ready Flow',
-    description: 'Join a waitlist and we\'ll notify you when your table is ready. Confirm your arrival or request more time if needed.',
-    placement: 'bottom'
+    id: 'patron-table-explain',
+    target: '[data-tour="table-content"]',
+    title: 'When Your Table is Ready',
+    description: 'You\'ll see a celebration with a countdown timer. Tap "I\'m Here - Get Seated" when you arrive, or "Need More Time" if running late. Don\'t miss the deadline!',
+    placement: 'bottom',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
   },
+
+  // Explore Venues
+  {
+    id: 'patron-card-explore',
+    target: '[data-tour="card-explore"]',
+    title: '🔍 Discover Venues',
+    description: 'Browse nearby restaurants that use ReadyUp. See real-time busyness indicators and join waitlists before you even arrive!',
+    placement: 'top',
+    actionType: 'click',
+    actionLabel: '👆 Tap to explore venues',
+    waitForClick: true,
+    nextStepTrigger: 'click',
+    highlightPulse: true,
+  },
+  {
+    id: 'patron-explore-explain',
+    target: '[data-tour="explore-content"]',
+    title: 'Venue Discovery',
+    description: 'See which venues are busy, view estimated wait times, and join waitlists remotely. Perfect for planning your dining experience!',
+    placement: 'bottom',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
+  },
+
+  // Profile
   {
     id: 'patron-profile',
-    target: '[data-tour="profile"]',
-    title: 'Your Profile',
-    description: 'Manage your name, phone number, and notification preferences. Keep these updated for the best experience.',
-    placement: 'bottom'
+    target: '[data-tour="nav-profile"]',
+    title: '👤 Your Profile',
+    description: 'Manage your account, dining preferences, and notification settings. Keep your contact info updated for the best experience!',
+    placement: 'left',
+    actionType: 'click',
+    actionLabel: '👆 Tap to open your Profile',
+    waitForClick: true,
+    nextStepTrigger: 'click',
+    highlightPulse: true,
   },
+  {
+    id: 'patron-profile-explain',
+    target: '[data-tour="profile-content"]',
+    title: 'Profile Features',
+    description: 'Update your name, phone, and dietary preferences. Enable notifications to never miss when your order or table is ready. View your annual recap here too!',
+    placement: 'bottom',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
+  },
+
+  // Help Button
   {
     id: 'patron-complete',
     target: '[data-tour="help-button"]',
-    title: 'Need Help?',
-    description: 'Tap here anytime for FAQs, AI assistance, or to replay this tour. Enjoy your experience!',
-    placement: 'left'
+    title: '🎉 You\'re All Set!',
+    description: 'That\'s everything! Tap this Help button anytime for FAQs, chat with our AI assistant, or replay this tour. Enjoy your experience!',
+    placement: 'left',
+    actionType: 'observe',
+    nextStepTrigger: 'next-button',
+    highlightPulse: true,
   }
 ];
 
