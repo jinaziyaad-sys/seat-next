@@ -1,299 +1,200 @@
 
-# Personalized Venue Discovery - AI-Curated Recommendations
+
+# Fix Reservation Cancellation Flow UX
 
 ## Overview
-Implement an AI-powered venue discovery system that recommends restaurants to patrons based on their preferences (dietary requirements, cuisine preferences), venue attributes (halaal, veg options, cuisine type), and real-time data (busyness, wait times, ratings).
+The current cancellation flow has two UX issues that need to be fixed:
+
+1. **No confirmation before cancellation**: When the patron clicks "Cancel Booking", the cancellation happens immediately and the card auto-closes after 1.5 seconds without requiring any confirmation from the user.
+
+2. **Poor button labels on cancelled view**: After cancellation, the "cancelled-details" screen shows a "Close" button which is unclear - it should provide clearer actions.
 
 ---
 
-## Architecture
+## Current Behavior (The Problem)
+
+When a patron clicks "Cancel Booking":
+1. `handleCancelBooking()` immediately updates the database to cancel the reservation
+2. After 1.5 seconds, `onBack()` is called automatically, returning the user to home
+3. The user never sees a confirmation dialog or has a chance to undo
 
 ```text
-+------------------------------------------+
-|         Patron Profile Section           |
-|  [Dietary Preferences Card]              |
-|   - Halaal, Vegetarian, Vegan, etc.      |
-|   - Cuisine preferences (multi-select)   |
-+------------------------------------------+
-              |
-              v
-+------------------------------------------+
-|    AI Venue Discovery Edge Function      |
-|  1. Fetch patron preferences             |
-|  2. Query matching venues                |
-|  3. AI ranks by: preference match,       |
-|     busyness, ratings, wait time         |
-|  4. Generate personalized reasons        |
-+------------------------------------------+
-              |
-              v
-+------------------------------------------+
-|      Patron "Explore" Section            |
-|  - "For You" recommendations             |
-|  - Busyness indicators                   |
-|  - Match score badges                    |
-|  - Quick filters (halaal, veg, nearby)   |
-+------------------------------------------+
+Current Flow:
+[Cancel Booking] --> Immediate DB Update --> 1.5s delay --> Auto-close
 ```
 
 ---
 
-## Implementation Plan
+## Proposed Solution
 
-### Phase 1: Database & Schema Changes
+### Add a Confirmation Dialog Before Cancellation
 
-**New Table: `patron_dining_preferences`**
-Stores patron dietary and cuisine preferences for personalization.
-
-| Column | Type | Description |
-|--------|------|-------------|
-| id | uuid | Primary key |
-| user_id | uuid | FK to profiles |
-| dietary_requirements | text[] | halaal, vegetarian, vegan, kosher, gluten_free |
-| cuisine_preferences | text[] | italian, asian, indian, american, etc. |
-| avoid_ingredients | text[] | Optional allergens to avoid |
-| max_wait_minutes | int | Preferred max wait time |
-| created_at | timestamp | |
-| updated_at | timestamp | |
-
-**Venue Settings Extension**
-Add new fields to the existing `venues.settings` JSON column:
-
-```json
-{
-  // Existing settings...
-  
-  // NEW: Venue attributes for discovery
-  "venue_attributes": {
-    "cuisine_types": ["indian", "asian"],
-    "dietary_certifications": {
-      "halaal": true,
-      "vegetarian_friendly": true,
-      "vegan_options": false,
-      "kosher": false,
-      "gluten_free_options": true
-    },
-    "price_range": "moderate", // budget, moderate, upscale
-    "ambiance": ["casual", "family_friendly"],
-    "features": ["outdoor_seating", "private_dining", "live_music"]
-  }
-}
-```
-
----
-
-### Phase 2: Merchant Settings UI
-
-**New Section in MerchantSettings.tsx: "Venue Profile for Discovery"**
-
-Add a new collapsible card allowing venue admins to configure:
-
-1. **Cuisine Types** (multi-select checkboxes)
-   - Italian, Indian, Asian, American, Mediterranean, African, Mexican, etc.
-
-2. **Dietary Certifications** (toggle switches)
-   - Halaal certified
-   - Vegetarian friendly
-   - Vegan options available
-   - Kosher
-   - Gluten-free options
-
-3. **Price Range** (radio buttons)
-   - Budget, Moderate, Upscale
-
-4. **Venue Features** (multi-select checkboxes)
-   - Outdoor seating, Private dining, Live entertainment, Kid-friendly, etc.
-
----
-
-### Phase 3: Patron Preferences UI
-
-**New Component: `src/components/PatronDiningPreferences.tsx`**
-
-Add to the Profile Section with:
-
-1. **Dietary Requirements** (multi-select chips)
-   - Halaal, Vegetarian, Vegan, Kosher, Gluten-Free
-
-2. **Cuisine Preferences** (multi-select with search)
-   - Pre-populated from venues in the system
-   - "No preference" option
-
-3. **Wait Time Preference** (slider)
-   - "I prefer short waits" to "I don't mind waiting"
-
----
-
-### Phase 4: AI Recommendation Engine
-
-**New Edge Function: `supabase/functions/get-venue-recommendations/index.ts`**
+Introduce an AlertDialog that appears when the patron clicks "Cancel Booking" with two clear options:
+- **"Confirm Cancellation"**: Proceeds with cancellation and returns home
+- **"Don't Cancel"**: Closes the dialog and keeps the reservation active
 
 ```text
-Input:
-- user_id (optional - for personalized recommendations)
-- location (lat/lng for proximity)
-- filters (optional overrides)
-
-Process:
-1. Fetch patron preferences from patron_dining_preferences
-2. Query all venues with their:
-   - settings.venue_attributes
-   - Current busyness (waitlist count)
-   - Average ratings
-   - Distance from user
-3. Call Lovable AI to:
-   - Score venues based on preference match
-   - Rank by combination of: match score, busyness, rating, distance
-   - Generate 1-line personalized recommendation reason
-4. Return ranked list with scores and reasons
-
-Output:
-[
-  {
-    venue_id: "...",
-    name: "Restaurant ABC",
-    match_score: 92,
-    busyness: "short",
-    avg_rating: 4.5,
-    wait_estimate: "5-10 min",
-    distance_km: 1.2,
-    ai_reason: "Great halaal options with short wait - matches your preferences perfectly!"
-  }
-]
+New Flow:
+[Cancel Booking] --> Confirmation Dialog
+                      |
+                      |--> [Confirm Cancellation] --> DB Update --> Return Home
+                      |
+                      |--> [Don't Cancel] --> Close Dialog (stay on page)
 ```
 
 ---
 
-### Phase 5: Explore Venues UI
+## Technical Changes
 
-**New Component: `src/components/ExploreVenues.tsx`**
-
-Features:
-- "For You" section with AI-curated recommendations (requires login)
-- Quick filter chips: Halaal, Vegetarian, Nearby, Short Wait
-- Venue cards showing:
-  - Name, cuisine tags, distance
-  - Busyness indicator (using existing PatronBusynessIndicator)
-  - Match percentage badge (if logged in)
-  - AI-generated recommendation snippet
-- Pull-to-refresh for updated recommendations
-
-**Integration into Index.tsx**
-Add new "Explore" card alongside "Food Ready" and "Table Ready":
-
-```text
-+----------------+  +----------------+  +----------------+
-|  Food Ready    |  |  Table Ready   |  |   Explore      |
-|  Track orders  |  |  Join waitlist |  |  Find venues   |
-+----------------+  +----------------+  +----------------+
+### 1. Add Confirmation State
+Add a new state variable to control the cancellation confirmation dialog:
+```typescript
+const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
 ```
+
+### 2. Modify "Cancel Booking" Button Behavior
+Instead of calling `handleCancelBooking()` directly, show the confirmation dialog:
+```typescript
+onClick={() => setShowCancelConfirmation(true)}
+```
+
+### 3. Create Confirmation Dialog Component
+Add an AlertDialog with proper labeling:
+- Title: "Cancel Reservation?"
+- Description: "Are you sure you want to cancel your reservation at {venue}? This action cannot be undone."
+- Cancel button: "Don't Cancel" (closes dialog, stays on page)
+- Action button: "Confirm Cancellation" (calls handleCancelBooking and returns home)
+
+### 4. Update handleCancelBooking
+Remove the 1.5s timeout auto-close. Instead, call `onBack()` immediately after successful cancellation (user already confirmed).
+
+### 5. Update the "cancelled-details" View
+Change the "Close" button to "Back to Home" to be consistent with the other cancelled view (lines 2143-2184).
 
 ---
 
-## Technical Details
-
-### Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/components/PatronDiningPreferences.tsx` | Patron dietary/cuisine preference settings |
-| `src/components/ExploreVenues.tsx` | Venue discovery UI with AI recommendations |
-| `supabase/functions/get-venue-recommendations/index.ts` | AI recommendation engine |
+## Implementation Details
 
 ### Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/merchant/MerchantSettings.tsx` | Add "Venue Profile" section for attributes |
-| `src/components/ProfileSection.tsx` | Include PatronDiningPreferences component |
-| `src/pages/Index.tsx` | Add "Explore" card and tab handling |
+| `src/components/TableReadyFlow.tsx` | Add confirmation dialog, update button handlers, fix button labels |
 
-### Database Migration
+### Specific Code Changes
 
-```sql
--- Patron dining preferences table
-CREATE TABLE patron_dining_preferences (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id uuid REFERENCES profiles(id) ON DELETE CASCADE UNIQUE,
-  dietary_requirements text[] DEFAULT '{}',
-  cuisine_preferences text[] DEFAULT '{}',
-  avoid_ingredients text[] DEFAULT '{}',
-  max_wait_minutes int DEFAULT 30,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
-);
-
--- RLS policies
-ALTER TABLE patron_dining_preferences ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Users can read own preferences" ON patron_dining_preferences
-  FOR SELECT USING (auth.uid() = user_id);
-
-CREATE POLICY "Users can insert own preferences" ON patron_dining_preferences
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
-
-CREATE POLICY "Users can update own preferences" ON patron_dining_preferences
-  FOR UPDATE USING (auth.uid() = user_id);
-```
-
----
-
-## AI Prompt Design
-
-The AI recommendation engine will use structured tool calling to ensure consistent output:
-
+**1. Add new state variable (around line 98):**
 ```typescript
-tools: [{
-  type: "function",
-  function: {
-    name: "rank_venues",
-    description: "Rank venues for a patron based on preferences",
-    parameters: {
-      type: "object",
-      properties: {
-        recommendations: {
-          type: "array",
-          items: {
-            type: "object",
-            properties: {
-              venue_id: { type: "string" },
-              match_score: { type: "number", description: "0-100" },
-              reason: { type: "string", description: "1 sentence explanation" }
-            }
-          }
-        }
-      }
-    }
+const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
+```
+
+**2. Add AlertDialog import (line 1):**
+```typescript
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+```
+
+**3. Update handleCancelBooking (lines 1077-1098):**
+Remove the setTimeout and call onBack() immediately after successful cancellation:
+```typescript
+const handleCancelBooking = async () => {
+  if (!waitlistEntry) return;
+
+  const { error } = await supabase
+    .from("waitlist_entries")
+    .update({ 
+      status: "cancelled",
+      cancelled_by: "patron"
+    })
+    .eq("id", waitlistEntry.id);
+
+  if (!error) {
+    setShowCancelConfirmation(false);
+    toast({
+      title: "Reservation Cancelled",
+      description: "Your reservation has been cancelled.",
+    });
+    onBack(); // Immediate return to home after confirmed cancellation
   }
-}]
+};
+```
+
+**4. Update all "Cancel Booking" buttons (3 locations):**
+- Line 2100-2106 (waiting view)
+- Line 2235-2241 (ready view) 
+- Line 2330-2336 (awaiting-confirmation view)
+
+Change from:
+```typescript
+onClick={handleCancelBooking}
+```
+To:
+```typescript
+onClick={() => setShowCancelConfirmation(true)}
+```
+
+**5. Add Confirmation Dialog (before final return null):**
+```typescript
+{/* Cancel Booking Confirmation Dialog */}
+<AlertDialog open={showCancelConfirmation} onOpenChange={setShowCancelConfirmation}>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Cancel Reservation?</AlertDialogTitle>
+      <AlertDialogDescription>
+        Are you sure you want to cancel your reservation at {waitlistEntry?.venue}? 
+        This action cannot be undone.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>Don't Cancel</AlertDialogCancel>
+      <AlertDialogAction 
+        onClick={handleCancelBooking}
+        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+      >
+        Confirm Cancellation
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
+```
+
+**6. Fix "cancelled-details" view button (line 1071):**
+Change from:
+```typescript
+<Button onClick={onBack} className="w-full">Close</Button>
+```
+To:
+```typescript
+<Button onClick={onBack} className="w-full">Back to Home</Button>
 ```
 
 ---
 
-## User Flow
+## User Experience After Fix
 
-### Patron Journey
-1. Signs in and navigates to Profile
-2. Sets dietary preferences (Halaal, Vegetarian)
-3. Selects preferred cuisines (Indian, Italian)
-4. Returns to home and taps "Explore"
-5. Sees personalized recommendations with match scores
-6. Filters by "Halaal" + "Short Wait"
-7. Taps venue card to view details or join waitlist
+### Cancellation Flow
+1. Patron clicks "Cancel Booking"
+2. Confirmation dialog appears with venue name
+3. Two clear options:
+   - **"Don't Cancel"** - Dismisses dialog, reservation stays active
+   - **"Confirm Cancellation"** - Cancels reservation and returns to home immediately
 
-### Merchant Journey
-1. Admin navigates to Settings
-2. Opens "Venue Profile for Discovery" section
-3. Enables "Halaal Certified" and "Vegetarian Friendly"
-4. Selects cuisine types: "Indian", "Pakistani"
-5. Saves settings
-6. Venue now appears in recommendations for matching patrons
+### Post-Cancellation View
+If a patron views a cancelled reservation later, they see a "Back to Home" button (consistent across both cancelled views).
 
 ---
 
 ## Benefits
-- **Personalized experience**: AI matches patrons to venues based on dietary needs
-- **Reduced friction**: Halaal-conscious users see certified venues first
-- **Increased discoverability**: New venues with matching attributes get visibility
-- **Real-time relevance**: Busyness and wait times factor into recommendations
-- **Merchant control**: Venues self-describe their attributes
+- Prevents accidental cancellations
+- Clear, unambiguous button labels
+- Consistent UX across cancelled reservation views
+- Aligns with the memory context about cancellation attribution ("patron cancels" is now explicitly confirmed)
+
