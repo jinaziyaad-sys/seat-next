@@ -738,6 +738,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           cancellation_reason: newEntry.cancellation_reason || undefined,
           customer_name: newEntry.customer_name,
           updated_at: newEntry.created_at,
+          reservation_type: newEntry.reservation_type,
+          reservation_time: newEntry.reservation_time,
         };
         setWaitlistEntry(entry);
         
