@@ -3,13 +3,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, User, Shield, LogOut, Palette } from "lucide-react";
+import { ArrowLeft, User, Shield, LogOut, Palette, Sparkles, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PatronNotificationSettings } from "@/components/PatronNotificationSettings";
+import { YearlyRecap } from "@/components/YearlyRecap";
+import { useYearlyRecap } from "@/hooks/useYearlyRecap";
 
 interface UserProfile {
   full_name: string;
@@ -28,6 +30,16 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
   const [user, setUser] = useState<any>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  // Yearly Recap state
+  const [showRecap, setShowRecap] = useState(false);
+  const { 
+    data: recapData, 
+    loading: recapLoading, 
+    fetchRecap, 
+    markRecapSeen,
+    clearRecapData 
+  } = useYearlyRecap();
 
   useEffect(() => {
     fetchProfile();
@@ -212,6 +224,53 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
       {/* Notifications Section */}
       <PatronNotificationSettings />
 
+      {/* Yearly Recap Section (Test Mode) */}
+      <Card className="shadow-card bg-gradient-to-br from-purple-900/20 to-background border-purple-500/20">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Sparkles size={24} className="text-amber-400" />
+            <CardTitle>Your Year in Review</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">Preview your {new Date().getFullYear()} recap</p>
+              <p className="text-sm text-muted-foreground">See your activity highlights (test mode)</p>
+            </div>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                const result = await fetchRecap(new Date().getFullYear());
+                if (result) {
+                  setShowRecap(true);
+                } else {
+                  toast({
+                    title: "Unable to load recap",
+                    description: "Please try again later",
+                    variant: "destructive",
+                  });
+                }
+              }}
+              disabled={recapLoading}
+              className="gap-2"
+            >
+              {recapLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Loading...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4" />
+                  Preview Recap
+                </>
+              )}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Appearance Section */}
       <Card className="shadow-card">
         <CardHeader>
@@ -230,6 +289,26 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Yearly Recap Overlay */}
+      {showRecap && recapData && (
+        <YearlyRecap
+          data={recapData}
+          onClose={() => {
+            setShowRecap(false);
+            clearRecapData();
+          }}
+          onComplete={() => {
+            markRecapSeen(recapData.year);
+            setShowRecap(false);
+            clearRecapData();
+            toast({
+              title: "Thanks for viewing!",
+              description: `Your ${recapData.year} recap is complete`,
+            });
+          }}
+        />
+      )}
 
     </div>
   );
