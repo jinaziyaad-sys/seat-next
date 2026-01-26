@@ -21,6 +21,16 @@ import { checkVenueStatus, getAvailableReservationTimes } from "@/utils/business
 import { calculateDistance, formatDistance, getUserLocation, type UserLocation } from "@/utils/geolocation";
 import { playTableReadySound, stopSoundForId, isSoundActive } from "@/utils/notificationSound";
 import { EditReservationDialog } from "@/components/EditReservationDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type WaitlistStatus = "waiting" | "ready" | "seated" | "cancelled";
 type DatabaseWaitlistStatus = "waiting" | "ready" | "seated" | "cancelled" | "no_show";
@@ -100,6 +110,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     time: string;
     partySize: number;
   } | null>(null);
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
 
   const soundStartedRef = useRef(false);
 
@@ -1068,7 +1079,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             <p className="text-sm">{format(new Date(waitlistEntry.updated_at), 'MMM dd, yyyy @ h:mm a')}</p>
           </div>
           
-          <Button onClick={onBack} className="w-full">Close</Button>
+          <Button onClick={onBack} className="w-full">Back to Home</Button>
         </CardContent>
       </Card>
     );
@@ -1086,14 +1097,12 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       .eq("id", waitlistEntry.id);
 
     if (!error) {
-      setWaitlistEntry(prev => prev ? { 
-        ...prev, 
-        status: "cancelled",
-        cancelled_by: "patron"
-      } : null);
-      setTimeout(() => {
-        onBack();
-      }, 1500);
+      setShowCancelConfirmation(false);
+      toast({
+        title: "Reservation Cancelled",
+        description: "Your reservation has been cancelled.",
+      });
+      onBack();
     }
   };
 
@@ -2100,10 +2109,32 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             <Button 
               variant="outline" 
               className="w-full h-12 text-destructive hover:bg-destructive/10"
-              onClick={handleCancelBooking}
+              onClick={() => setShowCancelConfirmation(true)}
             >
               Cancel Booking
             </Button>
+
+            {/* Cancel Booking Confirmation Dialog */}
+            <AlertDialog open={showCancelConfirmation} onOpenChange={setShowCancelConfirmation}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancel Reservation?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to cancel your reservation at {waitlistEntry?.venue}? 
+                    This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Don't Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleCancelBooking}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Confirm Cancellation
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
 
@@ -2235,7 +2266,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               <Button 
                 variant="outline" 
                 className="w-full h-12 text-destructive hover:bg-destructive/10"
-                onClick={handleCancelBooking}
+                onClick={() => setShowCancelConfirmation(true)}
               >
                 Cancel Booking
               </Button>
@@ -2330,7 +2361,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               <Button 
                 variant="outline" 
                 className="w-full h-12 text-destructive hover:bg-destructive/10"
-                onClick={handleCancelBooking}
+                onClick={() => setShowCancelConfirmation(true)}
               >
                 Cancel Booking
               </Button>
