@@ -78,11 +78,13 @@ export function DateRangePicker({
   };
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
-    if (range?.from) {
+    if (range?.from && range?.to) {
+      // Only trigger change when both dates are selected (complete range)
       const start = startOfDay(range.from);
-      const end = range.to ? endOfDay(range.to) : endOfDay(range.from);
+      const end = endOfDay(range.to);
       setActivePreset(null);
       onDateChange(start, end);
+      setIsOpen(false); // Close popover after complete selection
     }
   };
 
