@@ -20,7 +20,8 @@ import { useToast } from "@/hooks/use-toast";
 import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { CelebrationOverlay } from "@/components/ui/celebration-overlay";
-import { 
+import { ActiveTrackingListSkeleton } from "@/components/ui/skeleton-card";
+import {
   playFoodReadySound, 
   playTableReadySound, 
   stopSoundForId, 
@@ -34,6 +35,7 @@ const Index = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [activeOrders, setActiveOrders] = useState<any[]>([]);
   const [activeWaitlist, setActiveWaitlist] = useState<any[]>([]);
+  const [isLoadingTracking, setIsLoadingTracking] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState<any>(null);
   const [ratingDialogOpen, setRatingDialogOpen] = useState(false);
   const [ratingItem, setRatingItem] = useState<{
@@ -164,25 +166,31 @@ const Index = () => {
   const fetchActiveTracking = async () => {
     if (!user) return;
 
-    const { data: orders } = await supabase
-      .from('orders')
-      .select('*, venues(name, settings)')
-      .eq('user_id', user.id)
-      .eq('patron_dismissed', false)
-      .in('status', ['awaiting_verification', 'placed', 'in_prep', 'ready', 'collected', 'rejected'])
-      .order('created_at', { ascending: false });
+    setIsLoadingTracking(true);
+    
+    try {
+      const { data: orders } = await supabase
+        .from('orders')
+        .select('*, venues(name, settings)')
+        .eq('user_id', user.id)
+        .eq('patron_dismissed', false)
+        .in('status', ['awaiting_verification', 'placed', 'in_prep', 'ready', 'collected', 'rejected'])
+        .order('created_at', { ascending: false });
 
-    const { data: waitlist } = await supabase
-      .from('waitlist_entries')
-      .select('*, venues(name)')
-      .eq('user_id', user.id)
-      .eq('patron_dismissed', false)
-      .or('status.in.(waiting,ready,seated,cancelled),and(reservation_type.eq.reservation,reservation_time.gte.' + new Date().toISOString() + ')')
-      .order('reservation_time', { ascending: true, nullsFirst: false })
-      .order('created_at', { ascending: false });
+      const { data: waitlist } = await supabase
+        .from('waitlist_entries')
+        .select('*, venues(name)')
+        .eq('user_id', user.id)
+        .eq('patron_dismissed', false)
+        .or('status.in.(waiting,ready,seated,cancelled),and(reservation_type.eq.reservation,reservation_time.gte.' + new Date().toISOString() + ')')
+        .order('reservation_time', { ascending: true, nullsFirst: false })
+        .order('created_at', { ascending: false });
 
-    setActiveOrders(orders || []);
-    setActiveWaitlist(waitlist || []);
+      setActiveOrders(orders || []);
+      setActiveWaitlist(waitlist || []);
+    } finally {
+      setIsLoadingTracking(false);
+    }
   };
 
   useEffect(() => {
@@ -569,9 +577,14 @@ const Index = () => {
       </div>
 
       {/* Active Tracking Section */}
-      {user && (activeOrders.length > 0 || activeWaitlist.length > 0) && (
+      {user && (isLoadingTracking || activeOrders.length > 0 || activeWaitlist.length > 0) && (
         <div className="p-6 space-y-4">
           <h2 className="text-xl font-bold">Active Tracking</h2>
+          
+          {/* Loading Skeleton */}
+          {isLoadingTracking && activeOrders.length === 0 && activeWaitlist.length === 0 && (
+            <ActiveTrackingListSkeleton count={2} />
+          )}
           
           {activeOrders.map((order) => {
             const shouldRate = order.status === 'collected';
