@@ -23,7 +23,12 @@ const formatRemainingTime = (ms: number): string => {
   return `0:${seconds.toString().padStart(2, '0')}`;
 };
 
-export const SoundSnoozeButton = () => {
+interface SoundSnoozeButtonProps {
+  'data-tour'?: string;
+}
+
+export const SoundSnoozeButton = (props: SoundSnoozeButtonProps) => {
+  const { 'data-tour': dataTour } = props;
   const [snoozed, setSnoozed] = useState(isSnoozed());
   const [remainingMs, setRemainingMs] = useState<number | null>(getSnoozeRemaining());
 
@@ -67,6 +72,7 @@ export const SoundSnoozeButton = () => {
         onClick={handleCancelSnooze}
         className="gap-2"
         title="Click to unmute sounds"
+        data-tour={dataTour}
       >
         <VolumeX size={16} className="text-destructive" />
         <span className="text-xs font-mono">{formatRemainingTime(remainingMs)}</span>
@@ -81,6 +87,7 @@ export const SoundSnoozeButton = () => {
       onClick={handleSnooze}
       className="gap-2"
       title="Mute notification sounds for 2 minutes"
+      data-tour={dataTour}
     >
       <Volume2 size={16} />
       <span className="text-sm">Snooze</span>

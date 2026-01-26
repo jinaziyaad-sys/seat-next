@@ -410,7 +410,7 @@ const MerchantDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="bg-card border-b shadow-sm">
+      <div className="bg-card border-b shadow-sm" data-tour="merchant-header">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
@@ -445,7 +445,7 @@ const MerchantDashboard = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              <SoundSnoozeButton />
+              <SoundSnoozeButton data-tour="sound-snooze" />
               <ThemeToggle />
               <PasswordResetDialog />
               <Button variant="outline" onClick={handleLogout}>
@@ -553,30 +553,30 @@ const MerchantDashboard = () => {
           </TabsList>
 
           {hasKitchenBoard && (
-            <TabsContent value="kitchen">
+            <TabsContent value="kitchen" data-tour="kitchen-content">
               <KitchenBoard venueId={userRole.venue_id!} />
             </TabsContent>
           )}
 
           {hasTableReady && (
-            <TabsContent value="waitlist">
+            <TabsContent value="waitlist" data-tour="waitlist-content">
               <WaitlistBoard venueId={userRole.venue_id!} />
             </TabsContent>
           )}
           
           {hasReservations && (
-            <TabsContent value="reservations">
+            <TabsContent value="reservations" data-tour="reservations-content">
               <ReservationCalendar venueId={userRole.venue_id!} />
             </TabsContent>
           )}
 
           {userRole.role === "admin" ? (
             <>
-              <TabsContent value="staff">
+              <TabsContent value="staff" data-tour="staff-content">
                 <StaffManagement venueId={userRole.venue_id!} />
               </TabsContent>
 
-              <TabsContent value="settings">
+              <TabsContent value="settings" data-tour="settings-content">
                 <MerchantSettings 
                   venue={userRole.venue_name!} 
                   venueId={userRole.venue_id!}
@@ -586,7 +586,7 @@ const MerchantDashboard = () => {
               </TabsContent>
 
               {hasAnalytics && (
-                <TabsContent value="reports">
+                <TabsContent value="reports" data-tour="reports-content">
                   {venueData ? (
                     <MerchantReports venue={venueData} />
                   ) : (
@@ -675,6 +675,7 @@ const MerchantDashboard = () => {
         isOpen={tourOpen}
         onClose={() => setTourOpen(false)}
         onComplete={handleTourComplete}
+        onNavigate={handleTabChange}
       />
     </div>
   );
