@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { format, subDays, startOfDay, endOfDay, isBefore, isSameDay, startOfToday } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
@@ -37,11 +37,24 @@ export function DateRangePicker({
   className,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  // Draft selection allows choosing a range without immediately updating parent state
+  // (which can trigger fetches / re-renders that feel like a "refresh").
+  const [draftRange, setDraftRange] = useState<DateRange>({
+    from: startDate,
+    to: endDate,
+  });
 
   const today = startOfToday();
   const minDate = venueCreatedAt
     ? startOfDay(new Date(venueCreatedAt))
     : subDays(today, 365);
+
+  // Sync draft with committed range when opening (or when parent changes the range).
+  useEffect(() => {
+    if (isOpen) {
+      setDraftRange({ from: startDate, to: endDate });
+    }
+  }, [isOpen, startDate, endDate]);
 
   // Derive the active preset from the actual dates (source of truth)
   const activePreset = useMemo((): PresetKey | null => {
@@ -89,10 +102,15 @@ export function DateRangePicker({
     }
 
     onDateChange(start, end);
+    setDraftRange({ from: start, to: end });
     setIsOpen(false);
   };
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
+    // Always update draft so the UI reflects the user's selection immediately.
+    setDraftRange(range ?? { from: undefined, to: undefined });
+
+    // Only commit once the range is complete.
     if (range?.from && range?.to) {
       const start = startOfDay(range.from);
       const end = endOfDay(range.to);
@@ -155,7 +173,7 @@ export function DateRangePicker({
             <Calendar
               mode="range"
               defaultMonth={startDate}
-              selected={{ from: startDate, to: endDate }}
+              selected={draftRange}
               onSelect={handleDateRangeChange}
               disabled={disabledDays}
               numberOfMonths={1}
