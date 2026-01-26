@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { format, subDays, startOfDay, endOfDay, isBefore, isAfter, startOfToday } from "date-fns";
+import { useState, useMemo } from "react";
+import { format, subDays, startOfDay, endOfDay, isBefore, isSameDay, startOfToday } from "date-fns";
 import { Calendar as CalendarIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
@@ -37,12 +37,27 @@ export function DateRangePicker({
   className,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [activePreset, setActivePreset] = useState<PresetKey | null>("30days");
 
   const today = startOfToday();
   const minDate = venueCreatedAt
     ? startOfDay(new Date(venueCreatedAt))
     : subDays(today, 365);
+
+  // Derive the active preset from the actual dates (source of truth)
+  const activePreset = useMemo((): PresetKey | null => {
+    const endIsToday = isSameDay(startOfDay(endDate), today);
+    if (!endIsToday) return null;
+
+    const startNormalized = startOfDay(startDate);
+    
+    if (isSameDay(startNormalized, today)) return "today";
+    if (isSameDay(startNormalized, subDays(today, 7))) return "7days";
+    if (isSameDay(startNormalized, subDays(today, 30))) return "30days";
+    if (isSameDay(startNormalized, subDays(today, 90))) return "90days";
+    if (isSameDay(startNormalized, minDate)) return "all";
+    
+    return null;
+  }, [startDate, endDate, today, minDate]);
 
   const handlePresetClick = (preset: PresetKey) => {
     const end = endOfDay(today);
@@ -73,18 +88,16 @@ export function DateRangePicker({
       start = minDate;
     }
 
-    setActivePreset(preset);
     onDateChange(start, end);
+    setIsOpen(false);
   };
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
     if (range?.from && range?.to) {
-      // Only trigger change when both dates are selected (complete range)
       const start = startOfDay(range.from);
       const end = endOfDay(range.to);
-      setActivePreset(null);
       onDateChange(start, end);
-      setIsOpen(false); // Close popover after complete selection
+      setIsOpen(false);
     }
   };
 
@@ -93,19 +106,19 @@ export function DateRangePicker({
     { after: today },
   ];
 
-  // Determine the display label
-  const getDisplayLabel = () => {
+  // Display label derived from actual dates
+  const displayLabel = useMemo(() => {
     if (activePreset) {
       const preset = presets.find((p) => p.key === activePreset);
-      return preset?.label || "Select date range";
+      if (preset) return preset.label;
     }
     
-    if (format(startDate, "yyyy-MM-dd") === format(endDate, "yyyy-MM-dd")) {
+    if (isSameDay(startDate, endDate)) {
       return format(startDate, "MMM d, yyyy");
     }
     
     return `${format(startDate, "MMM d")} - ${format(endDate, "MMM d, yyyy")}`;
-  };
+  }, [startDate, endDate, activePreset]);
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
@@ -119,7 +132,7 @@ export function DateRangePicker({
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
-            {getDisplayLabel()}
+            {displayLabel}
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
@@ -132,10 +145,7 @@ export function DateRangePicker({
                   variant={activePreset === preset.key ? "default" : "ghost"}
                   size="sm"
                   className="justify-start w-full text-xs"
-                  onClick={() => {
-                    handlePresetClick(preset.key);
-                    setIsOpen(false);
-                  }}
+                  onClick={() => handlePresetClick(preset.key)}
                 >
                   {preset.label}
                 </Button>
