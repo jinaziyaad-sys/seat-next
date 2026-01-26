@@ -22,7 +22,7 @@ import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId, playPatronArrivedSound } from "@/utils/notificationSound";
 import { toast as sonnerToast } from "sonner";
-import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
+import { HelpButton, HelpPanel, TourContainer } from "@/components/help";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -670,12 +670,11 @@ const MerchantDashboard = () => {
         venueId={userRole.venue_id!}
         venueName={userRole.venue_name!}
       />
-      <OnboardingTour
+      <TourContainer
         variant="merchant"
         isOpen={tourOpen}
         onClose={() => setTourOpen(false)}
         onComplete={handleTourComplete}
-        onNavigate={handleTabChange}
       />
     </div>
   );

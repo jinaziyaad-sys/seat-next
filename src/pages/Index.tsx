@@ -17,7 +17,7 @@ import { cn, formatTimeUntil } from "@/lib/utils";
 import { format, isTomorrow } from "date-fns";
 import logo from "@/assets/logo.png";
 import { useToast } from "@/hooks/use-toast";
-import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
+import { HelpButton, HelpPanel, TourContainer } from "@/components/help";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { CelebrationOverlay } from "@/components/ui/celebration-overlay";
 import { ActiveTrackingListSkeleton } from "@/components/ui/skeleton-card";
@@ -1109,23 +1109,11 @@ const Index = () => {
         onStartTour={handleStartTour}
         onNavigate={handleHelpNavigate}
       />
-      <OnboardingTour
+      <TourContainer
         variant="patron"
         isOpen={tourOpen}
         onClose={() => setTourOpen(false)}
         onComplete={handleTourComplete}
-        onNavigate={(target) => {
-          // Map tour targets to actual tabs
-          const tabMap: Record<string, string> = {
-            'food': 'food-ready',
-            'table': 'table-ready',
-            'explore': 'explore',
-            'profile': 'profile',
-            'home': 'home',
-          };
-          const tab = tabMap[target] || target;
-          setActiveTab(tab);
-        }}
       />
       
       {/* Notification Prompt for new users */}
