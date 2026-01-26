@@ -73,6 +73,11 @@ export function OnboardingTour({ variant, isOpen, onClose, onComplete, onNavigat
               const navName = tourAttr.replace('nav-', '');
               onNavigate(navName);
             }
+            // Handle card navigation for patron
+            if (tourAttr.startsWith('card-')) {
+              const cardName = tourAttr.replace('card-', '');
+              onNavigate(cardName);
+            }
           }
           
           // Small delay to allow navigation to complete before moving to next step
@@ -192,45 +197,64 @@ export function OnboardingTour({ variant, isOpen, onClose, onComplete, onNavigat
     return { top: `${top}px`, left: `${left}px` };
   };
 
-  // Generate clip-path for the spotlight cutout
-  const getClipPath = () => {
-    if (!targetRect) return 'none';
-    
-    const padding = 8;
-    const x = targetRect.left - padding;
-    const y = targetRect.top - padding;
-    const w = targetRect.width + padding * 2;
-    const h = targetRect.height + padding * 2;
-    const r = 8; // border radius
-
-    // Create a polygon that covers everything except the target area
-    return `polygon(
-      0% 0%, 
-      0% 100%, 
-      ${x}px 100%, 
-      ${x}px ${y + r}px,
-      ${x + r}px ${y}px,
-      ${x + w - r}px ${y}px,
-      ${x + w}px ${y + r}px,
-      ${x + w}px ${y + h - r}px,
-      ${x + w - r}px ${y + h}px,
-      ${x + r}px ${y + h}px,
-      ${x}px ${y + h - r}px,
-      ${x}px 100%,
-      100% 100%, 
-      100% 0%
-    )`;
-  };
-
   const isInteractiveStep = currentStepData?.waitForClick && currentStepData?.nextStepTrigger === 'click';
 
   return (
-    <div className="fixed inset-0 z-[100]">
-      {/* Dark overlay with cutout */}
-      <div 
-        className="absolute inset-0 bg-black/75 transition-all duration-300"
-        style={{ clipPath: targetRect ? getClipPath() : 'none' }}
-      />
+    <div className="fixed inset-0 z-[100] pointer-events-none">
+      {/* Dark overlay - covers everything EXCEPT the cutout area */}
+      {targetRect && (
+        <>
+          {/* Top section */}
+          <div 
+            className="absolute bg-black/75 pointer-events-auto"
+            style={{
+              top: 0,
+              left: 0,
+              right: 0,
+              height: Math.max(0, targetRect.top - 8),
+            }}
+            onClick={handleSkip}
+          />
+          {/* Bottom section */}
+          <div 
+            className="absolute bg-black/75 pointer-events-auto"
+            style={{
+              top: targetRect.bottom + 8,
+              left: 0,
+              right: 0,
+              bottom: 0,
+            }}
+            onClick={handleSkip}
+          />
+          {/* Left section */}
+          <div 
+            className="absolute bg-black/75 pointer-events-auto"
+            style={{
+              top: targetRect.top - 8,
+              left: 0,
+              width: Math.max(0, targetRect.left - 8),
+              height: targetRect.height + 16,
+            }}
+            onClick={handleSkip}
+          />
+          {/* Right section */}
+          <div 
+            className="absolute bg-black/75 pointer-events-auto"
+            style={{
+              top: targetRect.top - 8,
+              left: targetRect.right + 8,
+              right: 0,
+              height: targetRect.height + 16,
+            }}
+            onClick={handleSkip}
+          />
+        </>
+      )}
+      
+      {/* Fallback full overlay when no target */}
+      {!targetRect && (
+        <div className="absolute inset-0 bg-black/75 pointer-events-auto" onClick={handleSkip} />
+      )}
 
       {/* Highlight border around target with pulse for interactive steps */}
       {targetRect && (
@@ -252,7 +276,7 @@ export function OnboardingTour({ variant, isOpen, onClose, onComplete, onNavigat
             } : undefined
           }}
           className={cn(
-            "absolute z-[101] rounded-lg border-4 border-primary pointer-events-none",
+            "absolute rounded-lg border-4 border-primary pointer-events-none",
             currentStepData?.highlightPulse && "animate-pulse"
           )}
           style={{
@@ -260,6 +284,7 @@ export function OnboardingTour({ variant, isOpen, onClose, onComplete, onNavigat
             left: targetRect.left - 8,
             width: targetRect.width + 16,
             height: targetRect.height + 16,
+            zIndex: 101,
           }}
         />
       )}
@@ -271,10 +296,11 @@ export function OnboardingTour({ variant, isOpen, onClose, onComplete, onNavigat
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="absolute z-[102] pointer-events-none"
+            className="absolute pointer-events-none"
             style={{
               top: targetRect.top + targetRect.height / 2 - 20,
               left: targetRect.left + targetRect.width + 16,
+              zIndex: 102,
             }}
           >
             <motion.div
@@ -297,11 +323,12 @@ export function OnboardingTour({ variant, isOpen, onClose, onComplete, onNavigat
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.2 }}
+          className="pointer-events-auto"
         >
           <Card
             ref={tooltipRef}
-            className="absolute z-[103] w-[340px] max-h-[85vh] overflow-y-auto border-2 border-primary bg-card shadow-2xl"
-            style={getTooltipPosition()}
+            className="absolute w-[340px] max-h-[85vh] overflow-y-auto border-2 border-primary bg-card shadow-2xl"
+            style={{ ...getTooltipPosition(), zIndex: 103 }}
           >
             <CardContent className="p-5">
               {/* Header */}
