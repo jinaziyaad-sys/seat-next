@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Users, UserPlus, Repeat, TrendingUp, Calendar, Award, Info, PieChartIcon } from "lucide-react";
+import { Users, UserPlus, Repeat, Calendar, Award, Info } from "lucide-react";
 import { startOfDay, subDays, endOfDay, startOfToday } from "date-fns";
 import { DateRangePicker } from "./DateRangePicker";
 import { toast } from "sonner";
@@ -15,7 +15,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend } from "recharts";
 import { ComparativeMetrics } from "./ComparativeMetrics";
 import { SmartInsights } from "./SmartInsights";
 
@@ -163,12 +163,6 @@ export const CustomerInsights = ({ venueId, venueCreatedAt }: CustomerInsightsPr
   const totalSegmentValue = segmentData.reduce((sum, s) => sum + s.value, 0);
   const hasSegmentData = totalSegmentValue > 0;
 
-  // Custom label renderer that only shows labels for significant segments
-  const renderCustomLabel = ({ name, percent }: { name: string; percent: number }) => {
-    if (percent < 0.05) return null; // Don't show labels for segments < 5%
-    return `${name}: ${(percent * 100).toFixed(0)}%`;
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -311,54 +305,59 @@ export const CustomerInsights = ({ venueId, venueCreatedAt }: CustomerInsightsPr
 
       {/* Charts Row */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Customer Segments Pie Chart */}
+        {/* Customer Segments - Clean Card Layout */}
         <Card>
           <CardHeader>
-            <CardTitle>Customer Segments</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Customer Segments
+            </CardTitle>
+            <CardDescription>
+              Breakdown of your customer base by engagement level
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {hasSegmentData ? (
-              <>
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={segmentData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={false}
-                      label={renderCustomLabel}
-                      outerRadius={80}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {segmentData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Pie>
-                    <Tooltip 
-                      formatter={(value: number) => [value, "Customers"]}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-                {/* Legend below chart */}
-                <div className="mt-4 grid grid-cols-2 gap-2">
-                  {segmentData.map((segment) => (
-                    <div key={segment.name} className="flex items-center justify-between p-2 rounded-md bg-muted/30">
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-3 h-3 rounded-full shrink-0"
-                          style={{ backgroundColor: segment.fill }}
-                        />
-                        <span className="text-sm truncate">{segment.name}</span>
+              <div className="space-y-3">
+                {segmentData.map((segment) => {
+                  const percentage = Math.round((segment.value / totalSegmentValue) * 100);
+                  return (
+                    <div key={segment.name} className="space-y-1.5">
+                      <div className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div
+                            className="w-3 h-3 rounded-full shrink-0"
+                            style={{ backgroundColor: segment.fill }}
+                          />
+                          <span className="font-medium">{segment.name}</span>
+                        </div>
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          <span>{segment.value} customers</span>
+                          <Badge variant="secondary" className="text-xs">
+                            {percentage}%
+                          </Badge>
+                        </div>
                       </div>
-                      <span className="text-sm font-medium ml-2">{segment.value}</span>
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{ 
+                            width: `${percentage}%`,
+                            backgroundColor: segment.fill 
+                          }}
+                        />
+                      </div>
                     </div>
-                  ))}
+                  );
+                })}
+                <div className="pt-3 mt-3 border-t flex justify-between text-sm">
+                  <span className="text-muted-foreground">Total Customers</span>
+                  <span className="font-semibold">{totalSegmentValue}</span>
                 </div>
-              </>
+              </div>
             ) : (
-              <div className="flex flex-col items-center justify-center h-[300px] text-center">
-                <PieChartIcon className="h-12 w-12 text-muted-foreground/30 mb-3" />
+              <div className="flex flex-col items-center justify-center h-[200px] text-center">
+                <Users className="h-12 w-12 text-muted-foreground/30 mb-3" />
                 <p className="text-muted-foreground font-medium">No segment data available</p>
                 <p className="text-sm text-muted-foreground">
                   Customer segments will appear once there's enough activity
