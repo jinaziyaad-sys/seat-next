@@ -1,5 +1,9 @@
 import { FAQItem, TourStep } from './types';
 
+// FAQ Category lists for the help panel
+export const merchantFAQCategories = ['Orders', 'Waitlist', 'Reservations', 'Settings', 'Reports', 'Notifications'];
+export const patronFAQCategories = ['Orders', 'Waitlist', 'Reservations', 'Profile', 'Ratings'];
+
 // Merchant Dashboard FAQs
 export const merchantFAQs: FAQItem[] = [
   // Orders Category
@@ -182,499 +186,124 @@ export const patronFAQs: FAQItem[] = [
 ];
 
 // ============================================================================
-// MERCHANT TOUR STEPS - Comprehensive workflow with demo screens
+// MERCHANT TOUR STEPS - Simple, clean tour of actual UI elements
 // ============================================================================
 export const merchantTourSteps: TourStep[] = [
-  // Kitchen Orders Flow
   {
-    id: 'merchant-demo-kitchen',
-    target: '[data-tour="demo-kitchen-orders"]',
-    title: '🍳 Kitchen Orders Dashboard',
-    description: 'This is your main kitchen view. Orders flow through three stages: Awaiting Verification, In Preparation, and Ready for Pickup.',
-    placement: 'right',
+    id: 'merchant-welcome',
+    target: '[data-tour="merchant-header"]',
+    title: '👋 Welcome to Your Dashboard!',
+    description: 'This is your command center. Manage orders, waitlist, reservations, and more from here.',
+    placement: 'bottom',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
   },
   {
-    id: 'merchant-demo-kitchen',
-    target: '[data-tour="demo-awaiting-verification"]',
-    title: '⚠️ New Orders Need Attention',
-    description: 'New orders appear here with an orange border and pulse animation. You must Accept or Reject each order. A continuous sound plays until you handle them.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-    highlightPulse: true,
-  },
-  {
-    id: 'merchant-demo-kitchen',
-    target: '[data-tour="demo-in-prep"]',
-    title: '👨‍🍳 Orders Being Prepared',
-    description: 'Accepted orders move here with countdown timers. Click "Mark Ready" when the order is prepared. You can extend the prep time if needed.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-  {
-    id: 'merchant-demo-kitchen',
-    target: '[data-tour="demo-ready-orders"]',
-    title: '✅ Ready for Pickup',
-    description: 'Orders ready for collection appear here with a green border. The patron is notified. Click "Collected" when they pick up their order.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-
-  // Waitlist Flow
-  {
-    id: 'merchant-demo-waitlist',
-    target: '[data-tour="demo-merchant-waitlist"]',
-    title: '👥 Waitlist Management',
-    description: 'Manage your guest queue here. See who\'s waiting, their party size, and estimated wait times.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-  {
-    id: 'merchant-demo-waitlist',
-    target: '[data-tour="demo-add-guest"]',
-    title: '➕ Adding Guests Manually',
-    description: 'Click here to add walk-in guests to the waitlist. Enter their name, party size, and any seating preferences.',
-    placement: 'right',
+    id: 'merchant-kitchen',
+    target: '[data-tour="tab-kitchen"]',
+    title: '🍳 Kitchen Orders',
+    description: 'Your kitchen hub. Accept new orders, track prep times, and mark orders ready for pickup. The badge shows active orders.',
+    placement: 'bottom',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
     highlightPulse: true,
   },
   {
-    id: 'merchant-demo-waitlist',
-    target: '[data-tour="demo-waiting-parties"]',
-    title: '⏳ Waiting Parties Queue',
-    description: 'Parties are shown in order. Click "Table Ready" to notify the guest when their table is available. They\'ll get a push notification!',
-    placement: 'right',
+    id: 'merchant-waitlist',
+    target: '[data-tour="tab-waitlist"]',
+    title: '👥 Waitlist',
+    description: 'Manage your guest queue. See who\'s waiting, notify them when ready, and track seating.',
+    placement: 'bottom',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
   },
   {
-    id: 'merchant-demo-waitlist',
-    target: '[data-tour="demo-ready-to-seat"]',
-    title: '🎉 Ready to Seat',
-    description: 'When a guest confirms they\'ve arrived, they appear here. Click "Seat Now" to complete the seating process.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-
-  // Reservations
-  {
-    id: 'merchant-demo-reservations',
-    target: '[data-tour="demo-reservations"]',
-    title: '📅 Reservations Calendar',
-    description: 'View and manage all reservations. See upcoming bookings, table assignments, and party sizes at a glance.',
-    placement: 'right',
+    id: 'merchant-reservations',
+    target: '[data-tour="tab-reservations"]',
+    title: '📅 Reservations',
+    description: 'View and manage table bookings. Reservations auto-convert to waitlist 15 mins before their time.',
+    placement: 'bottom',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
   },
   {
-    id: 'merchant-demo-reservations',
-    target: '[data-tour="demo-reservation-list"]',
-    title: '📋 Today\'s Bookings',
-    description: 'Reservations are listed by time. Pending ones (yellow) need confirmation. 15 minutes before their time, they auto-convert to waitlist entries.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-
-  // Staff Management
-  {
-    id: 'merchant-demo-staff',
-    target: '[data-tour="demo-staff"]',
-    title: '👨‍💼 Staff Management',
-    description: 'Manage your team members and their access levels. Only Admins can access this section.',
-    placement: 'right',
+    id: 'merchant-settings',
+    target: '[data-tour="tab-settings"]',
+    title: '⚙️ Settings',
+    description: 'Configure your venue: business hours, tables, notifications, and more.',
+    placement: 'bottom',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
   },
   {
-    id: 'merchant-demo-staff',
-    target: '[data-tour="demo-add-staff"]',
-    title: '➕ Adding Team Members',
-    description: 'Invite new staff by email. Choose their role: Admin (full access) or Staff (kitchen & waitlist only).',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-    highlightPulse: true,
-  },
-  {
-    id: 'merchant-demo-staff',
-    target: '[data-tour="demo-staff-list"]',
-    title: '📋 Team Roster',
-    description: 'View all team members, their roles, and manage permissions. Admins can remove staff or change roles.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-
-  // Settings
-  {
-    id: 'merchant-demo-settings',
-    target: '[data-tour="demo-settings"]',
-    title: '⚙️ Venue Settings',
-    description: 'Configure how your venue operates - hours, tables, notifications, and more.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-  {
-    id: 'merchant-demo-settings',
-    target: '[data-tour="demo-business-hours"]',
-    title: '🕐 Business Hours',
-    description: 'Set your operating hours for each day. You can also add break times and mark days as closed.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-  {
-    id: 'merchant-demo-settings',
-    target: '[data-tour="demo-table-config"]',
-    title: '🪑 Table Configuration',
-    description: 'Define your tables with names and capacities. This helps with auto-assignment of reservations.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-  {
-    id: 'merchant-demo-settings',
-    target: '[data-tour="demo-notifications"]',
-    title: '🔔 Notification Sounds',
-    description: 'Configure alert sounds for new orders, waitlist entries, and patron arrivals. You can snooze sounds temporarily.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-
-  // Reports
-  {
-    id: 'merchant-demo-reports',
-    target: '[data-tour="demo-reports"]',
-    title: '📊 Reports & Analytics',
-    description: 'Track your venue\'s performance with detailed metrics and insights.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-  {
-    id: 'merchant-demo-reports',
-    target: '[data-tour="demo-stats"]',
-    title: '📈 Key Metrics',
-    description: 'See today\'s orders, average ratings, prep times, and guest counts. Filter by date range for deeper analysis.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-  {
-    id: 'merchant-demo-reports',
-    target: '[data-tour="demo-export"]',
-    title: '📥 Export Your Data',
-    description: 'Download your data as CSV or Excel for external analysis or record-keeping.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-
-  // Complete
-  {
-    id: 'merchant-demo-kitchen',
-    target: '[data-tour="demo-kitchen-orders"]',
-    title: '🎉 Tour Complete!',
-    description: 'You\'re ready to manage your venue! Remember: tap the Help button anytime for FAQs, AI assistance, or to replay this tour.',
-    placement: 'right',
+    id: 'merchant-complete',
+    target: '[data-tour="merchant-header"]',
+    title: '🎉 You\'re All Set!',
+    description: 'That\'s the basics! Tap the help button anytime for FAQs or to replay this tour.',
+    placement: 'bottom',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
   },
 ];
 
 // ============================================================================
-// PATRON TOUR STEPS - Comprehensive workflow with demo screens
+// PATRON TOUR STEPS - Simple, clean tour of actual UI elements
 // ============================================================================
 export const patronTourSteps: TourStep[] = [
-  // Food Order Flow
   {
-    id: 'patron-demo-venue-select',
-    target: '[data-tour="demo-venue-select"]',
-    title: '🍔 Tracking Your Food Order',
-    description: 'Let\'s walk through how to track a food order. First, you\'ll select the restaurant where you placed your order.',
-    placement: 'right',
+    id: 'patron-welcome',
+    target: '[data-tour="patron-header"]',
+    title: '👋 Welcome!',
+    description: 'This is your home for tracking food orders and table wait times at restaurants.',
+    placement: 'bottom',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
   },
   {
-    id: 'patron-demo-venue-select',
-    target: '[data-tour="demo-venue-search"]',
-    title: '🔍 Search for Your Restaurant',
-    description: 'Use the search bar to quickly find your restaurant. Results show distance so you can pick the right location.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-    highlightPulse: true,
-  },
-  {
-    id: 'patron-demo-venue-select',
-    target: '[data-tour="demo-venue-card"]',
-    title: '📍 Select Your Venue',
-    description: 'Tap on your restaurant to continue. The selected venue is highlighted with a border.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-    highlightPulse: true,
-  },
-
-  {
-    id: 'patron-demo-order-entry',
-    target: '[data-tour="demo-order-entry"]',
-    title: '🔢 Enter Your Order Number',
-    description: 'Now enter the order number from your receipt. This is the POS number the cashier gave you.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-  {
-    id: 'patron-demo-order-entry',
-    target: '[data-tour="demo-order-input"]',
-    title: '📝 Order Number Field',
-    description: 'Type your order number here. It could be letters, numbers, or both (e.g., A42, 1234, XY89).',
-    placement: 'right',
+    id: 'patron-food',
+    target: '[data-tour="card-food"]',
+    title: '🍔 Track Food Orders',
+    description: 'Tap here when you\'ve placed a food order. Select the restaurant, enter your order number, and track it in real-time.',
+    placement: 'top',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
     highlightPulse: true,
   },
   {
-    id: 'patron-demo-order-entry',
-    target: '[data-tour="demo-track-button"]',
-    title: '▶️ Start Tracking',
-    description: 'Tap this button to submit your order. The kitchen will verify it and you\'ll start receiving updates!',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-    highlightPulse: true,
-  },
-
-  {
-    id: 'patron-demo-order-tracking',
-    target: '[data-tour="demo-order-tracking"]',
-    title: '📱 Order Tracking Screen',
-    description: 'Once your order is verified, you\'ll see this tracking screen with real-time updates.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-  {
-    id: 'patron-demo-order-tracking',
-    target: '[data-tour="demo-order-status"]',
-    title: '🏷️ Order Status',
-    description: 'The current status is shown prominently. It progresses: Awaiting Verification → Placed → In Prep → Ready.',
-    placement: 'right',
+    id: 'patron-table',
+    target: '[data-tour="card-table"]',
+    title: '🪑 Join Waitlist',
+    description: 'Waiting for a table? Tap here to join the waitlist. You\'ll get notified when your table is ready!',
+    placement: 'top',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
     highlightPulse: true,
   },
   {
-    id: 'patron-demo-order-tracking',
-    target: '[data-tour="demo-order-eta"]',
-    title: '⏱️ Estimated Time',
-    description: 'See exactly how long until your order is ready. This updates in real-time based on kitchen activity.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-
-  {
-    id: 'patron-demo-order-ready',
-    target: '[data-tour="demo-order-ready"]',
-    title: '🎉 Order Ready!',
-    description: 'When your order is ready, you\'ll see this celebration screen with a sound notification!',
-    placement: 'right',
+    id: 'patron-explore',
+    target: '[data-tour="card-explore"]',
+    title: '🧭 Explore Venues',
+    description: 'Discover restaurants nearby, check wait times, and see if they\'re busy before you go.',
+    placement: 'top',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
   },
   {
-    id: 'patron-demo-order-ready',
-    target: '[data-tour="demo-collected-button"]',
-    title: '✅ Confirm Collection',
-    description: 'After picking up your order, tap this button. You\'ll have the option to rate your experience!',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-    highlightPulse: true,
-  },
-
-  // Waitlist Flow
-  {
-    id: 'patron-demo-waitlist-entry',
-    target: '[data-tour="demo-waitlist-entry"]',
-    title: '🍽️ Joining a Waitlist',
-    description: 'Now let\'s see how to join a table waitlist. After selecting a venue, you\'ll enter your party details.',
-    placement: 'right',
+    id: 'patron-profile',
+    target: '[data-tour="nav-profile"]',
+    title: '👤 Your Profile',
+    description: 'Manage your account, notification preferences, and dining settings here.',
+    placement: 'top',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
   },
   {
-    id: 'patron-demo-waitlist-entry',
-    target: '[data-tour="demo-party-name"]',
-    title: '👤 Your Name',
-    description: 'Enter the name for your party. This is how the host will call you.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-  {
-    id: 'patron-demo-waitlist-entry',
-    target: '[data-tour="demo-party-size"]',
-    title: '👥 Party Size',
-    description: 'Select how many people are in your party. This helps find an appropriately sized table.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-    highlightPulse: true,
-  },
-  {
-    id: 'patron-demo-waitlist-entry',
-    target: '[data-tour="demo-seating-pref"]',
-    title: '🪑 Seating Preference',
-    description: 'Choose your preferred seating area: Indoor, Outdoor, or No Preference.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-  {
-    id: 'patron-demo-waitlist-entry',
-    target: '[data-tour="demo-join-button"]',
-    title: '▶️ Join the Waitlist',
-    description: 'Tap here to join! You\'ll receive a position in the queue.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-    highlightPulse: true,
-  },
-
-  {
-    id: 'patron-demo-waitlist-status',
-    target: '[data-tour="demo-waitlist-status"]',
-    title: '📱 Waitlist Status',
-    description: 'Once joined, you\'ll see your live position and estimated wait time.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-  {
-    id: 'patron-demo-waitlist-status',
-    target: '[data-tour="demo-position"]',
-    title: '🔢 Your Position',
-    description: 'Your position updates in real-time as guests ahead of you are seated.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-    highlightPulse: true,
-  },
-  {
-    id: 'patron-demo-waitlist-status',
-    target: '[data-tour="demo-wait-eta"]',
-    title: '⏱️ Wait Estimate',
-    description: 'The estimated wait time is calculated based on historical data and current activity.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-
-  {
-    id: 'patron-demo-table-ready',
-    target: '[data-tour="demo-table-ready"]',
-    title: '🎉 Table Ready!',
-    description: 'When your table is ready, you\'ll see this celebration with a countdown timer!',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-  {
-    id: 'patron-demo-table-ready',
-    target: '[data-tour="demo-countdown"]',
-    title: '⏰ Countdown Timer',
-    description: 'You have limited time to claim your table. The ring shows time remaining.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-    highlightPulse: true,
-  },
-  {
-    id: 'patron-demo-table-ready',
-    target: '[data-tour="demo-here-button"]',
-    title: '✅ Confirm Arrival',
-    description: 'Tap this when you arrive at the restaurant to let them know you\'re there.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-    highlightPulse: true,
-  },
-  {
-    id: 'patron-demo-table-ready',
-    target: '[data-tour="demo-more-time"]',
-    title: '⏳ Need More Time?',
-    description: 'Running late? Tap here to request more time. You\'ll be moved back in the queue but won\'t lose your spot entirely.',
-    placement: 'right',
-    actionType: 'observe',
-    nextStepTrigger: 'next-button',
-  },
-
-  // Complete
-  {
-    id: 'patron-demo-venue-select',
-    target: '[data-tour="demo-venue-select"]',
-    title: '🎉 Tour Complete!',
-    description: 'You\'re all set to use ReadyUp! Tap the Help button anytime for FAQs, AI chat, or to replay this tour. Enjoy dining without the wait!',
-    placement: 'right',
+    id: 'patron-complete',
+    target: '[data-tour="patron-header"]',
+    title: '🎉 You\'re Ready!',
+    description: 'That\'s it! Start by tracking a food order or joining a waitlist. Tap the help button anytime for assistance.',
+    placement: 'bottom',
     actionType: 'observe',
     nextStepTrigger: 'next-button',
   },
 ];
-
-// FAQ Categories
-export const merchantFAQCategories = ['Orders', 'Waitlist', 'Reservations', 'Settings', 'Reports', 'Notifications'];
-export const patronFAQCategories = ['Orders', 'Waitlist', 'Reservations', 'Profile', 'Ratings'];
-
-// System prompt for AI assistant
-export const getMerchantSystemPrompt = () => `You are a helpful AI assistant for ReadyUp, a restaurant management platform. You're helping a merchant (restaurant staff/owner) use the dashboard.
-
-Key features you can help with:
-- Kitchen Orders: Accept/reject orders, mark ready, track prep times
-- Waitlist: Add guests, mark ready/seated, manage no-shows  
-- Reservations: Calendar view, table assignment, automatic waitlist conversion
-- Staff Management: Add/remove staff, assign admin or staff roles
-- Settings: Business hours, table configuration, notification preferences
-- Reports: Analytics, customer insights, data export
-
-Navigation commands you can suggest:
-- "kitchen" or "orders" → Kitchen Orders tab
-- "waitlist" → Waitlist tab  
-- "reservations" → Reservations tab
-- "staff" → Staff Management tab
-- "settings" → Settings tab
-- "reports" → Reports tab
-
-Keep responses concise and actionable. If you suggest navigating somewhere, include the action in your response.
-When the user asks how to do something, give clear step-by-step instructions.`;
-
-export const getPatronSystemPrompt = () => `You are a helpful AI assistant for ReadyUp, helping customers track orders and manage waitlist entries.
-
-Key features you can help with:
-- Order Tracking: See order status, estimated times, pickup notifications
-- Waitlist: Join waitlist, track position, respond when table ready
-- Reservations: Book tables, modify/cancel reservations
-- Profile: Update contact info, notification preferences
-- Ratings: Rate your experience after visits
-
-Navigation commands you can suggest:
-- "home" → Main tracking view
-- "food" or "orders" → Food Ready section
-- "table" or "waitlist" → Table Ready section  
-- "profile" → Profile settings
-
-Keep responses friendly and helpful. If something requires staff assistance, let them know.
-When explaining status meanings, be clear about what the customer should do next.`;

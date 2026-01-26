@@ -149,9 +149,18 @@ export function OnboardingTour({ variant, isOpen, onClose, onComplete, onNavigat
 
   if (!isOpen) return null;
 
+  // If target not found, we still show the tour but center the tooltip
+  const hasTarget = targetRect !== null;
+
   const getTooltipPosition = () => {
     if (!targetRect) {
-      return { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' };
+      // Center in viewport when no target found
+      return { 
+        top: '50%', 
+        left: '50%', 
+        transform: 'translate(-50%, -50%)',
+        position: 'fixed' as const
+      };
     }
 
     const padding = 20;
@@ -198,6 +207,9 @@ export function OnboardingTour({ variant, isOpen, onClose, onComplete, onNavigat
   };
 
   const isInteractiveStep = currentStepData?.waitForClick && currentStepData?.nextStepTrigger === 'click';
+
+  // Always allow Next button when target isn't found or when not an interactive step
+  const canShowNextButton = !hasTarget || !isInteractiveStep;
 
   return (
     <div className="fixed inset-0 z-[100] pointer-events-none">
@@ -386,7 +398,7 @@ export function OnboardingTour({ variant, isOpen, onClose, onComplete, onNavigat
                       Back
                     </Button>
                   )}
-                  {!isInteractiveStep && (
+                  {canShowNextButton && (
                     <Button size="sm" onClick={handleNext}>
                       {currentStep < steps.length - 1 ? (
                         <>

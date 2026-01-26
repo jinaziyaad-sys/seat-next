@@ -17,7 +17,7 @@ import { cn, formatTimeUntil } from "@/lib/utils";
 import { format, isTomorrow } from "date-fns";
 import logo from "@/assets/logo.png";
 import { useToast } from "@/hooks/use-toast";
-import { HelpButton, HelpPanel, TourContainer } from "@/components/help";
+import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { CelebrationOverlay } from "@/components/ui/celebration-overlay";
 import { ActiveTrackingListSkeleton } from "@/components/ui/skeleton-card";
@@ -571,7 +571,7 @@ const Index = () => {
       )}
 
       {/* Hero Section - Black Background */}
-      <div className="relative overflow-hidden bg-black px-6 py-20 text-white" data-tour="patron-hero">
+      <div className="relative overflow-hidden bg-black px-6 py-20 text-white" data-tour="patron-header">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,107,53,0.08),transparent_70%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,rgba(255,107,53,0.05),transparent_60%)]" />
         
@@ -1109,7 +1109,7 @@ const Index = () => {
         onStartTour={handleStartTour}
         onNavigate={handleHelpNavigate}
       />
-      <TourContainer
+      <OnboardingTour
         variant="patron"
         isOpen={tourOpen}
         onClose={() => setTourOpen(false)}
