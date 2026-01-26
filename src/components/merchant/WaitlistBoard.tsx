@@ -785,11 +785,11 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     if (a.awaiting_merchant_confirmation && !b.awaiting_merchant_confirmation) return -1;
     if (b.awaiting_merchant_confirmation && !a.awaiting_merchant_confirmation) return 1;
     
-    // Second priority: patron-cancelled (needs acknowledgment)
-    const aPatronCancelled = a.status === "cancelled" && a.cancelled_by === "patron";
-    const bPatronCancelled = b.status === "cancelled" && b.cancelled_by === "patron";
-    if (aPatronCancelled && !bPatronCancelled) return -1;
-    if (bPatronCancelled && !aPatronCancelled) return 1;
+    // Second priority: cancelled entries (needs acknowledgment)
+    const aCancelled = a.status === "cancelled";
+    const bCancelled = b.status === "cancelled";
+    if (aCancelled && !bCancelled) return -1;
+    if (bCancelled && !aCancelled) return 1;
     
     // Third priority: ready status
     if (a.status === "ready" && b.status !== "ready") return -1;
@@ -1021,8 +1021,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
           .map((entry) => (
           <Card key={entry.id} className={cn(
             "shadow-card",
-            entry.status === "cancelled" && entry.cancelled_by === "patron" && 
-              "border-2 border-destructive bg-destructive/5"
+            entry.status === "cancelled" && "border-2 border-destructive bg-destructive/5"
           )}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
@@ -1070,12 +1069,12 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
               )}
 
               <div className="space-y-2">
-                {/* Patron cancelled - show acknowledge button */}
-                {entry.status === "cancelled" && entry.cancelled_by === "patron" && (
+                {/* Cancelled entry - show acknowledge button */}
+                {entry.status === "cancelled" && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-destructive font-semibold">
                       <AlertTriangle className="h-5 w-5" />
-                      <span>Patron Cancelled</span>
+                      <span>{entry.cancelled_by === "patron" ? "Patron Cancelled" : "Cancelled"}</span>
                     </div>
                     {entry.cancellation_reason && (
                       <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
