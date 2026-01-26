@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Users, UserPlus, Repeat, TrendingUp, Calendar, Award, Info } from "lucide-react";
+import { Users, UserPlus, Repeat, TrendingUp, Calendar, Award, Info, PieChartIcon } from "lucide-react";
+import { startOfDay, subDays, endOfDay, startOfToday } from "date-fns";
+import { DateRangePicker } from "./DateRangePicker";
 import { toast } from "sonner";
 import {
   Table,
@@ -46,6 +47,7 @@ interface LoyalCustomer {
 
 interface CustomerInsightsProps {
   venueId: string;
+  venueCreatedAt?: string;
 }
 
 const SEGMENT_COLORS: Record<string, string> = {
@@ -56,20 +58,27 @@ const SEGMENT_COLORS: Record<string, string> = {
   inactive: "hsl(var(--chart-5))",
 };
 
-export const CustomerInsights = ({ venueId }: CustomerInsightsProps) => {
+export const CustomerInsights = ({ venueId, venueCreatedAt }: CustomerInsightsProps) => {
   const [loading, setLoading] = useState(true);
-  const [timeRange, setTimeRange] = useState("30days");
+  const today = startOfToday();
+  const [startDate, setStartDate] = useState<Date>(startOfDay(subDays(today, 30)));
+  const [endDate, setEndDate] = useState<Date>(endOfDay(today));
   const [summary, setSummary] = useState<CustomerInsightsSummary | null>(null);
   const [previousSummary, setPreviousSummary] = useState<CustomerInsightsSummary | null>(null);
   const [segments, setSegments] = useState<CustomerSegments | null>(null);
   const [loyalCustomers, setLoyalCustomers] = useState<LoyalCustomer[]>([]);
   const [activityTrend, setActivityTrend] = useState<any[]>([]);
 
+  const handleDateChange = (start: Date, end: Date) => {
+    setStartDate(start);
+    setEndDate(end);
+  };
+
   useEffect(() => {
     if (venueId) {
       fetchCustomerInsights();
     }
-  }, [venueId, timeRange]);
+  }, [venueId, startDate, endDate]);
 
   const fetchCustomerInsights = async () => {
     try {
@@ -82,7 +91,11 @@ export const CustomerInsights = ({ venueId }: CustomerInsightsProps) => {
       }
 
       const { data, error } = await supabase.functions.invoke('get-venue-customer-insights', {
-        body: { venue_id: venueId, time_range: timeRange },
+        body: { 
+          venue_id: venueId, 
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString(),
+        },
         headers: { Authorization: `Bearer ${session.access_token}` },
       });
 
@@ -104,11 +117,12 @@ export const CustomerInsights = ({ venueId }: CustomerInsightsProps) => {
 
   const fetchComparisonData = async () => {
     try {
-      const daysBack = timeRange === '7days' ? 7 : timeRange === '30days' ? 30 : timeRange === '90days' ? 90 : 1;
-      const compareStartDate = new Date();
-      compareStartDate.setDate(compareStartDate.getDate() - (daysBack * 2));
-      const compareEndDate = new Date();
-      compareEndDate.setDate(compareEndDate.getDate() - daysBack);
+      // Calculate days in selected range for comparison period
+      const daysInRange = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
+      const compareEndDate = new Date(startDate);
+      compareEndDate.setDate(compareEndDate.getDate() - 1);
+      const compareStartDate = new Date(compareEndDate);
+      compareStartDate.setDate(compareStartDate.getDate() - daysInRange);
 
       const { data: snapshots } = await supabase
         .from('daily_venue_snapshots')
@@ -135,13 +149,25 @@ export const CustomerInsights = ({ venueId }: CustomerInsightsProps) => {
     }
   };
 
+  // Filter out zero-value segments and prepare data
   const segmentData = segments
-    ? Object.entries(segments).map(([key, value]) => ({
-        name: key.charAt(0).toUpperCase() + key.slice(1),
-        value,
-        fill: SEGMENT_COLORS[key] || "hsl(var(--muted))",
-      }))
+    ? Object.entries(segments)
+        .filter(([_, value]) => value > 0)
+        .map(([key, value]) => ({
+          name: key.charAt(0).toUpperCase() + key.slice(1).replace('_', ' '),
+          value,
+          fill: SEGMENT_COLORS[key] || "hsl(var(--muted))",
+        }))
     : [];
+
+  const totalSegmentValue = segmentData.reduce((sum, s) => sum + s.value, 0);
+  const hasSegmentData = totalSegmentValue > 0;
+
+  // Custom label renderer that only shows labels for significant segments
+  const renderCustomLabel = ({ name, percent }: { name: string; percent: number }) => {
+    if (percent < 0.05) return null; // Don't show labels for segments < 5%
+    return `${name}: ${(percent * 100).toFixed(0)}%`;
+  };
 
   if (loading) {
     return (
@@ -186,19 +212,14 @@ export const CustomerInsights = ({ venueId }: CustomerInsightsProps) => {
         </Card>
       )}
 
-      {/* Time Range Selector */}
+      {/* Date Range Selector */}
       <div className="flex justify-end">
-        <Select value={timeRange} onValueChange={setTimeRange}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="today">Today</SelectItem>
-            <SelectItem value="7days">Last 7 Days</SelectItem>
-            <SelectItem value="30days">Last 30 Days</SelectItem>
-            <SelectItem value="90days">Last 90 Days</SelectItem>
-          </SelectContent>
-        </Select>
+        <DateRangePicker
+          venueCreatedAt={venueCreatedAt}
+          startDate={startDate}
+          endDate={endDate}
+          onDateChange={handleDateChange}
+        />
       </div>
 
       {/* Summary Cards with Comparisons */}
@@ -296,39 +317,54 @@ export const CustomerInsights = ({ venueId }: CustomerInsightsProps) => {
             <CardTitle>Customer Segments</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <PieChart>
-                <Pie
-                  data={segmentData}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {segmentData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="mt-4 space-y-2">
-              {segmentData.map((segment) => (
-                <div key={segment.name} className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <div
-                      className="w-3 h-3 rounded-full"
-                      style={{ backgroundColor: segment.fill }}
+            {hasSegmentData ? (
+              <>
+                <ResponsiveContainer width="100%" height={250}>
+                  <PieChart>
+                    <Pie
+                      data={segmentData}
+                      cx="50%"
+                      cy="50%"
+                      labelLine={false}
+                      label={renderCustomLabel}
+                      outerRadius={80}
+                      fill="#8884d8"
+                      dataKey="value"
+                    >
+                      {segmentData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      formatter={(value: number) => [value, "Customers"]}
                     />
-                    <span className="text-sm">{segment.name}</span>
-                  </div>
-                  <span className="text-sm font-medium">{segment.value}</span>
+                  </PieChart>
+                </ResponsiveContainer>
+                {/* Legend below chart */}
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  {segmentData.map((segment) => (
+                    <div key={segment.name} className="flex items-center justify-between p-2 rounded-md bg-muted/30">
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-3 h-3 rounded-full shrink-0"
+                          style={{ backgroundColor: segment.fill }}
+                        />
+                        <span className="text-sm truncate">{segment.name}</span>
+                      </div>
+                      <span className="text-sm font-medium ml-2">{segment.value}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center justify-center h-[300px] text-center">
+                <PieChartIcon className="h-12 w-12 text-muted-foreground/30 mb-3" />
+                <p className="text-muted-foreground font-medium">No segment data available</p>
+                <p className="text-sm text-muted-foreground">
+                  Customer segments will appear once there's enough activity
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
 

@@ -17,26 +17,36 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const { venue_id, time_range = 'today' } = await req.json();
+    const { venue_id, time_range, start_date, end_date } = await req.json();
 
     if (!venue_id) {
       throw new Error('venue_id is required');
     }
 
-    // Calculate date range
+    // Calculate date range - support both explicit dates and presets
     const now = new Date();
-    let startDate = new Date();
-    
-    switch (time_range) {
-      case 'today':
-        startDate.setHours(0, 0, 0, 0);
-        break;
-      case '7days':
-        startDate.setDate(now.getDate() - 7);
-        break;
-      case '30days':
-        startDate.setDate(now.getDate() - 30);
-        break;
+    let startDate: Date;
+
+    if (start_date && end_date) {
+      // Use explicit date range
+      startDate = new Date(start_date);
+    } else {
+      // Fall back to preset time_range for backward compatibility
+      startDate = new Date();
+      switch (time_range || 'today') {
+        case 'today':
+          startDate.setHours(0, 0, 0, 0);
+          break;
+        case '7days':
+          startDate.setDate(now.getDate() - 7);
+          break;
+        case '30days':
+          startDate.setDate(now.getDate() - 30);
+          break;
+        case '90days':
+          startDate.setDate(now.getDate() - 90);
+          break;
+      }
     }
 
     // Get order analytics (exclude rejected orders)
