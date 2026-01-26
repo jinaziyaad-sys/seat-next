@@ -794,7 +794,8 @@ export const MerchantSettings = ({
                 <ChevronDown className="h-4 w-4" />
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-4 space-y-3">
-                {Object.entries(businessHours).map(([day, hours]) => {
+                {(['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'] as const).map((day) => {
+                  const hours = businessHours[day];
                   const dayName = day.charAt(0).toUpperCase() + day.slice(1);
                   const isToday = new Date().toLocaleDateString('en-US', { weekday: 'long' }).toLowerCase() === day;
                   
