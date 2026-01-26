@@ -95,6 +95,11 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [tablesNeeded, setTablesNeeded] = useState<any[]>([]);
   const [pendingReservationData, setPendingReservationData] = useState<any>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [showDuplicateWarning, setShowDuplicateWarning] = useState(false);
+  const [existingBooking, setExistingBooking] = useState<{
+    time: string;
+    partySize: number;
+  } | null>(null);
 
   const soundStartedRef = useRef(false);
 
@@ -612,12 +617,21 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
         if (existingReservations && existingReservations.length > 0) {
           const existingTime = format(new Date(existingReservations[0].reservation_time), 'h:mm a');
-          toast({
-            title: "Duplicate Booking Detected",
-            description: `You already have a reservation at ${existingTime} for ${existingReservations[0].party_size} people.`,
-            variant: "destructive"
+          setExistingBooking({
+            time: existingTime,
+            partySize: existingReservations[0].party_size
           });
-          return;
+          setPendingReservationData({
+            venue,
+            reservationDateTime,
+            finalPreferences,
+            partyName: partyName.trim(),
+            partySize,
+            skipDuplicateCheck: true // Flag to skip duplicate check on confirmation
+          });
+          setShowDuplicateWarning(true);
+          setIsSubmitting(false);
+          return; // Stop and show confirmation dialog
         }
 
         // Check table availability for reservations
@@ -891,6 +905,134 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     setPendingReservationData(null);
   };
 
+  const handleConfirmDuplicateBooking = async () => {
+    if (!pendingReservationData) return;
+    
+    setShowDuplicateWarning(false);
+    setExistingBooking(null);
+    
+    // Re-trigger the join waitlist flow, skipping the duplicate check
+    setIsSubmitting(true);
+    
+    try {
+      const { venue, reservationDateTime, finalPreferences, partyName, partySize } = pendingReservationData;
+      
+      // Check table availability for reservations
+      const { data: availabilityData, error: availError } = await supabase.functions.invoke(
+        'find-available-table',
+        {
+          body: {
+            venue_id: venue.id,
+            reservation_time: reservationDateTime.toISOString(),
+            party_size: partySize
+          }
+        }
+      );
+
+      if (availError) {
+        console.error('Error checking availability:', availError);
+        toast({
+          title: "Availability Check Failed",
+          description: "Unable to verify table availability. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (!availabilityData.available) {
+        const nextSlotMessage = availabilityData.next_available_slot 
+          ? `Next available: ${format(new Date(availabilityData.next_available_slot), 'h:mm a')}`
+          : "No tables available today";
+        
+        toast({
+          title: "No Tables Available",
+          description: `${availabilityData.reason}. ${nextSlotMessage}`,
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Handle multi-table bookings
+      if (availabilityData.requires_multiple_tables) {
+        setTablesNeeded(availabilityData.tables_needed);
+        // Keep pendingReservationData for multi-table confirmation
+        setRequiresMultipleTables(true);
+        return;
+      }
+
+      // Create the reservation
+      const insertData = {
+        venue_id: venue.id,
+        customer_name: partyName,
+        party_size: partySize,
+        preferences: finalPreferences,
+        status: "waiting" as const,
+        user_id: userId,
+        reservation_type: 'reservation',
+        reservation_time: reservationDateTime.toISOString(),
+        eta: reservationDateTime.toISOString(),
+        assigned_table_id: availabilityData.matched_table.id
+      };
+
+      const { data: newEntry, error } = await supabase
+        .from("waitlist_entries")
+        .insert(insertData)
+        .select()
+        .single();
+
+      if (error) {
+        console.error("Error creating reservation:", error);
+        toast({
+          title: "Booking Failed",
+          description: error.message || "Unable to create your reservation. Please try again.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (newEntry) {
+        const entry: WaitlistEntry = {
+          id: newEntry.id,
+          venue: venue.name,
+          venue_id: newEntry.venue_id,
+          party_size: newEntry.party_size,
+          position: newEntry.position || null,
+          eta: newEntry.eta,
+          preferences: newEntry.preferences || [],
+          status: mapDatabaseStatus(newEntry.status),
+          customer_name: newEntry.customer_name,
+          updated_at: newEntry.created_at,
+          reservation_type: newEntry.reservation_type,
+          reservation_time: newEntry.reservation_time,
+        };
+        setWaitlistEntry(entry);
+        
+        toast({
+          title: "Reservation Confirmed!",
+          description: `Your reservation at ${venue.name} has been confirmed.`
+        });
+        
+        setPendingReservationData(null);
+        setStep("waiting");
+      }
+    } catch (err) {
+      console.error("Unexpected error:", err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancelDuplicateBooking = () => {
+    setShowDuplicateWarning(false);
+    setExistingBooking(null);
+    setPendingReservationData(null);
+  };
+
   // Cancelled Waitlist Details View
   if (step === "cancelled-details" && waitlistEntry) {
     return (
@@ -1138,7 +1280,100 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     venueId: selectedVenue
   });
 
-  // PRIORITY: Multi-table confirmation dialog (must render first)
+  // PRIORITY 1: Duplicate booking warning dialog
+  if (showDuplicateWarning && existingBooking && pendingReservationData) {
+    const newReservationTimeStr = pendingReservationData.reservationDateTime 
+      ? format(new Date(pendingReservationData.reservationDateTime), 'h:mm a')
+      : '';
+    const newReservationDateStr = pendingReservationData.reservationDateTime 
+      ? format(new Date(pendingReservationData.reservationDateTime), 'MMM d, yyyy')
+      : '';
+    
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={handleCancelDuplicateBooking}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Existing Booking Found</h1>
+        </div>
+
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              ⚠️ You already have a reservation at this venue
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Your existing reservation:
+              </p>
+              
+              <div className="p-4 bg-muted/50 rounded-lg border border-border">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon size={16} className="text-muted-foreground" />
+                  <span className="font-medium">Today at {existingBooking.time}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <Users size={16} className="text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Party of {existingBooking.partySize}</span>
+                </div>
+              </div>
+
+              <p className="text-sm text-muted-foreground pt-2">
+                You're about to book another table:
+              </p>
+              
+              <div className="p-4 bg-primary/5 rounded-lg border border-primary/20">
+                <div className="flex items-center gap-2">
+                  <CalendarIcon size={16} className="text-primary" />
+                  <span className="font-medium">{newReservationDateStr} at {newReservationTimeStr}</span>
+                </div>
+                <div className="flex items-center gap-2 mt-1">
+                  <Users size={16} className="text-primary" />
+                  <span className="text-sm text-muted-foreground">Party of {pendingReservationData.partySize}</span>
+                </div>
+              </div>
+
+              <div className="p-4 bg-accent/50 rounded-lg border border-accent">
+                <p className="text-sm text-foreground">
+                  ℹ️ Both bookings will be active. You can manage them from your profile.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Button 
+                onClick={handleConfirmDuplicateBooking}
+                disabled={isSubmitting}
+                className="w-full h-12"
+              >
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Booking...
+                  </>
+                ) : (
+                  "Book Anyway"
+                )}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={handleCancelDuplicateBooking}
+                disabled={isSubmitting}
+                className="w-full"
+              >
+                Go Back
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // PRIORITY 2: Multi-table confirmation dialog (must render first)
   if (requiresMultipleTables && tablesNeeded.length > 0) {
     console.log('🖼️ Rendering multi-table confirmation dialog', {
       requiresMultipleTables,
