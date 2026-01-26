@@ -21,6 +21,8 @@ import { checkVenueStatus, getAvailableReservationTimes } from "@/utils/business
 import { calculateDistance, formatDistance, getUserLocation, type UserLocation } from "@/utils/geolocation";
 import { playTableReadySound, stopSoundForId, isSoundActive } from "@/utils/notificationSound";
 import { EditReservationDialog } from "@/components/EditReservationDialog";
+import { CelebrationOverlay } from "@/components/ui/celebration-overlay";
+import { CountdownRing } from "@/components/ui/countdown-ring";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -111,6 +113,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     partySize: number;
   } | null>(null);
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const celebrationShownRef = useRef(false);
 
   const soundStartedRef = useRef(false);
 
@@ -2215,8 +2219,39 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   }
 
   if (step === "ready" && waitlistEntry) {
+    // Calculate total seconds for countdown ring (5 minutes = 300 seconds default)
+    const totalCountdownSeconds = waitlistEntry.ready_deadline 
+      ? Math.max(0, Math.floor((new Date(waitlistEntry.ready_deadline).getTime() - (waitlistEntry.ready_at ? new Date(waitlistEntry.ready_at).getTime() : Date.now())) / 1000))
+      : 300;
+
+    // Show celebration overlay on first render of ready state
+    if (!celebrationShownRef.current && !showCelebration) {
+      celebrationShownRef.current = true;
+      // Small delay to let the component mount properly
+      setTimeout(() => setShowCelebration(true), 100);
+    }
+
     return (
       <div className="space-y-6 p-6">
+        {/* Celebration Overlay */}
+        <CelebrationOverlay
+          open={showCelebration}
+          type="table-ready"
+          title="Your Table is Ready!"
+          subtitle={`Party of ${waitlistEntry.party_size} at ${waitlistEntry.venue}`}
+          actionLabel="I'm Here - Get Seated"
+          onAction={() => {
+            setShowCelebration(false);
+            handleConfirmSeat();
+          }}
+          onDismiss={() => setShowCelebration(false)}
+          secondaryActionLabel={waitlistEntry.patron_delayed ? undefined : "Need 5 More Minutes"}
+          onSecondaryAction={waitlistEntry.patron_delayed ? undefined : () => {
+            setShowCelebration(false);
+            handleWait5Minutes();
+          }}
+        />
+
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft size={20} />
@@ -2226,7 +2261,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
         <Card className="shadow-card">
           <CardContent className="p-8 text-center space-y-6">
-            <div className="text-6xl">🎉</div>
+            <div className="text-5xl">🍽️</div>
             
             <div className="space-y-2">
               <h2 className="text-2xl font-bold text-primary">Your Table is Ready!</h2>
@@ -2237,17 +2272,21 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               <p className="font-semibold text-primary">Please head to the host stand now</p>
               <p className="text-sm text-muted-foreground mt-1">Party of {waitlistEntry.party_size}</p>
               {waitlistEntry.ready_deadline && (
-                <div className="mt-4 p-3 bg-background rounded-lg">
-                  <p className="text-sm font-medium mb-1">Time Remaining:</p>
-                  <p className="text-2xl font-bold text-primary">
-                    {String(countdownMinutes).padStart(2, '0')}:{String(countdownSeconds).padStart(2, '0')}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {waitlistEntry.patron_delayed 
-                      ? "Final extension - please arrive soon" 
-                      : "Your table will be released if you don't arrive"}
-                  </p>
+                <div className="mt-6 flex justify-center">
+                  <CountdownRing
+                    minutes={countdownMinutes}
+                    seconds={countdownSeconds}
+                    totalSeconds={totalCountdownSeconds}
+                    size="lg"
+                    showPulse={true}
+                    label={waitlistEntry.patron_delayed ? "final" : "remaining"}
+                  />
                 </div>
+              )}
+              {waitlistEntry.patron_delayed && (
+                <p className="text-xs text-muted-foreground mt-3">
+                  Final extension - please arrive soon
+                </p>
               )}
             </div>
 
