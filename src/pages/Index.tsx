@@ -638,8 +638,11 @@ const Index = () => {
           })}
 
           {activeWaitlist.map((entry) => {
-            const isUpcomingReservation = entry.reservation_type === 'reservation' && 
-              entry.reservation_time && 
+            // A reservation is any entry with reservation_type === 'reservation', regardless of time
+            const isReservation = entry.reservation_type === 'reservation';
+            
+            // Check if reservation time is still upcoming (for countdown display purposes)
+            const isUpcomingTime = entry.reservation_time && 
               new Date(entry.reservation_time) > new Date();
             
             const isToday = entry.reservation_time && 
@@ -686,17 +689,17 @@ const Index = () => {
                       <div>
                         <span className={cn(
                           "inline-block text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded mb-1",
-                          isUpcomingReservation 
+                          isReservation 
                             ? "bg-purple-600 text-white" 
                             : "bg-secondary text-secondary-foreground"
                         )}>
-                          {isUpcomingReservation ? 'Reservation' : 'Waitlist'}
+                          {isReservation ? 'Reservation' : 'Waitlist'}
                         </span>
                         <h3 className="font-semibold">{entry.venues?.name}</h3>
                         {entry.customer_name && (
                           <p className="text-xs font-medium text-primary">{entry.customer_name}</p>
                         )}
-                        {isUpcomingReservation ? (
+                        {isReservation && entry.reservation_time ? (
                           <>
                             <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
                               Reservation for {entry.party_size}
@@ -712,8 +715,12 @@ const Index = () => {
                                 } 
                                 {' at '}
                                 {format(new Date(entry.reservation_time), 'HH:mm')}
-                                {' • '}
-                                {formatTimeUntil(new Date(entry.reservation_time))}
+                                {isUpcomingTime && (
+                                  <>
+                                    {' • '}
+                                    {formatTimeUntil(new Date(entry.reservation_time))}
+                                  </>
+                                )}
                               </span>
                             </div>
                           </>
@@ -757,13 +764,13 @@ const Index = () => {
                     </div>
                     <div className="flex items-center gap-2">
                       <Badge variant={
-                        isUpcomingReservation ? 'outline' : 
+                        isReservation ? 'outline' : 
                         entry.status === 'ready' ? 'default' : 
                         entry.status === 'cancelled' ? 'destructive' :
                         entry.status === 'seated' ? 'default' :
                         'secondary'
                       }>
-                        {isUpcomingReservation ? 'Reserved' : 
+                        {isReservation ? 'Reserved' : 
                          entry.status === 'ready' ? 'Ready' : 
                          entry.status === 'cancelled' ? 'Cancelled' :
                          entry.status === 'seated' ? 'Seated' :
