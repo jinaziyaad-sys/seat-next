@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Clock, Users, Plus, MapPin, Calendar as CalendarIcon } from "lucide-react";
+import { Clock, Users, Plus, MapPin, Calendar as CalendarIcon, AlertTriangle, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeSupabaseFunctionWithTimeout } from "@/utils/invokeWithTimeout";
@@ -785,7 +785,13 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     if (a.awaiting_merchant_confirmation && !b.awaiting_merchant_confirmation) return -1;
     if (b.awaiting_merchant_confirmation && !a.awaiting_merchant_confirmation) return 1;
     
-    // Second priority: ready status
+    // Second priority: patron-cancelled (needs acknowledgment)
+    const aPatronCancelled = a.status === "cancelled" && a.cancelled_by === "patron";
+    const bPatronCancelled = b.status === "cancelled" && b.cancelled_by === "patron";
+    if (aPatronCancelled && !bPatronCancelled) return -1;
+    if (bPatronCancelled && !aPatronCancelled) return 1;
+    
+    // Third priority: ready status
     if (a.status === "ready" && b.status !== "ready") return -1;
     if (b.status === "ready" && a.status !== "ready") return 1;
     
@@ -1013,7 +1019,11 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
         {sortedWaitlist
           .filter(entry => entry.reservation_type !== 'reservation')
           .map((entry) => (
-          <Card key={entry.id} className="shadow-card">
+          <Card key={entry.id} className={cn(
+            "shadow-card",
+            entry.status === "cancelled" && entry.cancelled_by === "patron" && 
+              "border-2 border-destructive bg-destructive/5"
+          )}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">{entry.customer_name}</CardTitle>
@@ -1063,18 +1073,22 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                 {/* Patron cancelled - show acknowledge button */}
                 {entry.status === "cancelled" && entry.cancelled_by === "patron" && (
                   <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-destructive font-semibold">
+                      <AlertTriangle className="h-5 w-5" />
+                      <span>Patron Cancelled</span>
+                    </div>
                     {entry.cancellation_reason && (
                       <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
-                        <p className="text-sm text-destructive font-semibold">Patron cancelled:</p>
-                        <p className="text-sm text-foreground mt-1">{entry.cancellation_reason}</p>
+                        <p className="text-sm text-foreground">"{entry.cancellation_reason}"</p>
                       </div>
                     )}
                     <Button
                       onClick={() => acknowledgeCancellation(entry.id)}
+                      variant="destructive"
                       className="w-full"
-                      variant="outline"
                     >
-                      ✓ Acknowledge & Dismiss
+                      <Check className="h-4 w-4 mr-2" />
+                      Acknowledge & Dismiss
                     </Button>
                   </div>
                 )}
