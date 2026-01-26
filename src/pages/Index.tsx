@@ -19,6 +19,7 @@ import logo from "@/assets/logo.png";
 import { useToast } from "@/hooks/use-toast";
 import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
+import { CelebrationOverlay } from "@/components/ui/celebration-overlay";
 import { 
   playFoodReadySound, 
   playTableReadySound, 
@@ -80,6 +81,16 @@ const Index = () => {
   // Track IDs we've already started sounds for to prevent duplicates
   const soundStartedForOrders = useRef<Set<string>>(new Set());
   const soundStartedForWaitlist = useRef<Set<string>>(new Set());
+
+  // Celebration state for home page
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [celebrationData, setCelebrationData] = useState<{
+    type: 'table-ready' | 'food-ready';
+    title: string;
+    subtitle: string;
+    item: any;
+  } | null>(null);
+  const celebrationShownForIds = useRef<Set<string>>(new Set());
 
   const handleDismissOrder = async (orderId: string) => {
     if (!user) return;
@@ -362,6 +373,44 @@ const Index = () => {
     });
   }, [user, activeOrders, activeWaitlist]);
 
+  // Trigger celebration overlay for ready items on home page
+  useEffect(() => {
+    if (!user || activeTab !== "home") return;
+
+    // Check for ready orders first
+    const readyOrder = activeOrders.find(
+      (order) => order.status === 'ready' && !celebrationShownForIds.current.has(order.id)
+    );
+    if (readyOrder) {
+      celebrationShownForIds.current.add(readyOrder.id);
+      setCelebrationData({
+        type: 'food-ready',
+        title: 'Your Order is Ready!',
+        subtitle: `Order #${readyOrder.order_number} at ${readyOrder.venues?.name}`,
+        item: readyOrder,
+      });
+      setShowCelebration(true);
+      return;
+    }
+
+    // Check for ready waitlist entries (not already confirmed arrival)
+    const readyEntry = activeWaitlist.find(
+      (entry) => entry.status === 'ready' && 
+                 !entry.awaiting_merchant_confirmation && 
+                 !celebrationShownForIds.current.has(entry.id)
+    );
+    if (readyEntry) {
+      celebrationShownForIds.current.add(readyEntry.id);
+      setCelebrationData({
+        type: 'table-ready',
+        title: 'Your Table is Ready!',
+        subtitle: `Party of ${readyEntry.party_size} at ${readyEntry.venues?.name}`,
+        item: readyEntry,
+      });
+      setShowCelebration(true);
+    }
+  }, [user, activeOrders, activeWaitlist, activeTab]);
+
   if (activeTab === "food-ready") {
     return (
       <div className="min-h-screen bg-background">
@@ -426,6 +475,23 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      {/* Celebration Overlay for Ready Items */}
+      {celebrationData && (
+        <CelebrationOverlay
+          open={showCelebration}
+          type={celebrationData.type}
+          title={celebrationData.title}
+          subtitle={celebrationData.subtitle}
+          actionLabel={celebrationData.type === 'food-ready' ? 'View Order' : "I'm Here - Get Seated"}
+          onAction={() => {
+            setShowCelebration(false);
+            setSelectedOrder(celebrationData.item);
+            setActiveTab(celebrationData.type === 'food-ready' ? 'food-ready' : 'table-ready');
+          }}
+          onDismiss={() => setShowCelebration(false)}
+        />
+      )}
+
       {/* Announcement Banner */}
       {announcement && !announcementDismissed && (
         <div className={cn(
