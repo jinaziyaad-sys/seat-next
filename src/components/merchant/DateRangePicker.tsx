@@ -37,6 +37,7 @@ export function DateRangePicker({
   className,
 }: DateRangePickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [lastPresetKey, setLastPresetKey] = useState<PresetKey | null>(null);
   // Draft selection allows choosing a range without immediately updating parent state
   // (which can trigger fetches / re-renders that feel like a "refresh").
   const [draftRange, setDraftRange] = useState<DateRange>({
@@ -72,6 +73,10 @@ export function DateRangePicker({
     return null;
   }, [startDate, endDate, today, minDate]);
 
+  // If the user explicitly clicked a preset, prefer that for label/highlight.
+  // This prevents "Last 90 Days" from displaying as "All Time" when the venue is < 90 days old.
+  const highlightedPreset = lastPresetKey ?? activePreset;
+
   const handlePresetClick = (preset: PresetKey) => {
     const end = endOfDay(today);
     let start: Date;
@@ -101,13 +106,24 @@ export function DateRangePicker({
       start = minDate;
     }
 
+    setLastPresetKey(preset);
     onDateChange(start, end);
     setDraftRange({ from: start, to: end });
     setIsOpen(false);
   };
 
-  const handleDateRangeChange = (range: DateRange | undefined) => {
-    // Always update draft so the UI reflects the user's selection immediately.
+  const handleDateRangeChange = (range: DateRange | undefined, selectedDay?: Date) => {
+    // Any calendar interaction is considered a custom range.
+    setLastPresetKey(null);
+
+    // If we currently have a complete range selected, the first click should ALWAYS start a new range.
+    // This avoids the feeling that the start date is "stuck" (often at venue creation).
+    if (draftRange.from && draftRange.to && selectedDay) {
+      setDraftRange({ from: selectedDay, to: undefined });
+      return;
+    }
+
+    // Update draft so the UI reflects the user's selection immediately.
     setDraftRange(range ?? { from: undefined, to: undefined });
 
     // Only commit once the range is complete.
@@ -126,8 +142,8 @@ export function DateRangePicker({
 
   // Display label derived from actual dates
   const displayLabel = useMemo(() => {
-    if (activePreset) {
-      const preset = presets.find((p) => p.key === activePreset);
+    if (highlightedPreset) {
+      const preset = presets.find((p) => p.key === highlightedPreset);
       if (preset) return preset.label;
     }
     
@@ -136,7 +152,7 @@ export function DateRangePicker({
     }
     
     return `${format(startDate, "MMM d")} - ${format(endDate, "MMM d, yyyy")}`;
-  }, [startDate, endDate, activePreset]);
+  }, [startDate, endDate, highlightedPreset]);
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
@@ -162,7 +178,7 @@ export function DateRangePicker({
                 <Button
                   key={preset.key}
                   type="button"
-                  variant={activePreset === preset.key ? "default" : "ghost"}
+                  variant={highlightedPreset === preset.key ? "default" : "ghost"}
                   size="sm"
                   className="justify-start w-full text-xs"
                   onClick={() => handlePresetClick(preset.key)}
