@@ -1,227 +1,138 @@
 
-# Comprehensive Analytics Dashboard Overhaul
+# Per-Venue Export with Date Range for Dev Dashboard
 
 ## Overview
-This plan addresses three major concerns with the merchant reports:
-1. Data accuracy and reliability issues
-2. UI/visual glitches (especially the customer pie chart)
-3. Expanding analytics coverage with a flexible date range picker
+Create a new dedicated export component for the Dev Dashboard that allows super admins to:
+1. Select a specific venue (or all venues) to export
+2. Choose a date range for the export
+3. Download comprehensive analytics data in a manageable Excel workbook
+
+This replaces the current "Export All Venues" button which creates an unnecessarily large workbook and lacks date filtering.
 
 ---
 
-## Problem Analysis
-
-### 1. Accuracy Issues
-The current analytics have several potential accuracy problems:
-- Edge functions may return incorrect calculations when data is sparse
-- The "on-time rate" calculation in `get-venue-analytics` uses a +/- 5 minute window which may not match what's displayed
-- Customer segments are calculated in a scheduled job that may not have run recently
-- The `daily_venue_snapshots` table appears empty, meaning comparative metrics have no historical data
-
-### 2. UI Glitches (Customer Pie Chart)
-The pie chart in `CustomerInsights.tsx` has issues:
-- When segment data is all zeros or has very small values, the chart renders incorrectly
-- The `label` function may overflow when percentages round to 0%
-- No fallback for empty/invalid data states
-
-### 3. Limited Date Selection
-Current implementation:
-- Fixed presets: Today, 7 days, 30 days, 90 days
-- No ability to select custom date ranges
-- No awareness of when the venue was created
+## Current Issues
+- `handleExportAllVenues` iterates through every venue and fetches all historical data without date limits
+- Creates a single massive Excel file with potentially hundreds of sheets
+- No date range filtering on the queries (unlike the merchant-side `MerchantExport` component)
+- Risk of hitting Supabase's 1000-row query limit without pagination
 
 ---
 
-## Technical Implementation
+## Implementation Plan
 
-### Phase 1: Fix UI Glitches and Pie Chart
+### 1. Create New DevExport Component
+**File**: `src/components/dev/DevExport.tsx`
 
-**File: `src/components/merchant/CustomerInsights.tsx`**
-
-1. Add empty state handling for the pie chart:
-   - Check if all segment values are 0 before rendering
-   - Display a helpful message when no segment data exists
-
-2. Fix label rendering:
-   - Only show labels for segments with meaningful values (greater than 5%)
-   - Use a custom label renderer that handles edge cases
-
-3. Add proper chart sizing and responsiveness fixes
-
-### Phase 2: Implement Custom Date Range Picker
-
-**New Component: `src/components/merchant/DateRangePicker.tsx`**
-
-Create a reusable date range picker that:
-- Accepts the venue's `created_at` date
-- Disables dates before venue creation (greyed out)
-- Disables future dates
-- Provides preset quick selections (Today, Last 7 days, etc.)
-- Returns start and end dates
-
-**Updates to All Analytics Components:**
-
-Modify the following files to use the new date picker:
-- `MerchantReports.tsx` - Main reports page
-- `CustomerInsights.tsx` - Customer analytics tab
-- `OperationsEfficiency.tsx` - Operations tab
-- `RatingsView.tsx` - Ratings tab
-- `CancellationHistory.tsx` - Cancellation history
-
-Each component will:
-1. Receive `venueCreatedAt` as a prop
-2. Replace the Select dropdown with the DateRangePicker
-3. Pass explicit start/end dates to edge functions instead of preset strings
-
-### Phase 3: Update Edge Functions for Custom Date Ranges
-
-**Files to Update:**
-- `supabase/functions/get-venue-analytics/index.ts`
-- `supabase/functions/get-venue-customer-insights/index.ts`
-- `supabase/functions/get-venue-efficiency-analytics/index.ts`
-
-Changes:
-1. Accept `start_date` and `end_date` parameters instead of `time_range`
-2. Maintain backward compatibility with `time_range` presets
-3. Add validation to ensure dates are within valid bounds
-4. Improve edge case handling for empty data
-
-### Phase 4: Expand Analytics Coverage
-
-**New Metrics to Add:**
-
-1. **Revenue/Volume Trends** (if order values are tracked):
-   - Average order value
-   - Total volume by day/week/month
-
-2. **Wait List Conversion Rate**:
-   - Percentage of waitlist entries that become seated
-   - No-show trends over time
-
-3. **Table Turnover Analytics**:
-   - Average time tables are occupied
-   - Table utilization rate
-
-4. **Peak Analysis Enhancements**:
-   - Heatmap of busy hours by day of week
-   - Seasonal trends (if enough data)
-
-5. **Staff Performance Expansion**:
-   - Orders per staff member over time
-   - Average prep time per staff member
-
-### Phase 5: Enhanced Export Functionality
-
-**File: `src/components/merchant/MerchantExport.tsx`**
-
-Enhancements:
-1. Add date range selection for exports (using same DateRangePicker)
-2. Option to export all historical data
-3. Include additional sheets:
-   - Reservation analytics (if applicable)
-   - Rating breakdown by period
-   - Customer segment changes over time
-   - Daily snapshot history
-
-4. Add CSV export option alongside Excel
-
----
-
-## Detailed Component Changes
-
-### DateRangePicker Component
+A new component that provides:
+- Venue selector dropdown (with "All Venues" option)
+- DateRangePicker for filtering data
+- Export button that generates venue-specific workbooks
 
 ```text
-Props:
-- venueCreatedAt: Date
-- startDate: Date
-- endDate: Date
-- onDateChange: (start: Date, end: Date) => void
-
-Features:
-- Calendar UI with react-day-picker
-- Preset buttons: Today, Last 7 Days, Last 30 Days, Last 90 Days, All Time
-- Visual indication of disabled dates (before venue creation)
-- Responsive design for mobile
++-----------------------------------------------+
+|  Export Platform Data                         |
+|-----------------------------------------------|
+|  Venue: [▼ Select Venue / All Venues     ]    |
+|                                               |
+|  Date Range: [DateRangePicker]                |
+|                                               |
+|  [Export to Excel]   [Export to CSV]          |
++-----------------------------------------------+
 ```
 
-### CustomerInsights Pie Chart Fix
+### 2. Export Logic Per Venue
+When a specific venue is selected:
+- Create a single workbook with sheets for:
+  - Orders (filtered by date)
+  - Order Analytics (filtered by date)
+  - Waitlist Entries (filtered by date)
+  - Waitlist Analytics (filtered by date)
+  - Ratings (filtered by date)
+  - Daily Snapshots (filtered by date)
+  - Customer Insights summary
+  - Staff list
+- Filename: `{VenueName}_{StartDate}_to_{EndDate}.xlsx`
 
-```text
-Changes:
-1. Filter out zero-value segments before rendering
-2. Handle edge case where all segments are 0
-3. Improve label positioning and readability
-4. Add legend below chart for accessibility
-5. Use consistent color scheme from chart variables
+### 3. Export Logic for All Venues
+When "All Venues" is selected:
+- Create one workbook with a summary sheet
+- Include aggregated platform metrics (not per-venue sheets)
+- Optionally, create a ZIP file containing individual venue workbooks to avoid massive single files
+
+### 4. Update DevDashboard
+- Remove/replace the current inline `handleExportAllVenues` function
+- Add the new `DevExport` component to the "Manage Venues" tab or create a dedicated "Export" section
+
+---
+
+## Technical Details
+
+### DevExport Component Structure
+```typescript
+interface DevExportProps {}
+
+export function DevExport() {
+  // State
+  const [selectedVenueId, setSelectedVenueId] = useState<string | 'all'>('all');
+  const [venues, setVenues] = useState<Venue[]>([]);
+  const [startDate, setStartDate] = useState<Date>();
+  const [endDate, setEndDate] = useState<Date>();
+  const [exporting, setExporting] = useState(false);
+
+  // Fetch venues on mount
+  useEffect(() => { fetchVenues(); }, []);
+
+  // Export handler with date filtering
+  const handleExport = async () => {
+    if (selectedVenueId === 'all') {
+      await exportPlatformSummary();
+    } else {
+      await exportSingleVenue(selectedVenueId);
+    }
+  };
+}
 ```
 
-### MerchantReports Header Update
-
-```text
-Current:
-- Time range Select dropdown
-- Export button
-
-New:
-- DateRangePicker with visual calendar
-- Export button (now respects selected date range)
-- Quick preset chips below the picker
+### Query Patterns with Date Filtering
+All queries will use `.gte()` and `.lte()` filters:
+```typescript
+const { data: orders } = await supabase
+  .from('orders')
+  .select('*')
+  .eq('venue_id', venueId)
+  .gte('created_at', startDate.toISOString())
+  .lte('created_at', endDate.toISOString())
+  .order('created_at', { ascending: false });
 ```
 
----
+### Excel Sheet Contents for Single Venue Export
 
-## Database Considerations
-
-### Ensure Daily Snapshots Are Running
-
-The `daily_venue_snapshots` table is currently empty, which means:
-- Comparative metrics show no data
-- Historical trends cannot be calculated
-
-This requires setting up the cron job as documented in `ANALYTICS_SETUP.md`. The UI should gracefully handle missing snapshot data.
-
-### Optimize Queries for Large Date Ranges
-
-When users select "All Time":
-- Add pagination or chunking for very large datasets
-- Consider creating summary tables for old data
-- Implement query limits with pagination for exports
+| Sheet Name | Data Source | Columns |
+|------------|-------------|---------|
+| Summary | Aggregated | Venue Name, Date Range, Total Orders, Total Waitlist, Avg Rating |
+| Orders | orders table | Order Number, Customer, Status, Items, ETA, Created |
+| Order Analytics | order_analytics | Placed At, Quoted Prep, Actual Prep, Items Count |
+| Waitlist | waitlist_entries | Customer, Party Size, Status, ETA, Created |
+| Waitlist Analytics | waitlist_analytics | Joined At, Party Size, Quoted Wait, Actual Wait, No Show |
+| Ratings | order_ratings | Rating, Feedback, Type, Created |
+| Daily Snapshots | daily_venue_snapshots | Date, Orders, Customers, Rating, Prep Time |
+| Staff | user_roles + profiles | Name, Email, Role |
 
 ---
 
-## File Changes Summary
+## Files to Create/Modify
 
-| File | Changes |
-|------|---------|
-| `src/components/merchant/DateRangePicker.tsx` | NEW - Custom date range picker component |
-| `src/components/merchant/MerchantReports.tsx` | Replace Select with DateRangePicker, pass venueCreatedAt |
-| `src/components/merchant/CustomerInsights.tsx` | Fix pie chart, add DateRangePicker, improve empty states |
-| `src/components/merchant/OperationsEfficiency.tsx` | Add DateRangePicker, improve data handling |
-| `src/components/merchant/RatingsView.tsx` | Add date filtering capability |
-| `src/components/merchant/CancellationHistory.tsx` | Replace 7-day limit with custom date range |
-| `src/components/merchant/MerchantExport.tsx` | Add date range selection, expand export options |
-| `supabase/functions/get-venue-analytics/index.ts` | Accept start_date/end_date params |
-| `supabase/functions/get-venue-customer-insights/index.ts` | Accept start_date/end_date params |
-| `supabase/functions/get-venue-efficiency-analytics/index.ts` | Accept start_date/end_date params |
+| File | Action | Description |
+|------|--------|-------------|
+| `src/components/dev/DevExport.tsx` | Create | New export component with venue selector and date picker |
+| `src/pages/DevDashboard.tsx` | Modify | Replace inline export with DevExport component, remove handleExportAllVenues |
 
 ---
 
-## Implementation Priority
-
-1. **High Priority**: Fix pie chart UI glitches (immediate user-facing issue)
-2. **High Priority**: Implement date range picker with venue creation awareness
-3. **Medium Priority**: Update edge functions for custom date ranges
-4. **Medium Priority**: Expand export functionality
-5. **Lower Priority**: Add additional analytics metrics
-
----
-
-## Expected Outcomes
-
-After implementation:
-- Charts will render correctly with proper empty states
-- Users can select any date range from venue creation to today
-- All analytics tabs will respect the selected date range
-- Exports will include full historical data
-- Comparative metrics will work once daily snapshots are populated
+## Benefits
+- **Smaller file sizes**: Export only what you need
+- **Date filtering**: Analyze specific periods
+- **Better UX**: Choose exactly which venue to export
+- **Performance**: Reduced query load on the database
+- **Maintainability**: Reusable component pattern matching MerchantExport
