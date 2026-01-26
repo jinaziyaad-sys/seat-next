@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, X, ChevronDown, Clock, Calendar, AlertCircle, RotateCcw, Save } from "lucide-react";
 import { TableConfigurationManager } from "./TableConfigurationManager";
+import { VenueDiscoverySettings } from "./VenueDiscoverySettings";
 import { BusinessHours, HolidayClosure } from "@/utils/businessHours";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
@@ -510,6 +511,9 @@ export const MerchantSettings = ({
       <h2 className="text-2xl font-bold">Venue Settings</h2>
 
       <div className="space-y-6">
+        {/* Venue Discovery Profile - Available for all venues */}
+        <VenueDiscoverySettings venueId={venueId} />
+
         {/* Table Configuration - Only for table_ready */}
         {hasTableReady && (
           <TableConfigurationManager 

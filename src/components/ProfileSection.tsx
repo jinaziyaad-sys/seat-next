@@ -10,6 +10,7 @@ import { useNavigate } from "react-router-dom";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PatronNotificationSettings } from "@/components/PatronNotificationSettings";
+import { PatronDiningPreferences } from "@/components/PatronDiningPreferences";
 import { YearlyRecap } from "@/components/YearlyRecap";
 import { useYearlyRecap } from "@/hooks/useYearlyRecap";
 
@@ -223,6 +224,9 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
 
       {/* Notifications Section */}
       <PatronNotificationSettings />
+
+      {/* Dining Preferences Section */}
+      <PatronDiningPreferences />
 
       {/* Yearly Recap Section (Test Mode) */}
       <Card className="shadow-card bg-gradient-to-br from-purple-900/20 to-background border-purple-500/20">

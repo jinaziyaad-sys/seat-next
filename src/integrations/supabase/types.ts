@@ -474,6 +474,47 @@ export type Database = {
         }
         Relationships: []
       }
+      patron_dining_preferences: {
+        Row: {
+          avoid_ingredients: string[] | null
+          created_at: string
+          cuisine_preferences: string[] | null
+          dietary_requirements: string[] | null
+          id: string
+          max_wait_minutes: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avoid_ingredients?: string[] | null
+          created_at?: string
+          cuisine_preferences?: string[] | null
+          dietary_requirements?: string[] | null
+          id?: string
+          max_wait_minutes?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avoid_ingredients?: string[] | null
+          created_at?: string
+          cuisine_preferences?: string[] | null
+          dietary_requirements?: string[] | null
+          id?: string
+          max_wait_minutes?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patron_dining_preferences_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patron_notification_preferences: {
         Row: {
           created_at: string
