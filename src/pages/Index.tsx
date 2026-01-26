@@ -308,6 +308,17 @@ const Index = () => {
               soundStartedForWaitlist.current.delete(payload.new.id);
             }
             
+            // Show toast when system auto-cancels (no_show due to timeout)
+            if (payload.new.status === 'no_show' && 
+                payload.new.cancelled_by === 'system' &&
+                payload.old?.status === 'ready') {
+              toast({
+                title: "⏰ Table Released",
+                description: "Your table was released as you didn't arrive in time. You can join the waitlist again if needed.",
+                variant: "destructive",
+              });
+            }
+            
             // Skip if patron_dismissed is true
             if (payload.new.patron_dismissed) {
               setActiveWaitlist(prevEntries => prevEntries.filter(entry => entry.id !== payload.new.id));

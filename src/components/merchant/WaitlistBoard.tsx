@@ -127,13 +127,14 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     
     const fetchWaitlist = async () => {
       // Fetch waitlist entries for this venue
-      // Exclude: seated, no_show, and merchant-acknowledged entries
+      // Exclude: seated and merchant-acknowledged entries
+      // Include: no_show (auto-cancelled) for merchant to acknowledge
       const { data: waitlistData, error: waitlistError } = await supabase
         .from("waitlist_entries")
         .select("*")
         .eq("venue_id", venueId)
         .eq("merchant_acknowledged", false)
-        .not("status", "in", "(seated,no_show)")
+        .not("status", "eq", "seated")
         .order("created_at", { ascending: true });
 
       if (waitlistError) {
@@ -178,21 +179,44 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
             });
           }
           
+          // Check if system auto-cancelled (no_show) - notify merchant
+          if (payload.new.status === 'no_show' && 
+              payload.new.cancelled_by === 'system' &&
+              payload.old?.status === 'ready') {
+            
+            toast({
+              title: "⏰ Auto-Cancelled (No Show)",
+              description: `${payload.new.customer_name} didn't arrive in time - table released`,
+              variant: "destructive",
+            });
+          }
+          
           // Remove entry from list if it no longer matches display criteria
           const shouldRemove = 
-            payload.new.status === 'no_show' ||
             payload.new.status === 'seated' ||
             payload.new.merchant_acknowledged === true;
           
           if (shouldRemove) {
             setWaitlist(prev => prev.filter(entry => entry.id !== payload.new.id));
           } else {
-            // Update the specific entry in local state with ALL fields from payload
-            setWaitlist(prev => prev.map(entry => 
-              entry.id === payload.new.id 
-                ? { ...entry, ...(payload.new as WaitlistEntry) }
-                : entry
-            ));
+            // Check if entry already exists in list
+            setWaitlist(prev => {
+              const exists = prev.some(entry => entry.id === payload.new.id);
+              if (exists) {
+                // Update the specific entry in local state with ALL fields from payload
+                return prev.map(entry => 
+                  entry.id === payload.new.id 
+                    ? { ...entry, ...(payload.new as WaitlistEntry) }
+                    : entry
+                );
+              } else {
+                // Add no_show entry to list so merchant can acknowledge
+                if (payload.new.status === 'no_show' && !payload.new.merchant_acknowledged) {
+                  return [payload.new as WaitlistEntry, ...prev];
+                }
+                return prev;
+              }
+            });
           }
           
         } else if (payload.eventType === 'DELETE') {
@@ -1069,17 +1093,27 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
               )}
 
               <div className="space-y-2">
-                {/* Cancelled entry - show acknowledge button */}
-                {entry.status === "cancelled" && (
+                {/* Cancelled or No Show entry - show acknowledge button */}
+                {(entry.status === "cancelled" || entry.status === "no_show") && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2 text-destructive font-semibold">
                       <AlertTriangle className="h-5 w-5" />
-                      <span>{entry.cancelled_by === "patron" ? "Patron Cancelled" : "Cancelled"}</span>
+                      <span>
+                        {entry.status === "no_show" 
+                          ? (entry.cancelled_by === "system" ? "Auto-Cancelled (No Show)" : "No Show")
+                          : (entry.cancelled_by === "patron" ? "Patron Cancelled" : "Cancelled")
+                        }
+                      </span>
                     </div>
                     {entry.cancellation_reason && (
                       <div className="p-3 bg-destructive/10 rounded-lg border border-destructive/20">
                         <p className="text-sm text-foreground">"{entry.cancellation_reason}"</p>
                       </div>
+                    )}
+                    {entry.status === "no_show" && entry.cancelled_by === "system" && (
+                      <p className="text-xs text-muted-foreground">
+                        Patron didn't arrive within the time limit. Table has been released.
+                      </p>
                     )}
                     <Button
                       onClick={() => acknowledgeCancellation(entry.id)}
@@ -1092,8 +1126,8 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                   </div>
                 )}
                 
-                {/* Normal entry actions - hide for cancelled entries */}
-                {entry.status !== "cancelled" && (
+                {/* Normal entry actions - hide for cancelled and no_show entries */}
+                {entry.status !== "cancelled" && entry.status !== "no_show" && (
                   <>
                     {entry.awaiting_merchant_confirmation && entry.status === "ready" && (
                       <Button
