@@ -23,6 +23,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId, playPatronArrivedSound } from "@/utils/notificationSound";
 import { toast as sonnerToast } from "sonner";
 import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
+import { FeatureHint } from "@/components/ui/feature-hint";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -445,7 +446,14 @@ const MerchantDashboard = () => {
               </div>
             </div>
             <div className="flex gap-2">
-              <SoundSnoozeButton data-tour="sound-snooze" />
+              <FeatureHint
+                id="merchant-sound-snooze"
+                hint="Mute notification sounds temporarily when it gets too noisy!"
+                position="bottom"
+                delay={3000}
+              >
+                <SoundSnoozeButton data-tour="sound-snooze" />
+              </FeatureHint>
               <ThemeToggle />
               <PasswordResetDialog />
               <Button variant="outline" onClick={handleLogout}>

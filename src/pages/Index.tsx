@@ -19,6 +19,7 @@ import logo from "@/assets/logo.png";
 import { useToast } from "@/hooks/use-toast";
 import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
+import { FeatureHint } from "@/components/ui/feature-hint";
 import { CelebrationOverlay } from "@/components/ui/celebration-overlay";
 import { ActiveTrackingListSkeleton } from "@/components/ui/skeleton-card";
 import {
@@ -577,19 +578,26 @@ const Index = () => {
         
         <div className="absolute top-4 right-4 z-20">
           {user ? (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm transition-all"
-              onClick={() => setActiveTab("profile")}
-              data-tour="nav-profile"
+            <FeatureHint
+              id="patron-profile-btn"
+              hint="Manage your profile and notification settings"
+              position="left"
+              delay={5000}
             >
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-coral/20 text-white font-semibold">
-                  {user.email?.charAt(0).toUpperCase() || <UserIcon size={18} />}
-                </AvatarFallback>
-              </Avatar>
-            </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm transition-all"
+                onClick={() => setActiveTab("profile")}
+                data-tour="nav-profile"
+              >
+                <Avatar className="h-9 w-9">
+                  <AvatarFallback className="bg-coral/20 text-white font-semibold">
+                    {user.email?.charAt(0).toUpperCase() || <UserIcon size={18} />}
+                  </AvatarFallback>
+                </Avatar>
+              </Button>
+            </FeatureHint>
           ) : (
             <Button
               variant="ghost"
@@ -1019,57 +1027,78 @@ const Index = () => {
 
         <div className="grid grid-cols-2 gap-4">
           {features.food_ordering_enabled && (
-            <Card 
-              className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
-              onClick={() => setActiveTab("food-ready")}
-              data-tour="card-food"
+            <FeatureHint
+              id="patron-food-card"
+              hint="Tap here after placing an order to track when your food is ready!"
+              position="top"
+              delay={2000}
             >
-              <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <UtensilsCrossed size={28} />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Food Ready</h3>
-                  <p className="text-sm text-muted-foreground">Track your order status</p>
-                </div>
-              </CardContent>
-            </Card>
+              <Card 
+                className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95 w-full"
+                onClick={() => setActiveTab("food-ready")}
+                data-tour="card-food"
+              >
+                <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    <UtensilsCrossed size={28} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Food Ready</h3>
+                    <p className="text-sm text-muted-foreground">Track your order status</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </FeatureHint>
           )}
 
           {features.waitlist_enabled && (
-            <Card 
-              className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
-              onClick={() => setActiveTab("table-ready")}
-              data-tour="card-table"
+            <FeatureHint
+              id="patron-table-card"
+              hint="Join a restaurant waitlist and get notified when your table is ready!"
+              position="top"
+              delay={3000}
             >
-              <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <Users size={28} />
-                </div>
-                <div>
-                  <h3 className="font-semibold">Table Ready</h3>
-                  <p className="text-sm text-muted-foreground">Join a waitlist</p>
-                </div>
-              </CardContent>
-            </Card>
+              <Card 
+                className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95 w-full"
+                onClick={() => setActiveTab("table-ready")}
+                data-tour="card-table"
+              >
+                <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                    <Users size={28} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">Table Ready</h3>
+                    <p className="text-sm text-muted-foreground">Join a waitlist</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </FeatureHint>
           )}
 
           {/* Explore Venues Card */}
-          <Card 
-            className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
-            onClick={() => setActiveTab("explore")}
-            data-tour="card-explore"
+          <FeatureHint
+            id="patron-explore-card"
+            hint="Discover restaurants nearby and see how busy they are!"
+            position="top"
+            delay={4000}
           >
-            <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-accent-foreground">
-                <Compass size={28} />
-              </div>
-              <div>
-                <h3 className="font-semibold">Explore</h3>
-                <p className="text-sm text-muted-foreground">Discover venues</p>
-              </div>
-            </CardContent>
-          </Card>
+            <Card 
+              className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95 w-full"
+              onClick={() => setActiveTab("explore")}
+              data-tour="card-explore"
+            >
+              <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                  <Compass size={28} />
+                </div>
+                <div>
+                  <h3 className="font-semibold">Explore</h3>
+                  <p className="text-sm text-muted-foreground">Discover venues</p>
+                </div>
+              </CardContent>
+            </Card>
+          </FeatureHint>
           
           {!features.food_ordering_enabled && !features.waitlist_enabled && (
             <div className="col-span-2 text-center py-8 text-muted-foreground">
