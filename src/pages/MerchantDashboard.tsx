@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { useMerchantAuth } from "@/hooks/useAuth";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 import { KitchenBoard } from "@/components/merchant/KitchenBoard";
 import { WaitlistBoard } from "@/components/merchant/WaitlistBoard";
 import { ReservationCalendar } from "@/components/merchant/ReservationCalendar";
@@ -16,7 +17,7 @@ import { SoundSnoozeButton } from "@/components/merchant/SoundSnoozeButton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar } from "lucide-react";
+import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar, AlertTriangle, Info, X, Wrench } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId, playPatronArrivedSound } from "@/utils/notificationSound";
@@ -35,7 +36,19 @@ import {
 
 const MerchantDashboard = () => {
   const { userRole, allVenueRoles, switchVenue, loading } = useMerchantAuth();
-  const { features } = usePlatformConfig();
+  const { features, announcement } = usePlatformConfig();
+  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
+  
+  // Helper function for announcement icon
+  const getAnnouncementIcon = (type: 'info' | 'warning' | 'error' | 'maintenance') => {
+    switch (type) {
+      case 'maintenance': return Wrench;
+      case 'warning': return AlertTriangle;
+      case 'error': return AlertTriangle;
+      case 'info': 
+      default: return Info;
+    }
+  };
   const navigate = useNavigate();
   const [venueServiceTypes, setVenueServiceTypes] = useState<string[]>([]);
   const [venueData, setVenueData] = useState<any>(null);
@@ -444,7 +457,36 @@ const MerchantDashboard = () => {
         </div>
       </div>
 
-      {/* Main Content */}
+      {/* Developer Announcement Banner */}
+      {announcement && !announcementDismissed && (
+        <div className={cn(
+          "px-4 py-3 flex items-center gap-3",
+          announcement.type === 'maintenance' && "bg-amber-600 text-white",
+          announcement.type === 'warning' && "bg-yellow-500 text-black",
+          announcement.type === 'error' && "bg-red-600 text-white",
+          announcement.type === 'info' && "bg-blue-600 text-white"
+        )}>
+          {(() => {
+            const IconComponent = getAnnouncementIcon(announcement.type);
+            return <IconComponent className="h-5 w-5 shrink-0" />;
+          })()}
+          <p className="text-sm font-medium flex-1">{announcement.message}</p>
+          {announcement.dismissible && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "h-6 w-6 shrink-0",
+                announcement.type === 'warning' ? "hover:bg-black/10 text-black" : "hover:bg-white/20 text-white"
+              )}
+              onClick={() => setAnnouncementDismissed(true)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      )}
+
       <div className="max-w-7xl mx-auto p-6">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className={`grid w-full`} style={{ gridTemplateColumns: `repeat(${getTabCount()}, minmax(0, 1fr))` }}>
