@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DateRangePicker } from "@/components/merchant/DateRangePicker";
+import { VenueHealthReport } from "./VenueHealthReport";
 import { startOfDay, subDays, endOfDay, startOfToday } from "date-fns";
 
 interface PlatformAnalytics {
@@ -624,6 +625,9 @@ export function PlatformAnalytics() {
           </AlertDescription>
         </Alert>
       )}
+
+      {/* Venue Health Report */}
+      <VenueHealthReport />
     </div>
   );
 }
