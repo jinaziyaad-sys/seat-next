@@ -188,6 +188,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   }, [waitlistEntry, step]);
 
   // Countdown timer - calculate from server-side deadline
+  // Use status-based triggering instead of step-based to ensure timer starts immediately
+  // when table becomes ready via real-time update, even if user is viewing the card
   useEffect(() => {
     // Stop timer if patron confirmed arrival
     if (waitlistEntry?.awaiting_merchant_confirmation) {
@@ -196,7 +198,14 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       return;
     }
 
-    if ((step !== "ready" && step !== "delayed-countdown") || !waitlistEntry?.ready_deadline) return;
+    // Use status check instead of step check to decouple from async UI state
+    const isReadyStatus = waitlistEntry?.status === 'ready';
+    const hasDeadline = !!waitlistEntry?.ready_deadline;
+    
+    // Don't run if entry is cancelled or we're past the confirmation step
+    if (step === "awaiting-confirmation" || step === "feedback") return;
+    
+    if (!isReadyStatus || !hasDeadline) return;
 
     const updateCountdown = async () => {
       const now = new Date().getTime();
@@ -251,7 +260,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     const timer = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(timer);
-  }, [step, waitlistEntry?.ready_deadline, waitlistEntry?.id, waitlistEntry?.awaiting_merchant_confirmation, toast]);
+  }, [step, waitlistEntry?.status, waitlistEntry?.ready_deadline, waitlistEntry?.id, waitlistEntry?.awaiting_merchant_confirmation, toast]);
 
   // Handle initial entry from home page
   useEffect(() => {
