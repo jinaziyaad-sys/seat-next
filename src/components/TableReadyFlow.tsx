@@ -834,6 +834,10 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 cancelled_by: payload.new.cancelled_by,
                 updated_at: payload.new.updated_at,
                 notes: payload.new.notes,
+                ready_deadline: payload.new.ready_deadline,
+                ready_at: payload.new.ready_at,
+                patron_delayed: payload.new.patron_delayed,
+                awaiting_merchant_confirmation: payload.new.awaiting_merchant_confirmation,
               } : null);
               
               if (payload.new.status === "ready") {
