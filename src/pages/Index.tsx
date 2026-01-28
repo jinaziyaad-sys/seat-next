@@ -435,7 +435,7 @@ const Index = () => {
       setCelebrationData({
         type: 'food-ready',
         title: 'Your Order is Ready!',
-        subtitle: `Order #${readyOrder.order_number} at ${readyOrder.venues?.name}`,
+        subtitle: `Order #${readyOrder.order_number} at ${readyOrder.venues?.name || 'the restaurant'}`,
         item: readyOrder,
       });
       setShowCelebration(true);
@@ -453,12 +453,34 @@ const Index = () => {
       setCelebrationData({
         type: 'table-ready',
         title: 'Your Table is Ready!',
-        subtitle: `Party of ${readyEntry.party_size} at ${readyEntry.venues?.name}`,
+        subtitle: `Party of ${readyEntry.party_size} at ${readyEntry.venues?.name || 'the restaurant'}`,
         item: readyEntry,
       });
       setShowCelebration(true);
     }
   }, [user, activeOrders, activeWaitlist, activeTab]);
+
+  // Close celebration overlay if its item is no longer valid (cancelled, dismissed, etc.)
+  useEffect(() => {
+    if (!showCelebration || !celebrationData?.item) return;
+    
+    const itemId = celebrationData.item.id;
+    const isOrder = celebrationData.type === 'food-ready';
+    
+    if (isOrder) {
+      const stillExists = activeOrders.some(o => o.id === itemId && o.status === 'ready');
+      if (!stillExists) {
+        setShowCelebration(false);
+        setCelebrationData(null);
+      }
+    } else {
+      const stillExists = activeWaitlist.some(w => w.id === itemId && w.status === 'ready' && !w.awaiting_merchant_confirmation);
+      if (!stillExists) {
+        setShowCelebration(false);
+        setCelebrationData(null);
+      }
+    }
+  }, [showCelebration, celebrationData, activeOrders, activeWaitlist]);
 
   if (activeTab === "food-ready") {
     return (
