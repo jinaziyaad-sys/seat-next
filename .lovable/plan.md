@@ -1,409 +1,181 @@
 
 
-# UI/UX Modernization Plan - Clean & Modern Enhancements
+# Fix Table Ready Waitlist Issues
 
-## Overview
-This plan outlines comprehensive UI/UX improvements across the patron app to create a more polished, modern experience. The improvements focus on animations, loading states, full-screen notifications for critical moments, skeleton loading, micro-interactions, and visual polish.
+## Problem Summary
+
+The user has reported four interconnected issues with the "table ready" functionality for waitlist entries:
+
+1. **Timer not starting when already viewing the card** - If the user is viewing the waitlist entry card when their table becomes ready, the 5-minute countdown timer doesn't start. However, if they exit and re-enter the card, the timer works correctly.
+
+2. **Notification bubble flickering** - When a cancellation occurs (especially system-initiated), the notification bubble flickers.
+
+3. **Cannot rejoin waitlist** - After the timer expires and the entry is auto-cancelled, the user cannot rejoin the waitlist.
+
+4. **Entry disappears from Active Tracking without dismissal** - The entry disappears from the "Active Tracking" section without the user explicitly dismissing it.
 
 ---
 
-## Categories of Improvements
+## Root Cause Analysis
 
-### 1. Full-Screen Celebration Notifications (High Impact)
+### Issue 1: Timer not starting
 
-**Problem**: When food or table is ready, the notification is just a card with an emoji. This is the most exciting moment for the patron and deserves celebration.
+**Location**: `src/components/TableReadyFlow.tsx` (lines 190-254, 306-360)
 
-**Solution**: Create immersive full-screen overlays for "ready" states.
+When the user is viewing the card in "waiting" state and the table becomes ready via real-time update:
+- The real-time subscription updates `waitlistEntry.ready_deadline`
+- The subscription also sets `step` to "ready"
+- BUT the countdown `useEffect` depends on both `step === "ready"` AND `waitlistEntry.ready_deadline` being truthy
+- Due to React's batching, the countdown effect may evaluate before both state updates are complete, causing the timer to not initialize properly
 
-#### New Component: `src/components/ui/celebration-overlay.tsx`
+The real-time payload updates `ready_deadline` in state, but the countdown effect may have already fired with a stale `ready_deadline` value.
 
-Features:
-- Full-screen semi-transparent backdrop with blur
-- Large animated icon (confetti animation, pulsing checkmark)
-- Primary action button prominently displayed
-- Auto-dismiss after 10 seconds with manual dismiss option
-- Subtle haptic-like shake animation on mount
-- Gradient background matching the success/ready theme
+### Issue 2: Notification bubble flickering
+
+**Location**: `src/pages/Index.tsx` (lines 357-367)
+
+The real-time subscription filters entries by status:
+```typescript
+const activeFiltered = updatedEntries.filter(entry => 
+  ['waiting', 'ready', 'cancelled', 'seated'].includes(entry.status)
+);
+```
+
+The `no_show` status is NOT included, so when an entry transitions to `no_show`:
+1. It gets filtered out immediately
+2. Then re-appears briefly if the state re-renders
+3. Causing the flickering effect
+
+### Issue 3: Cannot rejoin waitlist
+
+**Location**: `src/pages/Index.tsx` and `src/components/TableReadyFlow.tsx`
+
+After auto-cancellation (status = `no_show`):
+- The entry is filtered out of `activeWaitlist` (doesn't include `no_show`)
+- The entry is not `patron_dismissed: true`, so subsequent fetches would include it
+- But the real-time filter removes it immediately, causing confusion
+- The patron needs to see the "cancelled" screen to dismiss it, but it disappears too quickly
+
+### Issue 4: Entry disappears without dismissal
+
+**Location**: `src/pages/Index.tsx` line 363-366
+
+Same root cause as Issue 2 and 3 - the `no_show` status isn't included in the active filter, so entries auto-cancelled by the system are removed from view before the user can dismiss them.
+
+---
+
+## Technical Solution
+
+### Fix 1: Ensure countdown timer starts correctly when table becomes ready
+
+In `TableReadyFlow.tsx`, when the real-time subscription receives a "ready" status, we need to ensure the countdown timer re-evaluates properly:
+
+**Changes needed**:
+- Add `ready_deadline` as a separate state trigger to force re-evaluation
+- Use a ref to track when we've already processed the "ready" transition
+- Ensure the countdown effect dependencies include all necessary values and handle the transition correctly
 
 ```text
-+------------------------------------------+
-|                                          |
-|            [Confetti Animation]          |
-|                                          |
-|                  🎉                       |
-|         Your Table is Ready!             |
-|            Party of 4                    |
-|                                          |
-|        Please head to the host           |
-|                                          |
-|     [  I'm Here - Get Seated  ]          |
-|                                          |
-|         (Tap anywhere to close)          |
-+------------------------------------------+
+src/components/TableReadyFlow.tsx:
+- Lines 190-254: Modify countdown useEffect to not depend on `step` but on `waitlistEntry.status === 'ready'` instead
+- This ensures the countdown starts based on the actual status, not the step which may be set asynchronously
 ```
 
-**Apply to**:
-- `TableReadyFlow.tsx` - When status changes to "ready"
-- `FoodReadyFlow.tsx` - When order status changes to "ready"
-- Index.tsx - When patron opens app with ready items
+### Fix 2: Include `no_show` status in active tracking filter
 
----
+In `Index.tsx`, include `no_show` in the filter so entries don't disappear prematurely:
 
-### 2. Skeleton Loading States (Visual Polish)
-
-**Problem**: Current loading states are plain text ("Loading venues...") which feels dated.
-
-**Solution**: Create skeleton loading components that match the shape of the actual content.
-
-#### New Component: `src/components/ui/skeleton-card.tsx`
-
-Variants:
-- `VenueCardSkeleton` - For venue list items
-- `OrderCardSkeleton` - For active tracking cards
-- `WaitlistStatusSkeleton` - For waiting screen
-
-```typescript
-// Usage example
-{isLoading ? (
-  <div className="space-y-2">
-    {Array.from({ length: 5 }).map((_, i) => (
-      <VenueCardSkeleton key={i} />
-    ))}
-  </div>
-) : (
-  <VenueList venues={venues} />
-)}
-```
-
----
-
-### 3. Animated Progress Indicators (Micro-interactions)
-
-**Problem**: The Progress bar is static and doesn't feel dynamic.
-
-**Solution**: Enhanced animated progress with:
-- Smooth transition when value changes
-- Subtle glow effect when near completion
-- Pulsing animation when at 100%
-- Color gradient based on progress
-
-#### Enhanced `Progress` Component
-
-```typescript
-// Add spring animation for progress changes
-<motion.div
-  className="h-full bg-primary"
-  initial={{ width: 0 }}
-  animate={{ width: `${value}%` }}
-  transition={{ type: "spring", damping: 20 }}
-/>
-```
-
----
-
-### 4. Pull-to-Refresh Animation
-
-**Problem**: No visual feedback when refreshing data.
-
-**Solution**: Add pull-to-refresh with animated indicator.
-
-#### New Component: `src/components/ui/pull-to-refresh.tsx`
-
-Features:
-- Rotating refresh icon as user pulls
-- Threshold indicator
-- Bounce animation on release
-- Success checkmark animation after refresh
-
----
-
-### 5. Button Loading States (Consistency)
-
-**Problem**: Loading states in buttons are inconsistent - some show text, some show spinner.
-
-**Solution**: Create a standardized `LoadingButton` wrapper.
-
-#### Enhanced Button Pattern
-
-```typescript
-<Button disabled={isLoading}>
-  {isLoading ? (
-    <motion.div
-      animate={{ rotate: 360 }}
-      transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-    >
-      <Loader2 className="h-4 w-4" />
-    </motion.div>
-  ) : (
-    <>
-      <Icon /> Action
-    </>
-  )}
-</Button>
-```
-
----
-
-### 6. Toast/Notification Improvements
-
-**Problem**: Toasts are standard and don't stand out for important notifications.
-
-**Solution**: Enhanced toast variants with:
-- Slide-in animations from top
-- Icon animations (checkmark draws itself, X shakes)
-- Progress bar showing auto-dismiss countdown
-- Swipe-to-dismiss gesture
-
----
-
-### 7. Card Hover & Tap Feedback (Already Partially Implemented)
-
-**Enhancement**: Improve existing `Card` component with:
-- Subtle shadow lift on hover (already exists)
-- Add ripple effect on tap for mobile
-- Subtle border highlight on focus
-
----
-
-### 8. Status Badge Animations
-
-**Problem**: Status badges are static when they change.
-
-**Solution**: Add transition animations when status updates.
-
-```typescript
-<motion.div
-  key={status}
-  initial={{ scale: 0.8, opacity: 0 }}
-  animate={{ scale: 1, opacity: 1 }}
-  transition={{ type: "spring", damping: 15 }}
->
-  <Badge variant={variant}>{label}</Badge>
-</motion.div>
-```
-
----
-
-### 9. Countdown Timer Enhancement
-
-**Problem**: Countdown timer in "ready" state is functional but not visually exciting.
-
-**Solution**: Create a visually striking countdown:
-- Circular progress ring that decreases
-- Color transitions (green → yellow → red)
-- Pulse animation in final 60 seconds
-- Number flip animation on digit change
-
-#### New Component: `src/components/ui/countdown-ring.tsx`
-
+**Changes needed**:
 ```text
-     ╭──────╮
-    ╱   04   ╲
-   │   :23   │
-    ╲        ╱
-     ╰──────╯
-   Time remaining
+src/pages/Index.tsx:
+- Line 363-366: Add 'no_show' to the status filter array
+- Line 214: Add 'no_show' to the database query status filter
+- This ensures entries remain visible until patron dismisses them
+```
+
+### Fix 3: Map `no_show` to display as "cancelled" for patron
+
+The patron doesn't need to see "no_show" - they should see "Cancelled" with an appropriate message:
+
+**Changes needed**:
+```text
+src/pages/Index.tsx:
+- In the waitlist card rendering (around lines 915-920), treat 'no_show' same as 'cancelled' for display
+- Show appropriate cancellation message
+- Include "Dismiss" button for no_show entries
+```
+
+### Fix 4: Prevent flickering by stabilizing state updates
+
+**Changes needed**:
+```text
+src/pages/Index.tsx:
+- Use functional state updates with proper deduplication
+- Add a check to prevent processing the same status transition multiple times
 ```
 
 ---
-
-### 10. Empty State Illustrations
-
-**Problem**: Empty states ("No orders", "No venues found") are just text.
-
-**Solution**: Add illustrated empty states with:
-- Simple line art illustrations
-- Encouraging messaging
-- Clear call-to-action
-
----
-
-### 11. Page Transitions
-
-**Problem**: Navigation between tabs/views is instant without transition.
-
-**Solution**: Add page transition animations using Framer Motion's `AnimatePresence`.
-
-```typescript
-<AnimatePresence mode="wait">
-  <motion.div
-    key={activeTab}
-    initial={{ opacity: 0, x: 20 }}
-    animate={{ opacity: 1, x: 0 }}
-    exit={{ opacity: 0, x: -20 }}
-    transition={{ duration: 0.2 }}
-  >
-    {content}
-  </motion.div>
-</AnimatePresence>
-```
-
----
-
-### 12. Success Checkmark Animation
-
-**Problem**: Success states use static icons.
-
-**Solution**: Create an animated checkmark that draws itself.
-
-#### New Component: `src/components/ui/animated-checkmark.tsx`
-
-Uses SVG path animation to draw the checkmark with a satisfying motion.
-
----
-
-### 13. Rating Stars Improvement
-
-**Problem**: Rating stars are functional but basic.
-
-**Solution**: Enhanced star rating with:
-- Stars fill with color animation on selection
-- Bounce animation when selected
-- Subtle sparkle effect on 5-star selection
-
----
-
-### 14. Form Input Enhancements
-
-**Problem**: Form inputs are standard with no special feedback.
-
-**Solution**: Add:
-- Floating label animation (label moves up when focused)
-- Subtle border animation on focus
-- Shake animation on validation error
-- Success checkmark when valid
-
----
-
-### 15. List Item Stagger Animation
-
-**Problem**: Lists appear all at once.
-
-**Solution**: Stagger animation when lists load:
-
-```typescript
-<MotionList staggerDelay={0.05}>
-  {items.map((item) => (
-    <MotionListItem key={item.id}>
-      <ItemCard item={item} />
-    </MotionListItem>
-  ))}
-</MotionList>
-```
-
-Already partially implemented in `motion.tsx` - needs wider adoption.
-
----
-
-## Implementation Priority
-
-### Phase 1: High Impact (Do First)
-1. Full-Screen Celebration Overlays for ready states
-2. Skeleton Loading States
-3. Enhanced Countdown Timer with ring
-4. Page Transitions
-
-### Phase 2: Polish (Do Next)
-5. Button Loading States standardization
-6. Status Badge Animations
-7. List Stagger Animations
-8. Animated Success Checkmark
-
-### Phase 3: Refinement (Nice to Have)
-9. Pull-to-Refresh
-10. Enhanced Rating Stars
-11. Empty State Illustrations
-12. Form Input Enhancements
-
----
-
-## Files to Create
-
-| File | Purpose |
-|------|---------|
-| `src/components/ui/celebration-overlay.tsx` | Full-screen ready celebrations |
-| `src/components/ui/skeleton-card.tsx` | Skeleton loading components |
-| `src/components/ui/countdown-ring.tsx` | Circular countdown timer |
-| `src/components/ui/animated-checkmark.tsx` | SVG animated checkmark |
-| `src/components/ui/pull-to-refresh.tsx` | Pull-to-refresh wrapper |
-| `src/components/ui/empty-state.tsx` | Illustrated empty states |
 
 ## Files to Modify
 
-| File | Changes |
-|------|---------|
-| `src/components/TableReadyFlow.tsx` | Add celebration overlay, countdown ring, page transitions |
-| `src/components/FoodReadyFlow.tsx` | Add celebration overlay, skeleton loading, page transitions |
-| `src/pages/Index.tsx` | Add skeleton loading, stagger animations, page transitions |
-| `src/components/ui/progress.tsx` | Add spring animation, glow effect |
-| `src/components/ui/badge.tsx` | Add transition animation on status change |
-| `src/components/ExploreVenues.tsx` | Add skeleton loading, empty states |
+| File | Change Description |
+|------|-------------------|
+| `src/components/TableReadyFlow.tsx` | Fix countdown timer to use status-based triggering instead of step-based |
+| `src/pages/Index.tsx` | Include `no_show` in real-time filter; fix query to include `no_show`; stabilize state updates |
 
 ---
 
-## Technical Notes
+## Detailed Implementation Steps
 
-- All animations will use Framer Motion (already installed)
-- Respect `prefers-reduced-motion` for accessibility
-- Keep animations subtle (under 300ms for micro-interactions)
-- Use GPU-accelerated properties (transform, opacity) for performance
-- Celebration overlay should support being triggered programmatically
+### Step 1: Fix Countdown Timer in TableReadyFlow.tsx
 
----
+1. Modify the countdown `useEffect` (lines 190-254) to:
+   - Check `waitlistEntry?.status === 'ready'` instead of `step === "ready"`
+   - This decouples the timer from the UI step, ensuring it starts as soon as status changes
+   - Keep the `step !== "awaiting-confirmation"` check to stop timer after confirmation
 
-## Example: Celebration Overlay Implementation
+2. Ensure the real-time subscription (lines 306-360) properly updates all necessary fields atomically
 
-```typescript
-interface CelebrationOverlayProps {
-  type: 'table-ready' | 'food-ready';
-  title: string;
-  subtitle: string;
-  actionLabel: string;
-  onAction: () => void;
-  onDismiss: () => void;
-}
+### Step 2: Fix Active Tracking Filter in Index.tsx
 
-export function CelebrationOverlay({ ... }: CelebrationOverlayProps) {
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      onClick={onDismiss}
-    >
-      <motion.div
-        initial={{ scale: 0.8, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", damping: 15 }}
-        className="bg-card rounded-3xl p-8 m-4 text-center shadow-2xl"
-        onClick={e => e.stopPropagation()}
-      >
-        <motion.div
-          animate={{ scale: [1, 1.1, 1] }}
-          transition={{ repeat: Infinity, duration: 2 }}
-          className="text-7xl mb-4"
-        >
-          {type === 'table-ready' ? '🍽️' : '🍔'}
-        </motion.div>
-        <h2 className="text-2xl font-bold text-primary">{title}</h2>
-        <p className="text-muted-foreground mt-2">{subtitle}</p>
-        <Button onClick={onAction} className="mt-6 w-full h-12">
-          {actionLabel}
-        </Button>
-      </motion.div>
-    </motion.div>
-  );
-}
-```
+1. Update the database query (line 214) to include `no_show`:
+   ```typescript
+   .or('status.in.(waiting,ready,seated,cancelled,no_show),and(...)')
+   ```
+
+2. Update the real-time filter (lines 363-366):
+   ```typescript
+   const activeFiltered = updatedEntries.filter(entry => 
+     ['waiting', 'ready', 'cancelled', 'seated', 'no_show'].includes(entry.status)
+   );
+   ```
+
+### Step 3: Add Dismiss Button for no_show Entries
+
+1. Update the `shouldClear` condition (line 835) to include `no_show`:
+   ```typescript
+   const shouldClear = entry.status === 'cancelled' || entry.status === 'no_show';
+   ```
+
+2. The existing display logic already treats `no_show` as cancelled via `mapDatabaseStatus`, so no additional UI changes needed
+
+### Step 4: Stabilize Real-time Updates
+
+1. Add deduplication logic to prevent processing the same update multiple times
+2. Use refs to track processed state transitions
 
 ---
 
-## Benefits
+## Testing Checklist
 
-- **Delightful moments**: Celebration overlays make the "ready" moment feel special
-- **Perceived performance**: Skeleton loading makes the app feel faster
-- **Visual consistency**: Standardized animations across all components
-- **Modern feel**: Smooth micro-interactions match top-tier apps
-- **Accessibility**: All animations respect reduced motion preferences
+After implementation, verify:
+
+- [ ] Join waitlist and stay on the waiting card - when table becomes ready, timer should start immediately
+- [ ] Timer shows 5 minutes (or correct time from `ready_deadline`)
+- [ ] "Need 5 More Minutes" extends the timer by 5 minutes
+- [ ] Letting timer expire shows cancellation message, doesn't flicker
+- [ ] Cancelled entry stays in Active Tracking until user dismisses
+- [ ] User can dismiss the cancelled entry
+- [ ] After dismissal, user can successfully rejoin the waitlist
+- [ ] "Cancel Booking" button works correctly from the ready screen
 
