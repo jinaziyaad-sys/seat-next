@@ -115,6 +115,9 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const celebrationShownRef = useRef(false);
+  
+  // Ref to track ready_deadline for stable access in countdown interval
+  const readyDeadlineRef = useRef<string | null>(null);
 
   const soundStartedRef = useRef(false);
 
@@ -187,6 +190,24 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     };
   }, [waitlistEntry, step]);
 
+  // Sync ref whenever ready_deadline changes - this ensures the interval always reads the latest value
+  useEffect(() => {
+    readyDeadlineRef.current = waitlistEntry?.ready_deadline || null;
+  }, [waitlistEntry?.ready_deadline]);
+
+  // Immediately sync countdown when deadline arrives/changes (don't wait for interval)
+  // This fixes the issue where the timer shows stale values when viewing the card
+  useEffect(() => {
+    if (waitlistEntry?.status === 'ready' && waitlistEntry?.ready_deadline) {
+      const deadline = new Date(waitlistEntry.ready_deadline).getTime();
+      const timeLeft = deadline - Date.now();
+      if (timeLeft > 0) {
+        setCountdownMinutes(Math.floor(timeLeft / 60000));
+        setCountdownSeconds(Math.floor((timeLeft % 60000) / 1000));
+      }
+    }
+  }, [waitlistEntry?.ready_deadline, waitlistEntry?.status]);
+
   // Countdown timer - calculate from server-side deadline
   // Use status-based triggering instead of step-based to ensure timer starts immediately
   // when table becomes ready via real-time update, even if user is viewing the card
@@ -200,28 +221,31 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
     // Use status check instead of step check to decouple from async UI state
     const isReadyStatus = waitlistEntry?.status === 'ready';
-    const hasDeadline = !!waitlistEntry?.ready_deadline;
     
     // Don't run if entry is cancelled or we're past the confirmation step
     if (step === "awaiting-confirmation" || step === "feedback") return;
     
-    if (!isReadyStatus || !hasDeadline) return;
+    if (!isReadyStatus) return;
 
     const updateCountdown = async () => {
-      const now = new Date().getTime();
-      const deadline = new Date(waitlistEntry.ready_deadline!).getTime();
-      const timeLeft = deadline - now;
+      // Read from ref for stable access to the latest deadline value
+      const deadline = readyDeadlineRef.current;
+      if (!deadline) return;
+      
+      const now = Date.now();
+      const deadlineMs = new Date(deadline).getTime();
+      const timeLeft = deadlineMs - now;
 
       if (timeLeft <= 0) {
         // Time expired - auto cancel the entry
-      const { error } = await supabase
-        .from('waitlist_entries')
-        .update({
-          status: 'no_show',
-          cancellation_reason: 'Time expired - patron did not arrive within allocated time',
-          cancelled_by: 'system'
-        })
-        .eq('id', waitlistEntry.id);
+        const { error } = await supabase
+          .from('waitlist_entries')
+          .update({
+            status: 'no_show',
+            cancellation_reason: 'Time expired - patron did not arrive within allocated time',
+            cancelled_by: 'system'
+          })
+          .eq('id', waitlistEntry!.id);
 
         if (!error) {
           setWaitlistEntry(prev => prev ? {
@@ -253,6 +277,9 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       setCountdownSeconds(seconds);
     };
 
+    // Check if we have a deadline before starting the interval
+    if (!readyDeadlineRef.current) return;
+
     // Update immediately
     updateCountdown();
     
@@ -260,7 +287,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     const timer = setInterval(updateCountdown, 1000);
 
     return () => clearInterval(timer);
-  }, [step, waitlistEntry?.status, waitlistEntry?.ready_deadline, waitlistEntry?.id, waitlistEntry?.awaiting_merchant_confirmation, toast]);
+  }, [step, waitlistEntry?.status, waitlistEntry?.id, waitlistEntry?.awaiting_merchant_confirmation, toast]);
 
   // Handle initial entry from home page
   useEffect(() => {
@@ -1174,13 +1201,15 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       .eq("id", waitlistEntry.id);
 
     if (!error) {
+      // Update state - the countdown will automatically extend via the immediate sync effect
       setWaitlistEntry(prev => prev ? { 
         ...prev, 
         patron_delayed: true,
         ready_deadline: newDeadline.toISOString()
       } : null);
       
-      setStep("delayed-countdown");
+      // Stay on "ready" screen - don't transition to "delayed-countdown"
+      // This keeps UI consistent while the timer updates automatically
       
       toast({
         title: "5 More Minutes Granted",
