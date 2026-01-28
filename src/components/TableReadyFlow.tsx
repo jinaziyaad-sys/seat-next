@@ -2349,9 +2349,31 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 className="w-full h-12 text-destructive hover:bg-destructive/10"
                 onClick={() => setShowCancelConfirmation(true)}
               >
-                Cancel Booking
+              Cancel Booking
               </Button>
             </div>
+
+            {/* Cancel Booking Confirmation Dialog */}
+            <AlertDialog open={showCancelConfirmation} onOpenChange={setShowCancelConfirmation}>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Cancel Booking?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Are you sure you want to cancel your table at {waitlistEntry?.venue}? 
+                    This action cannot be undone.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Don't Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleCancelBooking}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Confirm Cancellation
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
       </div>
