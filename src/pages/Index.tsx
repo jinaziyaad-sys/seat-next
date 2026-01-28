@@ -211,7 +211,7 @@ const Index = () => {
         .select('*, venues(name)')
         .eq('user_id', user.id)
         .eq('patron_dismissed', false)
-        .or('status.in.(waiting,ready,seated,cancelled),and(reservation_type.eq.reservation,reservation_time.gte.' + new Date().toISOString() + ')')
+        .or('status.in.(waiting,ready,seated,cancelled,no_show),and(reservation_type.eq.reservation,reservation_time.gte.' + new Date().toISOString() + ')')
         .order('reservation_time', { ascending: true, nullsFirst: false })
         .order('created_at', { ascending: false });
 
@@ -360,8 +360,9 @@ const Index = () => {
                   ? { ...entry, ...payload.new }
                   : entry
               );
+              // Include 'no_show' so entries don't disappear before patron dismisses them
               const activeFiltered = updatedEntries.filter(entry => 
-                ['waiting', 'ready', 'cancelled', 'seated'].includes(entry.status)
+                ['waiting', 'ready', 'cancelled', 'seated', 'no_show'].includes(entry.status)
                );
                return activeFiltered;
              });
@@ -832,7 +833,8 @@ const Index = () => {
               new Date(entry.reservation_time).toDateString() === new Date().toDateString();
 
             const shouldRate = entry.status === 'seated';
-            const shouldClear = entry.status === 'cancelled';
+            // Include 'no_show' so patron can dismiss auto-cancelled entries
+            const shouldClear = entry.status === 'cancelled' || entry.status === 'no_show';
             const canInteract = shouldRate; // Removed shouldClear - allow clicking cancelled to view details
 
             return (
@@ -841,7 +843,7 @@ const Index = () => {
                 className={cn(
                   "group shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01]",
                   entry.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
-                  entry.status === 'cancelled' && "bg-destructive/10 border-destructive",
+                  (entry.status === 'cancelled' || entry.status === 'no_show') && "bg-destructive/10 border-destructive",
                   entry.status === 'seated' && "bg-success/10 border-success"
                 )}
               >
@@ -857,14 +859,14 @@ const Index = () => {
                       <div className={cn(
                         "w-12 h-12 rounded-full flex items-center justify-center",
                         entry.status === 'ready' ? "bg-success/20" : 
-                        entry.status === 'cancelled' ? "bg-destructive/20" :
+                        (entry.status === 'cancelled' || entry.status === 'no_show') ? "bg-destructive/20" :
                         entry.status === 'seated' ? "bg-success/20" :
                         "bg-accent/10"
                       )}>
                         <Users className={cn(
                           "w-6 h-6",
                           entry.status === 'ready' ? "text-success" : 
-                          entry.status === 'cancelled' ? "text-destructive" :
+                          (entry.status === 'cancelled' || entry.status === 'no_show') ? "text-destructive" :
                           entry.status === 'seated' ? "text-success" :
                           "text-accent"
                         )} />
@@ -912,9 +914,11 @@ const Index = () => {
                             <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
                               Party of {entry.party_size}{entry.position ? ` • #${entry.position}` : ''}
                             </p>
-                        {entry.status === 'cancelled' && (
+                        {(entry.status === 'cancelled' || entry.status === 'no_show') && (
                           <p className="text-xs text-destructive mt-1">
-                            Cancelled by {entry.cancelled_by === 'patron' ? 'you' : entry.cancelled_by === 'system' ? 'system' : 'venue'}
+                            {entry.status === 'no_show' 
+                              ? "Table released - didn't arrive in time" 
+                              : `Cancelled by ${entry.cancelled_by === 'patron' ? 'you' : entry.cancelled_by === 'system' ? 'system' : 'venue'}`}
                           </p>
                         )}
                             {entry.eta && entry.status === 'waiting' && (
