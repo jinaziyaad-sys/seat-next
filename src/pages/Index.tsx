@@ -2,13 +2,12 @@ import { useState, useEffect, useRef } from "react";
 import { FoodReadyFlow } from "@/components/FoodReadyFlow";
 import { TableReadyFlow } from "@/components/TableReadyFlow";
 import { ProfileSection } from "@/components/ProfileSection";
-import { ExploreVenues } from "@/components/ExploreVenues";
 import { RatingDialog } from "@/components/RatingDialog";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon, AlertTriangle, Info, X, Wrench, Compass } from "lucide-react";
+import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon, AlertTriangle, Info, X, Wrench } from "lucide-react";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -520,19 +519,6 @@ const Index = () => {
     );
   }
 
-  if (activeTab === "explore") {
-    return (
-      <div className="min-h-screen bg-background">
-        <ExploreVenues 
-          onBack={() => setActiveTab("home")}
-          onSelectVenue={(venueId) => {
-            // For now, just go back - could navigate to venue details in future
-            setActiveTab("home");
-          }}
-        />
-      </div>
-    );
-  }
 
   // Get announcement icon based on type
   const getAnnouncementIcon = (type: string) => {
@@ -1080,22 +1066,6 @@ const Index = () => {
             </Card>
           )}
 
-          {/* Explore Venues Card */}
-          <Card 
-            className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
-            onClick={() => setActiveTab("explore")}
-            data-tour="card-explore"
-          >
-            <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-accent text-accent-foreground">
-                <Compass size={28} />
-              </div>
-              <div>
-                <h3 className="font-semibold">Explore</h3>
-                <p className="text-sm text-muted-foreground">Discover venues</p>
-              </div>
-            </CardContent>
-          </Card>
           
           {!features.food_ordering_enabled && !features.waitlist_enabled && (
             <div className="col-span-2 text-center py-8 text-muted-foreground">

@@ -6,7 +6,9 @@ import { Badge } from "@/components/ui/badge";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin, Loader2, Star, Calendar as CalendarIcon, XCircle, Navigation, Pencil } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft, Users, Clock, CheckCircle, Search, MapPin, Loader2, Star, Calendar as CalendarIcon, XCircle, Navigation, Pencil, Compass } from "lucide-react";
+import { ExploreVenues } from "@/components/ExploreVenues";
 import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
@@ -115,6 +117,10 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
   const celebrationShownRef = useRef(false);
+  
+  // New state for tabbed interface
+  const [activeTableTab, setActiveTableTab] = useState<"waitlist" | "reservations">("waitlist");
+  const [showExploreView, setShowExploreView] = useState(false);
   
   // Ref to track ready_deadline for stable access in countdown interval
   const readyDeadlineRef = useRef<string | null>(null);
@@ -541,22 +547,44 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         'waitlist'
       );
       
-      if (!status.is_open && bookingType === 'now') {
-        toast({
-          title: "Venue Closed",
-          description: status.message,
-          variant: "destructive"
-        });
-      } else if (status.message.includes('Closing soon') && bookingType === 'now') {
-        toast({
-          title: "Notice",
-          description: status.message,
-        });
+      // Only show warnings for walk-in (waitlist tab)
+      if (activeTableTab === 'waitlist') {
+        if (!status.is_open) {
+          toast({
+            title: "Venue Closed",
+            description: status.message,
+            variant: "destructive"
+          });
+        } else if (status.message.includes('Closing soon')) {
+          toast({
+            title: "Notice",
+            description: status.message,
+          });
+        }
+        
+        setSelectedVenue(venue.name);
+        setSelectedVenueData(venue);
+        setBookingType("now");
+        setStep("party-details");
+      } else {
+        // Reservations tab - go to date/time selection
+        setSelectedVenue(venue.name);
+        setSelectedVenueData(venue);
+        setBookingType("later");
+        setStep("reservation-details");
       }
-      
+    }
+  };
+
+  // Handle venue selection from ExploreVenues
+  const handleExploreVenueSelect = (venueId: string) => {
+    setShowExploreView(false);
+    const venue = venues.find(v => v.id === venueId);
+    if (venue) {
       setSelectedVenue(venue.name);
       setSelectedVenueData(venue);
-      setStep("booking-type");
+      setBookingType("later");
+      setStep("reservation-details");
     }
   };
 
@@ -1522,134 +1550,138 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     );
   }
 
+  // Render ExploreVenues if active
+  if (showExploreView) {
+    return (
+      <ExploreVenues 
+        onBack={() => setShowExploreView(false)}
+        onSelectVenue={handleExploreVenueSelect}
+      />
+    );
+  }
+
   if (step === "venue-select") {
+    // Venue list component shared between tabs
+    const VenueList = () => (
+      <>
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+          <Input
+            placeholder="Search restaurants..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+
+        {isLoading ? (
+          <div className="text-center py-8 text-muted-foreground">Loading venues...</div>
+        ) : filteredVenues.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground">
+            {searchQuery ? "No venues found matching your search" : "No venues available"}
+          </div>
+        ) : (
+          <div className="space-y-2 mt-4">
+            <div className="text-sm text-muted-foreground">
+              {filteredVenues.length} {filteredVenues.length === 1 ? 'restaurant' : 'restaurants'} found
+            </div>
+            <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2"
+                 style={{ scrollbarGutter: 'stable' }}>
+              {filteredVenues.map((venue) => (
+                <Card 
+                  key={venue.id}
+                  className="group cursor-pointer hover:bg-accent transition-colors"
+                  onClick={() => handleVenueSelect(venue.id)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex justify-between items-start gap-3">
+                      <div className="flex flex-col gap-1 flex-1">
+                        <span className="font-medium">{venue.name}</span>
+                        {(venue.display_address || venue.address) && (
+                          <div className="flex items-center gap-1 text-sm text-muted-foreground group-hover:text-accent-foreground transition-colors">
+                            <MapPin size={14} />
+                            <span>{venue.display_address || venue.address}</span>
+                          </div>
+                        )}
+                        <div className="flex items-center gap-1 text-sm text-muted-foreground group-hover:text-accent-foreground transition-colors">
+                          <Clock size={14} />
+                          <span>Wait: {venue.waitTime}</span>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2 shrink-0">
+                        {venue.distance !== undefined && (
+                          <Badge variant="secondary" className="flex items-center gap-1">
+                            <Navigation size={12} />
+                            {formatDistance(venue.distance)}
+                          </Badge>
+                        )}
+                        <Badge variant={venue.tables && venue.tables > 0 ? "secondary" : "default"}>
+                          {venue.tables || 0} ahead
+                        </Badge>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+      </>
+    );
+
     return (
       <div className="space-y-6 p-6">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="text-2xl font-bold">Join Waitlist</h1>
+          <h1 className="text-2xl font-bold">Table Ready</h1>
         </div>
 
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Select Restaurant</CardTitle>
-            <p className="text-muted-foreground">Search and choose where you'd like to dine</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
-              <Input
-                placeholder="Search restaurants..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-
-            {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">Loading venues...</div>
-            ) : filteredVenues.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                {searchQuery ? "No venues found matching your search" : "No venues available"}
-              </div>
-            ) : (
-              <div className="space-y-2 mt-4">
-                <div className="text-sm text-muted-foreground">
-                  {filteredVenues.length} {filteredVenues.length === 1 ? 'restaurant' : 'restaurants'} found
-                </div>
-                <div className="space-y-2 max-h-[400px] overflow-y-auto pr-2"
-                     style={{ scrollbarGutter: 'stable' }}>
-                  {filteredVenues.map((venue) => (
-            <Card 
-              key={venue.id}
-              className="group cursor-pointer hover:bg-accent transition-colors"
-              onClick={() => handleVenueSelect(venue.id)}
-            >
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-start gap-3">
-                          <div className="flex flex-col gap-1 flex-1">
-                            <span className="font-medium">{venue.name}</span>
-                            {(venue.display_address || venue.address) && (
-                              <div className="flex items-center gap-1 text-sm text-muted-foreground group-hover:text-accent-foreground transition-colors">
-                                <MapPin size={14} />
-                                <span>{venue.display_address || venue.address}</span>
-                              </div>
-                            )}
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground group-hover:text-accent-foreground transition-colors">
-                              <Clock size={14} />
-                              <span>Wait: {venue.waitTime}</span>
-                            </div>
-                          </div>
-                          <div className="flex flex-col items-end gap-2 shrink-0">
-                            {venue.distance !== undefined && (
-                              <Badge variant="secondary" className="flex items-center gap-1">
-                                <Navigation size={12} />
-                                {formatDistance(venue.distance)}
-                              </Badge>
-                            )}
-                            <Badge variant={venue.tables && venue.tables > 0 ? "secondary" : "default"}>
-                              {venue.tables || 0} ahead
-                            </Badge>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  if (step === "booking-type") {
-    return (
-      <div className="space-y-6 p-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => setStep("venue-select")}>
-            <ArrowLeft size={20} />
-          </Button>
-          <h1 className="text-2xl font-bold">When would you like to dine?</h1>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          <Card 
-            className={cn(
-              "cursor-pointer transition-all hover:shadow-floating",
-              bookingType === "now" && "border-2 border-primary"
-            )}
-            onClick={() => {
-              setBookingType("now");
-              setStep("party-details");
-            }}
-          >
-            <CardContent className="p-6 text-center">
-              <Clock className="mx-auto mb-2" size={32} />
-              <h3 className="font-semibold">Join Waitlist Now</h3>
-              <p className="text-sm text-muted-foreground">Get seated today</p>
-            </CardContent>
-          </Card>
+        <Tabs 
+          value={activeTableTab} 
+          onValueChange={(value) => setActiveTableTab(value as "waitlist" | "reservations")} 
+          className="w-full"
+        >
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="waitlist">Waitlist</TabsTrigger>
+            <TabsTrigger value="reservations">Reservations</TabsTrigger>
+          </TabsList>
           
-          <Card 
-            className={cn(
-              "cursor-pointer transition-all hover:shadow-floating",
-              bookingType === "later" && "border-2 border-primary"
-            )}
-            onClick={() => {
-              setBookingType("later");
-              setStep("reservation-details");
-            }}
-          >
-            <CardContent className="p-6 text-center">
-              <CalendarIcon className="mx-auto mb-2" size={32} />
-              <h3 className="font-semibold">Book for Later</h3>
-              <p className="text-sm text-muted-foreground">Reserve in advance</p>
-            </CardContent>
-          </Card>
-        </div>
+          <TabsContent value="waitlist" className="mt-4">
+            <Card className="shadow-card">
+              <CardHeader>
+                <CardTitle>Join Waitlist</CardTitle>
+                <p className="text-muted-foreground">Get seated today - no reservation needed</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <VenueList />
+              </CardContent>
+            </Card>
+          </TabsContent>
+          
+          <TabsContent value="reservations" className="mt-4 space-y-4">
+            {/* Explore Venues Button */}
+            <Button
+              variant="outline"
+              className="w-full h-14 border-dashed border-2"
+              onClick={() => setShowExploreView(true)}
+            >
+              <Compass className="mr-2 h-5 w-5" />
+              Explore Venues
+            </Button>
+            
+            <Card className="shadow-card">
+              <CardHeader>
+                <CardTitle>Make a Reservation</CardTitle>
+                <p className="text-muted-foreground">Book a table in advance</p>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <VenueList />
+              </CardContent>
+            </Card>
+          </TabsContent>
+        </Tabs>
       </div>
     );
   }
@@ -1678,7 +1710,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     return (
       <div className="space-y-6 p-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => setStep("booking-type")}>
+          <Button variant="ghost" size="sm" onClick={() => setStep("venue-select")}>
             <ArrowLeft size={20} />
           </Button>
           <h1 className="text-2xl font-bold">Choose Date & Time</h1>
