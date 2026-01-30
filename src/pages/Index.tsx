@@ -207,7 +207,7 @@ const Index = () => {
 
       const { data: waitlist } = await supabase
         .from('waitlist_entries')
-        .select('*, venues(name)')
+        .select('*, venues(name, settings)')
         .eq('user_id', user.id)
         .eq('patron_dismissed', false)
         .or('status.in.(waiting,ready,seated,cancelled,no_show),and(reservation_type.eq.reservation,reservation_time.gte.' + new Date().toISOString() + ')')
@@ -480,6 +480,24 @@ const Index = () => {
       }
     }
   }, [showCelebration, celebrationData, activeOrders, activeWaitlist]);
+
+  // Timer for live overdue countdown updates
+  const [, forceUpdate] = useState(0);
+  useEffect(() => {
+    // Check if any reservation is potentially overdue or approaching
+    const hasActiveReservations = activeWaitlist.some(
+      entry => entry.reservation_type === 'reservation' && entry.status === 'waiting'
+    );
+    
+    if (!hasActiveReservations) return;
+    
+    // Force re-render every 30 seconds to update overdue countdowns
+    const interval = setInterval(() => {
+      forceUpdate(prev => prev + 1);
+    }, 30000);
+    
+    return () => clearInterval(interval);
+  }, [activeWaitlist]);
 
   if (activeTab === "food-ready") {
     return (
@@ -832,13 +850,31 @@ const Index = () => {
           {activeWaitlist.map((entry) => {
             // A reservation is any entry with reservation_type === 'reservation', regardless of time
             const isReservation = entry.reservation_type === 'reservation';
+            const reservationTime = entry.reservation_time ? new Date(entry.reservation_time) : null;
+            const now = new Date();
             
             // Check if reservation time is still upcoming (for countdown display purposes)
-            const isUpcomingTime = entry.reservation_time && 
-              new Date(entry.reservation_time) > new Date();
+            const isUpcomingTime = reservationTime && reservationTime > now;
             
-            const isToday = entry.reservation_time && 
-              new Date(entry.reservation_time).toDateString() === new Date().toDateString();
+            const isToday = reservationTime && 
+              reservationTime.toDateString() === now.toDateString();
+
+            // Overdue detection: reservation is past its time and still waiting
+            const isOverdue = isReservation && 
+              entry.status === 'waiting' && 
+              reservationTime && 
+              reservationTime < now;
+
+            // Calculate how late (in minutes)
+            const minutesLate = isOverdue && reservationTime
+              ? Math.floor((now.getTime() - reservationTime.getTime()) / 60000) 
+              : 0;
+
+            // Get venue's auto_no_show_time setting (default 15)
+            const autoNoShowMinutes = (entry.venues?.settings as any)?.auto_no_show_time || 15;
+
+            // Time remaining before auto-cancel
+            const minutesUntilRelease = isOverdue ? Math.max(0, autoNoShowMinutes - minutesLate) : null;
 
             const shouldRate = entry.status === 'seated';
             // Include 'no_show' so patron can dismiss auto-cancelled entries
@@ -852,7 +888,8 @@ const Index = () => {
                   "group shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01]",
                   entry.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
                   (entry.status === 'cancelled' || entry.status === 'no_show') && "bg-destructive/10 border-destructive",
-                  entry.status === 'seated' && "bg-success/10 border-success"
+                  entry.status === 'seated' && "bg-success/10 border-success",
+                  isOverdue && "bg-amber-500/10 border-amber-500 dark:bg-amber-900/20"
                 )}
               >
                 <CardContent className="p-4">
@@ -869,6 +906,7 @@ const Index = () => {
                         entry.status === 'ready' ? "bg-success/20" : 
                         (entry.status === 'cancelled' || entry.status === 'no_show') ? "bg-destructive/20" :
                         entry.status === 'seated' ? "bg-success/20" :
+                        isOverdue ? "bg-amber-500/20" :
                         "bg-accent/10"
                       )}>
                         <Users className={cn(
@@ -876,6 +914,7 @@ const Index = () => {
                           entry.status === 'ready' ? "text-success" : 
                           (entry.status === 'cancelled' || entry.status === 'no_show') ? "text-destructive" :
                           entry.status === 'seated' ? "text-success" :
+                          isOverdue ? "text-amber-600 dark:text-amber-400" :
                           "text-accent"
                         )} />
                       </div>
@@ -892,7 +931,7 @@ const Index = () => {
                         {entry.customer_name && (
                           <p className="text-xs font-medium text-primary">{entry.customer_name}</p>
                         )}
-                        {isReservation && entry.reservation_time ? (
+                        {isReservation && reservationTime ? (
                           <>
                             <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
                               Reservation for {entry.party_size}
@@ -900,22 +939,41 @@ const Index = () => {
                             <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors mt-1">
                               <CalendarIcon size={12} />
                               <span>
-                                {isTomorrow(new Date(entry.reservation_time)) 
+                                {isTomorrow(reservationTime) 
                                   ? 'Tomorrow' 
                                   : isToday 
                                     ? 'Today' 
-                                    : format(new Date(entry.reservation_time), 'MMM d')
+                                    : format(reservationTime, 'MMM d')
                                 } 
                                 {' at '}
-                                {format(new Date(entry.reservation_time), 'HH:mm')}
-                                {isUpcomingTime && (
+                                {format(reservationTime, 'HH:mm')}
+                                {isOverdue ? (
+                                  <span className="text-amber-600 dark:text-amber-400 font-medium">
+                                    {' • '}{minutesLate} min late
+                                  </span>
+                                ) : isUpcomingTime ? (
                                   <>
                                     {' • '}
-                                    {formatTimeUntil(new Date(entry.reservation_time))}
+                                    {formatTimeUntil(reservationTime)}
                                   </>
-                                )}
+                                ) : null}
                               </span>
                             </div>
+                            {/* Auto-cancel warning for overdue reservations */}
+                            {isOverdue && minutesUntilRelease !== null && minutesUntilRelease > 0 && (
+                              <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mt-1">
+                                <AlertTriangle size={12} />
+                                <span>
+                                  Arriving within {minutesUntilRelease} min? Check in now!
+                                </span>
+                              </div>
+                            )}
+                            {isOverdue && minutesUntilRelease === 0 && (
+                              <div className="flex items-center gap-1 text-xs text-destructive mt-1">
+                                <AlertTriangle size={12} />
+                                <span>Reservation may be released any moment</span>
+                              </div>
+                            )}
                           </>
                         ) : (
                           <>
@@ -958,14 +1016,21 @@ const Index = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant={
-                        isReservation ? 'outline' : 
-                        entry.status === 'ready' ? 'default' : 
-                        entry.status === 'cancelled' ? 'destructive' :
-                        entry.status === 'seated' ? 'default' :
-                        'secondary'
-                      }>
-                        {isReservation ? 'Reserved' : 
+                      <Badge 
+                        variant={
+                          isOverdue ? 'outline' :
+                          isReservation ? 'outline' : 
+                          entry.status === 'ready' ? 'default' : 
+                          entry.status === 'cancelled' ? 'destructive' :
+                          entry.status === 'seated' ? 'default' :
+                          'secondary'
+                        }
+                        className={cn(
+                          isOverdue && "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10"
+                        )}
+                      >
+                        {isOverdue ? 'Overdue' : 
+                         isReservation ? 'Reserved' : 
                          entry.status === 'ready' ? 'Ready' : 
                          entry.status === 'cancelled' ? 'Cancelled' :
                          entry.status === 'seated' ? 'Seated' :
