@@ -126,6 +126,9 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const readyDeadlineRef = useRef<string | null>(null);
 
   const soundStartedRef = useRef(false);
+  
+  // Ref to track previous status - prevents real-time subscription from overriding manual step changes
+  const prevStatusRef = useRef<string | null>(null);
 
   // Play sound when table is ready (on mount or status change)
   // Stop sound when patron confirms arrival (awaiting_merchant_confirmation = true)
@@ -344,6 +347,9 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         }
       }
 
+      // Initialize prevStatusRef with initial status
+      prevStatusRef.current = initialEntry.status;
+      
       // Set up real-time subscription
       const channel = supabase
         .channel(`waitlist-${initialEntry.id}`)
@@ -357,6 +363,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             const newAwaitingConfirmation = payload.new.awaiting_merchant_confirmation;
             const newStatus = payload.new.status;
             
+            // Always update the entry data
             setWaitlistEntry(prev => prev ? {
               ...prev,
               status: mapDatabaseStatus(newStatus),
@@ -372,24 +379,29 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               awaiting_merchant_confirmation: newAwaitingConfirmation,
             } : null);
             
-            if (newStatus === "ready") {
-              // Only set to "ready" step if patron hasn't confirmed arrival yet
-              if (newAwaitingConfirmation) {
-                setStep("awaiting-confirmation");
-              } else {
-                setStep("ready");
-                // Send browser notification and vibrate only when first becoming ready
-                sendBrowserNotification(
-                  "🍽️ Your Table is Ready!",
-                  "Please proceed to the venue to be seated",
-                  { tag: 'table-ready', requireInteraction: true }
-                );
-                vibratePhone([200, 100, 200, 100, 200]);
+            // Only change step if status actually changed to prevent race conditions
+            // This ensures manual step transitions (like handleConfirmSeat) aren't overridden
+            if (newStatus !== prevStatusRef.current) {
+              if (newStatus === "ready") {
+                // Only set to "ready" step if patron hasn't confirmed arrival yet
+                if (newAwaitingConfirmation) {
+                  setStep("awaiting-confirmation");
+                } else {
+                  setStep("ready");
+                  // Send browser notification and vibrate only when first becoming ready
+                  sendBrowserNotification(
+                    "🍽️ Your Table is Ready!",
+                    "Please proceed to the venue to be seated",
+                    { tag: 'table-ready', requireInteraction: true }
+                  );
+                  vibratePhone([200, 100, 200, 100, 200]);
+                }
+              } else if (newStatus === "seated") {
+                setStep("feedback");
+              } else if (newStatus === "cancelled" || newStatus === "no_show") {
+                setStep("cancelled-details");
               }
-            } else if (newStatus === "seated") {
-              setStep("feedback");
-            } else if (newStatus === "cancelled" || newStatus === "no_show") {
-              setStep("cancelled-details");
+              prevStatusRef.current = newStatus;
             }
           }
         })
@@ -843,6 +855,9 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         
         setStep("waiting");
 
+        // Initialize prevStatusRef for new entries
+        prevStatusRef.current = newEntry.status;
+        
         // Set up real-time subscription for this entry
         const channel = supabase
           .channel(`waitlist-${newEntry.id}`)
@@ -853,9 +868,13 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             filter: `id=eq.${newEntry.id}`
           }, (payload) => {
           if (payload.new) {
+              const newStatus = payload.new.status;
+              const newAwaitingConfirmation = payload.new.awaiting_merchant_confirmation;
+              
+              // Always update the entry data
               setWaitlistEntry(prev => prev ? {
                 ...prev,
-                status: mapDatabaseStatus(payload.new.status),
+                status: mapDatabaseStatus(newStatus),
                 eta: payload.new.eta,
                 position: payload.new.position,
                 cancellation_reason: payload.new.cancellation_reason || undefined,
@@ -865,21 +884,30 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 ready_deadline: payload.new.ready_deadline,
                 ready_at: payload.new.ready_at,
                 patron_delayed: payload.new.patron_delayed,
-                awaiting_merchant_confirmation: payload.new.awaiting_merchant_confirmation,
+                awaiting_merchant_confirmation: newAwaitingConfirmation,
               } : null);
               
-              if (payload.new.status === "ready") {
-                setStep("ready");
-                
-                // Send browser notification and vibrate
-                sendBrowserNotification(
-                  "🍽️ Your Table is Ready!",
-                  "Please proceed to the venue to be seated",
-                  { tag: 'table-ready', requireInteraction: true }
-                );
-                vibratePhone([200, 100, 200, 100, 200]);
-              } else if (payload.new.status === "cancelled" || payload.new.status === "no_show") {
-                setStep("cancelled-details");
+              // Only change step if status actually changed to prevent race conditions
+              if (newStatus !== prevStatusRef.current) {
+                if (newStatus === "ready") {
+                  if (newAwaitingConfirmation) {
+                    setStep("awaiting-confirmation");
+                  } else {
+                    setStep("ready");
+                    // Send browser notification and vibrate
+                    sendBrowserNotification(
+                      "🍽️ Your Table is Ready!",
+                      "Please proceed to the venue to be seated",
+                      { tag: 'table-ready', requireInteraction: true }
+                    );
+                    vibratePhone([200, 100, 200, 100, 200]);
+                  }
+                } else if (newStatus === "seated") {
+                  setStep("feedback");
+                } else if (newStatus === "cancelled" || newStatus === "no_show") {
+                  setStep("cancelled-details");
+                }
+                prevStatusRef.current = newStatus;
               }
             }
           })
@@ -2364,26 +2392,38 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               )}
             </div>
 
-            <div className="space-y-3">
-              <Button onClick={handleConfirmSeat} className="w-full h-12">
-                I'm Here - Get Seated
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full h-12"
-                onClick={handleWait5Minutes}
-                disabled={waitlistEntry.patron_delayed}
-              >
-                {waitlistEntry.patron_delayed ? "Extension Already Used" : "Need 5 More Minutes"}
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full h-12 text-destructive hover:bg-destructive/10"
-                onClick={() => setShowCancelConfirmation(true)}
-              >
-              Cancel Booking
-              </Button>
-            </div>
+            {/* Only show action buttons if patron hasn't confirmed arrival yet */}
+            {!waitlistEntry.awaiting_merchant_confirmation ? (
+              <div className="space-y-3">
+                <Button onClick={handleConfirmSeat} className="w-full h-12">
+                  I'm Here - Get Seated
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full h-12"
+                  onClick={handleWait5Minutes}
+                  disabled={waitlistEntry.patron_delayed}
+                >
+                  {waitlistEntry.patron_delayed ? "Extension Already Used" : "Need 5 More Minutes"}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full h-12 text-destructive hover:bg-destructive/10"
+                  onClick={() => setShowCancelConfirmation(true)}
+                >
+                  Cancel Booking
+                </Button>
+              </div>
+            ) : (
+              <div className="p-4 bg-blue-50 dark:bg-blue-950 rounded-xl border border-blue-200 dark:border-blue-800">
+                <p className="font-semibold text-blue-900 dark:text-blue-100">
+                  ⏳ Notifying the host...
+                </p>
+                <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                  Please wait at the host stand
+                </p>
+              </div>
+            )}
 
             {/* Cancel Booking Confirmation Dialog */}
             <AlertDialog open={showCancelConfirmation} onOpenChange={setShowCancelConfirmation}>
