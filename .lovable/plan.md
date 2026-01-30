@@ -1,102 +1,217 @@
 
 
-# Fix Table Ready Countdown Timer - Missing ready_deadline in Real-Time Subscription
+# Reorganize Table Ready Flow with Tabs
 
-## Root Cause Identified
+## Overview
 
-When the user joins the waitlist from within the TableReadyFlow component (not from the Home page), a real-time subscription is set up at line 819-854. When the table becomes "ready", this subscription updates the local state but **does NOT include `ready_deadline`** in the update:
+This plan reorganizes the Table Ready screen to use a tabbed interface, separating Waitlist (walk-ins) from Reservations, and relocating the Explore feature from the Home page to the Reservations tab.
 
-```typescript
-// Lines 828-837 - The BUG
-setWaitlistEntry(prev => prev ? {
-  ...prev,
-  status: mapDatabaseStatus(payload.new.status),
-  eta: payload.new.eta,
-  position: payload.new.position,
-  cancellation_reason: payload.new.cancellation_reason || undefined,
-  cancelled_by: payload.new.cancelled_by,
-  updated_at: payload.new.updated_at,
-  notes: payload.new.notes,
-  // MISSING: ready_deadline, ready_at, patron_delayed !!!
-} : null);
+## Current vs New Structure
+
+```text
+CURRENT:
++----------------+
+|     HOME       |
+|  [Food Ready]  |
+|  [Table Ready] |
+|  [Explore]  <--+-- Remove from here
++----------------+
+       |
+       v
++----------------+
+|  TABLE READY   |
+|  Venue Select  |
+|  Booking Type  |
+|    (Now/Later) |
++----------------+
+
+NEW:
++----------------+
+|     HOME       |
+|  [Food Ready]  |
+|  [Table Ready] |
++----------------+
+       |
+       v
++----------------------------------+
+|         TABLE READY              |
+|  [Waitlist Tab] | [Reservations] |
++----------------------------------+
+|                                  |
+| Waitlist Tab:                    |
+|   - Venue dropdown               |
+|   - Join waitlist flow           |
+|                                  |
+| Reservations Tab:                |
+|   - [Explore Venues] button      |
+|   - Venue dropdown               |
+|   - Book reservation flow        |
++----------------------------------+
 ```
 
-The countdown timer effect (lines 214-290) depends on:
-1. `waitlistEntry?.status === 'ready'` (this becomes true)
-2. `readyDeadlineRef.current` being truthy (this remains null because `ready_deadline` is never set)
-
-Since `ready_deadline` is never copied from the payload, the timer never starts.
-
----
-
-## Why It Works When You Leave and Return
-
-When you navigate away and come back by tapping the card from the Home page:
-1. The entry is passed as `initialEntry` prop
-2. The `initialEntry` handling code (lines 292-396) **DOES include `ready_deadline`**:
-   ```typescript
-   ready_deadline: initialEntry.ready_deadline,
-   ```
-3. So the timer works correctly on re-entry
-
----
-
-## The Fix
-
-Add the missing fields to **BOTH** real-time subscriptions in the file:
-
-1. **Subscription at lines 828-837** (new entry flow)
-2. There's already a similar subscription at lines 342-396 (initialEntry flow) that DOES include these fields - that one is correct
-
-### File to Modify
+## Changes Summary
 
 | File | Changes |
 |------|---------|
-| `src/components/TableReadyFlow.tsx` | Add `ready_deadline`, `ready_at`, and `patron_delayed` to the real-time subscription state update at lines 828-837 |
+| `src/components/TableReadyFlow.tsx` | Add tabbed interface at the top level (before venue-select), with "Waitlist" and "Reservations" tabs. Move venue selection into each tab. |
+| `src/pages/Index.tsx` | Remove the Explore card from the quick actions grid, remove the `explore` tab/view handling |
+
+## Detailed Implementation
+
+### 1. Modify TableReadyFlow.tsx
+
+Add a new "mode" state that defaults to showing a tab selector:
+
+**Add new state:**
+```typescript
+const [mode, setMode] = useState<"tab-select" | "waitlist" | "reservation">("tab-select");
+```
+
+**Modify step flow:**
+- When `mode === "tab-select"` and no `initialEntry`: show tabs (Waitlist / Reservations)
+- When Waitlist tab is clicked: set `mode = "waitlist"`, skip booking-type, go directly to venue-select with `bookingType = "now"`
+- When Reservations tab is clicked: set `mode = "reservation"`, show Explore button + venue dropdown
+
+**New Tab Selection UI (rendered when step === "venue-select" and no initialEntry):**
+
+```text
++----------------------------------------+
+|  <- Back          Table Ready          |
++----------------------------------------+
+|                                        |
+|   [  Waitlist  ]  [  Reservations  ]   |
+|                                        |
++----------------------------------------+
+|                                        |
+| (If Waitlist selected):                |
+|   Venue dropdown                       |
+|   -> proceeds to party-details         |
+|                                        |
+| (If Reservations selected):            |
+|   [Explore Venues] button              |
+|   Venue dropdown                       |
+|   -> proceeds to reservation-details   |
+|                                        |
++----------------------------------------+
+```
+
+**Logic changes:**
+- Remove the "booking-type" step (Now vs Later choice)
+- Waitlist tab = walk-in flow (current "now" path)
+- Reservations tab = reservation flow (current "later" path)
+- Add Explore button inside Reservations tab that opens ExploreVenues
+
+### 2. Modify Index.tsx
+
+**Remove:**
+- The Explore card from the quick actions grid (lines 1083-1098)
+- The `explore` tab handling (lines 523-535)
+- The `activeTab === "explore"` condition
+
+### 3. Integrate ExploreVenues into TableReadyFlow
+
+When user clicks "Explore Venues" button in the Reservations tab:
+- Either navigate to a sub-view within TableReadyFlow
+- Or set a state that renders ExploreVenues inline
+
+**Option A (simpler):** Add a state `showExplore` that renders ExploreVenues with an `onBack` that returns to the reservation tab.
+
+**Option B:** Pass the venue selection from ExploreVenues back to pre-fill the venue dropdown.
 
 ---
 
-## Implementation
+## Visual Design
 
-Update lines 828-837 to include the missing fields:
+The tab interface will use the existing `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent` components from `@radix-ui/react-tabs`:
 
 ```typescript
-setWaitlistEntry(prev => prev ? {
-  ...prev,
-  status: mapDatabaseStatus(payload.new.status),
-  eta: payload.new.eta,
-  position: payload.new.position,
-  cancellation_reason: payload.new.cancellation_reason || undefined,
-  cancelled_by: payload.new.cancelled_by,
-  updated_at: payload.new.updated_at,
-  notes: payload.new.notes,
-  // ADD THESE THREE MISSING FIELDS:
-  ready_deadline: payload.new.ready_deadline,
-  ready_at: payload.new.ready_at,
-  patron_delayed: payload.new.patron_delayed,
-  awaiting_merchant_confirmation: payload.new.awaiting_merchant_confirmation,
-} : null);
+<Tabs defaultValue="waitlist" className="w-full">
+  <TabsList className="grid w-full grid-cols-2">
+    <TabsTrigger value="waitlist">Waitlist</TabsTrigger>
+    <TabsTrigger value="reservations">Reservations</TabsTrigger>
+  </TabsList>
+  <TabsContent value="waitlist">
+    {/* Venue dropdown + waitlist flow */}
+  </TabsContent>
+  <TabsContent value="reservations">
+    {/* Explore button + venue dropdown + reservation flow */}
+  </TabsContent>
+</Tabs>
 ```
 
 ---
 
-## Why This Fixes It
+## User Flow After Changes
 
-1. When merchant marks table ready, the database updates `status` to `ready` and sets `ready_deadline` to 5 minutes from now
-2. Real-time subscription receives this payload with BOTH `status: 'ready'` AND `ready_deadline: '2026-01-28T13:18:49.551+00:00'`
-3. Now the state update includes `ready_deadline`
-4. The `useEffect` that syncs `readyDeadlineRef` fires because `ready_deadline` changed
-5. The immediate sync effect calculates the correct countdown values
-6. The interval-based countdown effect now has a valid deadline to work with
-7. Timer displays and counts down correctly
+**Waitlist Flow:**
+1. User taps "Table Ready" on Home
+2. Sees tabs: Waitlist (default) | Reservations
+3. Waitlist tab shows venue dropdown
+4. User selects venue -> goes to party details -> joins waitlist
+
+**Reservation Flow:**
+1. User taps "Table Ready" on Home
+2. Sees tabs: Waitlist | Reservations
+3. User taps Reservations tab
+4. Sees "Explore Venues" button + venue dropdown
+5. User can either explore or select venue directly
+6. Selecting venue -> goes to date/time picker -> party details -> confirms reservation
+
+**Explore Flow:**
+1. User taps "Table Ready" -> Reservations tab -> "Explore Venues"
+2. ExploreVenues component opens
+3. User browses recommendations
+4. User can select a venue which pre-fills the venue dropdown
+
+---
+
+## Technical Details
+
+### State Management
+
+```typescript
+// New state for tab/mode tracking
+const [activeTableTab, setActiveTableTab] = useState<"waitlist" | "reservations">("waitlist");
+const [showExploreView, setShowExploreView] = useState(false);
+```
+
+### Step Flow Simplification
+
+Current steps:
+```
+venue-select -> booking-type -> (reservation-details | party-details) -> waiting/ready
+```
+
+New steps:
+```
+venue-select -> (reservation-details | party-details) -> waiting/ready
+```
+
+The booking-type step is removed because the tab choice determines the flow type.
+
+### Explore Integration
+
+When a venue is selected from ExploreVenues:
+```typescript
+onSelectVenue={(venueId) => {
+  setShowExploreView(false);
+  // Pre-select the venue in dropdown
+  const venue = venues.find(v => v.id === venueId);
+  if (venue) {
+    handleVenueSelect(venueId);
+  }
+}}
+```
 
 ---
 
 ## Testing Checklist
 
-- [ ] Join waitlist from Table Ready flow, stay on the waiting screen
-- [ ] Have merchant mark table as ready
-- [ ] Verify countdown timer starts immediately showing ~5:00 (or actual time left)
-- [ ] Verify "Need 5 More Minutes" button extends the timer
-- [ ] Verify timer continues working after extension
+- Waitlist tab shows venue dropdown and leads to walk-in waitlist flow
+- Reservations tab shows Explore button and venue dropdown
+- Explore button opens ExploreVenues component
+- Selecting venue from Explore pre-fills and proceeds to reservation flow
+- Home page no longer shows Explore card
+- Back button from TableReadyFlow returns to Home
+- Existing active tracking (initialEntry) still works correctly
 
