@@ -1,225 +1,296 @@
 
 
-# Add New Reservations Alert Panel to Merchant Dashboard
+# Fix Reservation Tab Badge and Add Merchant Actions
 
-## Overview
+## Problems Identified
 
-Add a dismissible "New Reservations" alert section at the top of the ReservationCalendar component. When new reservations arrive, they appear in this prominent section allowing merchants to review and acknowledge them before they blend into the regular calendar view.
+### Issue 1: Reservation Tab Badge Not Showing Notification Count
+Looking at the code in `MerchantDashboard.tsx` (lines 139-161), the `fetchReservationCount` function only counts reservations **for today**:
 
-## Current vs New UI
+```typescript
+const fetchReservationCount = async (isInitial = false) => {
+  const startOfDay = new Date();
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date();
+  endOfDay.setHours(23, 59, 59, 999);
 
-```text
-CURRENT:
-┌─────────────────────────────────────────────────┐
-│ [Calendar]              │ [Daily Reservations]  │
-│                         │                       │
-│  Feb 2026               │  February 1, 2026     │
-│  ┌──────────────────┐   │  • John - Party of 4  │
-│  │     Calendar     │   │  • Jane - Party of 2  │
-│  └──────────────────┘   │                       │
-└─────────────────────────────────────────────────┘
-
-NEW - With Alert Panel:
-┌─────────────────────────────────────────────────┐
-│ ⚡ NEW RESERVATIONS (2)                    [✓]  │ ← Acknowledge All
-│ ┌───────────────────────────────────────────┐   │
-│ │ 📅 Jane Smith - Party of 4 @ 19:00 Today  │ ← Click to dismiss
-│ │ 📅 Bob Jones - Party of 2 @ 20:30 Feb 3   │   │
-│ └───────────────────────────────────────────┘   │
-├─────────────────────────────────────────────────┤
-│ [Calendar]              │ [Daily Reservations]  │
-│                         │                       │
-│  Feb 2026               │  February 1, 2026     │
-│  ┌──────────────────┐   │  • John - Party of 4  │
-│  │     Calendar     │   │  • Jane - Party of 2  │
-│  └──────────────────┘   │                       │
-└─────────────────────────────────────────────────┘
+  const { count } = await supabase
+    .from("waitlist_entries")
+    .eq("reservation_type", "reservation")
+    .gte("reservation_time", startOfDay.toISOString())  // Only today
+    .lte("reservation_time", endOfDay.toISOString());   // Only today
 ```
 
-## Implementation Approach
+But new reservations may be for **future dates** (e.g., booking for next week). The badge logic needs to also consider `merchant_seen = false` for new reservation alerts.
 
-### Database Change
+### Issue 2: No Merchant Actions for Reservations
+The `ReservationCalendar` currently shows reservations in a read-only view. Merchants need:
+- **Edit** - Modify party size, time, preferences
+- **Contact** - Call/text the patron (using `customer_phone`)
+- **Cancel** - Cancel with reason (similar to WaitlistBoard pattern)
 
-Add a `merchant_seen` column to track which reservations have been seen/acknowledged by the merchant:
+## Solution
 
-```sql
-ALTER TABLE waitlist_entries 
-ADD COLUMN merchant_seen BOOLEAN DEFAULT false;
-```
+### Fix 1: Update Badge Logic for New Reservations
 
-This is separate from `merchant_acknowledged` which is used for completed/cancelled entries.
+Instead of showing today's reservation count, the badge should show the count of **unseen** reservations (`merchant_seen = false`). This aligns with the new alert panel we just added.
 
-### ReservationCalendar Component Updates
+| Current | New |
+|---------|-----|
+| Badge shows today's reservation count | Badge shows unseen reservations count |
+| Badge red when count increases | Badge red when unseen count > 0 |
+| Badge grey when tab clicked | Badge clears when all acknowledged |
 
-1. **Track new (unseen) reservations** - Query for reservations where `merchant_seen = false`
-2. **Real-time subscription** - Listen for new reservation INSERTs to update the alert panel
-3. **Acknowledge function** - Mark reservations as `merchant_seen = true` when dismissed
-4. **Render alert panel** - Show above the calendar grid when there are unseen reservations
+### Fix 2: Add Action Buttons to Reservation Cards
+
+Each reservation card will get action buttons:
+- **Phone icon** - Opens `tel:` link to call patron
+- **Edit icon** - Opens edit dialog (similar to patron edit but for merchant)
+- **Cancel button** - Opens cancellation dialog with reason input
 
 ## Changes Summary
 
 | File | Changes |
 |------|---------|
-| `supabase/migrations/` | Add `merchant_seen` column to `waitlist_entries` table |
-| `src/components/merchant/ReservationCalendar.tsx` | Add new reservations alert panel with dismiss functionality |
-| `src/integrations/supabase/types.ts` | Update types to include `merchant_seen` field |
+| `src/pages/MerchantDashboard.tsx` | Update `fetchReservationCount` to count unseen reservations; adjust badge logic |
+| `src/components/merchant/ReservationCalendar.tsx` | Add action buttons (edit, contact, cancel); add cancel dialog; add phone to interface |
 
 ## Technical Implementation
 
-### 1. Database Migration
+### 1. MerchantDashboard - Update Badge Logic
 
-```sql
--- Add merchant_seen column for tracking new reservations
-ALTER TABLE waitlist_entries 
-ADD COLUMN IF NOT EXISTS merchant_seen BOOLEAN DEFAULT false;
-
--- Set existing reservations as already seen
-UPDATE waitlist_entries 
-SET merchant_seen = true 
-WHERE reservation_type = 'reservation';
-```
-
-### 2. ReservationCalendar State Updates
+Update `fetchReservationCount` to count unseen reservations:
 
 ```typescript
-// Add state for new reservations
-const [newReservations, setNewReservations] = useState<Reservation[]>([]);
+const fetchReservationCount = useCallback(async (isInitial = false) => {
+  if (!userRole?.venue_id) return;
 
-// Fetch unseen reservations
-const fetchNewReservations = async () => {
-  const { data } = await supabase
-    .from('waitlist_entries')
-    .select('*')
-    .eq('venue_id', venueId)
-    .eq('reservation_type', 'reservation')
-    .eq('merchant_seen', false)
-    .in('status', ['waiting', 'ready'])
-    .order('created_at', { ascending: false });
+  // Count unseen reservations instead of today's reservations
+  const { count } = await supabase
+    .from("waitlist_entries")
+    .select("*", { count: "exact", head: true })
+    .eq("venue_id", userRole.venue_id)
+    .eq("reservation_type", "reservation")
+    .eq("merchant_seen", false)
+    .in("status", ["waiting", "ready"]);
 
-  setNewReservations(data || []);
-};
+  const newCount = count || 0;
+  setReservationCount(newCount);
+  
+  // Badge is red when there are unseen reservations
+  if (!isInitial && newCount > 0) {
+    setReservationHasNew(true);
+  }
+}, [userRole?.venue_id]);
 ```
 
-### 3. Acknowledge Functions
+Update `handleTabChange` to clear badge by acknowledging all when entering tab:
 
 ```typescript
-// Acknowledge single reservation
-const acknowledgeReservation = async (id: string) => {
+// When clicking reservations tab, the ReservationCalendar component
+// handles displaying and acknowledging - badge stays red until user acknowledges
+if (newTab === "reservations") {
+  setReservationHasNew(reservationCount > 0);
+}
+```
+
+### 2. ReservationCalendar - Add Action Buttons
+
+Update the Reservation interface to include `customer_phone`:
+
+```typescript
+interface Reservation {
+  id: string;
+  customer_name: string;
+  customer_phone?: string;  // Add this
+  party_size: number;
+  reservation_time: string;
+  status: string;
+  preferences?: string[];
+  notes?: string;  // Add this
+  assigned_table_id?: string;
+  linked_reservation_id?: string;
+  last_edited_at?: string;
+  edit_summary?: string;
+}
+```
+
+Add cancel dialog state and handler:
+
+```typescript
+const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+const [cancelReservationId, setCancelReservationId] = useState<string>("");
+const [cancelReason, setCancelReason] = useState("");
+
+const handleCancelReservation = async () => {
+  if (!cancelReservationId || !cancelReason.trim()) return;
+  
+  const reservation = reservations.find(r => r.id === cancelReservationId);
+  const linkedId = reservation?.linked_reservation_id;
+  
+  const idsToCancel = linkedId 
+    ? reservations.filter(r => r.linked_reservation_id === linkedId).map(r => r.id)
+    : [cancelReservationId];
+  
   await supabase
     .from('waitlist_entries')
-    .update({ merchant_seen: true })
-    .eq('id', id);
-  
-  setNewReservations(prev => prev.filter(r => r.id !== id));
-};
-
-// Acknowledge all new reservations
-const acknowledgeAllReservations = async () => {
-  const ids = newReservations.map(r => r.id);
-  await supabase
-    .from('waitlist_entries')
-    .update({ merchant_seen: true })
-    .in('id', ids);
-  
-  setNewReservations([]);
-};
-```
-
-### 4. Real-time Subscription
-
-```typescript
-// Subscribe to new reservation inserts
-useEffect(() => {
-  const channel = supabase
-    .channel('new-reservations')
-    .on('postgres_changes', {
-      event: 'INSERT',
-      schema: 'public',
-      table: 'waitlist_entries',
-      filter: `venue_id=eq.${venueId}`
-    }, (payload) => {
-      if ((payload.new as any).reservation_type === 'reservation') {
-        setNewReservations(prev => [payload.new as Reservation, ...prev]);
-      }
+    .update({
+      status: 'cancelled',
+      cancelled_by: 'venue',
+      cancellation_reason: `Venue cancelled: ${cancelReason}`,
+      updated_at: new Date().toISOString()
     })
-    .subscribe();
-
-  return () => supabase.removeChannel(channel);
-}, [venueId]);
+    .in('id', idsToCancel);
+  
+  setCancelDialogOpen(false);
+  setCancelReason("");
+  fetchReservationsForDate(selectedDate!);
+};
 ```
 
-### 5. Alert Panel UI
+Add action buttons to reservation cards:
 
 ```typescript
-{/* New Reservations Alert Panel */}
-{newReservations.length > 0 && (
-  <Card className="shadow-card border-2 border-primary bg-primary/5 mb-6">
-    <CardHeader className="pb-3">
-      <div className="flex items-center justify-between">
-        <CardTitle className="flex items-center gap-2 text-primary">
-          <Bell className="h-5 w-5 animate-pulse" />
-          New Reservations ({newReservations.length})
-        </CardTitle>
+<div className="flex items-center gap-1">
+  {/* Contact button - phone call */}
+  {reservation.customer_phone && (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8"
+      asChild
+    >
+      <a href={`tel:${reservation.customer_phone}`} title="Call patron">
+        <Phone className="h-4 w-4" />
+      </a>
+    </Button>
+  )}
+  
+  {/* Edit button */}
+  <Button
+    variant="ghost"
+    size="icon"
+    className="h-8 w-8"
+    onClick={() => handleEditReservation(reservation)}
+    title="Edit reservation"
+  >
+    <Pencil className="h-4 w-4" />
+  </Button>
+  
+  {/* Cancel button */}
+  {['waiting', 'ready'].includes(reservation.status) && (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="h-8 w-8 text-destructive hover:text-destructive"
+      onClick={() => {
+        setCancelReservationId(reservation.id);
+        setCancelDialogOpen(true);
+      }}
+      title="Cancel reservation"
+    >
+      <XCircle className="h-4 w-4" />
+    </Button>
+  )}
+  
+  <Badge variant={getStatusColor(reservation.status)}>
+    {reservation.status}
+  </Badge>
+</div>
+```
+
+Add the cancel dialog at the end of the component:
+
+```typescript
+{/* Cancel Reservation Dialog */}
+<Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+  <DialogContent>
+    <DialogHeader>
+      <DialogTitle>Cancel Reservation</DialogTitle>
+    </DialogHeader>
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Please provide a reason for cancelling. The customer will see this reason.
+      </p>
+      <Textarea
+        placeholder="Reason for cancellation..."
+        value={cancelReason}
+        onChange={(e) => setCancelReason(e.target.value)}
+      />
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={() => setCancelDialogOpen(false)} className="flex-1">
+          Keep Reservation
+        </Button>
         <Button 
-          variant="outline" 
-          size="sm"
-          onClick={acknowledgeAllReservations}
+          variant="destructive" 
+          onClick={handleCancelReservation}
+          disabled={!cancelReason.trim()}
+          className="flex-1"
         >
-          <Check className="h-4 w-4 mr-1" />
-          Acknowledge All
+          Cancel Reservation
         </Button>
       </div>
-    </CardHeader>
-    <CardContent className="space-y-2">
-      {newReservations.map((reservation) => (
-        <div 
-          key={reservation.id}
-          className="flex items-center justify-between p-3 bg-background rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
-          onClick={() => acknowledgeReservation(reservation.id)}
-        >
-          <div className="flex items-center gap-3">
-            <span className="text-lg">📅</span>
-            <div>
-              <p className="font-medium">{reservation.customer_name}</p>
-              <p className="text-sm text-muted-foreground">
-                Party of {reservation.party_size} • {format(new Date(reservation.reservation_time), 'MMM d @ HH:mm')}
-              </p>
-            </div>
-          </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      ))}
-    </CardContent>
-  </Card>
+    </div>
+  </DialogContent>
+</Dialog>
+```
+
+### 3. Edit Reservation (Merchant Side)
+
+For editing, we can reuse the existing `EditReservationDialog` component, but pass it from the merchant context. The merchant can edit:
+- Party size
+- Reservation time
+- Preferences
+- Notes
+
+```typescript
+const [editDialogOpen, setEditDialogOpen] = useState(false);
+const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
+
+const handleEditReservation = (reservation: Reservation) => {
+  setEditingReservation(reservation);
+  setEditDialogOpen(true);
+};
+
+// In render:
+{editingReservation && (
+  <EditReservationDialog
+    open={editDialogOpen}
+    onOpenChange={setEditDialogOpen}
+    entry={{
+      id: editingReservation.id,
+      venue: venueName,
+      venue_id: venueId,
+      party_size: editingReservation.party_size,
+      reservation_time: editingReservation.reservation_time,
+      preferences: editingReservation.preferences,
+      notes: editingReservation.notes,
+      customer_name: editingReservation.customer_name,
+    }}
+    onSuccess={() => {
+      setEditDialogOpen(false);
+      fetchReservationsForDate(selectedDate!);
+    }}
+  />
 )}
 ```
 
 ## Visual Design
 
-| Element | Style |
-|---------|-------|
-| Alert Card | Primary border + subtle primary background tint |
-| Header | Bell icon (animated pulse) + "New Reservations (N)" |
-| Action Button | "Acknowledge All" in top right |
-| Reservation Items | Click anywhere to dismiss, shows name/party/datetime |
-| Animation | Items fade out when acknowledged |
-
-## Tab Badge Behavior (Already Working)
-
-The Reservations tab already has the red badge functionality:
-- `reservationHasNew` state turns badge red when count increases
-- Badge becomes grey when tab is clicked
-- This continues to work with the new alert panel
+| Element | Icon | Action |
+|---------|------|--------|
+| Contact | Phone | Opens native phone dialer |
+| Edit | Pencil | Opens edit dialog |
+| Cancel | XCircle (red) | Opens cancel confirmation |
 
 ## Testing Checklist
 
-- Create a new reservation and verify it appears in the alert panel
-- Verify tab badge turns red when new reservation arrives
-- Click individual reservation to dismiss it
-- Click "Acknowledge All" to clear all new reservations
-- Verify dismissed reservations don't reappear after refresh
-- Verify real-time updates work (reservation appears instantly)
-- Test that the calendar and daily view still work correctly below the alert
+- Create a new reservation for a future date (not today) and verify badge appears on Reservations tab
+- Verify badge turns red when new reservation arrives
+- Verify badge shows the unseen count
+- Acknowledge reservations and verify badge count decreases
+- Test phone contact button (should open dialer)
+- Test edit button (should open edit dialog)
+- Test cancel button with reason (should cancel and notify patron)
+- Test cancelling a multi-table booking (should cancel all linked entries)
 
