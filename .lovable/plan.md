@@ -1,212 +1,133 @@
-# ✅ COMPLETED: Hybrid Messaging System with Quick-Access Message Icons
 
-**Status**: Implemented
 
-## Overview
+# Messaging System Cleanup and Streamlining
 
-Complete the messaging system with two key additions:
-1. **Pre-booking inquiries** - Allow patrons to message any venue directly from the Explore page
-2. **Quick-access message icons** - Add message buttons directly on active tracking cards (orders and waitlist/reservations) so patrons can jump straight to chat without opening the MessengerHub
+## Issues Identified
 
-## Architecture
+### 1. Separate Chats per Order/Reservation (UX Issue)
+The current system shows a separate conversation thread for each individual order or reservation. This creates a fragmented experience:
+- If a patron places 3 orders at the same restaurant, they see 3 separate chats
+- Merchants see many individual threads instead of grouped by customer
 
-```text
-                       ┌─────────────────────────────────────┐
-                       │         messages table              │
-                       │  (universal for all booking types)  │
-                       └─────────────────────────────────────┘
-                                        │
-        ┌───────────────────────────────┼───────────────────────────────┐
-        │                               │                               │
-   waitlist_entry_id                order_id                  venue_inquiry_id (NEW)
-        │                               │                               │
-┌───────▼───────┐              ┌───────▼───────┐              ┌────────▼────────┐
-│  Reservations │              │  Food Orders  │              │ Venue Inquiries │
-│  & Waitlist   │              │               │              │   (NEW)         │
-└───────────────┘              └───────────────┘              └─────────────────┘
-```
+### 2. Messages Not Syncing to Merchant Side (Bug)
+Looking at the database, patron messages exist but may not be visible to merchants because:
+- The conversation list only shows orders with specific statuses (`awaiting_verification`, `placed`, `in_prep`, `ready`)
+- Once an order moves to `collected` or other statuses, the conversation disappears from the list
+- The RLS policies are correct, but the query filtering excludes completed orders that have messages
 
-## User Experience
+### 3. No Unified View (Missing Feature)
+There's no way to see all communication with a specific customer/venue in one place.
 
-### Patron Home Page (Active Tracking Cards)
+---
 
-Each active order and waitlist/reservation card will show a message icon:
+## Proposed Solution
+
+Create a **grouped conversation view** that consolidates threads by customer/venue relationship, while still allowing context-specific messaging.
+
+### Architecture Change
 
 ```text
-┌─────────────────────────────────────────────────────────────┐
-│ 🍽️  Demo Restaurant                                        │
-│ Order                                                       │
-│ Order #42                                                   │
-│ 🕐 15 min • ETA 14:30               [💬] [Preparing]       │
-│                                      ↑                      │
-│                             Message icon with badge         │
-└─────────────────────────────────────────────────────────────┘
+CURRENT STRUCTURE:
+┌─────────────────────────────────────────────────────────────────┐
+│  MessengerHub                                                   │
+│  ├── Order #42 Chat                                             │
+│  ├── Order #43 Chat                                             │
+│  ├── Reservation Chat                                           │
+│  └── Inquiry Chat                                               │
+└─────────────────────────────────────────────────────────────────┘
 
-┌─────────────────────────────────────────────────────────────┐
-│ 👥  Demo Restaurant                                         │
-│ Reservation                                                 │
-│ Reservation for 4                                           │
-│ 📅 Today at 19:00                   [💬●2] [Reserved]      │
-│                                       ↑                     │
-│                              2 unread messages              │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Explore Venues Page
-
-Each venue card will have a message button for pre-booking inquiries:
-
-```text
-┌─────────────────────────────────────────────────────────────┐
-│ Demo Restaurant                              [💬] [92% Match]│
-├─────────────────────────────────────────────────────────────┤
-│ 📍 123 Main St • 2.5 km                                     │
-│ ✨ "Great match for your preferences!"                      │
-│ ⭐ 4.5  👥 Moderate  ⏱️ ~10 min                             │
-│ 🏷️ Italian  🥬 Veg-friendly                                 │
-└─────────────────────────────────────────────────────────────┘
+PROPOSED STRUCTURE:
+┌─────────────────────────────────────────────────────────────────┐
+│  MessengerHub                                                   │
+│  ├── Demo Restaurant (3 active items)  ← Grouped by venue       │
+│  │   ├── All Messages (unified timeline)                        │
+│  │   ├── Order #42                                              │
+│  │   ├── Order #43                                              │
+│  │   └── Reservation                                            │
+│  └── Cafe Bistro (1 active item)                                │
+│      └── Pre-booking inquiry                                    │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## Technical Details
+## Technical Implementation
 
-### 1. Database Changes
+### 1. Fix Message Visibility Bug (Priority 1)
 
-**New table: `venue_inquiries`**
+**Problem:** Conversations disappear when status changes
 
-Tracks patron-venue inquiry threads (one per user-venue pair):
+**Solution:** Include messages from recently completed orders/reservations (last 24 hours) so conversations don't vanish mid-chat.
 
-| Column | Type | Description |
-|--------|------|-------------|
-| id | UUID | Primary key |
-| venue_id | UUID | Reference to venues |
-| user_id | UUID | Reference to auth.users |
-| status | TEXT | 'open' or 'closed' |
-| created_at | TIMESTAMP | When inquiry started |
-| updated_at | TIMESTAMP | Last activity |
+| File | Change |
+|------|--------|
+| `src/hooks/useConversations.ts` | Expand status filters to include recently completed items |
 
-**Modify `messages` table:**
-
-Add `venue_inquiry_id` column and update the constraint to allow one of three references:
-- `waitlist_entry_id` (for reservations/waitlist)
-- `order_id` (for food orders)
-- `venue_inquiry_id` (for pre-booking inquiries)
-
-**Row-Level Security:**
-- Patrons can create/read their own inquiries and messages
-- Venue staff can read/respond to inquiries for their venue
-
-### 2. Index.tsx Changes
-
-Add message icons to active tracking cards:
-
-**New state:**
-- `messengerOpen` - controls messenger sheet visibility
-- `messengerContext` - tracks which conversation to show (type, id, venue name)
-
-**Order cards (lines ~797):**
-Add a message icon button in the action buttons area (before the status badge):
+Updated query logic:
 ```text
-<Button variant="ghost" size="icon" className="h-8 w-8 relative">
-  <MessageSquare className="h-4 w-4" />
-  {unreadCount > 0 && <badge>...</badge>}
-</Button>
+// For orders - include active + recently completed (last 24h)
+.or('status.in.(awaiting_verification,placed,in_prep,ready),and(status.in.(collected,cancelled),updated_at.gte.yesterday)')
 ```
 
-**Waitlist/Reservation cards (lines ~1019):**
-Same pattern - add message icon before the status badge.
+### 2. Group Conversations by Customer/Venue (Priority 2)
 
-**Unread tracking:**
-Use `useMultipleUnreadMessages` hook to efficiently track unread counts for all active cards:
+**For Merchants:** Group all threads from the same customer together
+**For Patrons:** Group all threads with the same venue together
+
+| File | Change |
+|------|--------|
+| `src/hooks/useConversations.ts` | Add grouping logic to aggregate by customer/venue |
+| `src/components/MessengerHub.tsx` | Update UI to show grouped view |
+| `src/components/merchant/MerchantMessengerHub.tsx` | Update UI to show grouped view |
+
+New data structure:
 ```text
-const orderIds = activeOrders.map(o => ({ orderId: o.id }));
-const waitlistIds = activeWaitlist.map(e => ({ waitlistEntryId: e.id }));
-const unreadCounts = useMultipleUnreadMessages([...orderIds, ...waitlistIds], 'patron');
-```
-
-### 3. ExploreVenues.tsx Changes
-
-Add message functionality to venue cards:
-
-**New state:**
-- `messengerOpen` / `selectedVenueForChat` - track which venue chat is open
-- `creatingInquiry` - loading state while creating inquiry record
-
-**Logic flow:**
-1. User clicks message icon on venue card
-2. Check if `venue_inquiry` exists for this user-venue pair
-3. If not, create one
-4. Open Messenger with `venueInquiryId`
-
-**UI addition:**
-Add `MessageSquare` button in the venue card header (next to match score badge).
-
-### 4. Messenger.tsx Updates
-
-Support the new `venueInquiryId` prop:
-
-| Current Props | New Prop |
-|---------------|----------|
-| `waitlistEntryId` | - |
-| `orderId` | - |
-| - | `venueInquiryId` |
-
-Update the query logic:
-```text
-if (waitlistEntryId) {
-  query = query.eq('waitlist_entry_id', waitlistEntryId);
-} else if (orderId) {
-  query = query.eq('order_id', orderId);
-} else if (venueInquiryId) {
-  query = query.eq('venue_inquiry_id', venueInquiryId);
+interface ConversationGroup {
+  id: string;                    // customer_id or venue_id
+  name: string;                  // Customer name or Venue name
+  conversations: Conversation[]; // All threads with this entity
+  totalUnread: number;           // Sum of unread across all threads
+  lastMessageTime?: string;      // Most recent message timestamp
 }
 ```
 
-Update message sending to include `venue_inquiry_id` when applicable.
+### 3. Unified Message Timeline View (Priority 3)
 
-### 5. useConversations.ts Updates
+Add an option to view all messages with a customer/venue in chronological order, with context labels showing which order/reservation each message relates to.
 
-Include inquiry conversations in the list:
+| File | Change |
+|------|--------|
+| `src/components/Messenger.tsx` | Add optional `groupedMode` prop for unified view |
+| `src/components/MessengerHub.tsx` | Add toggle between grouped and individual view |
 
-**Updated Conversation type:**
+Unified view UI:
 ```text
-type: 'order' | 'waitlist' | 'reservation' | 'inquiry'
+┌─────────────────────────────────────────────────────────────────┐
+│  All Messages with Demo Restaurant                              │
+├─────────────────────────────────────────────────────────────────┤
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ [Reservation] Your table is ready!              12:30     │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ Thanks, on my way!                              12:32     │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ [Order #42] Your order is being prepared        12:45     │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │ Can I add extra sauce?                          12:47     │  │
+│  └───────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-**New query:**
-Fetch from `venue_inquiries` table joining with `venues` for name, and aggregate unread messages.
+### 4. Improve Real-time Sync (Priority 4)
 
-### 6. MessengerHub.tsx Updates
+Add polling fallback as suggested in the lovable-stack-overflow context to ensure message delivery:
 
-Show inquiry conversations with a distinct icon (`HelpCircle` or `MessageCircle`).
-
-**Conversation card subtitle:**
-```text
-inquiry → "Inquiry • Started Jan 15"
-```
-
-### 7. MerchantMessengerHub.tsx Updates
-
-Show patron inquiries so merchants can respond to pre-booking questions.
-
-**Display:**
-- Customer name from profiles join
-- "Pre-booking inquiry" label
-- Unread badge
-
-### 8. useUnreadMessages.ts Updates
-
-Support `venueInquiryId` in both hooks:
-
-```text
-function useUnreadMessages(
-  waitlistEntryId?: string, 
-  orderId?: string, 
-  venueInquiryId?: string,  // NEW
-  userType?: 'patron' | 'venue'
-)
-```
+| File | Change |
+|------|--------|
+| `src/components/Messenger.tsx` | Add polling fallback with exponential backoff |
+| `src/hooks/useConversations.ts` | Add deduplication for real-time events |
 
 ---
 
@@ -214,25 +135,83 @@ function useUnreadMessages(
 
 | File | Changes |
 |------|---------|
-| New migration | Create `venue_inquiries` table, modify `messages` constraint, add RLS |
-| `src/pages/Index.tsx` | Add message icons to order and waitlist cards, messenger state |
-| `src/components/ExploreVenues.tsx` | Add message button to venue cards, inquiry creation logic |
-| `src/components/Messenger.tsx` | Support `venueInquiryId` prop |
-| `src/hooks/useConversations.ts` | Include inquiry conversations |
-| `src/hooks/useUnreadMessages.ts` | Support `venueInquiryId` |
-| `src/components/MessengerHub.tsx` | Show inquiry conversations |
-| `src/components/merchant/MerchantMessengerHub.tsx` | Show patron inquiries |
-| `src/integrations/supabase/types.ts` | Add venue_inquiries and updated messages types |
+| `src/hooks/useConversations.ts` | 1. Expand status filters to include recently completed items 2. Add grouping logic by customer/venue 3. Return both grouped and flat conversation lists 4. Add deduplication for real-time |
+| `src/components/MessengerHub.tsx` | 1. Show grouped conversation view 2. Click group to expand individual threads 3. Add "View all" option for unified timeline |
+| `src/components/merchant/MerchantMessengerHub.tsx` | 1. Show grouped by customer view 2. Click customer to see all their threads 3. Unified timeline option |
+| `src/components/Messenger.tsx` | 1. Add grouped mode for unified timeline 2. Show context labels (which order/reservation) 3. Add polling fallback for reliability |
+
+---
+
+## UI Flow
+
+### Merchant View (After Changes)
+
+```text
+Step 1: See customer-grouped list
+┌─────────────────────────────────────────────────────────────────┐
+│ Customer Messages                                               │
+├─────────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │ 👤 John Smith                                    ● 2 new   │ │
+│ │ 2 orders + 1 reservation                                   │ │
+│ │ "Can I add extra sauce?"                                   │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │ 👤 Guest                                                    │ │
+│ │ 1 order                                                    │ │
+│ │ "Where is my order?"                                       │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+
+Step 2: Click customer to see all threads
+┌─────────────────────────────────────────────────────────────────┐
+│ ← John Smith                           [All Messages] [Threads] │
+├─────────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │ 🍽️ Order #42 (In Prep)                          ● 1 new   │ │
+│ │ "Can I add extra sauce?"                                   │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │ 🍽️ Order #41 (Collected)                                   │ │
+│ │ "Thanks for the food!"                                     │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │ 📅 Reservation 19:00                            ● 1 new   │ │
+│ │ "Running 5 mins late"                                      │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Patron View (After Changes)
+
+```text
+Step 1: See venue-grouped list
+┌─────────────────────────────────────────────────────────────────┐
+│ Messages                                                        │
+├─────────────────────────────────────────────────────────────────┤
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │ 🏪 Demo Restaurant                               ● 1 new   │ │
+│ │ 1 order + 1 reservation                                    │ │
+│ │ "Your table will be ready soon"                            │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────────────────────────────┐ │
+│ │ 🏪 Cafe Bistro                                              │ │
+│ │ Pre-booking inquiry                                        │ │
+│ │ "Yes, we have vegan options!"                              │ │
+│ └─────────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
 
 ## Testing Checklist
 
-- Patron can tap message icon on order card → opens chat with venue
-- Patron can tap message icon on reservation card → opens chat with venue
-- Unread badges show correctly on active tracking cards
-- Patron can message venue from Explore page before booking
-- Inquiry appears in MessengerHub conversation list
-- Merchant sees inquiry in their messenger hub
-- Real-time updates work for all conversation types
-- Existing order/waitlist messaging still works
-- Empty states display correctly
+- Verify messages from patrons appear on merchant side immediately
+- Verify conversations don't disappear when order status changes
+- Verify grouped view shows correct unread counts
+- Verify unified timeline shows messages in correct order
+- Verify context labels show which order/reservation each message belongs to
+- Verify real-time updates work reliably
+- Verify polling fallback activates when real-time fails
+- Test on mobile viewport
 
