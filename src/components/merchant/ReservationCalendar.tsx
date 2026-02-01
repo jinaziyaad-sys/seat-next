@@ -12,9 +12,11 @@ import {
 } from "@/components/ui/dialog";
 import { format, isSameDay, formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, Users, Utensils, X, Pencil, Bell, Check, Phone, XCircle } from "lucide-react";
+import { Clock, Users, Utensils, X, Pencil, Bell, Check, Phone, XCircle, MessageSquare } from "lucide-react";
 import { EditReservationDialog } from "@/components/EditReservationDialog";
 import { useToast } from "@/hooks/use-toast";
+import { Messenger } from "@/components/Messenger";
+import { useMultipleUnreadMessages } from "@/hooks/useUnreadMessages";
 
 interface Reservation {
   id: string;
@@ -60,6 +62,26 @@ export const ReservationCalendar = ({ venueId, venueName = "" }: { venueId: stri
   
   // Venue settings for edit dialog
   const [venueSettings, setVenueSettings] = useState<any>(null);
+  
+  // Messenger state
+  const [messengerOpen, setMessengerOpen] = useState(false);
+  const [messengerReservation, setMessengerReservation] = useState<Reservation | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
+  // Track unread messages for all reservations
+  const unreadCounts = useMultipleUnreadMessages(
+    reservations.map(r => ({ waitlistEntryId: r.id })),
+    'venue'
+  );
+  
+  // Fetch current user
+  useEffect(() => {
+    const fetchUser = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      setCurrentUserId(user?.id || null);
+    };
+    fetchUser();
+  }, []);
 
   useEffect(() => {
     fetchVenueSettings();
@@ -472,6 +494,24 @@ export const ReservationCalendar = ({ venueId, venueName = "" }: { venueId: stri
                               )}
                             </div>
                             <div className="flex items-center gap-1">
+                              {/* Message button */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 relative"
+                                onClick={() => {
+                                  setMessengerReservation(firstRes);
+                                  setMessengerOpen(true);
+                                }}
+                                title="Message patron"
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                                {(unreadCounts[firstRes.id] || 0) > 0 && (
+                                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] text-destructive-foreground flex items-center justify-center">
+                                    {unreadCounts[firstRes.id]}
+                                  </span>
+                                )}
+                              </Button>
                               {/* Contact button */}
                               {firstRes.customer_phone && (
                                 <Button
@@ -579,6 +619,24 @@ export const ReservationCalendar = ({ venueId, venueName = "" }: { venueId: stri
                               )}
                             </div>
                             <div className="flex items-center gap-1">
+                              {/* Message button */}
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8 relative"
+                                onClick={() => {
+                                  setMessengerReservation(reservation);
+                                  setMessengerOpen(true);
+                                }}
+                                title="Message patron"
+                              >
+                                <MessageSquare className="h-4 w-4" />
+                                {(unreadCounts[reservation.id] || 0) > 0 && (
+                                  <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] text-destructive-foreground flex items-center justify-center">
+                                    {unreadCounts[reservation.id]}
+                                  </span>
+                                )}
+                              </Button>
                               {/* Contact button */}
                               {reservation.customer_phone && (
                                 <Button
@@ -779,6 +837,22 @@ export const ReservationCalendar = ({ venueId, venueName = "" }: { venueId: stri
               fetchReservationsForDate(selectedDate);
             }
           }}
+        />
+      )}
+
+      {/* Messenger component */}
+      {messengerReservation && currentUserId && (
+        <Messenger
+          open={messengerOpen}
+          onOpenChange={(open) => {
+            setMessengerOpen(open);
+            if (!open) setMessengerReservation(null);
+          }}
+          waitlistEntryId={messengerReservation.id}
+          userType="venue"
+          userId={currentUserId}
+          customerName={messengerReservation.customer_name}
+          venueName={venueName}
         />
       )}
     </div>
