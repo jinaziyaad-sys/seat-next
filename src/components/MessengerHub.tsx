@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { MessageSquare, ChefHat, Users, Calendar, ArrowLeft, HelpCircle } from "lucide-react";
+import { MessageSquare, ChefHat, Users, Calendar, ArrowLeft, HelpCircle, Store, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Sheet,
   SheetContent,
@@ -10,7 +11,8 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Messenger } from "@/components/Messenger";
-import { useConversations, type Conversation } from "@/hooks/useConversations";
+import { GroupedMessenger } from "@/components/GroupedMessenger";
+import { useConversations, type Conversation, type ConversationGroup } from "@/hooks/useConversations";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -18,14 +20,79 @@ interface MessengerHubProps {
   userId: string;
 }
 
+function GroupCard({ 
+  group, 
+  onClick 
+}: { 
+  group: ConversationGroup; 
+  onClick: () => void;
+}) {
+  const getItemsSummary = () => {
+    const counts: string[] = [];
+    const orders = group.conversations.filter(c => c.type === 'order').length;
+    const reservations = group.conversations.filter(c => c.type === 'reservation').length;
+    const waitlist = group.conversations.filter(c => c.type === 'waitlist').length;
+    const inquiries = group.conversations.filter(c => c.type === 'inquiry').length;
+    
+    if (orders > 0) counts.push(`${orders} order${orders > 1 ? 's' : ''}`);
+    if (reservations > 0) counts.push(`${reservations} reservation${reservations > 1 ? 's' : ''}`);
+    if (waitlist > 0) counts.push(`${waitlist} waitlist`);
+    if (inquiries > 0) counts.push(`${inquiries} inquir${inquiries > 1 ? 'ies' : 'y'}`);
+    
+    return counts.join(' + ');
+  };
+
+  const lastMessage = group.conversations
+    .filter(c => c.lastMessage)
+    .sort((a, b) => {
+      if (!a.lastMessageTime || !b.lastMessageTime) return 0;
+      return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime();
+    })[0];
+
+  return (
+    <button 
+      onClick={onClick} 
+      className="w-full p-4 hover:bg-muted/50 border-b border-border transition-colors text-left"
+    >
+      <div className="flex items-start gap-3">
+        <div className="p-2 rounded-full shrink-0 bg-primary/10">
+          <Store className="h-5 w-5 text-primary" />
+        </div>
+        
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center justify-between gap-2">
+            <span className="font-medium truncate">{group.name}</span>
+            <div className="flex items-center gap-2 shrink-0">
+              {group.totalUnread > 0 && (
+                <Badge variant="destructive" className="h-5 min-w-[20px]">
+                  {group.totalUnread}
+                </Badge>
+              )}
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+          
+          <p className="text-sm text-muted-foreground">
+            {getItemsSummary()}
+          </p>
+          
+          {lastMessage?.lastMessage && (
+            <p className="text-sm text-muted-foreground truncate mt-1">
+              {lastMessage.lastMessage}
+            </p>
+          )}
+        </div>
+      </div>
+    </button>
+  );
+}
+
 function ConversationCard({ 
   conversation, 
-  onClick,
-  userType 
+  onClick 
 }: { 
   conversation: Conversation; 
   onClick: () => void;
-  userType: 'patron' | 'venue';
 }) {
   const getIcon = () => {
     switch (conversation.type) {
@@ -53,14 +120,10 @@ function ConversationCard({
     return `Waitlist • Party of ${conversation.metadata.partySize}`;
   };
 
-  const displayName = userType === 'patron' 
-    ? conversation.venueName 
-    : conversation.customerName || 'Guest';
-
   return (
     <button 
       onClick={onClick} 
-      className="w-full p-4 hover:bg-muted/50 border-b border-border transition-colors text-left"
+      className="w-full p-3 hover:bg-muted/50 border-b border-border transition-colors text-left"
     >
       <div className="flex items-start gap-3">
         <div className={cn(
@@ -68,14 +131,14 @@ function ConversationCard({
           conversation.type === 'inquiry' ? "bg-accent/20" : "bg-primary/10"
         )}>
           <Icon className={cn(
-            "h-5 w-5",
+            "h-4 w-4",
             conversation.type === 'inquiry' ? "text-accent" : "text-primary"
           )} />
         </div>
         
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between gap-2">
-            <span className="font-medium truncate">{displayName}</span>
+            <span className="font-medium text-sm truncate">{getSubtitle()}</span>
             {conversation.unreadCount > 0 && (
               <Badge variant="destructive" className="h-5 min-w-[20px] shrink-0">
                 {conversation.unreadCount}
@@ -83,12 +146,8 @@ function ConversationCard({
             )}
           </div>
           
-          <p className="text-sm text-muted-foreground">
-            {getSubtitle()}
-          </p>
-          
           {conversation.lastMessage && (
-            <p className="text-sm text-muted-foreground truncate mt-1">
+            <p className="text-sm text-muted-foreground truncate">
               {conversation.lastMessage}
             </p>
           )}
@@ -98,27 +157,165 @@ function ConversationCard({
   );
 }
 
+type ViewMode = 'groups' | 'group-detail' | 'chat' | 'unified';
+
 export function MessengerHub({ userId }: MessengerHubProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('groups');
+  const [selectedGroup, setSelectedGroup] = useState<ConversationGroup | null>(null);
   const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
-  const { conversations, totalUnread, loading } = useConversations('patron', userId);
+  const { groupedConversations, totalUnread, loading } = useConversations('patron', userId);
+
+  const handleOpenGroup = (group: ConversationGroup) => {
+    setSelectedGroup(group);
+    // If only one conversation in group, go directly to chat
+    if (group.conversations.length === 1) {
+      setSelectedConversation(group.conversations[0]);
+      setViewMode('chat');
+    } else {
+      setViewMode('group-detail');
+    }
+  };
+
+  const handleOpenUnifiedChat = () => {
+    if (selectedGroup) {
+      setViewMode('unified');
+    }
+  };
 
   const handleOpenConversation = (conv: Conversation) => {
     setSelectedConversation(conv);
+    setViewMode('chat');
   };
 
-  const handleBackToList = () => {
-    setSelectedConversation(null);
+  const handleBack = () => {
+    if (viewMode === 'chat' && selectedGroup && selectedGroup.conversations.length > 1) {
+      setSelectedConversation(null);
+      setViewMode('group-detail');
+    } else if (viewMode === 'unified') {
+      setViewMode('group-detail');
+    } else {
+      setSelectedConversation(null);
+      setSelectedGroup(null);
+      setViewMode('groups');
+    }
   };
 
   const handleClose = () => {
     setIsOpen(false);
+    setViewMode('groups');
+    setSelectedGroup(null);
     setSelectedConversation(null);
+  };
+
+  const renderContent = () => {
+    if (loading) {
+      return (
+        <div className="p-6 text-center text-muted-foreground">
+          Loading conversations...
+        </div>
+      );
+    }
+
+    if (groupedConversations.length === 0) {
+      return (
+        <div className="p-6 text-center">
+          <MessageSquare className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+          <p className="text-muted-foreground font-medium">No active conversations</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            When you make a booking, you'll be able to message the restaurant here.
+          </p>
+        </div>
+      );
+    }
+
+    switch (viewMode) {
+      case 'groups':
+        return groupedConversations.map(group => (
+          <GroupCard
+            key={group.id}
+            group={group}
+            onClick={() => handleOpenGroup(group)}
+          />
+        ));
+      
+      case 'group-detail':
+        if (!selectedGroup) return null;
+        return (
+          <div className="flex flex-col h-full">
+            {/* Tabs for switching between threads and unified view */}
+            <div className="px-4 py-2 border-b">
+              <Tabs defaultValue="threads" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="threads">Threads</TabsTrigger>
+                  <TabsTrigger value="all" onClick={handleOpenUnifiedChat}>All Messages</TabsTrigger>
+                </TabsList>
+              </Tabs>
+            </div>
+            
+            <ScrollArea className="flex-1">
+              {selectedGroup.conversations.map(conv => (
+                <ConversationCard
+                  key={conv.id}
+                  conversation={conv}
+                  onClick={() => handleOpenConversation(conv)}
+                />
+              ))}
+            </ScrollArea>
+          </div>
+        );
+      
+      case 'unified':
+        if (!selectedGroup) return null;
+        return (
+          <GroupedMessenger
+            conversations={selectedGroup.conversations}
+            userType="patron"
+            userId={userId}
+            entityName={selectedGroup.name}
+          />
+        );
+      
+      case 'chat':
+        if (!selectedConversation) return null;
+        return (
+          <Messenger
+            open={true}
+            onOpenChange={() => handleBack()}
+            waitlistEntryId={selectedConversation.type === 'waitlist' || selectedConversation.type === 'reservation' ? selectedConversation.referenceId : undefined}
+            orderId={selectedConversation.type === 'order' ? selectedConversation.referenceId : undefined}
+            venueInquiryId={selectedConversation.type === 'inquiry' ? selectedConversation.referenceId : undefined}
+            userType="patron"
+            userId={userId}
+            venueName={selectedConversation.venueName}
+            embedded={true}
+          />
+        );
+    }
+  };
+
+  const getTitle = () => {
+    switch (viewMode) {
+      case 'groups':
+        return 'Messages';
+      case 'group-detail':
+        return selectedGroup?.name || 'Messages';
+      case 'unified':
+        return `All with ${selectedGroup?.name}`;
+      case 'chat':
+        return selectedConversation?.type === 'order' 
+          ? `Order #${selectedConversation.metadata.orderNumber}`
+          : selectedConversation?.type === 'reservation'
+            ? 'Reservation'
+            : selectedConversation?.type === 'inquiry'
+              ? 'Inquiry'
+              : 'Waitlist';
+    }
   };
 
   return (
     <>
-      {/* Floating button - positioned above Help button */}
+      {/* Floating button */}
       <Button
         onClick={() => setIsOpen(true)}
         size="icon"
@@ -137,79 +334,39 @@ export function MessengerHub({ userId }: MessengerHubProps) {
         )}
       </Button>
 
-      {/* Conversation list sheet */}
-      <Sheet open={isOpen && !selectedConversation} onOpenChange={handleClose}>
-        <SheetContent side="right" className="w-full sm:max-w-md p-0">
-          <SheetHeader className="p-6 pb-4 border-b">
-            <SheetTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              Messages
-            </SheetTitle>
-          </SheetHeader>
-          
-          <ScrollArea className="h-[calc(100vh-100px)]">
-            {loading ? (
-              <div className="p-6 text-center text-muted-foreground">
-                Loading conversations...
-              </div>
-            ) : conversations.length === 0 ? (
-              <div className="p-6 text-center">
-                <MessageSquare className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
-                <p className="text-muted-foreground font-medium">No active conversations</p>
-                <p className="text-sm text-muted-foreground mt-1">
-                  When you make a booking, you'll be able to message the restaurant here.
-                </p>
-              </div>
-            ) : (
-              conversations.map(conv => (
-                <ConversationCard
-                  key={conv.id}
-                  conversation={conv}
-                  onClick={() => handleOpenConversation(conv)}
-                  userType="patron"
-                />
-              ))
-            )}
-          </ScrollArea>
-        </SheetContent>
-      </Sheet>
-
-      {/* Individual chat sheet */}
-      {selectedConversation && (
-        <Sheet open={!!selectedConversation} onOpenChange={(open) => !open && handleBackToList()}>
-          <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
-            <SheetHeader className="p-4 pb-3 border-b shrink-0">
-              <div className="flex items-center gap-3">
+      {/* Main sheet */}
+      <Sheet open={isOpen} onOpenChange={handleClose}>
+        <SheetContent side="right" className="w-full sm:max-w-md p-0 flex flex-col">
+          <SheetHeader className="p-4 pb-3 border-b shrink-0">
+            <div className="flex items-center gap-3">
+              {viewMode !== 'groups' && (
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 shrink-0"
-                  onClick={handleBackToList}
+                  onClick={handleBack}
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
-                <SheetTitle className="text-base">
-                  Chat with {selectedConversation.venueName}
-                </SheetTitle>
-              </div>
-            </SheetHeader>
-            
-            <div className="flex-1 overflow-hidden">
-              <Messenger
-                open={true}
-                onOpenChange={() => handleBackToList()}
-                waitlistEntryId={selectedConversation.type === 'waitlist' || selectedConversation.type === 'reservation' ? selectedConversation.referenceId : undefined}
-                orderId={selectedConversation.type === 'order' ? selectedConversation.referenceId : undefined}
-                venueInquiryId={selectedConversation.type === 'inquiry' ? selectedConversation.referenceId : undefined}
-                userType="patron"
-                userId={userId}
-                venueName={selectedConversation.venueName}
-                embedded={true}
-              />
+              )}
+              <SheetTitle className="flex items-center gap-2 text-base">
+                <MessageSquare className="h-5 w-5" />
+                {getTitle()}
+              </SheetTitle>
             </div>
-          </SheetContent>
-        </Sheet>
-      )}
+          </SheetHeader>
+          
+          <div className="flex-1 overflow-hidden">
+            {viewMode === 'groups' || viewMode === 'group-detail' ? (
+              <ScrollArea className="h-full">
+                {renderContent()}
+              </ScrollArea>
+            ) : (
+              renderContent()
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </>
   );
 }
