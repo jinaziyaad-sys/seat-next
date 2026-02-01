@@ -81,7 +81,7 @@ const extractExtensionReason = (notes: string | null | undefined): string | null
 
 export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; initialEntry?: any }) {
   const { toast } = useToast();
-  const [step, setStep] = useState<"venue-select" | "booking-type" | "reservation-details" | "party-details" | "waiting" | "ready" | "awaiting-confirmation" | "delayed-countdown" | "feedback" | "cancelled-details">("venue-select");
+  const [step, setStep] = useState<"entry-select" | "venue-select" | "booking-type" | "reservation-details" | "party-details" | "waiting" | "ready" | "awaiting-confirmation" | "delayed-countdown" | "feedback" | "cancelled-details">("entry-select");
   const [selectedVenue, setSelectedVenue] = useState("");
   const [selectedVenueData, setSelectedVenueData] = useState<any>(null);
   const [bookingType, setBookingType] = useState<"now" | "later">("now");
@@ -1588,8 +1588,62 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     );
   }
 
+  // Entry selection screen - choose Waitlist or Reservations
+  if (step === "entry-select") {
+    return (
+      <div className="space-y-6 p-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack}>
+            <ArrowLeft size={20} />
+          </Button>
+          <h1 className="text-2xl font-bold">Table Ready</h1>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          {/* Waitlist Card */}
+          <Card 
+            className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
+            onClick={() => {
+              setActiveTableTab("waitlist");
+              setStep("venue-select");
+            }}
+          >
+            <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Users size={28} />
+              </div>
+              <div>
+                <h3 className="font-semibold">Waitlist</h3>
+                <p className="text-sm text-muted-foreground">Get seated today</p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Reservations Card */}
+          <Card 
+            className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
+            onClick={() => {
+              setActiveTableTab("reservations");
+              setStep("venue-select");
+            }}
+          >
+            <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <CalendarIcon size={28} />
+              </div>
+              <div>
+                <h3 className="font-semibold">Reservations</h3>
+                <p className="text-sm text-muted-foreground">Book in advance</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
   if (step === "venue-select") {
-    // Venue list component shared between tabs
+    // Venue list component
     const VenueList = () => (
       <>
         <div className="relative">
@@ -1660,56 +1714,41 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     return (
       <div className="space-y-6 p-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={onBack}>
+          <Button variant="ghost" size="sm" onClick={() => setStep("entry-select")}>
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="text-2xl font-bold">Table Ready</h1>
+          <h1 className="text-2xl font-bold">
+            {activeTableTab === "waitlist" ? "Join Waitlist" : "Make a Reservation"}
+          </h1>
         </div>
 
-        <Tabs 
-          value={activeTableTab} 
-          onValueChange={(value) => setActiveTableTab(value as "waitlist" | "reservations")} 
-          className="w-full"
-        >
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="waitlist">Waitlist</TabsTrigger>
-            <TabsTrigger value="reservations">Reservations</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="waitlist" className="mt-4">
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle>Join Waitlist</CardTitle>
-                <p className="text-muted-foreground">Get seated today - no reservation needed</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <VenueList />
-              </CardContent>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="reservations" className="mt-4 space-y-4">
-            {/* Explore Venues Button */}
-            <Button
-              variant="outline"
-              className="w-full h-14 border-dashed border-2"
-              onClick={() => setShowExploreView(true)}
-            >
-              <Compass className="mr-2 h-5 w-5" />
-              Explore Venues
-            </Button>
-            
-            <Card className="shadow-card">
-              <CardHeader>
-                <CardTitle>Make a Reservation</CardTitle>
-                <p className="text-muted-foreground">Book a table in advance</p>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <VenueList />
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        {/* Show Explore Venues button only for reservations */}
+        {activeTableTab === "reservations" && (
+          <Button
+            variant="outline"
+            className="w-full h-14 border-dashed border-2"
+            onClick={() => setShowExploreView(true)}
+          >
+            <Compass className="mr-2 h-5 w-5" />
+            Explore Venues
+          </Button>
+        )}
+
+        <Card className="shadow-card">
+          <CardHeader>
+            <CardTitle>
+              {activeTableTab === "waitlist" ? "Join Waitlist" : "Make a Reservation"}
+            </CardTitle>
+            <p className="text-muted-foreground">
+              {activeTableTab === "waitlist" 
+                ? "Get seated today - no reservation needed" 
+                : "Book a table in advance"}
+            </p>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <VenueList />
+          </CardContent>
+        </Card>
       </div>
     );
   }
