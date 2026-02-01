@@ -138,26 +138,27 @@ const MerchantDashboard = () => {
 
   const fetchReservationCount = useCallback(async (isInitial = false) => {
     if (!userRole?.venue_id) return;
-    const startOfDay = new Date();
-    startOfDay.setHours(0, 0, 0, 0);
-    const endOfDay = new Date();
-    endOfDay.setHours(23, 59, 59, 999);
 
+    // Count unseen reservations (merchant_seen = false) instead of today's count
     const { count } = await supabase
       .from("waitlist_entries")
       .select("*", { count: "exact", head: true })
       .eq("venue_id", userRole.venue_id)
       .eq("reservation_type", "reservation")
-      .in("status", ["waiting", "ready"])
-      .gte("reservation_time", startOfDay.toISOString())
-      .lte("reservation_time", endOfDay.toISOString());
+      .eq("merchant_seen", false)
+      .in("status", ["waiting", "ready"]);
     const newCount = count || 0;
-    setReservationCount(prev => {
-      if (!isInitial && newCount > prev) {
-        setReservationHasNew(true);
-      }
-      return newCount;
-    });
+    setReservationCount(newCount);
+    
+    // Badge is red when there are unseen reservations
+    if (!isInitial && newCount > 0) {
+      setReservationHasNew(true);
+    } else if (newCount > 0) {
+      // Even on initial load, show red if there are unseen reservations
+      setReservationHasNew(true);
+    } else {
+      setReservationHasNew(false);
+    }
   }, [userRole?.venue_id]);
 
   // Fetch venue data
@@ -574,7 +575,7 @@ const MerchantDashboard = () => {
           
           {hasReservations && (
             <TabsContent value="reservations" data-tour="reservations-content">
-              <ReservationCalendar venueId={userRole.venue_id!} />
+              <ReservationCalendar venueId={userRole.venue_id!} venueName={userRole.venue_name || ""} />
             </TabsContent>
           )}
 
