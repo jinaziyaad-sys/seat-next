@@ -23,6 +23,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId, playPatronArrivedSound } from "@/utils/notificationSound";
 import { toast as sonnerToast } from "sonner";
 import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
+import { MerchantMessengerHub } from "@/components/merchant/MerchantMessengerHub";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -35,7 +36,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 const MerchantDashboard = () => {
-  const { userRole, allVenueRoles, switchVenue, loading } = useMerchantAuth();
+  const { user, userRole, allVenueRoles, switchVenue, loading } = useMerchantAuth();
   const { features, announcement } = usePlatformConfig();
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   
@@ -665,6 +666,7 @@ const MerchantDashboard = () => {
       </AlertDialog>
 
       {/* Report Issue & Help System */}
+      {user && <MerchantMessengerHub venueId={userRole.venue_id!} userId={user.id} />}
       <div className="fixed bottom-4 right-4 z-50">
         <HelpButton onClick={() => { setHelpOpen(true); setShowTourPulse(false); }} showPulse={showTourPulse} />
       </div>

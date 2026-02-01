@@ -31,6 +31,9 @@ interface MessengerProps {
   // UI control
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  
+  // When embedded in another sheet, render without wrapper Sheet
+  embedded?: boolean;
 }
 
 export function Messenger({
@@ -41,7 +44,8 @@ export function Messenger({
   customerName,
   venueName,
   open,
-  onOpenChange
+  onOpenChange,
+  embedded = false
 }: MessengerProps) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState("");
@@ -176,80 +180,93 @@ export function Messenger({
     ? `Chat with ${venueName || 'Restaurant'}` 
     : `Chat with ${customerName || 'Customer'}`;
 
-  return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[70vh] flex flex-col p-0">
-        <SheetHeader className="px-6 pt-6 pb-4 border-b">
+  const chatContent = (
+    <div className={cn("flex flex-col", embedded ? "h-full" : "h-[70vh]")}>
+      {!embedded && (
+        <SheetHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <SheetTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
             {chatTitle}
           </SheetTitle>
         </SheetHeader>
-        
-        <ScrollArea className="flex-1 px-4" ref={scrollRef}>
-          <div className="py-4">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-              </div>
-            ) : messages.length === 0 ? (
-              <div className="text-center text-muted-foreground py-8">
-                <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                <p className="font-medium">No messages yet</p>
-                <p className="text-sm">Start a conversation!</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {messages.map(msg => (
-                  <div 
-                    key={msg.id}
-                    className={cn(
-                      "max-w-[80%] p-3 rounded-2xl",
-                      msg.sender_type === userType 
-                        ? "ml-auto bg-primary text-primary-foreground rounded-br-sm"
-                        : msg.sender_type === 'system'
-                          ? "mx-auto bg-muted text-muted-foreground text-center text-sm italic max-w-[90%]"
-                          : "bg-muted rounded-bl-sm"
-                    )}
-                  >
-                    <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
-                    <p className={cn(
-                      "text-[10px] mt-1",
-                      msg.sender_type === userType 
-                        ? "opacity-70" 
-                        : "text-muted-foreground"
-                    )}>
-                      {format(new Date(msg.created_at), 'HH:mm')}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-        
-        <div className="flex gap-2 p-4 border-t bg-background">
-          <Input
-            ref={inputRef}
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
-            onKeyDown={handleKeyDown}
-            className="flex-1"
-            disabled={isSending}
-          />
-          <Button 
-            onClick={sendMessage} 
-            size="icon" 
-            disabled={!newMessage.trim() || isSending}
-          >
-            {isSending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-          </Button>
+      )}
+      
+      <ScrollArea className="flex-1 px-4" ref={scrollRef}>
+        <div className="py-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="text-center text-muted-foreground py-8">
+              <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
+              <p className="font-medium">No messages yet</p>
+              <p className="text-sm">Start a conversation!</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {messages.map(msg => (
+                <div 
+                  key={msg.id}
+                  className={cn(
+                    "max-w-[80%] p-3 rounded-2xl",
+                    msg.sender_type === userType 
+                      ? "ml-auto bg-primary text-primary-foreground rounded-br-sm"
+                      : msg.sender_type === 'system'
+                        ? "mx-auto bg-muted text-muted-foreground text-center text-sm italic max-w-[90%]"
+                        : "bg-muted rounded-bl-sm"
+                  )}
+                >
+                  <p className="text-sm whitespace-pre-wrap">{msg.message}</p>
+                  <p className={cn(
+                    "text-[10px] mt-1",
+                    msg.sender_type === userType 
+                      ? "opacity-70" 
+                      : "text-muted-foreground"
+                  )}>
+                    {format(new Date(msg.created_at), 'HH:mm')}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+      </ScrollArea>
+      
+      <div className="flex gap-2 p-4 border-t bg-background shrink-0">
+        <Input
+          ref={inputRef}
+          value={newMessage}
+          onChange={(e) => setNewMessage(e.target.value)}
+          placeholder="Type a message..."
+          onKeyDown={handleKeyDown}
+          className="flex-1"
+          disabled={isSending}
+        />
+        <Button 
+          onClick={sendMessage} 
+          size="icon" 
+          disabled={!newMessage.trim() || isSending}
+        >
+          {isSending ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+
+  // When embedded, render just the content without Sheet wrapper
+  if (embedded) {
+    return chatContent;
+  }
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="bottom" className="h-[70vh] flex flex-col p-0">
+        {chatContent}
       </SheetContent>
     </Sheet>
   );

@@ -17,6 +17,7 @@ import { format, isTomorrow } from "date-fns";
 import logo from "@/assets/logo.png";
 import { useToast } from "@/hooks/use-toast";
 import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
+import { MessengerHub } from "@/components/MessengerHub";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { CelebrationOverlay } from "@/components/ui/celebration-overlay";
 import { ActiveTrackingListSkeleton } from "@/components/ui/skeleton-card";
@@ -1158,6 +1159,7 @@ const Index = () => {
       />
 
       {/* Report Issue & Help System */}
+      {user && <MessengerHub userId={user.id} />}
       <div className="fixed bottom-4 right-4 z-50">
         <HelpButton onClick={() => { setHelpOpen(true); setShowTourPulse(false); }} showPulse={showTourPulse} />
       </div>
