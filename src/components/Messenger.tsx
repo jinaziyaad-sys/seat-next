@@ -21,6 +21,7 @@ interface MessengerProps {
   // One of these will be set
   waitlistEntryId?: string;
   orderId?: string;
+  venueInquiryId?: string;
   
   // Context
   userType: 'patron' | 'venue';
@@ -39,6 +40,7 @@ interface MessengerProps {
 export function Messenger({
   waitlistEntryId,
   orderId,
+  venueInquiryId,
   userType,
   userId,
   customerName,
@@ -71,7 +73,7 @@ export function Messenger({
   // Fetch messages and set up real-time subscription
   useEffect(() => {
     if (!open) return;
-    if (!waitlistEntryId && !orderId) return;
+    if (!waitlistEntryId && !orderId && !venueInquiryId) return;
     
     const fetchMessages = async () => {
       setIsLoading(true);
@@ -85,6 +87,8 @@ export function Messenger({
         query = query.eq('waitlist_entry_id', waitlistEntryId);
       } else if (orderId) {
         query = query.eq('order_id', orderId);
+      } else if (venueInquiryId) {
+        query = query.eq('venue_inquiry_id', venueInquiryId);
       }
       
       const { data, error } = await query;
@@ -117,10 +121,12 @@ export function Messenger({
     // Real-time subscription
     const filter = waitlistEntryId 
       ? `waitlist_entry_id=eq.${waitlistEntryId}`
-      : `order_id=eq.${orderId}`;
+      : orderId
+        ? `order_id=eq.${orderId}`
+        : `venue_inquiry_id=eq.${venueInquiryId}`;
     
     const channel = supabase
-      .channel(`messages-${waitlistEntryId || orderId}`)
+      .channel(`messages-${waitlistEntryId || orderId || venueInquiryId}`)
       .on('postgres_changes', {
         event: 'INSERT',
         schema: 'public',
@@ -143,7 +149,7 @@ export function Messenger({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [waitlistEntryId, orderId, open, userType]);
+  }, [waitlistEntryId, orderId, venueInquiryId, open, userType]);
 
   const sendMessage = async () => {
     if (!newMessage.trim() || isSending) return;
@@ -155,10 +161,14 @@ export function Messenger({
       sender_id: userId,
       message: newMessage.trim(),
       waitlist_entry_id: waitlistEntryId || null,
-      order_id: orderId || null
+      order_id: orderId || null,
     };
     
-    const { error } = await supabase.from('messages').insert(messageData);
+    // Use any cast to bypass TypeScript since venue_inquiry_id is not yet in generated types
+    const { error } = await (supabase.from('messages') as any).insert({
+      ...messageData,
+      venue_inquiry_id: venueInquiryId || null
+    });
     
     if (error) {
       console.error('Error sending message:', error);

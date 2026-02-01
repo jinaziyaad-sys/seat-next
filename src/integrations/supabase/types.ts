@@ -232,6 +232,7 @@ export type Database = {
           read_at: string | null
           sender_id: string
           sender_type: string
+          venue_inquiry_id: string | null
           waitlist_entry_id: string | null
         }
         Insert: {
@@ -242,6 +243,7 @@ export type Database = {
           read_at?: string | null
           sender_id: string
           sender_type: string
+          venue_inquiry_id?: string | null
           waitlist_entry_id?: string | null
         }
         Update: {
@@ -252,6 +254,7 @@ export type Database = {
           read_at?: string | null
           sender_id?: string
           sender_type?: string
+          venue_inquiry_id?: string | null
           waitlist_entry_id?: string | null
         }
         Relationships: [
@@ -260,6 +263,13 @@ export type Database = {
             columns: ["order_id"]
             isOneToOne: false
             referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_venue_inquiry_id_fkey"
+            columns: ["venue_inquiry_id"]
+            isOneToOne: false
+            referencedRelation: "venue_inquiries"
             referencedColumns: ["id"]
           },
           {
@@ -872,6 +882,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "venue_capacity_snapshots_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_inquiries: {
+        Row: {
+          created_at: string
+          id: string
+          status: string
+          updated_at: string
+          user_id: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_inquiries_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
