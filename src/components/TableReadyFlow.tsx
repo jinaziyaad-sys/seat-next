@@ -97,6 +97,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [isLoading, setIsLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<UserLocation | null>(null);
+  const [customerPhone, setCustomerPhone] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [rating, setRating] = useState(0);
   const [hoveredRating, setHoveredRating] = useState(0);
@@ -168,6 +169,17 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       if (user?.id) {
         const FIREBASE_PROJECT_ID = 'cuoqjgahpfymxqrdlzlf'; // Use your Supabase project ID
         await initializePushNotifications(FIREBASE_PROJECT_ID);
+        
+        // Fetch user's phone from profile to pre-fill
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('phone')
+          .eq('id', user.id)
+          .single();
+        
+        if (profile?.phone) {
+          setCustomerPhone(profile.phone);
+        }
       }
     };
     getUser();
@@ -680,6 +692,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       let insertData: any = {
         venue_id: venue.id,
         customer_name: partyName.trim(),
+        customer_phone: customerPhone.trim() || null,
         party_size: partySize,
         preferences: finalPreferences,
         status: "waiting",
@@ -940,6 +953,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       const reservations = tablesNeeded.map(table => ({
         venue_id: venue.id,
         customer_name: partyName,
+        customer_phone: customerPhone.trim() || null,
         party_size: partySize,
         preferences: finalPreferences,
         status: "waiting" as const,
@@ -1075,6 +1089,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       const insertData = {
         venue_id: venue.id,
         customer_name: partyName,
+        customer_phone: customerPhone.trim() || null,
         party_size: partySize,
         preferences: finalPreferences,
         status: "waiting" as const,
@@ -1979,6 +1994,20 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               />
               <p className="text-xs text-muted-foreground">
                 We'll use this name to call your party when your table is ready
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-sm font-medium">Contact Number (optional)</label>
+              <Input
+                type="tel"
+                placeholder="+1 (555) 123-4567"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                className="h-12"
+              />
+              <p className="text-xs text-muted-foreground">
+                So the restaurant can contact you if needed
               </p>
             </div>
 
