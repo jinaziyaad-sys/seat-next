@@ -92,6 +92,10 @@ export function useConversations(
 
           orders.forEach(order => {
             const messages = orderMessages?.filter(m => m.order_id === order.id) || [];
+            
+            // Skip items with no messages
+            if (messages.length === 0) return;
+            
             const unreadCount = messages.filter(m => !m.read_at && m.sender_type !== 'patron').length;
             const lastMsg = messages[0];
 
@@ -125,6 +129,10 @@ export function useConversations(
 
           waitlist.forEach(entry => {
             const messages = waitlistMessages?.filter(m => m.waitlist_entry_id === entry.id) || [];
+            
+            // Skip items with no messages
+            if (messages.length === 0) return;
+            
             const unreadCount = messages.filter(m => !m.read_at && m.sender_type !== 'patron').length;
             const lastMsg = messages[0];
 
@@ -160,6 +168,10 @@ export function useConversations(
 
           inquiries.forEach((inquiry: any) => {
             const messages = inquiryMessages?.filter((m: any) => m.venue_inquiry_id === inquiry.id) || [];
+            
+            // Skip items with no messages
+            if (messages.length === 0) return;
+            
             const unreadCount = messages.filter((m: any) => !m.read_at && m.sender_type !== 'patron').length;
             const lastMsg = messages[0];
 
@@ -233,6 +245,10 @@ export function useConversations(
 
           orders.forEach(order => {
             const messages = orderMessages?.filter(m => m.order_id === order.id) || [];
+            
+            // Skip items with no messages
+            if (messages.length === 0) return;
+            
             const unreadCount = messages.filter(m => !m.read_at && m.sender_type !== 'venue').length;
             const lastMsg = messages[0];
 
@@ -272,6 +288,10 @@ export function useConversations(
 
           waitlist.forEach(entry => {
             const messages = waitlistMessages?.filter(m => m.waitlist_entry_id === entry.id) || [];
+            
+            // Skip items with no messages
+            if (messages.length === 0) return;
+            
             const unreadCount = messages.filter(m => !m.read_at && m.sender_type !== 'venue').length;
             const lastMsg = messages[0];
 
@@ -312,6 +332,10 @@ export function useConversations(
 
           inquiries.forEach((inquiry: any) => {
             const messages = inquiryMessages?.filter((m: any) => m.venue_inquiry_id === inquiry.id) || [];
+            
+            // Skip items with no messages
+            if (messages.length === 0) return;
+            
             const unreadCount = messages.filter((m: any) => !m.read_at && m.sender_type !== 'venue').length;
             const lastMsg = messages[0];
 
