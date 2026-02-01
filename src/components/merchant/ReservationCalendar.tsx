@@ -3,21 +3,33 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { format, isSameDay, formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, Users, Utensils, X, Pencil, Bell, Check } from "lucide-react";
+import { Clock, Users, Utensils, X, Pencil, Bell, Check, Phone, XCircle } from "lucide-react";
+import { EditReservationDialog } from "@/components/EditReservationDialog";
+import { useToast } from "@/hooks/use-toast";
 
 interface Reservation {
   id: string;
   customer_name: string;
+  customer_phone?: string;
   party_size: number;
   reservation_time: string;
   status: string;
   preferences?: string[];
+  notes?: string;
   assigned_table_id?: string;
   linked_reservation_id?: string;
   last_edited_at?: string;
   edit_summary?: string;
+  venue_id: string;
 }
 
 interface TableOccupancy {
@@ -27,12 +39,27 @@ interface TableOccupancy {
   reservation_time: string;
 }
 
-export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
+export const ReservationCalendar = ({ venueId, venueName = "" }: { venueId: string; venueName?: string }) => {
+  const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [datesWithReservations, setDatesWithReservations] = useState<Date[]>([]);
   const [tableConfiguration, setTableConfiguration] = useState<any[]>([]);
   const [newReservations, setNewReservations] = useState<Reservation[]>([]);
+  
+  // Cancel dialog state
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [cancelReservationId, setCancelReservationId] = useState<string>("");
+  const [cancelLinkedId, setCancelLinkedId] = useState<string | undefined>(undefined);
+  const [cancelReason, setCancelReason] = useState("");
+  const [isCancelling, setIsCancelling] = useState(false);
+  
+  // Edit dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
+  
+  // Venue settings for edit dialog
+  const [venueSettings, setVenueSettings] = useState<any>(null);
 
   useEffect(() => {
     fetchVenueSettings();
@@ -61,14 +88,17 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
           setNewReservations(prev => [{
             id: newEntry.id,
             customer_name: newEntry.customer_name,
+            customer_phone: newEntry.customer_phone || undefined,
             party_size: newEntry.party_size,
             reservation_time: newEntry.reservation_time,
             status: newEntry.status,
             preferences: newEntry.preferences,
+            notes: newEntry.notes || undefined,
             assigned_table_id: newEntry.assigned_table_id,
             linked_reservation_id: newEntry.linked_reservation_id,
             last_edited_at: newEntry.last_edited_at,
             edit_summary: newEntry.edit_summary,
+            venue_id: newEntry.venue_id,
           }, ...prev]);
         }
       })
@@ -93,14 +123,17 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
       setNewReservations(data.map(entry => ({
         id: entry.id,
         customer_name: entry.customer_name,
+        customer_phone: entry.customer_phone || undefined,
         party_size: entry.party_size,
         reservation_time: entry.reservation_time || '',
         status: entry.status,
         preferences: entry.preferences || undefined,
+        notes: entry.notes || undefined,
         assigned_table_id: entry.assigned_table_id || undefined,
         linked_reservation_id: entry.linked_reservation_id || undefined,
         last_edited_at: entry.last_edited_at || undefined,
         edit_summary: entry.edit_summary || undefined,
+        venue_id: entry.venue_id,
       })));
     }
   };
@@ -136,6 +169,7 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
     if (data?.settings) {
       const settings = data.settings as any;
       setTableConfiguration(settings.table_configuration || []);
+      setVenueSettings(settings);
     }
   };
 
@@ -216,6 +250,65 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
     } catch (error) {
       console.error('Error clearing reservation:', error);
     }
+  };
+
+  // Cancel reservation handler
+  const handleCancelReservation = async () => {
+    if (!cancelReservationId || !cancelReason.trim()) return;
+    
+    setIsCancelling(true);
+    try {
+      const idsToCancel = cancelLinkedId 
+        ? reservations.filter(r => r.linked_reservation_id === cancelLinkedId).map(r => r.id)
+        : [cancelReservationId];
+      
+      await supabase
+        .from('waitlist_entries')
+        .update({
+          status: 'cancelled',
+          cancelled_by: 'venue',
+          cancellation_reason: `Venue cancelled: ${cancelReason}`,
+          updated_at: new Date().toISOString()
+        })
+        .in('id', idsToCancel);
+      
+      toast({
+        title: "Reservation Cancelled",
+        description: `The reservation has been cancelled.`,
+      });
+      
+      setCancelDialogOpen(false);
+      setCancelReason("");
+      setCancelReservationId("");
+      setCancelLinkedId(undefined);
+      
+      if (selectedDate) {
+        fetchReservationsForDate(selectedDate);
+      }
+      fetchReservationDates();
+    } catch (error) {
+      console.error('Error cancelling reservation:', error);
+      toast({
+        title: "Error",
+        description: "Failed to cancel reservation. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
+  // Open cancel dialog
+  const openCancelDialog = (reservation: Reservation) => {
+    setCancelReservationId(reservation.id);
+    setCancelLinkedId(reservation.linked_reservation_id);
+    setCancelDialogOpen(true);
+  };
+
+  // Open edit dialog
+  const handleEditReservation = (reservation: Reservation) => {
+    setEditingReservation(reservation);
+    setEditDialogOpen(true);
   };
 
   return (
@@ -378,7 +471,44 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
                                 </div>
                               )}
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              {/* Contact button */}
+                              {firstRes.customer_phone && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  asChild
+                                >
+                                  <a href={`tel:${firstRes.customer_phone}`} title="Call patron">
+                                    <Phone className="h-4 w-4" />
+                                  </a>
+                                </Button>
+                              )}
+                              {/* Edit button */}
+                              {['waiting', 'ready'].includes(firstRes.status) && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleEditReservation(firstRes)}
+                                  title="Edit reservation"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {/* Cancel button */}
+                              {['waiting', 'ready'].includes(firstRes.status) && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={() => openCancelDialog(firstRes)}
+                                  title="Cancel reservation"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Badge variant={getStatusColor(firstRes.status)}>
                                 {firstRes.status}
                               </Badge>
@@ -448,7 +578,44 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
                                 </div>
                               )}
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              {/* Contact button */}
+                              {reservation.customer_phone && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  asChild
+                                >
+                                  <a href={`tel:${reservation.customer_phone}`} title="Call patron">
+                                    <Phone className="h-4 w-4" />
+                                  </a>
+                                </Button>
+                              )}
+                              {/* Edit button */}
+                              {['waiting', 'ready'].includes(reservation.status) && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8"
+                                  onClick={() => handleEditReservation(reservation)}
+                                  title="Edit reservation"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                              )}
+                              {/* Cancel button */}
+                              {['waiting', 'ready'].includes(reservation.status) && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={() => openCancelDialog(reservation)}
+                                  title="Cancel reservation"
+                                >
+                                  <XCircle className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Badge variant={getStatusColor(reservation.status)}>
                                 {reservation.status}
                               </Badge>
@@ -552,6 +719,67 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
             </div>
           </CardContent>
         </Card>
+      )}
+
+      {/* Cancel Reservation Dialog */}
+      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Cancel Reservation</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Please provide a reason for cancelling. The customer will see this reason.
+            </p>
+            <Textarea
+              placeholder="Reason for cancellation..."
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+            />
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setCancelDialogOpen(false)} className="flex-1">
+                Keep Reservation
+              </Button>
+              <Button 
+                variant="destructive" 
+                onClick={handleCancelReservation}
+                disabled={!cancelReason.trim() || isCancelling}
+                className="flex-1"
+              >
+                {isCancelling ? "Cancelling..." : "Cancel Reservation"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Reservation Dialog */}
+      {editingReservation && (
+        <EditReservationDialog
+          open={editDialogOpen}
+          onOpenChange={(open) => {
+            setEditDialogOpen(open);
+            if (!open) setEditingReservation(null);
+          }}
+          entry={{
+            id: editingReservation.id,
+            venue: venueName,
+            venue_id: editingReservation.venue_id,
+            party_size: editingReservation.party_size,
+            reservation_time: editingReservation.reservation_time,
+            preferences: editingReservation.preferences,
+            notes: editingReservation.notes,
+            customer_name: editingReservation.customer_name,
+          }}
+          venueSettings={venueSettings}
+          onSuccess={() => {
+            setEditDialogOpen(false);
+            setEditingReservation(null);
+            if (selectedDate) {
+              fetchReservationsForDate(selectedDate);
+            }
+          }}
+        />
       )}
     </div>
   );
