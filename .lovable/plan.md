@@ -1,212 +1,207 @@
 
-
-# Show Overdue Reservation Status on Home Page
+# Add Entry Buttons Before Venue Selection in Table Ready Flow
 
 ## Overview
 
-Add visual indicators for overdue reservations on the patron's home page Active Tracking cards. When a reservation has passed its scheduled time, the card will show:
-1. **Warning indicator**: Orange/yellow styling with "Overdue - X min late" badge
-2. **Auto-cancel countdown**: Time remaining until the reservation is released as a no-show
+Currently when users tap "Table Ready" on the home page, they immediately see tabs with the venue search dropdown. The user wants an intermediate screen with two prominent buttons - similar to the home page's "Food Ready" / "Table Ready" cards - for choosing between **Waitlist** and **Reservations** before showing the venue search.
 
-## Current vs New Behavior
+## Current vs New Flow
 
 ```text
-CURRENT:
-+----------------------------------+
-| [RESERVATION]                    |
-| Demo Restaurant                  |
-| Today at 19:00 • 45 min to go    |
-| [Reserved]                       |
-+----------------------------------+
-(After 19:00, still shows "Reserved" badge)
+CURRENT FLOW:
+Home → "Table Ready" button → [Tabs: Waitlist | Reservations] with search dropdown
 
-NEW - OVERDUE STATE:
-+----------------------------------+  ← Orange/amber border + bg
-| [RESERVATION]                    |
-| Demo Restaurant                  |
-| Today at 19:00 • 10 min late     |  ← Shows how late
-| ⚠️ Arriving within 5 min?        |  ← Countdown to release
-| [Overdue]                        |  ← Orange badge
-+----------------------------------+
+NEW FLOW:
+Home → "Table Ready" button → [Two big buttons: Waitlist | Reservations] 
+                                    ↓                    ↓
+                           Search dropdown        Search dropdown + Explore Venues
 ```
+
+## Visual Design
+
+The new entry screen will match the home page card style:
+
+```text
+┌─────────────────────────────────────────────────────┐
+│ ← Table Ready                                       │
+│                                                     │
+│  ┌─────────────────────┐  ┌─────────────────────┐  │
+│  │       [👥]          │  │      [📅]           │  │
+│  │                     │  │                      │  │
+│  │     Waitlist        │  │   Reservations       │  │
+│  │  Get seated today   │  │  Book in advance     │  │
+│  └─────────────────────┘  └─────────────────────┘  │
+│                                                     │
+└─────────────────────────────────────────────────────┘
+```
+
+After clicking one of the buttons, the user sees the current search/venue selection interface.
 
 ## Changes Summary
 
 | File | Changes |
 |------|---------|
-| `src/pages/Index.tsx` | Add venue settings to waitlist query; add overdue detection logic; update card styling and badge for overdue reservations |
+| `src/components/TableReadyFlow.tsx` | Add new "entry-select" step with two card buttons; modify step flow to start at entry-select instead of venue-select |
 
 ## Technical Implementation
 
-### 1. Update Waitlist Query
+### 1. Add New Step Type
 
-Modify the `select` statement to include venue settings so we can access `auto_no_show_time`:
+Update the step type to include a new entry selection step:
 
 ```typescript
-// Line ~210, change from:
-.select('*, venues(name)')
+// Change from:
+const [step, setStep] = useState<"venue-select" | "booking-type" | ...>("venue-select");
 
 // To:
-.select('*, venues(name, settings)')
+const [step, setStep] = useState<"entry-select" | "venue-select" | "booking-type" | ...>("entry-select");
 ```
 
-### 2. Overdue Detection Logic
+### 2. Render Entry Selection Screen
 
-For each reservation entry, determine:
-- **Is it overdue?** `reservation_time < now()` AND `status === 'waiting'`
-- **How late?** `now() - reservation_time` in minutes
-- **Time until release?** `auto_no_show_time - minutesLate`
+Add a new conditional render before `step === "venue-select"`:
 
 ```typescript
-const isReservation = entry.reservation_type === 'reservation';
-const reservationTime = entry.reservation_time ? new Date(entry.reservation_time) : null;
-const now = new Date();
+if (step === "entry-select") {
+  return (
+    <div className="space-y-6 p-6">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="sm" onClick={onBack}>
+          <ArrowLeft size={20} />
+        </Button>
+        <h1 className="text-2xl font-bold">Table Ready</h1>
+      </div>
 
-// Only for waiting reservations
-const isOverdue = isReservation && 
-  entry.status === 'waiting' && 
-  reservationTime && 
-  reservationTime < now;
+      <div className="grid grid-cols-2 gap-4">
+        {/* Waitlist Card */}
+        <Card 
+          className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
+          onClick={() => {
+            setActiveTableTab("waitlist");
+            setStep("venue-select");
+          }}
+        >
+          <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Users size={28} />
+            </div>
+            <div>
+              <h3 className="font-semibold">Waitlist</h3>
+              <p className="text-sm text-muted-foreground">Get seated today</p>
+            </div>
+          </CardContent>
+        </Card>
 
-// Calculate how late (in minutes)
-const minutesLate = isOverdue 
-  ? Math.floor((now.getTime() - reservationTime.getTime()) / 60000) 
-  : 0;
-
-// Get venue's auto_no_show_time setting (default 15)
-const autoNoShowMinutes = (entry.venues?.settings as any)?.auto_no_show_time || 15;
-
-// Time remaining before auto-cancel
-const minutesUntilRelease = isOverdue ? Math.max(0, autoNoShowMinutes - minutesLate) : null;
-```
-
-### 3. Card Styling Updates
-
-Add conditional styling for overdue reservations in the card component (lines ~848-856):
-
-```typescript
-<Card 
-  key={entry.id} 
-  className={cn(
-    "group shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01]",
-    entry.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
-    (entry.status === 'cancelled' || entry.status === 'no_show') && "bg-destructive/10 border-destructive",
-    entry.status === 'seated' && "bg-success/10 border-success",
-    // NEW: Overdue reservation styling
-    isOverdue && "bg-amber-500/10 border-amber-500 dark:bg-amber-900/20"
-  )}
->
-```
-
-### 4. Update Display Content
-
-Replace the countdown-to-reservation text with overdue info when applicable (lines ~895-918):
-
-```typescript
-{isReservation && entry.reservation_time ? (
-  <>
-    <p className="text-sm text-muted-foreground">
-      Reservation for {entry.party_size}
-    </p>
-    <div className="flex items-center gap-1 text-xs mt-1">
-      <CalendarIcon size={12} />
-      <span>
-        {isToday ? 'Today' : isTomorrow(...) ? 'Tomorrow' : format(...)} 
-        at {format(reservationTime, 'HH:mm')}
-        {isOverdue ? (
-          // OVERDUE: Show how late
-          <span className="text-amber-600 dark:text-amber-400 font-medium">
-            {' • '}{minutesLate} min late
-          </span>
-        ) : isUpcomingTime ? (
-          // UPCOMING: Show countdown
-          <> {' • '}{formatTimeUntil(reservationTime)}</>
-        ) : null}
-      </span>
+        {/* Reservations Card */}
+        <Card 
+          className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
+          onClick={() => {
+            setActiveTableTab("reservations");
+            setStep("venue-select");
+          }}
+        >
+          <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <CalendarIcon size={28} />
+            </div>
+            <div>
+              <h3 className="font-semibold">Reservations</h3>
+              <p className="text-sm text-muted-foreground">Book in advance</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
-    {/* NEW: Auto-cancel warning */}
-    {isOverdue && minutesUntilRelease !== null && minutesUntilRelease > 0 && (
-      <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mt-1">
-        <AlertTriangle size={12} />
-        <span>
-          Arriving within {minutesUntilRelease} min? Check in now!
-        </span>
-      </div>
-    )}
-    {isOverdue && minutesUntilRelease === 0 && (
-      <div className="flex items-center gap-1 text-xs text-destructive mt-1">
-        <AlertTriangle size={12} />
-        <span>Reservation may be released any moment</span>
-      </div>
-    )}
-  </>
-) : ( ... )}
-```
-
-### 5. Update Badge Display
-
-Change the badge from "Reserved" to "Overdue" with warning styling (lines ~961-973):
-
-```typescript
-<Badge variant={
-  isOverdue ? 'outline' :  // Use outline for amber styling
-  isReservation ? 'outline' : 
-  entry.status === 'ready' ? 'default' : 
-  entry.status === 'cancelled' ? 'destructive' :
-  entry.status === 'seated' ? 'default' :
-  'secondary'
-} className={cn(
-  isOverdue && "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10"
-)}>
-  {isOverdue ? 'Overdue' : 
-   isReservation ? 'Reserved' : 
-   entry.status === 'ready' ? 'Ready' : 
-   entry.status === 'cancelled' ? 'Cancelled' :
-   entry.status === 'seated' ? 'Seated' :
-   'Waiting'}
-</Badge>
-```
-
-### 6. Timer for Live Updates
-
-Since the overdue status depends on current time, we need to re-render periodically to update the countdown. Add a 30-second interval when there are active reservations:
-
-```typescript
-// Inside the component
-useEffect(() => {
-  // Check if any reservation is potentially overdue or approaching
-  const hasActiveReservations = activeWaitlist.some(
-    entry => entry.reservation_type === 'reservation' && entry.status === 'waiting'
   );
-  
-  if (!hasActiveReservations) return;
-  
-  // Force re-render every 30 seconds to update overdue countdowns
-  const interval = setInterval(() => {
-    setActiveWaitlist(prev => [...prev]); // Trigger re-render
-  }, 30000);
-  
-  return () => clearInterval(interval);
-}, [activeWaitlist]);
+}
 ```
 
-## Visual Design Summary
+### 3. Update Venue Select Back Button
 
-| State | Border | Background | Badge | Text |
-|-------|--------|------------|-------|------|
-| Upcoming | Default | Default | "Reserved" (outline) | "Today at 19:00 • 45 min to go" |
-| Overdue (5 min) | Amber | Amber/10 | "Overdue" (amber) | "Today at 19:00 • 5 min late" + "Arriving within 10 min? Check in now!" |
-| Overdue (15+ min) | Amber | Amber/10 | "Overdue" (amber) | "Today at 19:00 • 15 min late" + "Reservation may be released any moment" |
-| No-show | Red | Red/10 | "Released" | "Table released - didn't arrive in time" |
+When on `venue-select`, the back button should return to `entry-select` instead of calling `onBack()`:
+
+```typescript
+// In step === "venue-select" render:
+<Button variant="ghost" size="sm" onClick={() => setStep("entry-select")}>
+  <ArrowLeft size={20} />
+</Button>
+```
+
+### 4. Handle Initial Entry with Existing Waitlist
+
+If `TableReadyFlow` is opened with an `initialEntry` (clicking on an active tracking card), skip directly to the appropriate step:
+
+```typescript
+// In useEffect for initialEntry handling, keep existing logic:
+if (initialEntry) {
+  // ... existing logic to set step based on status
+} else {
+  setStep("entry-select"); // Start at entry selection for new bookings
+}
+```
+
+### 5. Remove Tabs from Venue Select
+
+Since the user already chose Waitlist vs Reservations on the entry screen, the venue-select step can show a simpler interface without tabs - just the venue search for the chosen type:
+
+```typescript
+if (step === "venue-select") {
+  return (
+    <div className="space-y-6 p-6">
+      <div className="flex items-center gap-4">
+        <Button variant="ghost" size="sm" onClick={() => setStep("entry-select")}>
+          <ArrowLeft size={20} />
+        </Button>
+        <h1 className="text-2xl font-bold">
+          {activeTableTab === "waitlist" ? "Join Waitlist" : "Make a Reservation"}
+        </h1>
+      </div>
+
+      {/* Show Explore Venues button only for reservations */}
+      {activeTableTab === "reservations" && (
+        <Button
+          variant="outline"
+          className="w-full h-14 border-dashed border-2"
+          onClick={() => setShowExploreView(true)}
+        >
+          <Compass className="mr-2 h-5 w-5" />
+          Explore Venues
+        </Button>
+      )}
+
+      <Card className="shadow-card">
+        <CardHeader>
+          <CardTitle>Select Restaurant</CardTitle>
+          <p className="text-muted-foreground">
+            {activeTableTab === "waitlist" 
+              ? "Get seated today - no reservation needed" 
+              : "Book a table in advance"}
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <VenueList />
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+```
+
+## Edge Cases
+
+| Scenario | Handling |
+|----------|----------|
+| User clicks active tracking card | Skips entry-select, goes directly to waiting/ready/etc. step |
+| User clicks back from venue-select | Returns to entry-select (not home) |
+| User clicks back from entry-select | Returns to home page |
+| User navigates from Explore Venues | Already handled - returns to venue-select |
 
 ## Testing Checklist
 
-- Create a reservation for a time in the past (e.g., 10 minutes ago)
-- Verify the card shows amber styling with "Overdue" badge
-- Verify "X min late" text displays correctly
-- Verify countdown to auto-cancel appears ("Arriving within Y min?")
-- Verify countdown updates every 30 seconds
-- Test when countdown reaches 0 (shows "may be released any moment")
-- Test different venue auto_no_show_time settings (5, 15, 30 min)
-- Test that upcoming reservations still show normal "X min to go" countdown
-
+- Tap "Table Ready" on home page and verify two card buttons appear
+- Tap "Waitlist" button and verify venue search appears with correct header
+- Tap back from venue search and verify return to entry-select screen
+- Tap "Reservations" button and verify Explore Venues button appears
+- Tap Explore Venues and verify the explore screen loads
+- Click an active waitlist tracking card and verify it skips entry-select
+- Verify the flow works correctly on mobile screen sizes
