@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -55,6 +55,7 @@ export function Messenger({
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -70,53 +71,58 @@ export function Messenger({
     }
   }, [open]);
 
-  // Fetch messages and set up real-time subscription
+  // Memoized fetch function
+  const fetchMessages = useCallback(async () => {
+    if (!waitlistEntryId && !orderId && !venueInquiryId) return;
+    
+    let query = supabase
+      .from('messages')
+      .select('*')
+      .order('created_at', { ascending: true });
+    
+    if (waitlistEntryId) {
+      query = query.eq('waitlist_entry_id', waitlistEntryId);
+    } else if (orderId) {
+      query = query.eq('order_id', orderId);
+    } else if (venueInquiryId) {
+      query = query.eq('venue_inquiry_id', venueInquiryId);
+    }
+    
+    const { data, error } = await query;
+    
+    if (error) {
+      console.error('Error fetching messages:', error);
+    } else {
+      setMessages((data || []) as Message[]);
+      
+      // Mark messages as read
+      if (data?.length) {
+        const unreadIds = data
+          .filter(m => !m.read_at && m.sender_type !== userType)
+          .map(m => m.id);
+        
+        if (unreadIds.length > 0) {
+          await supabase
+            .from('messages')
+            .update({ read_at: new Date().toISOString() })
+            .in('id', unreadIds);
+        }
+      }
+    }
+    
+    setIsLoading(false);
+  }, [waitlistEntryId, orderId, venueInquiryId, userType]);
+
+  // Fetch messages and set up real-time subscription + polling fallback
   useEffect(() => {
     if (!open) return;
     if (!waitlistEntryId && !orderId && !venueInquiryId) return;
     
-    const fetchMessages = async () => {
-      setIsLoading(true);
-      
-      let query = supabase
-        .from('messages')
-        .select('*')
-        .order('created_at', { ascending: true });
-      
-      if (waitlistEntryId) {
-        query = query.eq('waitlist_entry_id', waitlistEntryId);
-      } else if (orderId) {
-        query = query.eq('order_id', orderId);
-      } else if (venueInquiryId) {
-        query = query.eq('venue_inquiry_id', venueInquiryId);
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) {
-        console.error('Error fetching messages:', error);
-      } else {
-        setMessages((data || []) as Message[]);
-        
-        // Mark messages as read
-        if (data?.length) {
-          const unreadIds = data
-            .filter(m => !m.read_at && m.sender_type !== userType)
-            .map(m => m.id);
-          
-          if (unreadIds.length > 0) {
-            await supabase
-              .from('messages')
-              .update({ read_at: new Date().toISOString() })
-              .in('id', unreadIds);
-          }
-        }
-      }
-      
-      setIsLoading(false);
-    };
-    
+    setIsLoading(true);
     fetchMessages();
+    
+    // Polling fallback (every 5 seconds) to ensure reliability
+    pollingIntervalRef.current = setInterval(fetchMessages, 5000);
     
     // Real-time subscription
     const filter = waitlistEntryId 
@@ -134,7 +140,11 @@ export function Messenger({
         filter
       }, (payload) => {
         const newMsg = payload.new as Message;
-        setMessages(prev => [...prev, newMsg]);
+        setMessages(prev => {
+          // Deduplicate - check if message already exists
+          if (prev.some(m => m.id === newMsg.id)) return prev;
+          return [...prev, newMsg];
+        });
         
         // Auto-mark as read if chat is open and message is from other party
         if (newMsg.sender_type !== userType) {
@@ -148,8 +158,11 @@ export function Messenger({
     
     return () => {
       supabase.removeChannel(channel);
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current);
+      }
     };
-  }, [waitlistEntryId, orderId, venueInquiryId, open, userType]);
+  }, [waitlistEntryId, orderId, venueInquiryId, open, userType, fetchMessages]);
 
   const sendMessage = async () => {
     if (!newMessage.trim() || isSending) return;

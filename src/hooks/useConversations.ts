@@ -8,6 +8,7 @@ export interface Conversation {
   venueName: string;
   venueId: string;
   customerName?: string;
+  customerId?: string;
   status: string;
   lastMessage?: string;
   lastMessageTime?: string;
@@ -20,8 +21,18 @@ export interface Conversation {
   };
 }
 
+export interface ConversationGroup {
+  id: string;
+  name: string;
+  conversations: Conversation[];
+  totalUnread: number;
+  lastMessageTime?: string;
+  activeCount: number;
+}
+
 interface UseConversationsResult {
   conversations: Conversation[];
+  groupedConversations: ConversationGroup[];
   totalUnread: number;
   loading: boolean;
   refetch: () => void;
@@ -43,28 +54,29 @@ export function useConversations(
 
     try {
       const allConversations: Conversation[] = [];
+      const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
       if (userType === 'patron') {
-        // Fetch active orders for patron
+        // Fetch active orders + recently completed (last 24h) for patron
         const { data: orders } = await supabase
           .from('orders')
-          .select('id, order_number, status, venue_id, venues(name)')
+          .select('id, order_number, status, venue_id, user_id, updated_at, venues(name)')
           .eq('user_id', userId!)
           .eq('patron_dismissed', false)
-          .in('status', ['awaiting_verification', 'placed', 'in_prep', 'ready']);
+          .or(`status.in.(awaiting_verification,placed,in_prep,ready),and(status.in.(collected,cancelled),updated_at.gte.${yesterday})`);
 
-        // Fetch active waitlist entries for patron
+        // Fetch active waitlist entries + recently completed for patron
         const { data: waitlist } = await supabase
           .from('waitlist_entries')
-          .select('id, customer_name, party_size, status, reservation_type, reservation_time, venue_id, venues(name)')
+          .select('id, customer_name, party_size, status, reservation_type, reservation_time, venue_id, user_id, updated_at, venues(name)')
           .eq('user_id', userId!)
           .eq('patron_dismissed', false)
-          .in('status', ['waiting', 'ready']);
+          .or(`status.in.(waiting,ready),and(status.in.(seated,cancelled),updated_at.gte.${yesterday})`);
 
         // Fetch venue inquiries for patron
         const { data: inquiries } = await (supabase
           .from('venue_inquiries') as any)
-          .select('id, venue_id, status, created_at, venues(name)')
+          .select('id, venue_id, user_id, status, created_at, venues(name)')
           .eq('user_id', userId!)
           .eq('status', 'open');
 
@@ -89,6 +101,7 @@ export function useConversations(
               referenceId: order.id,
               venueName: (order.venues as any)?.name || 'Unknown Venue',
               venueId: order.venue_id,
+              customerId: order.user_id || undefined,
               status: order.status,
               lastMessage: lastMsg?.message,
               lastMessageTime: lastMsg?.created_at,
@@ -122,6 +135,7 @@ export function useConversations(
               venueName: (entry.venues as any)?.name || 'Unknown Venue',
               venueId: entry.venue_id,
               customerName: entry.customer_name,
+              customerId: entry.user_id || undefined,
               status: entry.status,
               lastMessage: lastMsg?.message,
               lastMessageTime: lastMsg?.created_at,
@@ -155,6 +169,7 @@ export function useConversations(
               referenceId: inquiry.id,
               venueName: inquiry.venues?.name || 'Unknown Venue',
               venueId: inquiry.venue_id,
+              customerId: inquiry.user_id,
               status: inquiry.status,
               lastMessage: lastMsg?.message,
               lastMessageTime: lastMsg?.created_at,
@@ -166,19 +181,19 @@ export function useConversations(
           });
         }
       } else {
-        // Venue perspective - fetch all active orders and waitlist for venue
+        // Venue perspective - fetch all active + recently completed orders/waitlist for venue
         const { data: orders } = await supabase
           .from('orders')
-          .select('id, order_number, status, customer_name, user_id')
+          .select('id, order_number, status, customer_name, user_id, updated_at')
           .eq('venue_id', venueId!)
           .eq('merchant_dismissed', false)
-          .in('status', ['awaiting_verification', 'placed', 'in_prep', 'ready']);
+          .or(`status.in.(awaiting_verification,placed,in_prep,ready),and(status.in.(collected,cancelled),updated_at.gte.${yesterday})`);
 
         const { data: waitlist } = await supabase
           .from('waitlist_entries')
-          .select('id, customer_name, party_size, status, reservation_type, reservation_time, user_id')
+          .select('id, customer_name, party_size, status, reservation_type, reservation_time, user_id, updated_at')
           .eq('venue_id', venueId!)
-          .in('status', ['waiting', 'ready']);
+          .or(`status.in.(waiting,ready),and(status.in.(seated,cancelled),updated_at.gte.${yesterday})`);
 
         // Fetch venue inquiries for this venue
         const { data: inquiries } = await (supabase
@@ -187,14 +202,18 @@ export function useConversations(
           .eq('venue_id', venueId!)
           .eq('status', 'open');
 
-        // Get profile names for inquiries
+        // Get profile names for all users (orders, waitlist, inquiries)
+        const userIds = new Set<string>();
+        orders?.forEach(o => o.user_id && userIds.add(o.user_id));
+        waitlist?.forEach(w => w.user_id && userIds.add(w.user_id));
+        inquiries?.forEach((i: any) => i.user_id && userIds.add(i.user_id));
+        
         let profileMap: Record<string, string> = {};
-        if (inquiries && inquiries.length > 0) {
-          const userIds = inquiries.map((i: any) => i.user_id);
+        if (userIds.size > 0) {
           const { data: profiles } = await supabase
             .from('profiles')
             .select('id, full_name')
-            .in('id', userIds);
+            .in('id', Array.from(userIds));
           if (profiles) {
             profiles.forEach(p => {
               profileMap[p.id] = p.full_name;
@@ -217,13 +236,19 @@ export function useConversations(
             const unreadCount = messages.filter(m => !m.read_at && m.sender_type !== 'venue').length;
             const lastMsg = messages[0];
 
+            // Get customer name from profile or fallback to order customer_name
+            const customerName = order.user_id 
+              ? profileMap[order.user_id] || order.customer_name || 'Guest'
+              : order.customer_name || 'Guest';
+
             allConversations.push({
               id: `order-${order.id}`,
               type: 'order',
               referenceId: order.id,
               venueName: '',
               venueId: venueId!,
-              customerName: order.customer_name || 'Guest',
+              customerName,
+              customerId: order.user_id || undefined,
               status: order.status,
               lastMessage: lastMsg?.message,
               lastMessageTime: lastMsg?.created_at,
@@ -250,13 +275,19 @@ export function useConversations(
             const unreadCount = messages.filter(m => !m.read_at && m.sender_type !== 'venue').length;
             const lastMsg = messages[0];
 
+            // Get customer name from profile or fallback
+            const customerName = entry.user_id 
+              ? profileMap[entry.user_id] || entry.customer_name || 'Guest'
+              : entry.customer_name || 'Guest';
+
             allConversations.push({
               id: `waitlist-${entry.id}`,
               type: entry.reservation_type === 'reservation' ? 'reservation' : 'waitlist',
               referenceId: entry.id,
               venueName: '',
               venueId: venueId!,
-              customerName: entry.customer_name,
+              customerName,
+              customerId: entry.user_id || undefined,
               status: entry.status,
               lastMessage: lastMsg?.message,
               lastMessageTime: lastMsg?.created_at,
@@ -291,6 +322,7 @@ export function useConversations(
               venueName: '',
               venueId: venueId!,
               customerName: profileMap[inquiry.user_id] || 'Guest',
+              customerId: inquiry.user_id,
               status: inquiry.status,
               lastMessage: lastMsg?.message,
               lastMessageTime: lastMsg?.created_at,
@@ -369,6 +401,54 @@ export function useConversations(
     };
   }, [userType, userId, venueId]);
 
+  // Group conversations by customer (for venue) or venue (for patron)
+  const groupedConversations = useMemo(() => {
+    const groups: Map<string, ConversationGroup> = new Map();
+
+    conversations.forEach(conv => {
+      const groupKey = userType === 'patron' ? conv.venueId : (conv.customerId || 'guest');
+      const groupName = userType === 'patron' ? conv.venueName : (conv.customerName || 'Guest');
+      
+      if (!groups.has(groupKey)) {
+        groups.set(groupKey, {
+          id: groupKey,
+          name: groupName,
+          conversations: [],
+          totalUnread: 0,
+          lastMessageTime: undefined,
+          activeCount: 0,
+        });
+      }
+      
+      const group = groups.get(groupKey)!;
+      group.conversations.push(conv);
+      group.totalUnread += conv.unreadCount;
+      
+      // Check if conversation is active (not completed)
+      const isActive = ['waiting', 'ready', 'awaiting_verification', 'placed', 'in_prep', 'open'].includes(conv.status);
+      if (isActive) {
+        group.activeCount++;
+      }
+      
+      // Update last message time
+      if (conv.lastMessageTime) {
+        if (!group.lastMessageTime || new Date(conv.lastMessageTime) > new Date(group.lastMessageTime)) {
+          group.lastMessageTime = conv.lastMessageTime;
+        }
+      }
+    });
+
+    // Convert to array and sort by unread then last message time
+    return Array.from(groups.values()).sort((a, b) => {
+      if (a.totalUnread > 0 && b.totalUnread === 0) return -1;
+      if (a.totalUnread === 0 && b.totalUnread > 0) return 1;
+      if (a.lastMessageTime && b.lastMessageTime) {
+        return new Date(b.lastMessageTime).getTime() - new Date(a.lastMessageTime).getTime();
+      }
+      return 0;
+    });
+  }, [conversations, userType]);
+
   const totalUnread = useMemo(() => 
     conversations.reduce((sum, c) => sum + c.unreadCount, 0),
     [conversations]
@@ -376,6 +456,7 @@ export function useConversations(
 
   return {
     conversations,
+    groupedConversations,
     totalUnread,
     loading,
     refetch: fetchConversations,
