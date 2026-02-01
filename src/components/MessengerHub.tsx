@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MessageSquare, ChefHat, Users, Calendar, ArrowLeft } from "lucide-react";
+import { MessageSquare, ChefHat, Users, Calendar, ArrowLeft, HelpCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -31,6 +31,7 @@ function ConversationCard({
     switch (conversation.type) {
       case 'order': return ChefHat;
       case 'reservation': return Calendar;
+      case 'inquiry': return HelpCircle;
       default: return Users;
     }
   };
@@ -42,6 +43,12 @@ function ConversationCard({
     }
     if (conversation.type === 'reservation' && conversation.metadata.reservationTime) {
       return `Reservation • ${format(new Date(conversation.metadata.reservationTime), 'MMM d, HH:mm')}`;
+    }
+    if (conversation.type === 'inquiry' && conversation.metadata.createdAt) {
+      return `Inquiry • Started ${format(new Date(conversation.metadata.createdAt), 'MMM d')}`;
+    }
+    if (conversation.type === 'inquiry') {
+      return 'Pre-booking inquiry';
     }
     return `Waitlist • Party of ${conversation.metadata.partySize}`;
   };
@@ -56,8 +63,14 @@ function ConversationCard({
       className="w-full p-4 hover:bg-muted/50 border-b border-border transition-colors text-left"
     >
       <div className="flex items-start gap-3">
-        <div className="p-2 bg-primary/10 rounded-full shrink-0">
-          <Icon className="h-5 w-5 text-primary" />
+        <div className={cn(
+          "p-2 rounded-full shrink-0",
+          conversation.type === 'inquiry' ? "bg-accent/20" : "bg-primary/10"
+        )}>
+          <Icon className={cn(
+            "h-5 w-5",
+            conversation.type === 'inquiry' ? "text-accent" : "text-primary"
+          )} />
         </div>
         
         <div className="flex-1 min-w-0">
@@ -185,8 +198,9 @@ export function MessengerHub({ userId }: MessengerHubProps) {
               <Messenger
                 open={true}
                 onOpenChange={() => handleBackToList()}
-                waitlistEntryId={selectedConversation.type !== 'order' ? selectedConversation.referenceId : undefined}
+                waitlistEntryId={selectedConversation.type === 'waitlist' || selectedConversation.type === 'reservation' ? selectedConversation.referenceId : undefined}
                 orderId={selectedConversation.type === 'order' ? selectedConversation.referenceId : undefined}
+                venueInquiryId={selectedConversation.type === 'inquiry' ? selectedConversation.referenceId : undefined}
                 userType="patron"
                 userId={userId}
                 venueName={selectedConversation.venueName}

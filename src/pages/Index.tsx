@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { FoodReadyFlow } from "@/components/FoodReadyFlow";
 import { TableReadyFlow } from "@/components/TableReadyFlow";
 import { ProfileSection } from "@/components/ProfileSection";
@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon, AlertTriangle, Info, X, Wrench } from "lucide-react";
+import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon, AlertTriangle, Info, X, Wrench, MessageSquare } from "lucide-react";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -18,9 +18,11 @@ import logo from "@/assets/logo.png";
 import { useToast } from "@/hooks/use-toast";
 import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
 import { MessengerHub } from "@/components/MessengerHub";
+import { Messenger } from "@/components/Messenger";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { CelebrationOverlay } from "@/components/ui/celebration-overlay";
 import { ActiveTrackingListSkeleton } from "@/components/ui/skeleton-card";
+import { useMultipleUnreadMessages } from "@/hooks/useUnreadMessages";
 import {
   playFoodReadySound, 
   playTableReadySound, 
@@ -122,6 +124,24 @@ const Index = () => {
     item: any;
   } | null>(null);
   const celebrationShownForIds = useRef<Set<string>>(new Set());
+  
+  // Quick-access messenger state for tracking cards
+  const [cardMessengerOpen, setCardMessengerOpen] = useState(false);
+  const [cardMessengerContext, setCardMessengerContext] = useState<{
+    type: 'order' | 'waitlist';
+    id: string;
+    venueName: string;
+  } | null>(null);
+  
+  // Build entries for unread message tracking
+  const unreadEntries = useMemo(() => {
+    const entries: Array<{ waitlistEntryId?: string; orderId?: string }> = [];
+    activeOrders.forEach(o => entries.push({ orderId: o.id }));
+    activeWaitlist.forEach(e => entries.push({ waitlistEntryId: e.id }));
+    return entries;
+  }, [activeOrders, activeWaitlist]);
+  
+  const unreadCounts = useMultipleUnreadMessages(unreadEntries, 'patron');
 
   const handleDismissOrder = async (orderId: string) => {
     if (!user) return;
@@ -795,6 +815,28 @@ const Index = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {/* Message button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 relative"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCardMessengerContext({
+                            type: 'order',
+                            id: order.id,
+                            venueName: order.venues?.name || 'Restaurant'
+                          });
+                          setCardMessengerOpen(true);
+                        }}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        {unreadCounts[order.id] > 0 && (
+                          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-medium">
+                            {unreadCounts[order.id] > 9 ? '9+' : unreadCounts[order.id]}
+                          </span>
+                        )}
+                      </Button>
                       <Badge variant={
                         order.status === 'ready' ? 'default' : 
                         order.status === 'in_prep' ? 'default' : 
@@ -1017,6 +1059,28 @@ const Index = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {/* Message button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 relative"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCardMessengerContext({
+                            type: 'waitlist',
+                            id: entry.id,
+                            venueName: entry.venues?.name || 'Restaurant'
+                          });
+                          setCardMessengerOpen(true);
+                        }}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        {unreadCounts[entry.id] > 0 && (
+                          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-medium">
+                            {unreadCounts[entry.id] > 9 ? '9+' : unreadCounts[entry.id]}
+                          </span>
+                        )}
+                      </Button>
                       <Badge 
                         variant={
                           isOverdue ? 'outline' :
@@ -1181,6 +1245,22 @@ const Index = () => {
       
       {/* Notification Prompt for new users */}
       {user && <NotificationPrompt />}
+      
+      {/* Quick-access Messenger from tracking cards */}
+      {cardMessengerContext && (
+        <Messenger
+          open={cardMessengerOpen}
+          onOpenChange={(open) => {
+            setCardMessengerOpen(open);
+            if (!open) setCardMessengerContext(null);
+          }}
+          waitlistEntryId={cardMessengerContext.type === 'waitlist' ? cardMessengerContext.id : undefined}
+          orderId={cardMessengerContext.type === 'order' ? cardMessengerContext.id : undefined}
+          userType="patron"
+          userId={user?.id || ''}
+          venueName={cardMessengerContext.venueName}
+        />
+      )}
     </div>
   );
 };

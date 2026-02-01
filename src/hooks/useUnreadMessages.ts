@@ -4,12 +4,13 @@ import { supabase } from "@/integrations/supabase/client";
 export function useUnreadMessages(
   waitlistEntryId?: string, 
   orderId?: string, 
+  venueInquiryId?: string,
   userType?: 'patron' | 'venue'
 ) {
   const [count, setCount] = useState(0);
   
   useEffect(() => {
-    if ((!waitlistEntryId && !orderId) || !userType) return;
+    if ((!waitlistEntryId && !orderId && !venueInquiryId) || !userType) return;
     
     const fetchCount = async () => {
       let query = supabase
@@ -22,6 +23,8 @@ export function useUnreadMessages(
         query = query.eq('waitlist_entry_id', waitlistEntryId);
       } else if (orderId) {
         query = query.eq('order_id', orderId);
+      } else if (venueInquiryId) {
+        query = query.eq('venue_inquiry_id', venueInquiryId);
       }
       
       const { count: unreadCount } = await query;
@@ -33,10 +36,12 @@ export function useUnreadMessages(
     // Real-time subscription for new messages
     const filter = waitlistEntryId 
       ? `waitlist_entry_id=eq.${waitlistEntryId}`
-      : `order_id=eq.${orderId}`;
+      : orderId
+        ? `order_id=eq.${orderId}`
+        : `venue_inquiry_id=eq.${venueInquiryId}`;
     
     const channel = supabase
-      .channel(`unread-messages-${waitlistEntryId || orderId}`)
+      .channel(`unread-messages-${waitlistEntryId || orderId || venueInquiryId}`)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
@@ -51,14 +56,14 @@ export function useUnreadMessages(
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [waitlistEntryId, orderId, userType]);
+  }, [waitlistEntryId, orderId, venueInquiryId, userType]);
   
   return count;
 }
 
 // Hook to get unread counts for multiple entries at once
 export function useMultipleUnreadMessages(
-  entries: Array<{ waitlistEntryId?: string; orderId?: string }>,
+  entries: Array<{ waitlistEntryId?: string; orderId?: string; venueInquiryId?: string }>,
   userType: 'patron' | 'venue'
 ) {
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -69,6 +74,7 @@ export function useMultipleUnreadMessages(
     const fetchCounts = async () => {
       const waitlistIds = entries.filter(e => e.waitlistEntryId).map(e => e.waitlistEntryId!);
       const orderIds = entries.filter(e => e.orderId).map(e => e.orderId!);
+      const inquiryIds = entries.filter(e => e.venueInquiryId).map(e => e.venueInquiryId!);
       
       const newCounts: Record<string, number> = {};
       
@@ -103,6 +109,25 @@ export function useMultipleUnreadMessages(
         if (data) {
           data.forEach(m => {
             const id = m.order_id;
+            if (id) {
+              newCounts[id] = (newCounts[id] || 0) + 1;
+            }
+          });
+        }
+      }
+      
+      // Fetch counts for venue inquiries
+      if (inquiryIds.length > 0) {
+        const { data } = await supabase
+          .from('messages')
+          .select('venue_inquiry_id')
+          .is('read_at', null)
+          .neq('sender_type', userType)
+          .in('venue_inquiry_id', inquiryIds);
+        
+        if (data) {
+          data.forEach(m => {
+            const id = (m as any).venue_inquiry_id;
             if (id) {
               newCounts[id] = (newCounts[id] || 0) + 1;
             }

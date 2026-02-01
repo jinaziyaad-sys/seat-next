@@ -15,11 +15,13 @@ import {
   RefreshCw,
   Search,
   ChevronRight,
-  Loader2
+  Loader2,
+  MessageSquare
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { PatronBusynessIndicator } from "@/components/PatronBusynessIndicator";
+import { Messenger } from "@/components/Messenger";
 import { cn } from "@/lib/utils";
 
 interface VenueRecommendation {
@@ -63,6 +65,11 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const { toast } = useToast();
+  
+  // Messenger state for venue inquiries
+  const [messengerOpen, setMessengerOpen] = useState(false);
+  const [selectedVenueForChat, setSelectedVenueForChat] = useState<{ id: string; name: string; inquiryId?: string } | null>(null);
+  const [creatingInquiry, setCreatingInquiry] = useState<string | null>(null);
 
   useEffect(() => {
     checkAuth();
@@ -138,6 +145,69 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
         ? prev.filter((f) => f !== filterId) 
         : [...prev, filterId]
     );
+  };
+
+  const handleMessageVenue = async (venue: VenueRecommendation, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to message venues",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setCreatingInquiry(venue.venue_id);
+    
+    try {
+      // Check if inquiry already exists
+      const { data: existing } = await (supabase
+        .from('venue_inquiries') as any)
+        .select('id')
+        .eq('venue_id', venue.venue_id)
+        .eq('user_id', user.id)
+        .maybeSingle();
+      
+      if (existing) {
+        // Use existing inquiry
+        setSelectedVenueForChat({ id: venue.venue_id, name: venue.name, inquiryId: existing.id });
+        setMessengerOpen(true);
+      } else {
+        // Create new inquiry
+        const { data: newInquiry, error } = await (supabase
+          .from('venue_inquiries') as any)
+          .insert({
+            venue_id: venue.venue_id,
+            user_id: user.id,
+            status: 'open'
+          })
+          .select('id')
+          .single();
+        
+        if (error) {
+          console.error('Error creating inquiry:', error);
+          toast({
+            title: "Error",
+            description: "Failed to start conversation",
+            variant: "destructive",
+          });
+        } else {
+          setSelectedVenueForChat({ id: venue.venue_id, name: venue.name, inquiryId: newInquiry.id });
+          setMessengerOpen(true);
+        }
+      }
+    } catch (err) {
+      console.error('Error:', err);
+      toast({
+        title: "Error",
+        description: "Something went wrong",
+        variant: "destructive",
+      });
+    } finally {
+      setCreatingInquiry(null);
+    }
   };
 
   const filteredRecommendations = recommendations.filter((venue) => {
@@ -308,12 +378,12 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
           filteredRecommendations.map((venue) => (
             <Card 
               key={venue.venue_id}
-              className="shadow-card cursor-pointer transition-all hover:shadow-floating hover:scale-[1.01] active:scale-[0.99]"
+              className="shadow-card cursor-pointer transition-all hover:shadow-floating hover:scale-[1.01] active:scale-[0.99] relative"
               onClick={() => onSelectVenue?.(venue.venue_id)}
             >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
-                  <div>
+                  <div className="flex-1">
                     <h3 className="font-semibold text-lg">{venue.name}</h3>
                     {venue.address && (
                       <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
@@ -325,19 +395,35 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
                       </div>
                     )}
                   </div>
-                  {user && venue.match_score > 0 && (
-                    <Badge 
-                      variant="default" 
-                      className={cn(
-                        "text-sm font-bold",
-                        venue.match_score >= 80 && "bg-success text-success-foreground",
-                        venue.match_score >= 60 && venue.match_score < 80 && "bg-primary text-primary-foreground",
-                        venue.match_score < 60 && "bg-muted text-muted-foreground"
-                      )}
+                  <div className="flex items-center gap-2">
+                    {/* Message button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => handleMessageVenue(venue, e)}
+                      disabled={creatingInquiry === venue.venue_id}
                     >
-                      {venue.match_score}% Match
-                    </Badge>
-                  )}
+                      {creatingInquiry === venue.venue_id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <MessageSquare className="h-4 w-4" />
+                      )}
+                    </Button>
+                    {user && venue.match_score > 0 && (
+                      <Badge 
+                        variant="default" 
+                        className={cn(
+                          "text-sm font-bold",
+                          venue.match_score >= 80 && "bg-success text-success-foreground",
+                          venue.match_score >= 60 && venue.match_score < 80 && "bg-primary text-primary-foreground",
+                          venue.match_score < 60 && "bg-muted text-muted-foreground"
+                        )}
+                      >
+                        {venue.match_score}% Match
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 {/* AI Reason */}
@@ -395,6 +481,21 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
           ))
         )}
       </div>
+
+      {/* Messenger for venue inquiries */}
+      {selectedVenueForChat && (
+        <Messenger
+          open={messengerOpen}
+          onOpenChange={(open) => {
+            setMessengerOpen(open);
+            if (!open) setSelectedVenueForChat(null);
+          }}
+          venueInquiryId={selectedVenueForChat.inquiryId}
+          userType="patron"
+          userId={user?.id || ''}
+          venueName={selectedVenueForChat.name}
+        />
+      )}
     </div>
   );
 }

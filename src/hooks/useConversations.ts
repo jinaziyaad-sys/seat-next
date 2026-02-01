@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 export interface Conversation {
   id: string;
-  type: 'order' | 'waitlist' | 'reservation';
+  type: 'order' | 'waitlist' | 'reservation' | 'inquiry';
   referenceId: string;
   venueName: string;
   venueId: string;
@@ -16,6 +16,7 @@ export interface Conversation {
     orderNumber?: string;
     partySize?: number;
     reservationTime?: string;
+    createdAt?: string;
   };
 }
 
@@ -59,6 +60,13 @@ export function useConversations(
           .eq('user_id', userId!)
           .eq('patron_dismissed', false)
           .in('status', ['waiting', 'ready']);
+
+        // Fetch venue inquiries for patron
+        const { data: inquiries } = await (supabase
+          .from('venue_inquiries') as any)
+          .select('id, venue_id, status, created_at, venues(name)')
+          .eq('user_id', userId!)
+          .eq('status', 'open');
 
         // Get unread counts and last messages for orders
         if (orders && orders.length > 0) {
@@ -125,6 +133,38 @@ export function useConversations(
             });
           });
         }
+
+        // Get unread counts and last messages for inquiries
+        if (inquiries && inquiries.length > 0) {
+          const inquiryIds = inquiries.map((i: any) => i.id);
+          
+          const { data: inquiryMessages } = await (supabase
+            .from('messages') as any)
+            .select('venue_inquiry_id, message, created_at, read_at, sender_type')
+            .in('venue_inquiry_id', inquiryIds)
+            .order('created_at', { ascending: false });
+
+          inquiries.forEach((inquiry: any) => {
+            const messages = inquiryMessages?.filter((m: any) => m.venue_inquiry_id === inquiry.id) || [];
+            const unreadCount = messages.filter((m: any) => !m.read_at && m.sender_type !== 'patron').length;
+            const lastMsg = messages[0];
+
+            allConversations.push({
+              id: `inquiry-${inquiry.id}`,
+              type: 'inquiry',
+              referenceId: inquiry.id,
+              venueName: inquiry.venues?.name || 'Unknown Venue',
+              venueId: inquiry.venue_id,
+              status: inquiry.status,
+              lastMessage: lastMsg?.message,
+              lastMessageTime: lastMsg?.created_at,
+              unreadCount,
+              metadata: {
+                createdAt: inquiry.created_at,
+              },
+            });
+          });
+        }
       } else {
         // Venue perspective - fetch all active orders and waitlist for venue
         const { data: orders } = await supabase
@@ -136,9 +176,31 @@ export function useConversations(
 
         const { data: waitlist } = await supabase
           .from('waitlist_entries')
-          .select('id, customer_name, party_size, status, reservation_type, reservation_time')
+          .select('id, customer_name, party_size, status, reservation_type, reservation_time, user_id')
           .eq('venue_id', venueId!)
           .in('status', ['waiting', 'ready']);
+
+        // Fetch venue inquiries for this venue
+        const { data: inquiries } = await (supabase
+          .from('venue_inquiries') as any)
+          .select('id, user_id, status, created_at')
+          .eq('venue_id', venueId!)
+          .eq('status', 'open');
+
+        // Get profile names for inquiries
+        let profileMap: Record<string, string> = {};
+        if (inquiries && inquiries.length > 0) {
+          const userIds = inquiries.map((i: any) => i.user_id);
+          const { data: profiles } = await supabase
+            .from('profiles')
+            .select('id, full_name')
+            .in('id', userIds);
+          if (profiles) {
+            profiles.forEach(p => {
+              profileMap[p.id] = p.full_name;
+            });
+          }
+        }
 
         // Get unread counts for orders
         if (orders && orders.length > 0) {
@@ -202,6 +264,39 @@ export function useConversations(
               metadata: {
                 partySize: entry.party_size,
                 reservationTime: entry.reservation_time || undefined,
+              },
+            });
+          });
+        }
+
+        // Get unread counts for inquiries
+        if (inquiries && inquiries.length > 0) {
+          const inquiryIds = inquiries.map((i: any) => i.id);
+          
+          const { data: inquiryMessages } = await (supabase
+            .from('messages') as any)
+            .select('venue_inquiry_id, message, created_at, read_at, sender_type')
+            .in('venue_inquiry_id', inquiryIds)
+            .order('created_at', { ascending: false });
+
+          inquiries.forEach((inquiry: any) => {
+            const messages = inquiryMessages?.filter((m: any) => m.venue_inquiry_id === inquiry.id) || [];
+            const unreadCount = messages.filter((m: any) => !m.read_at && m.sender_type !== 'venue').length;
+            const lastMsg = messages[0];
+
+            allConversations.push({
+              id: `inquiry-${inquiry.id}`,
+              type: 'inquiry',
+              referenceId: inquiry.id,
+              venueName: '',
+              venueId: venueId!,
+              customerName: profileMap[inquiry.user_id] || 'Guest',
+              status: inquiry.status,
+              lastMessage: lastMsg?.message,
+              lastMessageTime: lastMsg?.created_at,
+              unreadCount,
+              metadata: {
+                createdAt: inquiry.created_at,
               },
             });
           });
