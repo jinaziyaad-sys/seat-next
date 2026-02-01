@@ -956,6 +956,7 @@ export type Database = {
           last_edited_at: string | null
           linked_reservation_id: string | null
           merchant_acknowledged: boolean | null
+          merchant_seen: boolean | null
           notes: string | null
           original_eta: string | null
           party_size: number
@@ -988,6 +989,7 @@ export type Database = {
           last_edited_at?: string | null
           linked_reservation_id?: string | null
           merchant_acknowledged?: boolean | null
+          merchant_seen?: boolean | null
           notes?: string | null
           original_eta?: string | null
           party_size?: number
@@ -1020,6 +1022,7 @@ export type Database = {
           last_edited_at?: string | null
           linked_reservation_id?: string | null
           merchant_acknowledged?: boolean | null
+          merchant_seen?: boolean | null
           notes?: string | null
           original_eta?: string | null
           party_size?: number
