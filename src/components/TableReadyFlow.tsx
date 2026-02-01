@@ -2051,10 +2051,10 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Joining...
+                  {activeTableTab === "reservations" ? "Booking..." : "Joining..."}
                 </>
               ) : (
-                "Join Waitlist"
+                activeTableTab === "reservations" ? "Make Reservation" : "Join Waitlist"
               )}
             </Button>
             {!partyName.trim() && (

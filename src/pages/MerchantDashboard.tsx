@@ -245,14 +245,22 @@ const MerchantDashboard = () => {
         filter: `venue_id=eq.${userRole.venue_id}`
       }, (payload) => {
         const id = (payload.new as any)?.id as string | undefined;
+        const reservationType = (payload.new as any)?.reservation_type as string | undefined;
         if (!id) return;
 
         if (soundStartedForWaitlist.current.has(id)) return;
         soundStartedForWaitlist.current.add(id);
 
-        console.log('👥 New waitlist entry (global) - playing sound');
-        playNewWaitlistSound();
-        sonnerToast.success("👥 New waitlist entry!");
+        // Show contextual notification based on type
+        if (reservationType === 'reservation') {
+          console.log('📅 New reservation (global) - playing sound');
+          playNewWaitlistSound();
+          sonnerToast.success("📅 New reservation!");
+        } else {
+          console.log('👥 New waitlist entry (global) - playing sound');
+          playNewWaitlistSound();
+          sonnerToast.success("👥 New waitlist entry!");
+        }
 
         // Clean up after 30 seconds to prevent memory buildup
         setTimeout(() => {
