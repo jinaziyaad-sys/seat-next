@@ -3,10 +3,9 @@ import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { format, isSameDay } from "date-fns";
+import { format, isSameDay, formatDistanceToNow } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
-import { Clock, Users, Utensils, X, Pencil } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { Clock, Users, Utensils, X, Pencil, Bell, Check } from "lucide-react";
 
 interface Reservation {
   id: string;
@@ -33,10 +32,12 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
   const [reservations, setReservations] = useState<Reservation[]>([]);
   const [datesWithReservations, setDatesWithReservations] = useState<Date[]>([]);
   const [tableConfiguration, setTableConfiguration] = useState<any[]>([]);
+  const [newReservations, setNewReservations] = useState<Reservation[]>([]);
 
   useEffect(() => {
     fetchVenueSettings();
     fetchReservationDates();
+    fetchNewReservations();
   }, [venueId]);
 
   useEffect(() => {
@@ -44,6 +45,86 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
       fetchReservationsForDate(selectedDate);
     }
   }, [selectedDate, venueId]);
+
+  // Real-time subscription for new reservations
+  useEffect(() => {
+    const channel = supabase
+      .channel('new-reservations-alert')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'waitlist_entries',
+        filter: `venue_id=eq.${venueId}`
+      }, (payload) => {
+        const newEntry = payload.new as any;
+        if (newEntry.reservation_type === 'reservation' && !newEntry.merchant_seen) {
+          setNewReservations(prev => [{
+            id: newEntry.id,
+            customer_name: newEntry.customer_name,
+            party_size: newEntry.party_size,
+            reservation_time: newEntry.reservation_time,
+            status: newEntry.status,
+            preferences: newEntry.preferences,
+            assigned_table_id: newEntry.assigned_table_id,
+            linked_reservation_id: newEntry.linked_reservation_id,
+            last_edited_at: newEntry.last_edited_at,
+            edit_summary: newEntry.edit_summary,
+          }, ...prev]);
+        }
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [venueId]);
+
+  const fetchNewReservations = async () => {
+    const { data } = await supabase
+      .from('waitlist_entries')
+      .select('*')
+      .eq('venue_id', venueId)
+      .eq('reservation_type', 'reservation')
+      .eq('merchant_seen', false)
+      .in('status', ['waiting', 'ready'])
+      .order('created_at', { ascending: false });
+
+    if (data) {
+      setNewReservations(data.map(entry => ({
+        id: entry.id,
+        customer_name: entry.customer_name,
+        party_size: entry.party_size,
+        reservation_time: entry.reservation_time || '',
+        status: entry.status,
+        preferences: entry.preferences || undefined,
+        assigned_table_id: entry.assigned_table_id || undefined,
+        linked_reservation_id: entry.linked_reservation_id || undefined,
+        last_edited_at: entry.last_edited_at || undefined,
+        edit_summary: entry.edit_summary || undefined,
+      })));
+    }
+  };
+
+  const acknowledgeReservation = async (id: string) => {
+    await supabase
+      .from('waitlist_entries')
+      .update({ merchant_seen: true })
+      .eq('id', id);
+    
+    setNewReservations(prev => prev.filter(r => r.id !== id));
+  };
+
+  const acknowledgeAllReservations = async () => {
+    const ids = newReservations.map(r => r.id);
+    if (ids.length === 0) return;
+    
+    await supabase
+      .from('waitlist_entries')
+      .update({ merchant_seen: true })
+      .in('id', ids);
+    
+    setNewReservations([]);
+  };
 
   const fetchVenueSettings = async () => {
     const { data } = await supabase
@@ -139,6 +220,50 @@ export const ReservationCalendar = ({ venueId }: { venueId: string }) => {
 
   return (
     <div className="grid grid-cols-1 gap-6">
+      {/* New Reservations Alert Panel */}
+      {newReservations.length > 0 && (
+        <Card className="shadow-card border-2 border-primary bg-primary/5">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-primary">
+                <Bell className="h-5 w-5 animate-pulse" />
+                New Reservations ({newReservations.length})
+              </CardTitle>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={acknowledgeAllReservations}
+              >
+                <Check className="h-4 w-4 mr-1" />
+                Acknowledge All
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {newReservations.map((reservation) => (
+              <div 
+                key={reservation.id}
+                className="flex items-center justify-between p-3 bg-background rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => acknowledgeReservation(reservation.id)}
+              >
+                <div className="flex items-center gap-3">
+                  <span className="text-lg">📅</span>
+                  <div>
+                    <p className="font-medium">{reservation.customer_name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Party of {reservation.party_size} • {format(new Date(reservation.reservation_time), 'MMM d @ HH:mm')}
+                    </p>
+                  </div>
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="shadow-card">
           <CardHeader>
