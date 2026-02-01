@@ -1,429 +1,331 @@
 
 
-# Universal Messaging System for ReadyUp
+# Persistent Global Messenger System
 
 ## Overview
 
-Create a unified in-app messaging system that works across all patron-merchant interactions - reservations, waitlist entries, and food orders. This messenger-style system allows two-way communication without exchanging personal phone numbers.
+Create a WhatsApp-style messaging experience with a **persistent floating message icon** that's always visible throughout the app. Users can access their conversations from anywhere, not just from specific booking cards.
 
-## Current State Analysis
-
-### Existing Infrastructure
-- `profiles` table already has `phone` column for patrons
-- `waitlist_entries` has `customer_phone` column (currently not populated from app flow)
-- `orders` has `customer_phone` column (currently not populated from app flow)
-- Real-time subscriptions already in place for all these tables
-
-### What's Missing
-1. **Phone collection** - The TableReadyFlow party-details form doesn't ask for phone
-2. **No messaging table** - No way to store conversation history
-3. **No chat UI** - Neither patron nor merchant can send messages
-
-## Proposed Architecture
+## Current vs Proposed UX
 
 ```text
-                    ┌─────────────────────────────────────┐
-                    │         messages table              │
-                    │  (universal for all booking types)  │
-                    └─────────────────────────────────────┘
-                                     │
-              ┌──────────────────────┼──────────────────────┐
-              │                      │                      │
-    ┌─────────▼─────────┐  ┌─────────▼─────────┐  ┌─────────▼─────────┐
-    │   Reservations    │  │     Waitlist      │  │   Food Orders     │
-    │  (waitlist_entries│  │  (waitlist_entries│  │     (orders)      │
-    │   type=reservation)│ │   type=walk_in)   │  │                   │
-    └───────────────────┘  └───────────────────┘  └───────────────────┘
+CURRENT STATE:
+- Messenger component exists but is only accessible from specific cards
+- No way to see all conversations at once
+- No global entry point for messaging
+
+PROPOSED STATE:
+┌─────────────────────────────────────────┐
+│                                         │
+│         [Any page content]              │
+│                                         │
+│                                         │
+│                                         │
+│                                         │
+│                           ┌───┐ ┌───┐   │
+│                           │ ? │ │💬│   │  ← Two floating buttons
+│                           └───┘ └───┘   │     Help + Messages
+└─────────────────────────────────────────┘
+
+When clicking the Messages button:
+┌─────────────────────────────────────────┐
+│ Messages                            [X] │
+├─────────────────────────────────────────┤
+│ ┌─────────────────────────────────────┐ │
+│ │ Demo Restaurant          ● 2 new   │ │  ← Active conversations
+│ │ Reservation • Today 19:00          │ │
+│ │ "Your table will be ready soon"    │ │
+│ └─────────────────────────────────────┘ │
+│ ┌─────────────────────────────────────┐ │
+│ │ Cafe Bistro                        │ │
+│ │ Order #42 • Ready                  │ │
+│ │ "Thank you for ordering!"          │ │
+│ └─────────────────────────────────────┘ │
+│                                         │
+│    No other active conversations        │
+│                                         │
+└─────────────────────────────────────────┘
 ```
+
+## Architecture
+
+```text
+┌─────────────────────────────────────────────────────────┐
+│                    MessengerHub                          │
+│  (Global floating button + conversation list drawer)     │
+└─────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│                 ConversationList                         │
+│  (Lists all active bookings with unread indicators)      │
+└─────────────────────────────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────┐
+│                    Messenger                             │
+│  (Individual chat view - already exists)                 │
+└─────────────────────────────────────────────────────────┘
+```
+
+## New Components
+
+### 1. MessengerHub (Patron Side)
+
+A floating button + drawer that shows all active conversations:
+
+| Property | Value |
+|----------|-------|
+| Position | Fixed bottom-right, above Help button |
+| Badge | Total unread count across all conversations |
+| Click action | Opens conversation list drawer |
+
+### 2. MerchantMessengerHub (Merchant Side)
+
+Same concept but for merchants - shows all conversations for the venue:
+
+| Property | Value |
+|----------|-------|
+| Position | Fixed bottom-right, next to Help button |
+| Badge | Total unread count for venue |
+| Click action | Opens conversation list for venue |
+
+### 3. ConversationList (Shared)
+
+Lists all active conversations with:
+- Booking type icon (order/waitlist/reservation)
+- Venue/customer name
+- Last message preview
+- Unread badge
+- Click to open specific conversation
 
 ## Changes Summary
 
 | File | Changes |
 |------|---------|
-| Database migration | Create `messages` table with polymorphic reference |
-| `src/components/TableReadyFlow.tsx` | Add optional phone input to party-details step |
-| `src/components/Messenger.tsx` (new) | Universal chat component |
-| `src/components/merchant/ReservationCalendar.tsx` | Add message button to reservations |
-| `src/components/merchant/WaitlistBoard.tsx` | Add message button to waitlist entries |
-| `src/components/merchant/KitchenBoard.tsx` | Add message button to food orders |
-| `src/pages/Index.tsx` | Add message button on active bookings |
+| `src/components/MessengerHub.tsx` (new) | Floating button + conversation list for patrons |
+| `src/components/merchant/MerchantMessengerHub.tsx` (new) | Floating button + conversation list for merchants |
+| `src/hooks/useConversations.ts` (new) | Hook to fetch all active conversations with unread counts |
+| `src/pages/Index.tsx` | Add MessengerHub component |
+| `src/pages/MerchantDashboard.tsx` | Add MerchantMessengerHub component |
 
 ## Technical Implementation
 
-### 1. Database Schema
+### 1. useConversations Hook
 
-```sql
--- Universal messages table
-CREATE TABLE messages (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  
-  -- Polymorphic reference (one of these will be set)
-  waitlist_entry_id UUID REFERENCES waitlist_entries(id) ON DELETE CASCADE,
-  order_id UUID REFERENCES orders(id) ON DELETE CASCADE,
-  
-  -- Message details
-  sender_type TEXT NOT NULL CHECK (sender_type IN ('patron', 'venue', 'system')),
-  sender_id UUID NOT NULL,
-  message TEXT NOT NULL,
-  
-  -- Read tracking
-  read_at TIMESTAMP WITH TIME ZONE,
-  
-  -- Timestamps
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  
-  -- Ensure exactly one reference is set
-  CONSTRAINT one_reference CHECK (
-    (waitlist_entry_id IS NOT NULL AND order_id IS NULL) OR
-    (waitlist_entry_id IS NULL AND order_id IS NOT NULL)
-  )
-);
-
--- Indexes for fast lookups
-CREATE INDEX idx_messages_waitlist ON messages(waitlist_entry_id) WHERE waitlist_entry_id IS NOT NULL;
-CREATE INDEX idx_messages_order ON messages(order_id) WHERE order_id IS NOT NULL;
-CREATE INDEX idx_messages_unread ON messages(read_at) WHERE read_at IS NULL;
-
--- Enable RLS
-ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
-
--- Patrons can read/write messages for their own bookings
-CREATE POLICY "Patrons can access their messages" ON messages
-  FOR ALL USING (
-    sender_id = auth.uid()
-    OR EXISTS (
-      SELECT 1 FROM waitlist_entries 
-      WHERE id = messages.waitlist_entry_id AND user_id = auth.uid()
-    )
-    OR EXISTS (
-      SELECT 1 FROM orders 
-      WHERE id = messages.order_id AND user_id = auth.uid()
-    )
-  );
-
--- Venue staff can access messages for their venue's bookings
-CREATE POLICY "Venue staff can access venue messages" ON messages
-  FOR ALL USING (
-    EXISTS (
-      SELECT 1 FROM merchant_users mu
-      JOIN waitlist_entries we ON we.venue_id = mu.venue_id
-      WHERE we.id = messages.waitlist_entry_id AND mu.user_id = auth.uid()
-    )
-    OR EXISTS (
-      SELECT 1 FROM merchant_users mu
-      JOIN orders o ON o.venue_id = mu.venue_id
-      WHERE o.id = messages.order_id AND mu.user_id = auth.uid()
-    )
-  );
-```
-
-### 2. Phone Collection in TableReadyFlow
-
-Add optional phone input to the party-details step:
+Fetches all active bookings that can have conversations:
 
 ```typescript
-// New state
-const [customerPhone, setCustomerPhone] = useState("");
-
-// Fetch from profile on mount
-useEffect(() => {
-  const fetchPhone = async () => {
-    if (userId) {
-      const { data } = await supabase
-        .from('profiles')
-        .select('phone')
-        .eq('id', userId)
-        .single();
-      if (data?.phone) {
-        setCustomerPhone(data.phone);
-      }
-    }
-  };
-  fetchPhone();
-}, [userId]);
-
-// Add to form (after Party Name input)
-<div className="space-y-3">
-  <label className="text-sm font-medium">Contact Number (optional)</label>
-  <Input
-    type="tel"
-    placeholder="+1 (555) 123-4567"
-    value={customerPhone}
-    onChange={(e) => setCustomerPhone(e.target.value)}
-    className="h-12"
-  />
-  <p className="text-xs text-muted-foreground">
-    So the restaurant can call you if needed
-  </p>
-</div>
-
-// Include in insertData
-let insertData: any = {
-  venue_id: venue.id,
-  customer_name: partyName.trim(),
-  customer_phone: customerPhone.trim() || null,  // Add this
-  party_size: partySize,
-  // ...
-};
-```
-
-### 3. Universal Messenger Component
-
-```typescript
-interface MessengerProps {
-  // One of these will be set
-  waitlistEntryId?: string;
-  orderId?: string;
-  
-  // Context
-  userType: 'patron' | 'venue';
-  userId: string;
+interface Conversation {
+  id: string;
+  type: 'order' | 'waitlist' | 'reservation';
+  referenceId: string; // order_id or waitlist_entry_id
+  venueName: string;
+  venueId: string;
   customerName?: string;
-  venueName?: string;
-  
-  // UI control
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
+  status: string;
+  lastMessage?: string;
+  lastMessageTime?: string;
+  unreadCount: number;
+  metadata: {
+    orderNumber?: string;
+    partySize?: number;
+    reservationTime?: string;
+  };
 }
 
-export function Messenger({
-  waitlistEntryId,
-  orderId,
-  userType,
-  userId,
-  customerName,
-  venueName,
-  open,
-  onOpenChange
-}: MessengerProps) {
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+function useConversations(userType: 'patron' | 'venue', userId?: string, venueId?: string) {
+  // For patrons: fetch their active orders + waitlist entries
+  // For merchants: fetch venue's active orders + waitlist entries
+  // Join with messages table to get last message + unread count
+  // Real-time subscription for updates
+}
+```
+
+### 2. MessengerHub Component (Patron)
+
+```typescript
+export function MessengerHub({ userId }: { userId: string }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
+  const { conversations, totalUnread, loading } = useConversations('patron', userId);
+
+  return (
+    <>
+      {/* Floating button */}
+      <Button
+        onClick={() => setIsOpen(true)}
+        className="fixed bottom-24 right-6 z-50 h-14 w-14 rounded-full shadow-floating"
+      >
+        <MessageSquare className="h-6 w-6" />
+        {totalUnread > 0 && (
+          <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-xs text-white flex items-center justify-center">
+            {totalUnread > 9 ? '9+' : totalUnread}
+          </span>
+        )}
+      </Button>
+
+      {/* Conversation list sheet */}
+      <Sheet open={isOpen && !selectedConversation} onOpenChange={setIsOpen}>
+        <SheetContent side="right" className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Messages</SheetTitle>
+          </SheetHeader>
+          
+          <ScrollArea className="h-full">
+            {conversations.length === 0 ? (
+              <EmptyState message="No active conversations" />
+            ) : (
+              conversations.map(conv => (
+                <ConversationCard
+                  key={conv.id}
+                  conversation={conv}
+                  onClick={() => setSelectedConversation(conv)}
+                />
+              ))
+            )}
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
+      {/* Individual chat */}
+      {selectedConversation && (
+        <Messenger
+          open={!!selectedConversation}
+          onOpenChange={(open) => !open && setSelectedConversation(null)}
+          waitlistEntryId={selectedConversation.type !== 'order' ? selectedConversation.referenceId : undefined}
+          orderId={selectedConversation.type === 'order' ? selectedConversation.referenceId : undefined}
+          userType="patron"
+          userId={userId}
+          venueName={selectedConversation.venueName}
+        />
+      )}
+    </>
+  );
+}
+```
+
+### 3. MerchantMessengerHub Component
+
+Same structure but for venue perspective:
+
+```typescript
+export function MerchantMessengerHub({ venueId, userId }: Props) {
+  const { conversations, totalUnread } = useConversations('venue', undefined, venueId);
   
-  // Fetch messages
-  useEffect(() => {
-    if (!open) return;
-    
-    const fetchMessages = async () => {
-      let query = supabase
-        .from('messages')
-        .select('*')
-        .order('created_at', { ascending: true });
-      
-      if (waitlistEntryId) {
-        query = query.eq('waitlist_entry_id', waitlistEntryId);
-      } else if (orderId) {
-        query = query.eq('order_id', orderId);
-      }
-      
-      const { data } = await query;
-      setMessages(data || []);
-      setIsLoading(false);
-      
-      // Mark as read
-      if (data?.length) {
-        const unreadIds = data
-          .filter(m => !m.read_at && m.sender_type !== userType)
-          .map(m => m.id);
-        
-        if (unreadIds.length > 0) {
-          await supabase
-            .from('messages')
-            .update({ read_at: new Date().toISOString() })
-            .in('id', unreadIds);
-        }
-      }
-    };
-    
-    fetchMessages();
-    
-    // Real-time subscription
-    const filter = waitlistEntryId 
-      ? `waitlist_entry_id=eq.${waitlistEntryId}`
-      : `order_id=eq.${orderId}`;
-    
-    const channel = supabase
-      .channel(`messages-${waitlistEntryId || orderId}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'messages',
-        filter
-      }, (payload) => {
-        setMessages(prev => [...prev, payload.new as Message]);
-        // Auto-mark as read if chat is open
-        if (payload.new.sender_type !== userType) {
-          supabase
-            .from('messages')
-            .update({ read_at: new Date().toISOString() })
-            .eq('id', payload.new.id);
-        }
-      })
-      .subscribe();
-    
-    return () => supabase.removeChannel(channel);
-  }, [waitlistEntryId, orderId, open, userType]);
-  
-  const sendMessage = async () => {
-    if (!newMessage.trim()) return;
-    
-    const messageData: any = {
-      sender_type: userType,
-      sender_id: userId,
-      message: newMessage.trim()
-    };
-    
-    if (waitlistEntryId) {
-      messageData.waitlist_entry_id = waitlistEntryId;
-    } else if (orderId) {
-      messageData.order_id = orderId;
-    }
-    
-    await supabase.from('messages').insert(messageData);
-    setNewMessage("");
-  };
+  // Shows all conversations for the venue
+  // Click opens chat with customer name in title
+}
+```
+
+### 4. ConversationCard Component
+
+Displays a single conversation in the list:
+
+```typescript
+function ConversationCard({ conversation, onClick }: Props) {
+  const Icon = conversation.type === 'order' ? ChefHat : Users;
   
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[70vh] flex flex-col">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5" />
-            {userType === 'patron' ? `Chat with ${venueName}` : `Chat with ${customerName}`}
-          </SheetTitle>
-        </SheetHeader>
-        
-        <ScrollArea className="flex-1 py-4">
-          {messages.length === 0 && !isLoading ? (
-            <div className="text-center text-muted-foreground py-8">
-              <MessageSquare className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p>No messages yet</p>
-              <p className="text-sm">Start a conversation!</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {messages.map(msg => (
-                <div 
-                  key={msg.id}
-                  className={cn(
-                    "max-w-[80%] p-3 rounded-2xl",
-                    msg.sender_type === userType 
-                      ? "ml-auto bg-primary text-primary-foreground rounded-br-sm"
-                      : "bg-muted rounded-bl-sm"
-                  )}
-                >
-                  <p className="text-sm">{msg.message}</p>
-                  <p className="text-[10px] opacity-70 mt-1">
-                    {format(new Date(msg.created_at), 'HH:mm')}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </ScrollArea>
-        
-        <div className="flex gap-2 pt-4 border-t">
-          <Input
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
-            onKeyDown={(e) => e.key === 'Enter' && sendMessage()}
-            className="flex-1"
-          />
-          <Button onClick={sendMessage} size="icon" disabled={!newMessage.trim()}>
-            <Send className="h-4 w-4" />
-          </Button>
+    <button onClick={onClick} className="w-full p-4 hover:bg-muted border-b">
+      <div className="flex items-start gap-3">
+        <div className="p-2 bg-primary/10 rounded-full">
+          <Icon className="h-5 w-5 text-primary" />
         </div>
-      </SheetContent>
-    </Sheet>
+        
+        <div className="flex-1 text-left">
+          <div className="flex items-center justify-between">
+            <span className="font-medium">{conversation.venueName || conversation.customerName}</span>
+            {conversation.unreadCount > 0 && (
+              <Badge variant="destructive" className="h-5 min-w-[20px]">
+                {conversation.unreadCount}
+              </Badge>
+            )}
+          </div>
+          
+          <p className="text-sm text-muted-foreground">
+            {conversation.type === 'order' 
+              ? `Order #${conversation.metadata.orderNumber}`
+              : conversation.type === 'reservation'
+                ? `Reservation • ${format(new Date(conversation.metadata.reservationTime!), 'MMM d, HH:mm')}`
+                : `Waitlist • Party of ${conversation.metadata.partySize}`
+            }
+          </p>
+          
+          {conversation.lastMessage && (
+            <p className="text-sm text-muted-foreground truncate mt-1">
+              {conversation.lastMessage}
+            </p>
+          )}
+        </div>
+      </div>
+    </button>
   );
 }
 ```
 
-### 4. Integration Points
+## Button Positioning
 
-**Patron Side (Index.tsx / TableReadyFlow.tsx)**:
-- Add "Message Restaurant" button on active booking cards
-- Shows unread count badge
-- Opens Messenger component
+The floating buttons will be stacked vertically:
 
-**Merchant Side (ReservationCalendar, WaitlistBoard, KitchenBoard)**:
-- Add MessageSquare icon button on each entry
-- Shows unread count badge  
-- Opens Messenger component
+| Button | Position | Z-Index |
+|--------|----------|---------|
+| Messages | `bottom-24 right-6` | 50 |
+| Help | `bottom-6 right-6` | 50 |
 
-### 5. Unread Message Tracking
+On merchant dashboard, adjust position to avoid tab bar:
 
-Create a helper hook to track unread counts:
-
-```typescript
-function useUnreadMessages(
-  waitlistEntryId?: string, 
-  orderId?: string, 
-  userType?: 'patron' | 'venue'
-) {
-  const [count, setCount] = useState(0);
-  
-  useEffect(() => {
-    if (!waitlistEntryId && !orderId) return;
-    
-    const fetchCount = async () => {
-      let query = supabase
-        .from('messages')
-        .select('id', { count: 'exact', head: true })
-        .is('read_at', null)
-        .neq('sender_type', userType);
-      
-      if (waitlistEntryId) {
-        query = query.eq('waitlist_entry_id', waitlistEntryId);
-      } else if (orderId) {
-        query = query.eq('order_id', orderId);
-      }
-      
-      const { count } = await query;
-      setCount(count || 0);
-    };
-    
-    fetchCount();
-    
-    // Real-time updates would go here
-  }, [waitlistEntryId, orderId, userType]);
-  
-  return count;
-}
+```text
+Desktop Layout:
+┌────────────────────────────────────────────┐
+│ Header                                     │
+├────────────────────────────────────────────┤
+│                                            │
+│                                            │
+│         Dashboard Content                  │
+│                                            │
+│                                   ┌──┐     │
+│                                   │💬│     │
+│                                   └──┘     │
+│                                   ┌──┐     │
+│                                   │ ?│     │
+│                                   └──┘     │
+└────────────────────────────────────────────┘
 ```
 
-## Visual Design
+## Real-time Updates
 
-| Context | Button Style | Badge |
-|---------|--------------|-------|
-| Active booking card (patron) | Outline button "Message Restaurant" | Red dot with count |
-| Waitlist row (merchant) | Ghost icon button | Red dot overlay |
-| Reservation card (merchant) | Ghost icon button | Red dot overlay |
-| Kitchen order (merchant) | Ghost icon button | Red dot overlay |
+The messaging system will have live updates:
 
-## Phased Implementation
+1. **New message arrives** → Badge count increases, conversation moves to top
+2. **User reads messages** → Badge count decreases
+3. **New booking created** → Appears in conversation list automatically
+4. **Booking completes** → Conversation remains accessible until dismissed
 
-**Phase 1** (This implementation):
-- Create messages table with RLS
-- Add phone input to TableReadyFlow (optional, auto-fills from profile)
-- Build Messenger component
-- Add message buttons to merchant ReservationCalendar
+## Empty States
 
-**Phase 2** (Follow-up):
-- Add to WaitlistBoard
-- Add to KitchenBoard  
-- Add to patron home page cards
-- Push notification integration for new messages
+| Context | Message |
+|---------|---------|
+| Patron (no bookings) | "No active orders or reservations. When you make a booking, you'll be able to message the restaurant here." |
+| Merchant (no bookings) | "No active customer conversations. Messages from customers will appear here." |
+
+## Accessibility
+
+- Floating button has aria-label "Open messages"
+- Badge announces unread count to screen readers
+- Keyboard navigation through conversation list
+- Focus trap within open sheets
 
 ## Testing Checklist
 
-- Create a reservation and verify phone field appears (pre-filled if in profile)
-- Send a message from patron side
-- Verify message appears on merchant side in real-time
-- Send a reply from merchant
-- Verify patron receives reply in real-time
-- Check unread badge updates correctly
-- Verify messages persist after page refresh
-- Test RLS policies (patron can't see other patrons' messages)
+- Verify floating message button appears on patron home page
+- Verify floating message button appears on merchant dashboard
+- Click button opens conversation list
+- Conversations show correct booking type icons
+- Unread badges display correctly
+- Clicking a conversation opens the chat
+- Real-time updates work when new messages arrive
+- Empty state displays when no active bookings
+- Button position doesn't overlap with Help button
+- Works correctly on mobile viewport
 
