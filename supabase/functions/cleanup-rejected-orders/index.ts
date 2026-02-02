@@ -33,13 +33,30 @@ serve(async (req) => {
 
     for (const venue of venues || []) {
       const settings = venue.settings as any || {};
-      const cobTime = settings.cob_time || '23:00';
       const autoCleanup = settings.auto_cleanup_rejected !== false; // Default true
 
       if (!autoCleanup) {
         console.log(`Skipping ${venue.name} - auto-cleanup disabled`);
         continue;
       }
+
+      // Determine COB time - either from custom setting or business hours
+      let cobTime = settings.cob_time;
+      
+      if (settings.use_closing_time_for_cleanup !== false) {
+        // Use actual business closing time for today
+        const dayNames = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];
+        const today = dayNames[now.getDay()];
+        const todayHours = settings.business_hours?.[today];
+        
+        if (todayHours && !todayHours.is_closed) {
+          cobTime = todayHours.close;
+          console.log(`Using business closing time for ${venue.name}: ${cobTime}`);
+        }
+      }
+      
+      // Fall back to default if still no time
+      cobTime = cobTime || '23:00';
 
       // Check if current time matches COB time (within 5 minute window)
       const [cobHour, cobMinute] = cobTime.split(':').map(Number);
