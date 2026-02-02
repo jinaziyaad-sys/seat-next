@@ -709,92 +709,6 @@ export const MerchantSettings = ({
           </AccordionItem>
         )}
 
-        {/* Operations & Cleanup Settings */}
-        <AccordionItem value="operations" className="border rounded-lg px-4 bg-card">
-          <AccordionTrigger className="text-lg font-semibold hover:no-underline">
-            <div className="flex items-center gap-2">
-              <Settings className="h-5 w-5 text-primary" />
-              Operations & Cleanup
-            </div>
-          </AccordionTrigger>
-          <AccordionContent className="pt-2 pb-4 space-y-6">
-            <div className="space-y-4">
-              <Label className="text-base font-medium">Run cleanup at Close of Business?</Label>
-              <RadioGroup 
-                value={useClosingTimeForCleanup ? "yes" : "no"}
-                onValueChange={(val) => setUseClosingTimeForCleanup(val === "yes")}
-                className="space-y-2"
-              >
-                <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                  <RadioGroupItem value="yes" id="cob-yes" />
-                  <Label htmlFor="cob-yes" className="flex-1 cursor-pointer">
-                    <div className="font-medium">Yes - Use business closing time</div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Cleanup runs automatically when your venue closes for the day
-                    </p>
-                  </Label>
-                </div>
-                <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                  <RadioGroupItem value="no" id="cob-no" />
-                  <Label htmlFor="cob-no" className="flex-1 cursor-pointer">
-                    <div className="font-medium">No - Use custom time</div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Set a specific time for cleanup regardless of business hours
-                    </p>
-                  </Label>
-                </div>
-              </RadioGroup>
-              
-              {!useClosingTimeForCleanup && (
-                <div className="ml-6 mt-3 p-4 bg-muted/50 rounded-lg border">
-                  <Label htmlFor="cob-time" className="text-sm font-medium">Cleanup Time</Label>
-                  <Input
-                    id="cob-time"
-                    type="time"
-                    value={settings.cobTime}
-                    onChange={(e) => handleInputChange('cobTime', e.target.value)}
-                    className="w-32 mt-2"
-                  />
-                  <p className="text-xs text-muted-foreground mt-2">
-                    Daily cleanup will run at this specific time
-                  </p>
-                </div>
-              )}
-            </div>
-            
-            <Separator />
-            
-            <div className="space-y-4">
-              <Label className="text-sm font-medium text-muted-foreground">Cleanup Actions</Label>
-              
-              <div className="flex items-center justify-between p-3 rounded-lg border">
-                <div className="space-y-0.5">
-                  <Label>Auto-cleanup cancelled waitlist entries</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Automatically remove cancelled/no-show entries
-                  </p>
-                </div>
-                <Switch
-                  checked={settings.autoCleanupCancelledWaitlist}
-                  onCheckedChange={(checked) => handleInputChange('autoCleanupCancelledWaitlist', checked)}
-                />
-              </div>
-              
-              <div className="flex items-center justify-between p-3 rounded-lg border">
-                <div className="space-y-0.5">
-                  <Label>Auto-cleanup rejected orders</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Automatically remove rejected orders at cleanup time
-                  </p>
-                </div>
-                <Switch
-                  checked={autoCleanupRejected}
-                  onCheckedChange={setAutoCleanupRejected}
-                />
-              </div>
-            </div>
-          </AccordionContent>
-        </AccordionItem>
 
         {/* Waitlist Preferences - Only for table_ready */}
         {hasTableReady && (
@@ -1132,6 +1046,94 @@ export const MerchantSettings = ({
                     onValueChange={(value) => setGracePeriods(prev => ({ ...prev, last_waitlist_join: value[0] }))}
                     className="mt-2"
                   />
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
+            
+            {/* Operations & Cleanup */}
+            <Collapsible>
+              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted rounded-lg">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Settings className="h-4 w-4" />
+                  Operations & Cleanup
+                </h3>
+                <ChevronDown className="h-4 w-4" />
+              </CollapsibleTrigger>
+              <CollapsibleContent className="mt-4 space-y-4">
+                <div className="space-y-4">
+                  <Label className="text-base font-medium">Run cleanup at Close of Business?</Label>
+                  <RadioGroup 
+                    value={useClosingTimeForCleanup ? "yes" : "no"}
+                    onValueChange={(val) => setUseClosingTimeForCleanup(val === "yes")}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                      <RadioGroupItem value="yes" id="cob-yes" />
+                      <Label htmlFor="cob-yes" className="flex-1 cursor-pointer">
+                        <div className="font-medium">Yes - Use business closing time</div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Cleanup runs automatically when your venue closes for the day
+                        </p>
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                      <RadioGroupItem value="no" id="cob-no" />
+                      <Label htmlFor="cob-no" className="flex-1 cursor-pointer">
+                        <div className="font-medium">No - Use custom time</div>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          Set a specific time for cleanup regardless of business hours
+                        </p>
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                  
+                  {!useClosingTimeForCleanup && (
+                    <div className="ml-6 mt-3 p-4 bg-muted/50 rounded-lg border">
+                      <Label htmlFor="cob-time" className="text-sm font-medium">Cleanup Time</Label>
+                      <Input
+                        id="cob-time"
+                        type="time"
+                        value={settings.cobTime}
+                        onChange={(e) => handleInputChange('cobTime', e.target.value)}
+                        className="w-32 mt-2"
+                      />
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Daily cleanup will run at this specific time
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                <Separator />
+                
+                <div className="space-y-4">
+                  <Label className="text-sm font-medium text-muted-foreground">Cleanup Actions</Label>
+                  
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="space-y-0.5">
+                      <Label>Auto-cleanup cancelled waitlist entries</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Automatically remove cancelled/no-show entries
+                      </p>
+                    </div>
+                    <Switch
+                      checked={settings.autoCleanupCancelledWaitlist}
+                      onCheckedChange={(checked) => handleInputChange('autoCleanupCancelledWaitlist', checked)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-center justify-between p-3 rounded-lg border">
+                    <div className="space-y-0.5">
+                      <Label>Auto-cleanup rejected orders</Label>
+                      <p className="text-xs text-muted-foreground">
+                        Automatically remove rejected orders at cleanup time
+                      </p>
+                    </div>
+                    <Switch
+                      checked={autoCleanupRejected}
+                      onCheckedChange={setAutoCleanupRejected}
+                    />
+                  </div>
                 </div>
               </CollapsibleContent>
             </Collapsible>
