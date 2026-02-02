@@ -21,6 +21,7 @@ import { MessengerHub } from "@/components/MessengerHub";
 import { Messenger } from "@/components/Messenger";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { CelebrationOverlay } from "@/components/ui/celebration-overlay";
+import { PhonePromptDialog } from "@/components/PhonePromptDialog";
 import { ActiveTrackingListSkeleton } from "@/components/ui/skeleton-card";
 import { useMultipleUnreadMessages } from "@/hooks/useUnreadMessages";
 import {
@@ -85,6 +86,9 @@ const Index = () => {
   
   // Demo mode for tour - shows mock data
   const isDemoMode = tourOpen;
+
+  // Phone prompt dialog for Google Sign-In users
+  const [showPhonePrompt, setShowPhonePrompt] = useState(false);
 
   useEffect(() => {
     const hasSeenTour = localStorage.getItem('patronTourCompleted');
@@ -211,6 +215,22 @@ const Index = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Check if user needs to add phone number (for Google sign-in users)
+  useEffect(() => {
+    if (!user) return;
+    
+    supabase
+      .from('profiles')
+      .select('phone')
+      .eq('id', user.id)
+      .single()
+      .then(({ data }) => {
+        if (!data?.phone) {
+          setShowPhonePrompt(true);
+        }
+      });
+  }, [user]);
 
   const fetchActiveTracking = async () => {
     if (!user) return;
@@ -1242,6 +1262,16 @@ const Index = () => {
         onClose={() => setTourOpen(false)}
         onComplete={handleTourComplete}
       />
+      
+      {/* Phone Prompt Dialog for Google Sign-In users */}
+      {user && (
+        <PhonePromptDialog
+          open={showPhonePrompt}
+          onOpenChange={setShowPhonePrompt}
+          userId={user.id}
+          onComplete={() => setShowPhonePrompt(false)}
+        />
+      )}
       
       {/* Notification Prompt for new users */}
       {user && <NotificationPrompt />}
