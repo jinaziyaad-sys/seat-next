@@ -9,12 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, X, ChevronDown, Clock, Calendar, AlertCircle, RotateCcw, Save } from "lucide-react";
+import { Plus, X, ChevronDown, Clock, Calendar, AlertCircle, RotateCcw, Save, Settings, Utensils, Users, Timer, Building2, ClipboardList } from "lucide-react";
 import { TableConfigurationManager } from "./TableConfigurationManager";
 import { VenueDiscoverySettings } from "./VenueDiscoverySettings";
 import { BusinessHours, HolidayClosure } from "@/utils/businessHours";
@@ -68,6 +70,7 @@ export const MerchantSettings = ({
   const [newPreferenceLabel, setNewPreferenceLabel] = useState("");
   const [autoCleanupRejected, setAutoCleanupRejected] = useState(true);
   const [tableConfiguration, setTableConfiguration] = useState<TableConfig[]>([]);
+  const [useClosingTimeForCleanup, setUseClosingTimeForCleanup] = useState(true);
   
   // Business Hours State
   const [businessHours, setBusinessHours] = useState<BusinessHours>({
@@ -110,6 +113,7 @@ export const MerchantSettings = ({
   const initialGracePeriodsRef = useRef<typeof gracePeriods | null>(null);
   const initialAutoCleanupRejectedRef = useRef<boolean | null>(null);
   const initialTableConfigurationRef = useRef<TableConfig[] | null>(null);
+  const initialUseClosingTimeForCleanupRef = useRef<boolean | null>(null);
 
   const { toast } = useToast();
 
@@ -131,7 +135,7 @@ export const MerchantSettings = ({
     if (!isInitialLoad) {
       setHasUnsavedChanges(true);
     }
-  }, [settings, businessHours, waitlistPreferences, holidayClosures, gracePeriods, autoCleanupRejected, tableConfiguration]);
+  }, [settings, businessHours, waitlistPreferences, holidayClosures, gracePeriods, autoCleanupRejected, tableConfiguration, useClosingTimeForCleanup]);
 
   // Notify parent of unsaved changes state
   useEffect(() => {
@@ -177,6 +181,11 @@ export const MerchantSettings = ({
         // Load table configuration
         if (settings.table_configuration) {
           setTableConfiguration(settings.table_configuration);
+        }
+        
+        // Load use_closing_time_for_cleanup setting
+        if (settings.use_closing_time_for_cleanup !== undefined) {
+          setUseClosingTimeForCleanup(settings.use_closing_time_for_cleanup);
         }
         
         // Load kitchen/food and waitlist/table settings
@@ -229,6 +238,7 @@ export const MerchantSettings = ({
       initialGracePeriodsRef.current = (data?.settings as any)?.grace_periods || gracePeriods;
       initialAutoCleanupRejectedRef.current = (data?.settings as any)?.auto_cleanup_rejected !== false;
       initialTableConfigurationRef.current = (data?.settings as any)?.table_configuration || [];
+      initialUseClosingTimeForCleanupRef.current = (data?.settings as any)?.use_closing_time_for_cleanup !== false;
 
       // Mark initial load as complete after a short delay
       setTimeout(() => setIsInitialLoad(false), 100);
@@ -316,7 +326,8 @@ export const MerchantSettings = ({
       grace_periods: gracePeriods,
       auto_cleanup_rejected: autoCleanupRejected,
       auto_cleanup_cancelled_waitlist: settings.autoCleanupCancelledWaitlist,
-      cob_time: settings.cobTime,
+      cob_time: useClosingTimeForCleanup ? null : settings.cobTime,
+      use_closing_time_for_cleanup: useClosingTimeForCleanup,
       timezone: "America/New_York",
       
       // Kitchen/Food settings
@@ -361,6 +372,7 @@ export const MerchantSettings = ({
     initialGracePeriodsRef.current = { ...gracePeriods };
     initialAutoCleanupRejectedRef.current = autoCleanupRejected;
     initialTableConfigurationRef.current = [...tableConfiguration];
+    initialUseClosingTimeForCleanupRef.current = useClosingTimeForCleanup;
     
     setHasUnsavedChanges(false);
 
@@ -378,6 +390,7 @@ export const MerchantSettings = ({
     if (initialGracePeriodsRef.current) setGracePeriods(initialGracePeriodsRef.current);
     if (initialAutoCleanupRejectedRef.current !== null) setAutoCleanupRejected(initialAutoCleanupRejectedRef.current);
     if (initialTableConfigurationRef.current) setTableConfiguration(initialTableConfigurationRef.current);
+    if (initialUseClosingTimeForCleanupRef.current !== null) setUseClosingTimeForCleanup(initialUseClosingTimeForCleanupRef.current);
     setHasUnsavedChanges(false);
     
     toast({
@@ -506,291 +519,381 @@ export const MerchantSettings = ({
     });
   };
 
+  // Build accordion default values based on service types
+  const getDefaultAccordionValues = () => {
+    const values = ["discovery"];
+    if (hasTableReady) values.push("tables");
+    if (hasFoodReady) values.push("kitchen");
+    return values;
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="text-2xl font-bold">Venue Settings</h2>
 
-      <div className="space-y-6">
+      <Accordion type="multiple" defaultValue={getDefaultAccordionValues()} className="space-y-4">
         {/* Venue Discovery Profile - Available for all venues */}
-        <VenueDiscoverySettings venueId={venueId} />
+        <AccordionItem value="discovery" className="border rounded-lg px-4 bg-card">
+          <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-5 w-5 text-primary" />
+              Venue Discovery Profile
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pt-2 pb-4">
+            <VenueDiscoverySettings venueId={venueId} />
+          </AccordionContent>
+        </AccordionItem>
 
         {/* Table Configuration - Only for table_ready */}
         {hasTableReady && (
-          <TableConfigurationManager 
-            tables={tableConfiguration}
-            onChange={setTableConfiguration}
-          />
+          <AccordionItem value="tables" className="border rounded-lg px-4 bg-card">
+            <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Table Configuration
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 pb-4">
+              <TableConfigurationManager 
+                tables={tableConfiguration}
+                onChange={setTableConfiguration}
+              />
+            </AccordionContent>
+          </AccordionItem>
         )}
 
         {/* Kitchen Settings - Only for food_ready */}
         {hasFoodReady && (
-          <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Kitchen Settings</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Prep Time Mode Toggle */}
-            <div className="space-y-3">
-              <Label className="text-base font-medium">Prep Time Mode</Label>
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={() => handleInputChange("prepTimeMode", "fixed")}
-                  className={cn(
-                    "p-4 rounded-lg border-2 text-left transition-all",
-                    settings.prepTimeMode === "fixed" 
-                      ? "border-primary bg-primary/5" 
-                      : "border-border hover:border-primary/50"
-                  )}
-                >
-                  <div className="font-medium">Fixed Time</div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Simple, predictable prep times
-                  </p>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleInputChange("prepTimeMode", "analytics")}
-                  className={cn(
-                    "p-4 rounded-lg border-2 text-left transition-all",
-                    settings.prepTimeMode === "analytics" 
-                      ? "border-primary bg-primary/5" 
-                      : "border-border hover:border-primary/50"
-                  )}
-                >
-                  <div className="font-medium flex items-center gap-2">
-                    Smart ETA
-                    <Badge variant="secondary" className="text-xs">Analytics</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    ML-powered dynamic predictions
-                  </p>
-                </button>
+          <AccordionItem value="kitchen" className="border rounded-lg px-4 bg-card">
+            <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+              <div className="flex items-center gap-2">
+                <Utensils className="h-5 w-5 text-primary" />
+                Kitchen Settings
               </div>
-            </div>
-
-            {/* Smart ETA Explanation - Only show when analytics mode is selected */}
-            {settings.prepTimeMode === "analytics" && (
-              <div className="bg-muted/50 rounded-lg p-4 space-y-3 border">
-                <div className="flex items-center gap-2 text-sm font-medium">
-                  <AlertCircle className="h-4 w-4 text-primary" />
-                  How Smart ETA Works
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 pb-4 space-y-6">
+              {/* Prep Time Mode Toggle */}
+              <div className="space-y-3">
+                <Label className="text-base font-medium">Prep Time Mode</Label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange("prepTimeMode", "fixed")}
+                    className={cn(
+                      "p-4 rounded-lg border-2 text-left transition-all",
+                      settings.prepTimeMode === "fixed" 
+                        ? "border-primary bg-primary/5" 
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <div className="font-medium">Fixed Time</div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Simple, predictable prep times
+                    </p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleInputChange("prepTimeMode", "analytics")}
+                    className={cn(
+                      "p-4 rounded-lg border-2 text-left transition-all",
+                      settings.prepTimeMode === "analytics" 
+                        ? "border-primary bg-primary/5" 
+                        : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <div className="font-medium flex items-center gap-2">
+                      Smart ETA
+                      <Badge variant="secondary" className="text-xs">Analytics</Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      ML-powered dynamic predictions
+                    </p>
+                  </button>
                 </div>
-                <ul className="text-sm text-muted-foreground space-y-2">
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary font-bold">•</span>
-                    <span><strong>Historical Learning:</strong> Uses 30 days of your order data to understand typical prep times</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary font-bold">•</span>
-                    <span><strong>Kitchen Load:</strong> Adjusts ETA based on current orders (1.0x when quiet, up to 1.6x when busy)</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary font-bold">•</span>
-                    <span><strong>Order Complexity:</strong> Larger orders get 10-20% more time automatically</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-primary font-bold">•</span>
-                    <span><strong>Time-Aware:</strong> Considers day of week and hour patterns from your history</span>
-                  </li>
-                </ul>
-                <p className="text-xs text-muted-foreground border-t pt-3 mt-3">
-                  💡 Confidence improves with more data. You need ~30 completed orders for reliable predictions.
+              </div>
+
+              {/* Smart ETA Explanation - Only show when analytics mode is selected */}
+              {settings.prepTimeMode === "analytics" && (
+                <div className="bg-muted/50 rounded-lg p-4 space-y-3 border">
+                  <div className="flex items-center gap-2 text-sm font-medium">
+                    <AlertCircle className="h-4 w-4 text-primary" />
+                    How Smart ETA Works
+                  </div>
+                  <ul className="text-sm text-muted-foreground space-y-2">
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary font-bold">•</span>
+                      <span><strong>Historical Learning:</strong> Uses 30 days of your order data to understand typical prep times</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary font-bold">•</span>
+                      <span><strong>Kitchen Load:</strong> Adjusts ETA based on current orders (1.0x when quiet, up to 1.6x when busy)</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary font-bold">•</span>
+                      <span><strong>Order Complexity:</strong> Larger orders get 10-20% more time automatically</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="text-primary font-bold">•</span>
+                      <span><strong>Time-Aware:</strong> Considers day of week and hour patterns from your history</span>
+                    </li>
+                  </ul>
+                  <p className="text-xs text-muted-foreground border-t pt-3 mt-3">
+                    💡 Confidence improves with more data. You need ~30 completed orders for reliable predictions.
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <Label htmlFor="prepTime" className="flex items-center gap-2">
+                  {settings.prepTimeMode === "fixed" ? "Prep Time" : "Default Prep Time (fallback)"}
+                  {settings.prepTimeMode === "analytics" && (
+                    <Badge variant="outline" className="text-xs font-normal">Used when no historical data</Badge>
+                  )}
+                </Label>
+                <div className="flex items-center gap-2 mt-2">
+                  <Input
+                    id="prepTime"
+                    type="number"
+                    value={settings.defaultPrepTime}
+                    onChange={(e) => handleInputChange("defaultPrepTime", e.target.value)}
+                    className="w-24"
+                  />
+                  <span className="text-sm text-muted-foreground">minutes</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1.5">
+                  {settings.prepTimeMode === "fixed" 
+                    ? "All orders will show this prep time"
+                    : "Starting point for new venues until enough historical data is collected"
+                  }
                 </p>
               </div>
-            )}
 
-            <div>
-              <Label htmlFor="prepTime" className="flex items-center gap-2">
-                {settings.prepTimeMode === "fixed" ? "Prep Time" : "Default Prep Time (fallback)"}
-                {settings.prepTimeMode === "analytics" && (
-                  <Badge variant="outline" className="text-xs font-normal">Used when no historical data</Badge>
-                )}
-              </Label>
-              <div className="flex items-center gap-2 mt-2">
-                <Input
-                  id="prepTime"
-                  type="number"
-                  value={settings.defaultPrepTime}
-                  onChange={(e) => handleInputChange("defaultPrepTime", e.target.value)}
-                  className="w-24"
-                />
-                <span className="text-sm text-muted-foreground">minutes</span>
+              <div>
+                <Label htmlFor="maxExtension">Maximum Extension Time (minutes)</Label>
+                <div className="flex items-center gap-2 mt-2">
+                  <Input
+                    id="maxExtension"
+                    type="number"
+                    value={settings.maxExtensionTime}
+                    onChange={(e) => handleInputChange("maxExtensionTime", e.target.value)}
+                    className="w-24"
+                  />
+                  <span className="text-sm text-muted-foreground">minutes</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1.5">
+                  Maximum time an order ETA can be extended
+                </p>
               </div>
-              <p className="text-sm text-muted-foreground mt-1.5">
-                {settings.prepTimeMode === "fixed" 
-                  ? "All orders will show this prep time"
-                  : "Starting point for new venues until enough historical data is collected"
-                }
-              </p>
-            </div>
 
-            <div>
-              <Label htmlFor="maxExtension">Maximum Extension Time (minutes)</Label>
-              <div className="flex items-center gap-2 mt-2">
-                <Input
-                  id="maxExtension"
-                  type="number"
-                  value={settings.maxExtensionTime}
-                  onChange={(e) => handleInputChange("maxExtensionTime", e.target.value)}
-                  className="w-24"
-                />
-                <span className="text-sm text-muted-foreground">minutes</span>
+              <div>
+                <Label htmlFor="orderRefresh" className="flex items-center gap-2">
+                  Order Number Refresh Time
+                  <Badge variant="outline" className="text-xs font-normal">Duplicate prevention</Badge>
+                </Label>
+                <div className="flex items-center gap-2 mt-2">
+                  <Input
+                    id="orderRefresh"
+                    type="number"
+                    value={settings.orderNumberRefreshMinutes}
+                    onChange={(e) => handleInputChange("orderNumberRefreshMinutes", e.target.value)}
+                    className="w-24"
+                  />
+                  <span className="text-sm text-muted-foreground">minutes</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1.5">
+                  After this many minutes, the same order number can be used again.
+                </p>
               </div>
-              <p className="text-sm text-muted-foreground mt-1.5">
-                Maximum time an order ETA can be extended
-              </p>
-            </div>
-
-            <div>
-              <Label htmlFor="orderRefresh" className="flex items-center gap-2">
-                Order Number Refresh Time
-                <Badge variant="outline" className="text-xs font-normal">Duplicate prevention</Badge>
-              </Label>
-              <div className="flex items-center gap-2 mt-2">
-                <Input
-                  id="orderRefresh"
-                  type="number"
-                  value={settings.orderNumberRefreshMinutes}
-                  onChange={(e) => handleInputChange("orderNumberRefreshMinutes", e.target.value)}
-                  className="w-24"
-                />
-                <span className="text-sm text-muted-foreground">minutes</span>
-              </div>
-              <p className="text-sm text-muted-foreground mt-1.5">
-                After this many minutes, the same order number can be used again.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+            </AccordionContent>
+          </AccordionItem>
         )}
 
         {/* Operations & Cleanup Settings */}
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Operations & Cleanup</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="cob-time">Close of Business Time</Label>
-              <Input
-                id="cob-time"
-                type="time"
-                value={settings.cobTime}
-                onChange={(e) => handleInputChange('cobTime', e.target.value)}
-              />
-              <p className="text-xs text-muted-foreground">
-                Time when daily operations end (used for daily snapshots and auto-cleanup)
-              </p>
+        <AccordionItem value="operations" className="border rounded-lg px-4 bg-card">
+          <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Settings className="h-5 w-5 text-primary" />
+              Operations & Cleanup
             </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label>Auto-cleanup Cancelled Waitlist Entries</Label>
-                <p className="text-xs text-muted-foreground">
-                  Automatically remove cancelled/no-show entries at close of business
-                </p>
+          </AccordionTrigger>
+          <AccordionContent className="pt-2 pb-4 space-y-6">
+            <div className="space-y-4">
+              <Label className="text-base font-medium">Run cleanup at Close of Business?</Label>
+              <RadioGroup 
+                value={useClosingTimeForCleanup ? "yes" : "no"}
+                onValueChange={(val) => setUseClosingTimeForCleanup(val === "yes")}
+                className="space-y-2"
+              >
+                <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                  <RadioGroupItem value="yes" id="cob-yes" />
+                  <Label htmlFor="cob-yes" className="flex-1 cursor-pointer">
+                    <div className="font-medium">Yes - Use business closing time</div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Cleanup runs automatically when your venue closes for the day
+                    </p>
+                  </Label>
+                </div>
+                <div className="flex items-center space-x-3 p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                  <RadioGroupItem value="no" id="cob-no" />
+                  <Label htmlFor="cob-no" className="flex-1 cursor-pointer">
+                    <div className="font-medium">No - Use custom time</div>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Set a specific time for cleanup regardless of business hours
+                    </p>
+                  </Label>
+                </div>
+              </RadioGroup>
+              
+              {!useClosingTimeForCleanup && (
+                <div className="ml-6 mt-3 p-4 bg-muted/50 rounded-lg border">
+                  <Label htmlFor="cob-time" className="text-sm font-medium">Cleanup Time</Label>
+                  <Input
+                    id="cob-time"
+                    type="time"
+                    value={settings.cobTime}
+                    onChange={(e) => handleInputChange('cobTime', e.target.value)}
+                    className="w-32 mt-2"
+                  />
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Daily cleanup will run at this specific time
+                  </p>
+                </div>
+              )}
+            </div>
+            
+            <Separator />
+            
+            <div className="space-y-4">
+              <Label className="text-sm font-medium text-muted-foreground">Cleanup Actions</Label>
+              
+              <div className="flex items-center justify-between p-3 rounded-lg border">
+                <div className="space-y-0.5">
+                  <Label>Auto-cleanup cancelled waitlist entries</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically remove cancelled/no-show entries
+                  </p>
+                </div>
+                <Switch
+                  checked={settings.autoCleanupCancelledWaitlist}
+                  onCheckedChange={(checked) => handleInputChange('autoCleanupCancelledWaitlist', checked)}
+                />
               </div>
-              <Switch
-                checked={settings.autoCleanupCancelledWaitlist}
-                onCheckedChange={(checked) => handleInputChange('autoCleanupCancelledWaitlist', checked)}
-              />
+              
+              <div className="flex items-center justify-between p-3 rounded-lg border">
+                <div className="space-y-0.5">
+                  <Label>Auto-cleanup rejected orders</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Automatically remove rejected orders at cleanup time
+                  </p>
+                </div>
+                <Switch
+                  checked={autoCleanupRejected}
+                  onCheckedChange={setAutoCleanupRejected}
+                />
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </AccordionContent>
+        </AccordionItem>
 
         {/* Waitlist Preferences - Only for table_ready */}
         {hasTableReady && (
-          <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Waitlist Preferences</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              Choose which seating preferences to display to customers when they join the waitlist
-            </p>
-            
-            {waitlistPreferences.map((pref) => (
-              <div key={pref.id} className="flex items-center justify-between">
-                <div className="flex-1">
-                  <Label htmlFor={pref.id}>{pref.label}</Label>
-                  {pref.custom && (
-                    <p className="text-xs text-muted-foreground">Custom option</p>
-                  )}
+          <AccordionItem value="waitlist" className="border rounded-lg px-4 bg-card">
+            <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-primary" />
+                Waitlist Preferences
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 pb-4 space-y-4">
+              <p className="text-sm text-muted-foreground mb-4">
+                Choose which seating preferences to display to customers when they join the waitlist
+              </p>
+              
+              {waitlistPreferences.map((pref) => (
+                <div key={pref.id} className="flex items-center justify-between p-3 rounded-lg border">
+                  <div className="flex-1">
+                    <Label htmlFor={pref.id}>{pref.label}</Label>
+                    {pref.custom && (
+                      <p className="text-xs text-muted-foreground">Custom option</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id={pref.id}
+                      checked={pref.enabled}
+                      onCheckedChange={() => togglePreference(pref.id)}
+                    />
+                    {pref.custom && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeCustomPreference(pref.id)}
+                      >
+                        <X size={16} />
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    id={pref.id}
-                    checked={pref.enabled}
-                    onCheckedChange={() => togglePreference(pref.id)}
+              ))}
+
+              <Separator className="my-4" />
+
+              <div className="space-y-2">
+                <Label htmlFor="newPreference">Add Custom Preference</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="newPreference"
+                    placeholder="e.g., Kids Area, Window Seat"
+                    value={newPreferenceLabel}
+                    onChange={(e) => setNewPreferenceLabel(e.target.value)}
+                    onKeyPress={(e) => e.key === 'Enter' && addCustomPreference()}
                   />
-                  {pref.custom && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeCustomPreference(pref.id)}
-                    >
-                      <X size={16} />
-                    </Button>
-                  )}
+                  <Button onClick={addCustomPreference} size="sm">
+                    <Plus size={16} />
+                  </Button>
                 </div>
               </div>
-            ))}
-
-            <Separator className="my-4" />
-
-            <div className="space-y-2">
-              <Label htmlFor="newPreference">Add Custom Preference</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="newPreference"
-                  placeholder="e.g., Kids Area, Window Seat"
-                  value={newPreferenceLabel}
-                  onChange={(e) => setNewPreferenceLabel(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && addCustomPreference()}
-                />
-                <Button onClick={addCustomPreference} size="sm">
-                  <Plus size={16} />
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </AccordionContent>
+          </AccordionItem>
         )}
 
         {/* Pickup Instructions - Only for food_ready */}
         {hasFoodReady && (
-          <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle>Pickup Instructions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="instructions">Instructions for Customers</Label>
-              <Textarea
-                id="instructions"
-                value={settings.pickupInstructions}
-                onChange={(e) => handleInputChange("pickupInstructions", e.target.value)}
-                placeholder="Enter pickup instructions..."
-                className="min-h-[100px]"
-              />
-              <p className="text-sm text-muted-foreground mt-1">
-                These instructions will be shown to customers when their order is ready
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+          <AccordionItem value="pickup" className="border rounded-lg px-4 bg-card">
+            <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-primary" />
+                Pickup Instructions
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 pb-4 space-y-4">
+              <div>
+                <Label htmlFor="instructions">Instructions for Customers</Label>
+                <Textarea
+                  id="instructions"
+                  value={settings.pickupInstructions}
+                  onChange={(e) => handleInputChange("pickupInstructions", e.target.value)}
+                  placeholder="Enter pickup instructions..."
+                  className="min-h-[100px] mt-2"
+                />
+                <p className="text-sm text-muted-foreground mt-1">
+                  These instructions will be shown to customers when their order is ready
+                </p>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
         )}
 
         {/* Business Hours Management */}
-        <Card className="shadow-card lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="h-5 w-5" />
-              Business Hours & Operating Schedule
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
+        <AccordionItem value="hours" className="border rounded-lg px-4 bg-card">
+          <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Clock className="h-5 w-5 text-primary" />
+              Business Hours & Schedule
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pt-2 pb-4 space-y-6">
             {/* Regular Business Hours */}
             <Collapsible defaultOpen>
               <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted rounded-lg">
@@ -863,7 +966,6 @@ export const MerchantSettings = ({
                             </div>
                           </div>
                           
-                          {/* NEW: Overnight hours checkbox */}
                           <div className="flex items-center gap-2 mb-3">
                             <Checkbox
                               id={`${day}-overnight`}
@@ -876,26 +978,17 @@ export const MerchantSettings = ({
                               }
                             />
                             <Label htmlFor={`${day}-overnight`} className="text-xs text-muted-foreground cursor-pointer">
-                              Overnight hours (closes after midnight on the next day)
+                              Overnight hours (closes after midnight)
                             </Label>
                           </div>
                           
-                          {/* Breaks/Special Hours */}
                           {hours.breaks && hours.breaks.length > 0 && (
-                            <div className="space-y-2 mb-2">
-                              {hours.breaks.map((breakTime, index) => (
-                                <div key={index} className="flex items-center justify-between bg-secondary/50 p-2 rounded text-sm">
-                                  <div>
-                                    <span className="font-medium">{breakTime.reason}</span>
-                                    <span className="text-muted-foreground ml-2">
-                                      {breakTime.start} - {breakTime.end}
-                                    </span>
-                                  </div>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => removeBreak(day, index)}
-                                  >
+                            <div className="mb-3 space-y-2">
+                              <Label className="text-xs text-muted-foreground">Breaks:</Label>
+                              {hours.breaks.map((breakTime, idx) => (
+                                <div key={idx} className="flex items-center justify-between bg-muted/50 p-2 rounded text-sm">
+                                  <span>{breakTime.reason}: {breakTime.start} - {breakTime.end}</span>
+                                  <Button variant="ghost" size="sm" onClick={() => removeBreak(day, idx)}>
                                     <X className="h-3 w-3" />
                                   </Button>
                                 </div>
@@ -991,14 +1084,14 @@ export const MerchantSettings = ({
             {/* Grace Periods & Auto-Cleanup */}
             <Collapsible>
               <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted rounded-lg">
-                <h3 className="font-semibold">Grace Periods & Auto-Cleanup</h3>
+                <h3 className="font-semibold">Grace Periods</h3>
                 <ChevronDown className="h-4 w-4" />
               </CollapsibleTrigger>
               <CollapsibleContent className="mt-4 space-y-4">
                 <div className="p-3 bg-secondary/50 rounded-lg flex items-start gap-2">
                   <AlertCircle className="h-4 w-4 mt-0.5 text-muted-foreground" />
                   <p className="text-xs text-muted-foreground">
-                    Grace periods determine how long before closing time you stop accepting new orders, reservations, and waitlist joins. Auto-cleanup runs at your daily closing time.
+                    Grace periods determine how long before closing time you stop accepting new orders, reservations, and waitlist joins.
                   </p>
                 </div>
                 
@@ -1040,171 +1133,31 @@ export const MerchantSettings = ({
                     className="mt-2"
                   />
                 </div>
-                
-                <div className="flex items-center justify-between pt-2">
-                  <div>
-                    <Label htmlFor="auto-cleanup">Auto-Cleanup Rejected Orders</Label>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Automatically remove rejected orders at closing time
-                    </p>
-                  </div>
-                  <Switch
-                    id="auto-cleanup"
-                    checked={autoCleanupRejected}
-                    onCheckedChange={setAutoCleanupRejected}
-                  />
-                </div>
               </CollapsibleContent>
             </Collapsible>
             
-          </CardContent>
-        </Card>
-
-        {/* Break Dialog */}
-        <Dialog open={breakDialogOpen} onOpenChange={setBreakDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Break/Special Hours</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="break-reason">Reason</Label>
-                <Input
-                  id="break-reason"
-                  placeholder="e.g., Prayer Time, Lunch Break, Cleaning"
-                  value={breakReason}
-                  onChange={(e) => setBreakReason(e.target.value)}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="break-start">Start Time</Label>
-                  <Input
-                    id="break-start"
-                    type="time"
-                    value={breakStart}
-                    onChange={(e) => setBreakStart(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="break-end">End Time</Label>
-                  <Input
-                    id="break-end"
-                    type="time"
-                    value={breakEnd}
-                    onChange={(e) => setBreakEnd(e.target.value)}
-                  />
-                </div>
-              </div>
-              <Button onClick={addBreakToDay} className="w-full">
-                Add Break
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-        
-        {/* Holiday Dialog */}
-        <Dialog open={holidayDialogOpen} onOpenChange={setHolidayDialogOpen}>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Holiday Closure</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div>
-                <Label>Date</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start mt-1">
-                      {holidayDate ? format(holidayDate, "PPP") : "Pick a date"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0">
-                    <CalendarComponent
-                      mode="single"
-                      selected={holidayDate}
-                      onSelect={setHolidayDate}
-                      disabled={(date) => date < new Date()}
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div>
-                <Label htmlFor="holiday-reason">Reason</Label>
-                <Input
-                  id="holiday-reason"
-                  placeholder="e.g., Christmas, Eid al-Fitr, Private Event"
-                  value={holidayReason}
-                  onChange={(e) => setHolidayReason(e.target.value)}
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Label htmlFor="fully-closed">Closed All Day</Label>
-                <Switch
-                  id="fully-closed"
-                  checked={holidayFullyClosed}
-                  onCheckedChange={setHolidayFullyClosed}
-                />
-              </div>
-              {!holidayFullyClosed && (
-                <>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="holiday-open">Opening Time</Label>
-                      <Input
-                        id="holiday-open"
-                        type="time"
-                        value={holidayOpen}
-                        onChange={(e) => setHolidayOpen(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="holiday-close">
-                        Closing Time
-                        {holidayOvernight && <span className="text-primary ml-1">(+1 day)</span>}
-                      </Label>
-                      <Input
-                        id="holiday-close"
-                        type="time"
-                        value={holidayClose}
-                        onChange={(e) => setHolidayClose(e.target.value)}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-2">
-                    <Checkbox
-                      id="holiday-overnight"
-                      checked={holidayOvernight}
-                      onCheckedChange={(checked) => setHolidayOvernight(!!checked)}
-                    />
-                    <Label htmlFor="holiday-overnight" className="text-xs text-muted-foreground cursor-pointer">
-                      Overnight hours (closes after midnight on the next day)
-                    </Label>
-                  </div>
-                </>
-              )}
-              <Button onClick={addHolidayClosure} className="w-full">
-                Add Holiday
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+          </AccordionContent>
+        </AccordionItem>
 
         {/* Auto No-Show Settings */}
-        <Card className="shadow-card lg:col-span-2">
-          <CardHeader>
-            <CardTitle>Auto No-Show Settings</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <AccordionItem value="noshow" className="border rounded-lg px-4 bg-card">
+          <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+            <div className="flex items-center gap-2">
+              <Timer className="h-5 w-5 text-primary" />
+              Auto No-Show Settings
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pt-2 pb-4 space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {hasTableReady && (
-                <div>
+                <div className="p-4 border rounded-lg">
                   <Label htmlFor="waitlistNoShow">Waitlist No-Show (minutes)</Label>
                   <Input
                     id="waitlistNoShow"
                     type="number"
                     value={settings.autoNoShowTime}
                     onChange={(e) => handleInputChange("autoNoShowTime", e.target.value)}
+                    className="mt-2"
                   />
                   <p className="text-sm text-muted-foreground mt-1">
                     Automatically mark as no-show after table is ready
@@ -1212,17 +1165,147 @@ export const MerchantSettings = ({
                 </div>
               )}
               {hasFoodReady && (
-                <div>
+                <div className="p-4 border rounded-lg">
                   <Label>Food Orders No-Show</Label>
-                  <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
+                  <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground mt-2">
                     Food orders are automatically marked as no-show at end of day if not collected
                   </div>
                 </div>
               )}
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </AccordionContent>
+        </AccordionItem>
+      </Accordion>
+
+      {/* Break Dialog */}
+      <Dialog open={breakDialogOpen} onOpenChange={setBreakDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Break/Special Hours</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="break-reason">Reason</Label>
+              <Input
+                id="break-reason"
+                placeholder="e.g., Prayer Time, Lunch Break, Cleaning"
+                value={breakReason}
+                onChange={(e) => setBreakReason(e.target.value)}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="break-start">Start Time</Label>
+                <Input
+                  id="break-start"
+                  type="time"
+                  value={breakStart}
+                  onChange={(e) => setBreakStart(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="break-end">End Time</Label>
+                <Input
+                  id="break-end"
+                  type="time"
+                  value={breakEnd}
+                  onChange={(e) => setBreakEnd(e.target.value)}
+                />
+              </div>
+            </div>
+            <Button onClick={addBreakToDay} className="w-full">
+              Add Break
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Holiday Dialog */}
+      <Dialog open={holidayDialogOpen} onOpenChange={setHolidayDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Holiday Closure</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Date</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-full justify-start mt-1">
+                    {holidayDate ? format(holidayDate, "PPP") : "Pick a date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <CalendarComponent
+                    mode="single"
+                    selected={holidayDate}
+                    onSelect={setHolidayDate}
+                    disabled={(date) => date < new Date()}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <Label htmlFor="holiday-reason">Reason</Label>
+              <Input
+                id="holiday-reason"
+                placeholder="e.g., Christmas, Eid al-Fitr, Private Event"
+                value={holidayReason}
+                onChange={(e) => setHolidayReason(e.target.value)}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="fully-closed">Closed All Day</Label>
+              <Switch
+                id="fully-closed"
+                checked={holidayFullyClosed}
+                onCheckedChange={setHolidayFullyClosed}
+              />
+            </div>
+            {!holidayFullyClosed && (
+              <>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="holiday-open">Opening Time</Label>
+                    <Input
+                      id="holiday-open"
+                      type="time"
+                      value={holidayOpen}
+                      onChange={(e) => setHolidayOpen(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="holiday-close">
+                      Closing Time
+                      {holidayOvernight && <span className="text-primary ml-1">(+1 day)</span>}
+                    </Label>
+                    <Input
+                      id="holiday-close"
+                      type="time"
+                      value={holidayClose}
+                      onChange={(e) => setHolidayClose(e.target.value)}
+                    />
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="holiday-overnight"
+                    checked={holidayOvernight}
+                    onCheckedChange={(checked) => setHolidayOvernight(!!checked)}
+                  />
+                  <Label htmlFor="holiday-overnight" className="text-xs text-muted-foreground cursor-pointer">
+                    Overnight hours (closes after midnight on the next day)
+                  </Label>
+                </div>
+              </>
+            )}
+            <Button onClick={addHolidayClosure} className="w-full">
+              Add Holiday
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Spacer for sticky footer */}
       <div className={hasUnsavedChanges ? "h-24" : "h-0"} />
