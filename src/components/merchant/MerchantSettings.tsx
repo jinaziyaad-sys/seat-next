@@ -55,7 +55,6 @@ export const MerchantSettings = ({
   const hasTableReady = serviceTypes.includes("table_ready");
   const [settings, setSettings] = useState({
     venueCapacity: "40",
-    tablesPerInterval: "4",
     defaultPrepTime: "10",
     maxExtensionTime: "45",
     pickupInstructions: "Please collect your order from the main counter. Show your order number to staff.",
@@ -191,7 +190,6 @@ export const MerchantSettings = ({
         // Load kitchen/food and waitlist/table settings
         setSettings({
           venueCapacity: settings.venue_capacity?.toString() || "40",
-          tablesPerInterval: settings.tables_per_interval?.toString() || "4",
           defaultPrepTime: settings.default_prep_time?.toString() || "10",
           maxExtensionTime: settings.max_extension_time?.toString() || "45",
           pickupInstructions: settings.pickup_instructions || "Please collect your order from the main counter. Show your order number to staff.",
@@ -223,7 +221,6 @@ export const MerchantSettings = ({
       // Store initial values for comparison
       initialSettingsRef.current = {
         venueCapacity: (data?.settings as any)?.venue_capacity?.toString() || "40",
-        tablesPerInterval: (data?.settings as any)?.tables_per_interval?.toString() || "4",
         defaultPrepTime: (data?.settings as any)?.default_prep_time?.toString() || "10",
         maxExtensionTime: (data?.settings as any)?.max_extension_time?.toString() || "45",
         pickupInstructions: (data?.settings as any)?.pickup_instructions || "Please collect your order from the main counter. Show your order number to staff.",
@@ -339,7 +336,6 @@ export const MerchantSettings = ({
       
       // Waitlist/Table settings
       venue_capacity: parseInt(settings.venueCapacity) || 40,
-      tables_per_interval: parseInt(settings.tablesPerInterval) || 4,
       auto_no_show_time: parseInt(settings.autoNoShowTime) || 15,
       
       // Table configuration
@@ -767,6 +763,26 @@ export const MerchantSettings = ({
                     <Plus size={16} />
                   </Button>
                 </div>
+              </div>
+              
+              <Separator className="my-4" />
+              
+              <div className="space-y-2">
+                <Label htmlFor="venueCapacity">Venue Capacity (guests)</Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    id="venueCapacity"
+                    type="number"
+                    value={settings.venueCapacity}
+                    onChange={(e) => handleInputChange("venueCapacity", e.target.value)}
+                    className="w-24"
+                    min="1"
+                  />
+                  <span className="text-sm text-muted-foreground">guests</span>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Maximum number of guests your venue can accommodate. Used for capacity status calculations.
+                </p>
               </div>
             </AccordionContent>
           </AccordionItem>
