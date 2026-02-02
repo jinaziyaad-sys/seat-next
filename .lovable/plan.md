@@ -1,191 +1,191 @@
 
-
-# Google Sign-In with Phone Number Prompt
+# Merchant Settings UI Improvements
 
 ## Overview
 
-Add Google OAuth as a sign-in option for patrons. When a user signs in with Google for the first time, they will be prompted to add their phone number to complete their profile (required for waitlist SMS notifications).
+Transform the merchant settings page from a long scrolling list of cards into an organized accordion-style interface where each section is collapsible. Additionally, simplify the Operations & Cleanup section with a cleaner YES/NO toggle approach.
 
-## How It Works
+## Changes
+
+### 1. Accordion Layout for All Setting Sections
+
+Replace individual Cards with a unified Accordion component. Each setting section becomes a collapsible accordion item that can be opened/closed independently.
 
 ```text
-User Flow:
-┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
-│  Auth Page      │     │  Google OAuth   │     │  App Checks     │
-│  "Sign in with  │ ──► │  Popup/Redirect │ ──► │  Profile        │
-│   Google"       │     │                 │     │                 │
-└─────────────────┘     └─────────────────┘     └─────────────────┘
-                                                        │
-                                    ┌───────────────────┴───────────────────┐
-                                    ▼                                       ▼
-                        ┌─────────────────────┐               ┌─────────────────────┐
-                        │  Has Phone Number   │               │  No Phone Number    │
-                        │  ──────────────────►│               │  ─────────────────► │
-                        │  Continue to Home   │               │  Show Phone Prompt  │
-                        └─────────────────────┘               └─────────────────────┘
-                                                                        │
-                                                                        ▼
-                                                        ┌─────────────────────────────┐
-                                                        │  User Enters Phone          │
-                                                        │  ─────────────────────────► │
-                                                        │  Optional: Verify via SMS   │
-                                                        │  Continue to Home           │
-                                                        └─────────────────────────────┘
+Current Layout:                        New Layout:
+┌─────────────────────────────────┐   ┌─────────────────────────────────┐
+│ Venue Discovery Card            │   │ ▼ Venue Discovery               │
+│   [always visible content]      │   │    [collapsed - click to open]  │
+├─────────────────────────────────┤   ├─────────────────────────────────┤
+│ Kitchen Settings Card           │   │ ▶ Kitchen Settings              │
+│   [always visible content]      │   │    [expanded content...]        │
+├─────────────────────────────────┤   ├─────────────────────────────────┤
+│ Operations & Cleanup Card       │   │ ▶ Operations & Cleanup          │
+│   [always visible content]      │   │    [expanded content...]        │
+├─────────────────────────────────┤   ├─────────────────────────────────┤
+│ ... more cards ...              │   │ ▶ ... more sections ...         │
+└─────────────────────────────────┘   └─────────────────────────────────┘
 ```
+
+**Accordion Sections (in order):**
+1. Venue Discovery Profile
+2. Table Configuration (if table_ready)
+3. Kitchen Settings (if food_ready)
+4. Operations & Cleanup
+5. Waitlist Preferences (if table_ready)
+6. Pickup Instructions (if food_ready)
+7. Business Hours & Schedule
+8. Auto No-Show Settings
+
+### 2. Simplified Operations & Cleanup
+
+Replace the current two-field interface with a cleaner toggle-based approach:
+
+```text
+Current:                              New:
+┌─────────────────────────────────┐   ┌─────────────────────────────────┐
+│ Close of Business Time          │   │ Operations & Cleanup at COB     │
+│ [23:00     ]                    │   │                                 │
+│                                 │   │   ○ Yes - Run at business       │
+│ Auto-cleanup Cancelled          │   │         close time              │
+│ Waitlist Entries    [toggle]    │   │                                 │
+└─────────────────────────────────┘   │   ○ No - Run at custom time     │
+                                      │         [22:30     ]            │
+                                      │                                 │
+                                      │ Auto-cleanup settings:          │
+                                      │   ☑ Clear cancelled waitlist    │
+                                      │   ☑ Clear rejected orders       │
+                                      └─────────────────────────────────┘
+```
+
+**Logic:**
+- "Yes" = Use the venue's regular closing time from business hours (no manual time picker)
+- "No" = Show a time picker for custom cleanup time
+- Cleanup toggles remain visible regardless of choice
+
+---
 
 ## Technical Implementation
 
-### 1. Supabase Dashboard Configuration (User Action Required)
-
-The user needs to configure Google OAuth in their Supabase project dashboard:
-
-1. Go to **Google Cloud Console** and create OAuth credentials
-2. Add `cuoqjgahpfymxqrdlzlf.supabase.co` as an authorized domain
-3. Add `https://cuoqjgahpfymxqrdlzlf.supabase.co/auth/v1/callback` as the redirect URL
-4. In **Supabase Dashboard > Authentication > Providers**, enable Google and paste the Client ID + Secret
-
-### 2. Update Database Trigger
-
-Modify `handle_new_user` to handle Google OAuth users who may not have a full_name initially:
-
-| Current | New |
-|---------|-----|
-| `COALESCE(NEW.raw_user_meta_data->>'full_name', '')` | Also try `NEW.raw_user_meta_data->>'name'` (Google's field) |
-
-```sql
--- Updated trigger handles both custom signup and Google OAuth
-full_name = COALESCE(
-  NEW.raw_user_meta_data->>'full_name',
-  NEW.raw_user_meta_data->>'name',        -- Google uses 'name'
-  NEW.raw_user_meta_data->>'given_name',  -- Fallback
-  ''
-)
-```
-
-### 3. Create Phone Prompt Component
-
-New file: `src/components/PhonePromptDialog.tsx`
-
-A dialog that appears after Google sign-in when no phone is on file:
-- Phone input field with country code validation
-- "Skip for now" option (phone is not mandatory)
-- Optional SMS verification (same as signup flow)
-- Updates profile with phone number
-
-### 4. Update Auth.tsx
-
-Add Google Sign-In button to both Sign In and Sign Up tabs:
-
-```text
-┌──────────────────────────────────────┐
-│            Sign In                   │
-├──────────────────────────────────────┤
-│  Email: ____________________         │
-│  Password: _________________         │
-│                                      │
-│  [       Sign In       ]             │
-│                                      │
-│  ─────── or continue with ───────   │
-│                                      │
-│  [  🔵 Sign in with Google  ]        │
-└──────────────────────────────────────┘
-```
-
-Implementation:
-```typescript
-const handleGoogleSignIn = async () => {
-  setLoading(true);
-  const { error } = await supabase.auth.signInWithOAuth({
-    provider: 'google',
-    options: {
-      redirectTo: `${window.location.origin}/auth?checkPhone=true`,
-    },
-  });
-  if (error) {
-    toast({ title: "Error", description: error.message, variant: "destructive" });
-    setLoading(false);
-  }
-};
-```
-
-### 5. Update Index.tsx (Home Page)
-
-Add check for incomplete profile on load:
-
-```typescript
-// After auth state confirms user is logged in
-useEffect(() => {
-  if (user) {
-    // Check if profile has phone number
-    supabase
-      .from('profiles')
-      .select('phone')
-      .eq('id', user.id)
-      .single()
-      .then(({ data }) => {
-        if (!data?.phone) {
-          // Show phone prompt dialog
-          setShowPhonePrompt(true);
-        }
-      });
-  }
-}, [user]);
-```
-
-### 6. Update Auth Redirect Handling
-
-Modify `Auth.tsx` to check for `checkPhone` URL parameter after OAuth redirect:
-
-```typescript
-// In useEffect
-const params = new URLSearchParams(window.location.search);
-if (params.get('checkPhone') && session) {
-  // Redirect to home where phone check happens
-  navigate('/', { replace: true });
-}
-```
-
----
-
-## Files to Create/Modify
+### Files to Modify
 
 | File | Changes |
 |------|---------|
-| **New Migration** | Update `handle_new_user` trigger to support Google's name fields |
-| **New Component** `src/components/PhonePromptDialog.tsx` | Dialog to collect phone number after Google sign-in |
-| `src/pages/Auth.tsx` | Add Google sign-in button to both tabs |
-| `src/pages/Index.tsx` | Add check for missing phone and show prompt dialog |
+| `src/components/merchant/MerchantSettings.tsx` | Replace Card layout with Accordion, refactor Operations & Cleanup section |
+
+### State Changes
+
+Add new state variable:
+```typescript
+const [useClosingTimeForCleanup, setUseClosingTimeForCleanup] = useState(true);
+```
+
+The `cobTime` setting will only be editable when `useClosingTimeForCleanup` is `false`.
+
+### Accordion Structure
+
+```typescript
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+
+<Accordion type="multiple" defaultValue={["operations"]} className="space-y-4">
+  <AccordionItem value="discovery" className="border rounded-lg px-4">
+    <AccordionTrigger className="text-lg font-semibold">
+      Venue Discovery Profile
+    </AccordionTrigger>
+    <AccordionContent>
+      <VenueDiscoverySettings venueId={venueId} />
+    </AccordionContent>
+  </AccordionItem>
+  
+  {/* ... more items ... */}
+</Accordion>
+```
+
+### Operations & Cleanup Refactor
+
+```typescript
+<AccordionItem value="operations" className="border rounded-lg px-4">
+  <AccordionTrigger className="text-lg font-semibold">
+    Operations & Cleanup
+  </AccordionTrigger>
+  <AccordionContent className="space-y-4 pt-2">
+    <div className="space-y-3">
+      <Label className="text-base font-medium">Run cleanup at Close of Business?</Label>
+      <RadioGroup 
+        value={useClosingTimeForCleanup ? "yes" : "no"}
+        onValueChange={(val) => setUseClosingTimeForCleanup(val === "yes")}
+      >
+        <div className="flex items-center space-x-2">
+          <RadioGroupItem value="yes" id="cob-yes" />
+          <Label htmlFor="cob-yes">Yes - Use business closing time</Label>
+        </div>
+        <div className="flex items-center space-x-2">
+          <RadioGroupItem value="no" id="cob-no" />
+          <Label htmlFor="cob-no">No - Use custom time</Label>
+        </div>
+      </RadioGroup>
+      
+      {!useClosingTimeForCleanup && (
+        <div className="ml-6 mt-2">
+          <Label htmlFor="cob-time">Cleanup Time</Label>
+          <Input
+            id="cob-time"
+            type="time"
+            value={settings.cobTime}
+            onChange={(e) => handleInputChange('cobTime', e.target.value)}
+            className="w-32 mt-1"
+          />
+        </div>
+      )}
+    </div>
+    
+    <Separator />
+    
+    <div className="space-y-3">
+      <Label className="text-sm font-medium text-muted-foreground">
+        Cleanup Actions
+      </Label>
+      <div className="flex items-center justify-between">
+        <Label>Auto-cleanup cancelled waitlist entries</Label>
+        <Switch checked={settings.autoCleanupCancelledWaitlist} ... />
+      </div>
+      <div className="flex items-center justify-between">
+        <Label>Auto-cleanup rejected orders</Label>
+        <Switch checked={autoCleanupRejected} ... />
+      </div>
+    </div>
+  </AccordionContent>
+</AccordionItem>
+```
+
+### Data Persistence
+
+Add `use_closing_time_for_cleanup` to the settings object saved to the database:
+```typescript
+const updatedSettings = {
+  // ... existing fields ...
+  use_closing_time_for_cleanup: useClosingTimeForCleanup,
+  cob_time: useClosingTimeForCleanup ? null : settings.cobTime,
+};
+```
 
 ---
 
-## Compatibility Notes
+## Visual Result
 
-| Concern | Status |
-|---------|--------|
-| Existing email/password users | No change - works as before |
-| User roles system | No impact - roles table separate from profiles |
-| Phone verification (SMS OTP) | Compatible - can use existing flow in prompt |
-| Merchant auth pages | Unaffected - only patron auth gets Google option |
-| Database trigger | Will handle both signup methods correctly |
+After implementation, the settings page will have:
+- Clean, organized accordion sections that hide complexity
+- Only one section open at a time (optional) or multiple open
+- A simple YES/NO choice for cleanup timing
+- Less visual clutter with settings tucked away until needed
+- Consistent styling with rounded borders on each accordion item
 
 ---
 
-## User Setup Instructions
+## Dependencies
 
-After implementation, you'll need to configure Google OAuth in your Supabase dashboard:
+Uses existing components already in the project:
+- `@/components/ui/accordion` - Already imported in project
+- `@/components/ui/radio-group` - Already available
 
-1. **Create Google Cloud OAuth Credentials**
-   - Go to console.cloud.google.com
-   - Create a new project or select existing
-   - Go to APIs & Services > Credentials
-   - Create OAuth 2.0 Client ID (Web application)
-   
-2. **Configure Authorized URLs**
-   - Authorized JavaScript origins: `https://cuoqjgahpfymxqrdlzlf.supabase.co`
-   - Authorized redirect URIs: `https://cuoqjgahpfymxqrdlzlf.supabase.co/auth/v1/callback`
-   
-3. **Enable in Supabase Dashboard**
-   - Go to Authentication > Providers
-   - Enable Google
-   - Paste Client ID and Client Secret
-
+No new dependencies required.
