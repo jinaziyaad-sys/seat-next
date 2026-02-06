@@ -124,6 +124,10 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const [activeTableTab, setActiveTableTab] = useState<"waitlist" | "reservations">("waitlist");
   const [showExploreView, setShowExploreView] = useState(false);
   
+  // State for time slot availability checking
+  const [slotAvailability, setSlotAvailability] = useState<Record<string, { available: boolean; reason?: string }>>({});
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+  
   // Ref to track ready_deadline for stable access in countdown interval
   const readyDeadlineRef = useRef<string | null>(null);
 
@@ -534,6 +538,63 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       void supabase.removeChannel(channel);
     };
   }, [waitlistEntry?.position, waitlistEntry?.status, selectedVenueData?.id]);
+
+  // Effect to check time slot availability when date or party size changes
+  // Moved to top level to satisfy React hooks rules
+  useEffect(() => {
+    // Only run when on reservation-details step
+    if (step !== "reservation-details") {
+      return;
+    }
+    
+    // Get minimum lead time from venue settings (default 60 minutes)
+    const minimumLeadTime = selectedVenueData?.settings?.minimum_reservation_lead_time ?? 60;
+    
+    // Get available times from venue settings
+    const timeSlots = selectedVenueData?.settings?.business_hours && reservationDate
+      ? getAvailableReservationTimes(
+          reservationDate,
+          selectedVenueData.settings.business_hours,
+          selectedVenueData.settings.holiday_closures || [],
+          15,
+          minimumLeadTime
+        )
+      : [];
+
+    if (!reservationDate || !selectedVenueData?.id || timeSlots.length === 0) {
+      setSlotAvailability({});
+      return;
+    }
+    
+    const checkAvailability = async () => {
+      setIsCheckingAvailability(true);
+      
+      const dateStr = format(reservationDate, 'yyyy-MM-dd');
+      try {
+        const { data, error } = await supabase.functions.invoke('check-time-slot-availability', {
+          body: {
+            venue_id: selectedVenueData.id,
+            date: dateStr,
+            party_size: partySize,
+            time_slots: timeSlots
+          }
+        });
+        
+        if (!error && data) {
+          setSlotAvailability(data);
+          // Clear selected time if it's no longer available
+          if (reservationTime && data[reservationTime]?.available === false) {
+            setReservationTime("");
+          }
+        }
+      } catch (err) {
+        console.error('Error checking availability:', err);
+      }
+      setIsCheckingAvailability(false);
+    };
+    
+    checkAvailability();
+  }, [step, reservationDate, partySize, selectedVenueData?.id, selectedVenueData?.settings]);
 
   const filteredVenues = venues
     .filter(venue => 
@@ -1790,9 +1851,13 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           minimumLeadTime
         )
       : [];
-    
+
     const hasNoAvailability = reservationDate && timeSlots.length === 0;
     const isNoSameDaySlots = isToday && hasNoAvailability;
+
+    // Count available slots
+    const availableSlotCount = Object.values(slotAvailability).filter(s => s.available !== false).length;
+    const allSlotsBooked = timeSlots.length > 0 && availableSlotCount === 0 && !isCheckingAvailability;
 
     return (
       <div className="space-y-6 p-6">
@@ -1809,7 +1874,37 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             <p className="text-muted-foreground">Select your preferred date and time</p>
           </CardHeader>
           <CardContent className="space-y-6">
-            {hasNoAvailability && (
+            {/* Party Size Selector - First to enable availability check */}
+            <div className="space-y-3">
+              <Label className="text-sm font-medium">Party Size</Label>
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPartySize(Math.max(1, partySize - 1))}
+                  disabled={partySize <= 1}
+                >
+                  -
+                </Button>
+                <div className="flex items-center gap-2 text-lg font-semibold">
+                  <Users size={20} />
+                  <span>{partySize}</span>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPartySize(Math.min(12, partySize + 1))}
+                  disabled={partySize >= 12}
+                >
+                  +
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Party size affects available time slots
+              </p>
+            </div>
+
+            {(hasNoAvailability || allSlotsBooked) && (
               <Card className="shadow-card border-destructive">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
@@ -1819,7 +1914,9 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                       <p className="text-sm text-muted-foreground">
                         {isNoSameDaySlots 
                           ? `No same-day slots available. Reservations require at least ${Math.round(minimumLeadTime / 60)} hour${minimumLeadTime >= 120 ? 's' : ''} notice. Please select a future date.`
-                          : "This venue is not accepting reservations on the selected date."
+                          : allSlotsBooked
+                            ? `All time slots are fully booked for a party of ${partySize}. Try a different date or party size.`
+                            : "This venue is not accepting reservations on the selected date."
                         }
                       </p>
                     </div>
@@ -1866,21 +1963,47 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               <Label>Select Time</Label>
               <Select value={reservationTime} onValueChange={setReservationTime}>
                 <SelectTrigger className="mt-2">
-                  <SelectValue placeholder="Choose time slot" />
+                  <SelectValue placeholder={isCheckingAvailability ? "Checking availability..." : "Choose time slot"} />
                 </SelectTrigger>
                 <SelectContent className="max-h-[300px]">
-                  {timeSlots.map((time) => (
-                    <SelectItem key={time} value={time}>
-                      {time}
-                    </SelectItem>
-                  ))}
+                  {isCheckingAvailability ? (
+                    <div className="flex items-center justify-center p-4">
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                      <span className="text-sm text-muted-foreground">Checking availability...</span>
+                    </div>
+                  ) : (
+                    timeSlots.map((time) => {
+                      const availability = slotAvailability[time];
+                      const isAvailable = availability?.available !== false;
+                      
+                      return (
+                        <SelectItem 
+                          key={time} 
+                          value={time}
+                          disabled={!isAvailable}
+                          className={cn(
+                            !isAvailable && "opacity-50"
+                          )}
+                        >
+                          <div className="flex items-center justify-between w-full gap-2">
+                            <span>{time}</span>
+                            {!isAvailable && (
+                              <Badge variant="secondary" className="text-xs">
+                                Fully booked
+                              </Badge>
+                            )}
+                          </div>
+                        </SelectItem>
+                      );
+                    })
+                  )}
                 </SelectContent>
               </Select>
             </div>
 
             <Button 
               onClick={() => setStep("party-details")}
-              disabled={!reservationDate || !reservationTime || hasNoAvailability}
+              disabled={!reservationDate || !reservationTime || hasNoAvailability || allSlotsBooked}
               className="w-full"
             >
               Continue to Party Details
