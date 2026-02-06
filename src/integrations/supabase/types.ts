@@ -936,6 +936,7 @@ export type Database = {
           phone: string | null
           service_types: string[] | null
           settings: Json | null
+          timezone: string | null
           updated_at: string
           waitlist_preferences: Json | null
         }
@@ -950,6 +951,7 @@ export type Database = {
           phone?: string | null
           service_types?: string[] | null
           settings?: Json | null
+          timezone?: string | null
           updated_at?: string
           waitlist_preferences?: Json | null
         }
@@ -964,6 +966,7 @@ export type Database = {
           phone?: string | null
           service_types?: string[] | null
           settings?: Json | null
+          timezone?: string | null
           updated_at?: string
           waitlist_preferences?: Json | null
         }

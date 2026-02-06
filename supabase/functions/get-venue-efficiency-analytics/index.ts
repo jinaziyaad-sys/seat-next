@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
+import { getVenueLocalHour, getVenueLocalDayOfWeek, DEFAULT_TIMEZONE } from "../_shared/timezone.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,6 +25,15 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Fetch venue timezone
+    const { data: venueData } = await supabaseClient
+      .from('venues')
+      .select('timezone')
+      .eq('id', venue_id)
+      .single();
+
+    const venueTimezone = venueData?.timezone || DEFAULT_TIMEZONE;
 
     // Calculate date range - support both explicit dates and presets
     const now = new Date();
@@ -96,10 +106,11 @@ serve(async (req) => {
     const onTimeOrders = ordersWithETA.filter(o => o.actual_prep_time <= o.quoted_prep_time).length;
     const onTimeRate = ordersWithETA.length > 0 ? (onTimeOrders / ordersWithETA.length) * 100 : 0;
 
-    // Peak hours analysis (order volume by hour)
+    // Peak hours analysis (order volume by hour) - use venue timezone
     const hourlyOrderVolume: Record<number, number> = {};
     orderAnalytics?.forEach(o => {
-      const hour = o.hour_of_day;
+      // Convert placed_at UTC to venue local hour
+      const hour = getVenueLocalHour(new Date(o.placed_at), venueTimezone);
       hourlyOrderVolume[hour] = (hourlyOrderVolume[hour] || 0) + 1;
     });
 
@@ -108,10 +119,10 @@ serve(async (req) => {
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
 
-    // On-time performance by hour
+    // On-time performance by hour - use venue timezone
     const onTimeByHour: Record<number, { total: number; on_time: number }> = {};
     ordersWithETA.forEach(o => {
-      const hour = o.hour_of_day;
+      const hour = getVenueLocalHour(new Date(o.placed_at), venueTimezone);
       if (!onTimeByHour[hour]) {
         onTimeByHour[hour] = { total: 0, on_time: 0 };
       }
@@ -201,10 +212,10 @@ serve(async (req) => {
       name: staffMap.get(s.staff_id) || 'Unknown',
     }));
 
-    // Busiest days of week
+    // Busiest days of week - use venue timezone
     const dayVolume: Record<number, number> = {};
     orderAnalytics?.forEach(o => {
-      const day = o.day_of_week;
+      const day = getVenueLocalDayOfWeek(new Date(o.placed_at), venueTimezone);
       dayVolume[day] = (dayVolume[day] || 0) + 1;
     });
 

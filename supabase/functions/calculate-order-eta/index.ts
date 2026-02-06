@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getVenueLocalHour, getVenueLocalDayOfWeek, DEFAULT_TIMEZONE } from "../_shared/timezone.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,10 +24,10 @@ serve(async (req) => {
       throw new Error('venue_id is required');
     }
 
-    // Fetch venue settings to check prep time mode
+    // Fetch venue settings including timezone
     const { data: venue, error: venueError } = await supabase
       .from('venues')
-      .select('settings')
+      .select('settings, timezone')
       .eq('id', venue_id)
       .single();
 
@@ -38,6 +39,7 @@ serve(async (req) => {
     const venueSettings = venue?.settings as any || {};
     const prepTimeMode = venueSettings.prep_time_mode || 'analytics';
     const fixedPrepTime = venueSettings.default_prep_time || 15;
+    const venueTimezone = venue?.timezone || DEFAULT_TIMEZONE;
 
     // If fixed mode, return the configured prep time directly
     if (prepTimeMode === 'fixed') {
@@ -45,7 +47,8 @@ serve(async (req) => {
         order_number,
         venue_id,
         prep_time: fixedPrepTime,
-        mode: 'fixed'
+        mode: 'fixed',
+        timezone: venueTimezone
       });
 
       return new Response(
@@ -65,10 +68,10 @@ serve(async (req) => {
       );
     }
 
-    // Analytics mode - use dynamic calculation
+    // Analytics mode - use dynamic calculation with venue timezone
     const now = new Date();
-    const dayOfWeek = now.getDay();
-    const hourOfDay = now.getHours();
+    const dayOfWeek = getVenueLocalDayOfWeek(now, venueTimezone);
+    const hourOfDay = getVenueLocalHour(now, venueTimezone);
 
     // Get current kitchen load
     const { count: currentLoad } = await supabase
@@ -123,7 +126,10 @@ serve(async (req) => {
       final_minutes: finalMinutes,
       confidence: confidenceLevel,
       data_points: result.data_points,
-      mode: 'analytics'
+      mode: 'analytics',
+      timezone: venueTimezone,
+      local_hour: hourOfDay,
+      local_day: dayOfWeek
     });
 
     return new Response(
