@@ -1855,6 +1855,10 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     const hasNoAvailability = reservationDate && timeSlots.length === 0;
     const isNoSameDaySlots = isToday && hasNoAvailability;
 
+    // Check if venue has no tables configured
+    const hasNoTablesConfigured = !selectedVenueData?.settings?.table_configuration || 
+                                  selectedVenueData?.settings?.table_configuration?.length === 0;
+
     // Count available slots
     const availableSlotCount = Object.values(slotAvailability).filter(s => s.available !== false).length;
     const allSlotsBooked = timeSlots.length > 0 && availableSlotCount === 0 && !isCheckingAvailability;
@@ -1904,7 +1908,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
               </p>
             </div>
 
-            {(hasNoAvailability || allSlotsBooked) && (
+            {(hasNoAvailability || allSlotsBooked || hasNoTablesConfigured) && (
               <Card className="shadow-card border-destructive">
                 <CardContent className="p-4">
                   <div className="flex items-start gap-3">
@@ -1912,11 +1916,13 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                     <div>
                       <p className="font-semibold text-destructive">No Availability</p>
                       <p className="text-sm text-muted-foreground">
-                        {isNoSameDaySlots 
-                          ? `No same-day slots available. Reservations require at least ${Math.round(minimumLeadTime / 60)} hour${minimumLeadTime >= 120 ? 's' : ''} notice. Please select a future date.`
-                          : allSlotsBooked
-                            ? `All time slots are fully booked for a party of ${partySize}. Try a different date or party size.`
-                            : "This venue is not accepting reservations on the selected date."
+                        {hasNoTablesConfigured
+                          ? "This venue has not configured their seating yet. Please contact them directly or try another venue."
+                          : isNoSameDaySlots 
+                            ? `No same-day slots available. Reservations require at least ${Math.round(minimumLeadTime / 60)} hour${minimumLeadTime >= 120 ? 's' : ''} notice. Please select a future date.`
+                            : allSlotsBooked
+                              ? `All time slots are fully booked for a party of ${partySize}. Try a different date or party size.`
+                              : "This venue is not accepting reservations on the selected date."
                         }
                       </p>
                     </div>
@@ -2003,10 +2009,17 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
             <Button 
               onClick={() => setStep("party-details")}
-              disabled={!reservationDate || !reservationTime || hasNoAvailability || allSlotsBooked}
+              disabled={!reservationDate || !reservationTime || hasNoAvailability || allSlotsBooked || isCheckingAvailability || hasNoTablesConfigured}
               className="w-full"
             >
-              Continue to Party Details
+              {isCheckingAvailability ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Checking availability...
+                </>
+              ) : (
+                "Continue to Party Details"
+              )}
             </Button>
           </CardContent>
         </Card>
