@@ -110,3 +110,6 @@ verify_jwt = true
 
 [functions.get-venue-recommendations]
 verify_jwt = false
+
+[functions.check-time-slot-availability]
+verify_jwt = false
