@@ -20,6 +20,7 @@ import { Plus, X, ChevronDown, Clock, Calendar, AlertCircle, RotateCcw, Save, Se
 import { TableConfigurationManager } from "./TableConfigurationManager";
 import { VenueDiscoverySettings } from "./VenueDiscoverySettings";
 import { BusinessHours, HolidayClosure } from "@/utils/businessHours";
+import { TIMEZONE_OPTIONS, DEFAULT_TIMEZONE } from "@/utils/timezone";
 import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -71,6 +72,7 @@ export const MerchantSettings = ({
   const [autoCleanupRejected, setAutoCleanupRejected] = useState(true);
   const [tableConfiguration, setTableConfiguration] = useState<TableConfig[]>([]);
   const [useClosingTimeForCleanup, setUseClosingTimeForCleanup] = useState(true);
+  const [venueTimezone, setVenueTimezone] = useState(DEFAULT_TIMEZONE);
   
   // Business Hours State
   const [businessHours, setBusinessHours] = useState<BusinessHours>({
@@ -114,6 +116,7 @@ export const MerchantSettings = ({
   const initialAutoCleanupRejectedRef = useRef<boolean | null>(null);
   const initialTableConfigurationRef = useRef<TableConfig[] | null>(null);
   const initialUseClosingTimeForCleanupRef = useRef<boolean | null>(null);
+  const initialVenueTimezoneRef = useRef<string | null>(null);
 
   const { toast } = useToast();
 
@@ -135,7 +138,7 @@ export const MerchantSettings = ({
     if (!isInitialLoad) {
       setHasUnsavedChanges(true);
     }
-  }, [settings, businessHours, waitlistPreferences, holidayClosures, gracePeriods, autoCleanupRejected, tableConfiguration, useClosingTimeForCleanup]);
+  }, [settings, businessHours, waitlistPreferences, holidayClosures, gracePeriods, autoCleanupRejected, tableConfiguration, useClosingTimeForCleanup, venueTimezone]);
 
   // Notify parent of unsaved changes state
   useEffect(() => {
@@ -146,13 +149,21 @@ export const MerchantSettings = ({
     const fetchVenueSettings = async () => {
       const { data, error } = await supabase
         .from("venues")
-        .select("waitlist_preferences, settings")
+        .select("waitlist_preferences, settings, timezone")
         .eq("id", venueId)
         .single();
 
       if (error) {
         console.error("Error fetching venue settings:", error);
         return;
+      }
+
+      // Load timezone
+      if (data?.timezone) {
+        setVenueTimezone(data.timezone);
+        initialVenueTimezoneRef.current = data.timezone;
+      } else {
+        initialVenueTimezoneRef.current = DEFAULT_TIMEZONE;
       }
 
       if (data?.settings) {
@@ -328,7 +339,6 @@ export const MerchantSettings = ({
       auto_cleanup_cancelled_waitlist: settings.autoCleanupCancelledWaitlist,
       cob_time: useClosingTimeForCleanup ? null : settings.cobTime,
       use_closing_time_for_cleanup: useClosingTimeForCleanup,
-      timezone: "America/New_York",
       
       // Kitchen/Food settings
       default_prep_time: parseInt(settings.defaultPrepTime) || 10,
@@ -348,12 +358,13 @@ export const MerchantSettings = ({
       table_configuration: tableConfiguration,
     };
     
-    // Save everything in one transaction
+    // Save everything in one transaction - include timezone in venues table directly
     const { error } = await supabase
       .from("venues")
       .update({
         settings: updatedSettings as any,
-        waitlist_preferences: { options: waitlistPreferences } as any
+        waitlist_preferences: { options: waitlistPreferences } as any,
+        timezone: venueTimezone
       })
       .eq("id", venueId);
 
@@ -375,6 +386,7 @@ export const MerchantSettings = ({
     initialAutoCleanupRejectedRef.current = autoCleanupRejected;
     initialTableConfigurationRef.current = [...tableConfiguration];
     initialUseClosingTimeForCleanupRef.current = useClosingTimeForCleanup;
+    initialVenueTimezoneRef.current = venueTimezone;
     
     setHasUnsavedChanges(false);
 
@@ -393,6 +405,7 @@ export const MerchantSettings = ({
     if (initialAutoCleanupRejectedRef.current !== null) setAutoCleanupRejected(initialAutoCleanupRejectedRef.current);
     if (initialTableConfigurationRef.current) setTableConfiguration(initialTableConfigurationRef.current);
     if (initialUseClosingTimeForCleanupRef.current !== null) setUseClosingTimeForCleanup(initialUseClosingTimeForCleanupRef.current);
+    if (initialVenueTimezoneRef.current) setVenueTimezone(initialVenueTimezoneRef.current);
     setHasUnsavedChanges(false);
     
     toast({
@@ -830,6 +843,29 @@ export const MerchantSettings = ({
             </div>
           </AccordionTrigger>
           <AccordionContent className="pt-2 pb-4 space-y-6">
+            {/* Venue Timezone */}
+            <div className="p-4 bg-muted/50 rounded-lg space-y-3">
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4 text-primary" />
+                <Label className="text-base font-medium">Venue Timezone</Label>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Set the timezone for your venue. This affects business hours, reservations, and analytics.
+              </p>
+              <Select value={venueTimezone} onValueChange={setVenueTimezone}>
+                <SelectTrigger className="w-full md:w-80">
+                  <SelectValue placeholder="Select timezone" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIMEZONE_OPTIONS.map((tz) => (
+                    <SelectItem key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Regular Business Hours */}
             <Collapsible defaultOpen>
               <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted rounded-lg">

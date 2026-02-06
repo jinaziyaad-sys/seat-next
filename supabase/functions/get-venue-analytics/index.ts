@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getVenueLocalHour, DEFAULT_TIMEZONE } from "../_shared/timezone.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -22,6 +23,15 @@ serve(async (req) => {
     if (!venue_id) {
       throw new Error('venue_id is required');
     }
+
+    // Fetch venue timezone
+    const { data: venueData } = await supabase
+      .from('venues')
+      .select('timezone')
+      .eq('id', venue_id)
+      .single();
+
+    const venueTimezone = venueData?.timezone || DEFAULT_TIMEZONE;
 
     // Calculate date range - support both explicit dates and presets
     const now = new Date();
@@ -154,10 +164,12 @@ serve(async (req) => {
         ) / earlyOrders.length)
       : 0;
 
-    // Group by hour for hourly data
+    // Group by hour for hourly data - use venue timezone
     const hourlyOrders = Array(24).fill(0);
     orderAnalytics?.forEach(o => {
-      hourlyOrders[o.hour_of_day] = (hourlyOrders[o.hour_of_day] || 0) + 1;
+      // Convert placed_at UTC to venue local hour
+      const localHour = getVenueLocalHour(new Date(o.placed_at), venueTimezone);
+      hourlyOrders[localHour] = (hourlyOrders[localHour] || 0) + 1;
     });
 
     // Calculate waitlist metrics
@@ -205,10 +217,12 @@ serve(async (req) => {
       ? Math.round((waitlistAnalytics?.filter(w => w.was_no_show).length || 0) / totalWaitlist * 100)
       : 0;
 
-    // Group by hour for waitlist
+    // Group by hour for waitlist - use venue timezone
     const hourlyWaitlist = Array(24).fill(0);
     waitlistAnalytics?.forEach(w => {
-      hourlyWaitlist[w.hour_of_day] = (hourlyWaitlist[w.hour_of_day] || 0) + 1;
+      // Convert joined_at UTC to venue local hour
+      const localHour = getVenueLocalHour(new Date(w.joined_at), venueTimezone);
+      hourlyWaitlist[localHour] = (hourlyWaitlist[localHour] || 0) + 1;
     });
 
     // Find peak hours

@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getVenueLocalHour, getVenueLocalDayOfWeek, DEFAULT_TIMEZONE } from "../_shared/timezone.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -23,9 +24,18 @@ serve(async (req) => {
       throw new Error('venue_id and party_size are required');
     }
 
+    // Fetch venue timezone
+    const { data: venue } = await supabase
+      .from('venues')
+      .select('timezone')
+      .eq('id', venue_id)
+      .single();
+
+    const venueTimezone = venue?.timezone || DEFAULT_TIMEZONE;
+
     const now = new Date();
-    const dayOfWeek = now.getDay();
-    const hourOfDay = now.getHours();
+    const dayOfWeek = getVenueLocalDayOfWeek(now, venueTimezone);
+    const hourOfDay = getVenueLocalHour(now, venueTimezone);
 
     // Get current waitlist length
     const { count: waitlistLength } = await supabase
@@ -86,7 +96,10 @@ serve(async (req) => {
       final_minutes: finalMinutes,
       confidence: confidenceLevel,
       data_points: result.data_points,
-      is_busy: capacity?.is_busy
+      is_busy: capacity?.is_busy,
+      timezone: venueTimezone,
+      local_hour: hourOfDay,
+      local_day: dayOfWeek
     });
 
     return new Response(
