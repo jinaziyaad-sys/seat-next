@@ -570,13 +570,26 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       setIsCheckingAvailability(true);
       
       const dateStr = format(reservationDate, 'yyyy-MM-dd');
+      
+      // Convert time slots to ISO timestamps to fix timezone mismatch
+      // The edge function was parsing local time strings as UTC, causing wrong availability checks
+      const timeSlotsWithISO = timeSlots.map(time => {
+        const [hours, minutes] = time.split(':').map(Number);
+        const slotDate = new Date(reservationDate);
+        slotDate.setHours(hours, minutes, 0, 0);
+        return {
+          time: time,  // Keep original for display/keying
+          iso: slotDate.toISOString()  // Correct UTC time for database query
+        };
+      });
+      
       try {
         const { data, error } = await supabase.functions.invoke('check-time-slot-availability', {
           body: {
             venue_id: selectedVenueData.id,
             date: dateStr,
             party_size: partySize,
-            time_slots: timeSlots
+            time_slots: timeSlotsWithISO
           }
         });
         

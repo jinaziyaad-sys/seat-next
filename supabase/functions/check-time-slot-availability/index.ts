@@ -105,10 +105,14 @@ Deno.serve(async (req) => {
     // Check each time slot
     const results: Record<string, { available: boolean; reason?: string }> = {};
 
-    for (const time of time_slots) {
+    for (const slot of time_slots) {
       try {
-        // Parse time and create ISO timestamp
-        const reservationTime = new Date(`${date}T${time}:00`).toISOString();
+        // Handle both old format (string) and new format ({time, iso})
+        // This ensures backward compatibility while fixing the timezone issue
+        const timeKey = typeof slot === 'string' ? slot : slot.time;
+        const reservationTime = typeof slot === 'string' 
+          ? new Date(`${date}T${slot}:00`).toISOString()  // Fallback for old format
+          : slot.iso;  // Use correct ISO timestamp from frontend
 
         // Get occupied tables for this slot (±30 min buffer)
         const { data: occupiedTables, error: occupiedError } = await supabaseClient
@@ -119,8 +123,8 @@ Deno.serve(async (req) => {
           });
 
         if (occupiedError) {
-          console.error('Error fetching occupied tables for', time, ':', occupiedError);
-          results[time] = { available: true }; // Default to available on error
+          console.error('Error fetching occupied tables for', timeKey, ':', occupiedError);
+          results[timeKey] = { available: true }; // Default to available on error
           continue;
         }
 
@@ -132,13 +136,14 @@ Deno.serve(async (req) => {
         // Check if party can be accommodated
         const canFit = canFitParty(party_size, availableTables);
 
-        results[time] = {
+        results[timeKey] = {
           available: canFit,
           reason: canFit ? undefined : 'Fully booked'
         };
       } catch (err) {
-        console.error('Error processing time slot', time, ':', err);
-        results[time] = { available: true }; // Default to available on error
+        console.error('Error processing time slot', slot, ':', err);
+        const timeKey = typeof slot === 'string' ? slot : slot.time;
+        results[timeKey] = { available: true }; // Default to available on error
       }
     }
 
