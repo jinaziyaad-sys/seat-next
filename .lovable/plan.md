@@ -1,137 +1,132 @@
-# ✅ IMPLEMENTED: Fix: Block Reservation Flow When No Tables Available
 
-## Problem Summary
+# Fix: Time Slot Availability Check Timezone Mismatch
 
-Users can proceed through the entire reservation process only to be blocked at the final step with "No tables available." This creates a frustrating experience where users waste time entering details for a booking that can never succeed.
+## Problem Identified
 
-**Root Cause**: The "Continue to Party Details" button is not disabled while the availability check is in progress, allowing users to proceed before the system knows which slots are actually available.
+The `check-time-slot-availability` edge function is checking the **wrong time slots** due to a timezone mismatch:
 
-## Current Flow (Broken)
+| Component | Time Format | Example |
+|-----------|-------------|---------|
+| Frontend sends | Local time string | `"16:15"` (4:15 PM local) |
+| Edge function parses | As UTC | `2026-02-06T16:15:00Z` |
+| Actual reservations stored | Correct UTC | `2026-02-06T14:00:00Z` |
 
-```
-User selects date → Availability check STARTS (takes ~1-2 seconds)
-                  → User immediately selects a time (all slots appear available)
-                  → User clicks "Continue" ← BUTTON NOT DISABLED!
-                  → Proceeds to party details
-                  → Submits booking
-                  → ERROR: "No tables available"
-```
+**Result:** When checking 4:15 PM local (which is 2:15 PM UTC for a user in UTC+2), the edge function checks 4:15 PM **UTC** instead, missing all the reservations that are stored at the correct UTC time.
+
+This is why all slots appear "available" even when they're fully booked!
 
 ## Solution
 
-Add `isCheckingAvailability` to the button's disabled condition so users cannot proceed until the system confirms which slots are actually bookable.
+Convert time slots to ISO timestamps on the **frontend** before sending to the edge function, matching how `find-available-table` receives times.
 
 ## Technical Changes
 
-### File: `src/components/TableReadyFlow.tsx`
+### File 1: `src/components/TableReadyFlow.tsx`
 
-#### 1. Add `isCheckingAvailability` to Continue Button Disabled State
+Change the availability check to send ISO timestamps instead of local time strings:
 
-**Current code (line ~2006):**
-```tsx
-<Button 
-  onClick={() => setStep("party-details")}
-  disabled={!reservationDate || !reservationTime || hasNoAvailability || allSlotsBooked}
-  className="w-full"
->
+**Current code:**
+```typescript
+const { data, error } = await supabase.functions.invoke('check-time-slot-availability', {
+  body: {
+    venue_id: selectedVenueData.id,
+    date: dateStr,
+    party_size: partySize,
+    time_slots: timeSlots  // ["16:15", "16:30", ...]
+  }
+});
 ```
 
 **Fixed code:**
-```tsx
-<Button 
-  onClick={() => setStep("party-details")}
-  disabled={!reservationDate || !reservationTime || hasNoAvailability || allSlotsBooked || isCheckingAvailability}
-  className="w-full"
->
-  {isCheckingAvailability ? (
-    <>
-      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-      Checking availability...
-    </>
-  ) : (
-    "Continue to Party Details"
-  )}
-</Button>
+```typescript
+// Convert time slots to ISO timestamps
+const timeSlotsWithISO = timeSlots.map(time => {
+  const [hours, minutes] = time.split(':').map(Number);
+  const slotDate = new Date(reservationDate);
+  slotDate.setHours(hours, minutes, 0, 0);
+  return {
+    time: time,  // Keep original for display
+    iso: slotDate.toISOString()  // Correct UTC time
+  };
+});
+
+const { data, error } = await supabase.functions.invoke('check-time-slot-availability', {
+  body: {
+    venue_id: selectedVenueData.id,
+    date: dateStr,
+    party_size: partySize,
+    time_slots: timeSlotsWithISO  // [{time: "16:15", iso: "2026-02-06T14:15:00Z"}, ...]
+  }
+});
 ```
 
-This ensures:
-- Button is disabled while checking availability
-- Visual feedback shows the system is working
-- User cannot proceed until all slot availability is confirmed
+### File 2: `supabase/functions/check-time-slot-availability/index.ts`
 
-#### 2. Add "No Tables Configured" Detection
+Update the edge function to use the ISO timestamps:
 
-Add early detection for venues with empty table configuration to show a clear message:
-
-```tsx
-// Add this check near the top of the reservation-details step
-const hasNoTablesConfigured = selectedVenueData?.settings?.table_configuration?.length === 0 ||
-                              !selectedVenueData?.settings?.table_configuration;
-
-// Update the no-availability card to handle this case
-{(hasNoAvailability || allSlotsBooked || hasNoTablesConfigured) && (
-  <Card className="shadow-card border-destructive">
-    <CardContent className="p-4">
-      <div className="flex items-start gap-3">
-        <XCircle className="h-5 w-5 text-destructive mt-0.5" />
-        <div>
-          <p className="font-semibold text-destructive">No Availability</p>
-          <p className="text-sm text-muted-foreground">
-            {hasNoTablesConfigured
-              ? "This venue has not configured their seating yet. Please contact them directly or try another venue."
-              : isNoSameDaySlots 
-                ? `No same-day slots available...`
-                : allSlotsBooked
-                  ? `All time slots are fully booked...`
-                  : "This venue is not accepting reservations..."
-            }
-          </p>
-        </div>
-      </div>
-    </CardContent>
-  </Card>
-)}
+**Current code:**
+```typescript
+for (const time of time_slots) {
+  // Parse time and create ISO timestamp (WRONG - timezone issue)
+  const reservationTime = new Date(`${date}T${time}:00`).toISOString();
+  // ...
+}
 ```
 
-Also update the disabled condition:
-```tsx
-disabled={!reservationDate || !reservationTime || hasNoAvailability || allSlotsBooked || isCheckingAvailability || hasNoTablesConfigured}
+**Fixed code:**
+```typescript
+for (const slot of time_slots) {
+  // Handle both old format (string) and new format ({time, iso})
+  const timeKey = typeof slot === 'string' ? slot : slot.time;
+  const reservationTime = typeof slot === 'string' 
+    ? new Date(`${date}T${slot}:00`).toISOString()  // Fallback
+    : slot.iso;  // Use correct ISO timestamp
+
+  // Get occupied tables for this slot
+  const { data: occupiedTables } = await supabaseClient.rpc('get_occupied_tables', {
+    p_venue_id: venue_id,
+    p_time_slot: reservationTime,  // Now correct UTC
+    p_buffer_minutes: 30
+  });
+
+  // ... rest of logic
+  
+  results[timeKey] = {
+    available: canFit,
+    reason: canFit ? undefined : 'Fully booked'
+  };
+}
 ```
 
-## Flow After Fix
+## Data Flow After Fix
 
 ```
-User selects date → Availability check STARTS
-                  → Button shows "Checking availability..." ← DISABLED
-                  → Check completes, unavailable slots are grayed out
-                  → User selects an AVAILABLE time
-                  → Button becomes enabled
-                  → User clicks "Continue"
-                  → Proceeds to party details ← Only available slots can be selected
-                  → Submits booking
-                  → SUCCESS
+User selects 4:15 PM (UTC+2 timezone)
+    ↓
+Frontend converts: 4:15 PM local → "2026-02-06T14:15:00Z" (UTC)
+    ↓
+Edge function receives ISO timestamp
+    ↓
+Queries get_occupied_tables with correct UTC time
+    ↓
+Finds all 3 tables are occupied at 14:00-14:30 UTC
+    ↓
+Returns: {"16:15": {available: false, reason: "Fully booked"}}
+    ↓
+UI greys out 4:15 PM slot ✓
 ```
-
-## Visual Changes
-
-| State | Button Appearance |
-|-------|-------------------|
-| Checking availability | Disabled + spinner + "Checking availability..." |
-| No availability | Disabled + "Continue to Party Details" |
-| Slot selected | Enabled + "Continue to Party Details" |
-| No tables configured | Disabled + error card explaining the issue |
 
 ## Files to Modify
 
 | File | Changes |
 |------|---------|
-| `src/components/TableReadyFlow.tsx` | Add `isCheckingAvailability` to disabled condition, add loading state to button, add no-tables-configured detection |
+| `src/components/TableReadyFlow.tsx` | Convert time slots to ISO before sending |
+| `supabase/functions/check-time-slot-availability/index.ts` | Use ISO timestamps from request, return keyed by original time string |
 
 ## Testing Checklist
 
-1. Select a date and verify button is disabled with spinner while checking
-2. Verify button text changes to "Checking availability..."
-3. After check completes, verify only available slots can be selected
-4. Test with a venue that has no table configuration - should show error message
-5. Test with a fully-booked date - should show "All time slots are fully booked" message
-6. Verify successful booking flow still works for available slots
+1. Create several reservations at a venue to fill time slots
+2. Open reservation flow and select the same date
+3. Verify those time slots now show as greyed out / "Fully booked"
+4. Confirm available slots can still be selected and booked
+5. Test in different browser timezones to ensure consistency
