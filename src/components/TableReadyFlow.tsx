@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { format, addDays, differenceInHours, parseISO } from "date-fns";
+import { format, addDays, differenceInHours, parseISO, formatDistanceToNow } from "date-fns";
 import { cn, formatTimeUntil } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -63,6 +63,7 @@ interface WaitlistEntry {
   ready_deadline?: string | null;
   customer_name: string;
   cancelled_by?: string;
+  created_at: string;
   updated_at: string;
   notes?: string;
 }
@@ -329,6 +330,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         patron_delayed: initialEntry.patron_delayed,
         customer_name: initialEntry.customer_name,
         cancelled_by: initialEntry.cancelled_by,
+        created_at: initialEntry.created_at,
         updated_at: initialEntry.updated_at,
         notes: initialEntry.notes,
         reservation_type: initialEntry.reservation_type,
@@ -855,6 +857,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           status: mapDatabaseStatus(newEntry.status),
           cancellation_reason: newEntry.cancellation_reason || undefined,
           customer_name: newEntry.customer_name,
+          created_at: newEntry.created_at,
           updated_at: newEntry.created_at,
           reservation_type: newEntry.reservation_type,
           reservation_time: newEntry.reservation_time,
@@ -995,6 +998,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           preferences: newEntries[0].preferences || [],
           status: mapDatabaseStatus(newEntries[0].status),
           customer_name: newEntries[0].customer_name,
+          created_at: newEntries[0].created_at,
           updated_at: newEntries[0].created_at,
           reservation_type: 'reservation',
           reservation_time: newEntries[0].reservation_time
@@ -1127,6 +1131,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           preferences: newEntry.preferences || [],
           status: mapDatabaseStatus(newEntry.status),
           customer_name: newEntry.customer_name,
+          created_at: newEntry.created_at,
           updated_at: newEntry.created_at,
           reservation_type: newEntry.reservation_type,
           reservation_time: newEntry.reservation_time,
@@ -2233,23 +2238,49 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           </CardHeader>
           <CardContent>
             <div className="space-y-3 text-sm">
+              {/* When entry was created */}
               <div className="flex items-center gap-3">
                 <div className="w-2 h-2 rounded-full bg-primary"></div>
-                <span>You joined the waitlist</span>
-                <span className="text-muted-foreground ml-auto">Just now</span>
+                <span>
+                  {waitlistEntry.reservation_type === 'reservation' 
+                    ? 'Reservation confirmed' 
+                    : 'You joined the waitlist'}
+                </span>
+                <span className="text-muted-foreground ml-auto">
+                  {formatDistanceToNow(new Date(waitlistEntry.created_at), { addSuffix: true })}
+                </span>
               </div>
-              {waitlistEntry.position <= 2 && (
+              
+              {/* Position update (if updated after creation) */}
+              {waitlistEntry.position !== null && 
+               waitlistEntry.position <= 3 && 
+               waitlistEntry.updated_at !== waitlistEntry.created_at &&
+               !waitlistEntry.ready_at && (
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-success"></div>
-                  <span>Moved up in line</span>
-                  <span className="text-muted-foreground ml-auto">2 min ago</span>
+                  <span>Position updated to #{waitlistEntry.position}</span>
+                  <span className="text-muted-foreground ml-auto">
+                    {formatDistanceToNow(new Date(waitlistEntry.updated_at), { addSuffix: true })}
+                  </span>
                 </div>
               )}
-              {waitlistEntry.position === 1 && (
+              
+              {/* Table ready notification */}
+              {waitlistEntry.ready_at && (
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-warning"></div>
-                  <span>Get ready! You're next</span>
-                  <span className="text-muted-foreground ml-auto">Just now</span>
+                  <span>Your table is ready!</span>
+                  <span className="text-muted-foreground ml-auto">
+                    {formatDistanceToNow(new Date(waitlistEntry.ready_at), { addSuffix: true })}
+                  </span>
+                </div>
+              )}
+              
+              {/* Next in line indicator */}
+              {waitlistEntry.position === 1 && !waitlistEntry.ready_at && (
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-warning animate-pulse"></div>
+                  <span className="font-medium">Get ready! You're next</span>
                 </div>
               )}
             </div>
