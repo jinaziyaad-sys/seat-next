@@ -62,7 +62,8 @@ export const MerchantSettings = ({
     orderNumberRefreshMinutes: "15",
     cobTime: "23:00",
     autoCleanupCancelledWaitlist: true,
-    prepTimeMode: "analytics" as "fixed" | "analytics"
+    prepTimeMode: "analytics" as "fixed" | "analytics",
+    minimumReservationLeadTime: "60"
   });
 
   const [waitlistPreferences, setWaitlistPreferences] = useState<WaitlistPreference[]>([]);
@@ -197,7 +198,8 @@ export const MerchantSettings = ({
           orderNumberRefreshMinutes: settings.order_number_refresh_minutes?.toString() || "15",
           cobTime: settings.cob_time || "23:00",
           autoCleanupCancelledWaitlist: settings.auto_cleanup_cancelled_waitlist !== false,
-          prepTimeMode: settings.prep_time_mode || "analytics"
+          prepTimeMode: settings.prep_time_mode || "analytics",
+          minimumReservationLeadTime: settings.minimum_reservation_lead_time?.toString() || "60"
         });
       }
 
@@ -228,7 +230,8 @@ export const MerchantSettings = ({
         orderNumberRefreshMinutes: (data?.settings as any)?.order_number_refresh_minutes?.toString() || "15",
         cobTime: (data?.settings as any)?.cob_time || "23:00",
         autoCleanupCancelledWaitlist: (data?.settings as any)?.auto_cleanup_cancelled_waitlist !== false,
-        prepTimeMode: (data?.settings as any)?.prep_time_mode || "analytics"
+        prepTimeMode: (data?.settings as any)?.prep_time_mode || "analytics",
+        minimumReservationLeadTime: (data?.settings as any)?.minimum_reservation_lead_time?.toString() || "60"
       };
       initialBusinessHoursRef.current = (data?.settings as any)?.business_hours || businessHours;
       initialHolidayClosuresRef.current = (data?.settings as any)?.holiday_closures || [];
@@ -337,6 +340,9 @@ export const MerchantSettings = ({
       // Waitlist/Table settings
       venue_capacity: parseInt(settings.venueCapacity) || 40,
       auto_no_show_time: parseInt(settings.autoNoShowTime) || 15,
+      
+      // Booking & Timing settings
+      minimum_reservation_lead_time: parseInt(settings.minimumReservationLeadTime) || 60,
       
       // Table configuration
       table_configuration: tableConfiguration,
@@ -1011,61 +1017,6 @@ export const MerchantSettings = ({
               </CollapsibleContent>
             </Collapsible>
             
-            {/* Grace Periods & Auto-Cleanup */}
-            <Collapsible>
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted rounded-lg">
-                <h3 className="font-semibold">Grace Periods</h3>
-                <ChevronDown className="h-4 w-4" />
-              </CollapsibleTrigger>
-              <CollapsibleContent className="mt-4 space-y-4">
-                <div className="p-3 bg-secondary/50 rounded-lg flex items-start gap-2">
-                  <AlertCircle className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                  <p className="text-xs text-muted-foreground">
-                    Grace periods determine how long before closing time you stop accepting new orders, reservations, and waitlist joins.
-                  </p>
-                </div>
-                
-                <div>
-                  <Label htmlFor="reservation-grace">Last Reservation ({gracePeriods.last_reservation} min before close)</Label>
-                  <Slider
-                    id="reservation-grace"
-                    min={0}
-                    max={60}
-                    step={5}
-                    value={[gracePeriods.last_reservation]}
-                    onValueChange={(value) => setGracePeriods(prev => ({ ...prev, last_reservation: value[0] }))}
-                    className="mt-2"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="order-grace">Last Food Order ({gracePeriods.last_order} min before close)</Label>
-                  <Slider
-                    id="order-grace"
-                    min={0}
-                    max={60}
-                    step={5}
-                    value={[gracePeriods.last_order]}
-                    onValueChange={(value) => setGracePeriods(prev => ({ ...prev, last_order: value[0] }))}
-                    className="mt-2"
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="waitlist-grace">Last Waitlist Join ({gracePeriods.last_waitlist_join} min before close)</Label>
-                  <Slider
-                    id="waitlist-grace"
-                    min={0}
-                    max={60}
-                    step={5}
-                    value={[gracePeriods.last_waitlist_join]}
-                    onValueChange={(value) => setGracePeriods(prev => ({ ...prev, last_waitlist_join: value[0] }))}
-                    className="mt-2"
-                  />
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
-            
             {/* Operations & Cleanup */}
             <Collapsible>
               <CollapsibleTrigger className="flex items-center justify-between w-full p-3 bg-muted rounded-lg">
@@ -1156,6 +1107,97 @@ export const MerchantSettings = ({
             
           </AccordionContent>
         </AccordionItem>
+
+        {/* Booking & Timing Rules - NEW SECTION */}
+        {hasTableReady && (
+          <AccordionItem value="booking-rules" className="border rounded-lg px-4 bg-card">
+            <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-primary" />
+                Booking & Timing Rules
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pt-2 pb-4 space-y-6">
+              {/* Minimum Reservation Lead Time */}
+              <div className="space-y-3">
+                <Label className="text-base font-medium">Minimum Reservation Lead Time</Label>
+                <p className="text-sm text-muted-foreground">
+                  How far in advance must reservations be made?
+                </p>
+                <div className="flex items-center gap-4">
+                  <Slider
+                    min={0}
+                    max={180}
+                    step={15}
+                    value={[parseInt(settings.minimumReservationLeadTime)]}
+                    onValueChange={(value) => handleInputChange("minimumReservationLeadTime", value[0].toString())}
+                    className="flex-1"
+                  />
+                  <Badge variant="outline" className="min-w-[80px] justify-center">
+                    {settings.minimumReservationLeadTime === "0" 
+                      ? "No minimum" 
+                      : `${settings.minimumReservationLeadTime} min`}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Set to 0 to allow last-minute reservations. 60 min = 1 hour notice required.
+                </p>
+              </div>
+
+              <Separator />
+
+              {/* Grace Periods */}
+              <div className="space-y-4">
+                <Label className="text-base font-medium">Grace Periods (Before Closing)</Label>
+                <div className="p-3 bg-secondary/50 rounded-lg flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                  <p className="text-xs text-muted-foreground">
+                    Grace periods determine how long before closing time you stop accepting new reservations, orders, and waitlist joins.
+                  </p>
+                </div>
+                
+                <div>
+                  <Label htmlFor="reservation-grace">Last Reservation ({gracePeriods.last_reservation} min before close)</Label>
+                  <Slider
+                    id="reservation-grace"
+                    min={0}
+                    max={60}
+                    step={5}
+                    value={[gracePeriods.last_reservation]}
+                    onValueChange={(value) => setGracePeriods(prev => ({ ...prev, last_reservation: value[0] }))}
+                    className="mt-2"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="order-grace">Last Food Order ({gracePeriods.last_order} min before close)</Label>
+                  <Slider
+                    id="order-grace"
+                    min={0}
+                    max={60}
+                    step={5}
+                    value={[gracePeriods.last_order]}
+                    onValueChange={(value) => setGracePeriods(prev => ({ ...prev, last_order: value[0] }))}
+                    className="mt-2"
+                  />
+                </div>
+                
+                <div>
+                  <Label htmlFor="waitlist-grace">Last Waitlist Join ({gracePeriods.last_waitlist_join} min before close)</Label>
+                  <Slider
+                    id="waitlist-grace"
+                    min={0}
+                    max={60}
+                    step={5}
+                    value={[gracePeriods.last_waitlist_join]}
+                    onValueChange={(value) => setGracePeriods(prev => ({ ...prev, last_waitlist_join: value[0] }))}
+                    className="mt-2"
+                  />
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        )}
 
         {/* Auto No-Show Settings */}
         <AccordionItem value="noshow" className="border rounded-lg px-4 bg-card">
