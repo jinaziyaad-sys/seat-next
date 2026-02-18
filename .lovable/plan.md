@@ -1,242 +1,129 @@
 
+# Fix: Overnight Time Slots Stored on Wrong Day
 
-# Timezone Alignment Across the Platform
+## Root Cause
 
-## Problem Analysis
+When a venue has overnight business hours (e.g., Monday 4 PM → Tuesday 2 AM with `is_overnight: true`), the time slot picker correctly shows slots like `00:00`, `00:15`, `01:00`, `01:30` as valid Monday booking options.
 
-The application currently has inconsistent timezone handling across multiple areas:
+However, when the patron selects one of these early-morning overnight slots, the reservation is stored with the **wrong date**:
 
-### 1. Database Triggers (Critical Issue)
-```sql
-EXTRACT(DOW FROM NEW.created_at)::INTEGER  -- Uses database server timezone (UTC)
-EXTRACT(HOUR FROM NEW.created_at)::INTEGER -- Uses database server timezone (UTC)
 ```
-
-When an order is placed at **6:00 PM local time (SAST/UTC+2)**, the database stores:
-- `created_at`: `2026-02-06T16:00:00Z` (correct UTC)
-- `hour_of_day`: **16** (should be 18 for SAST)
-- `day_of_week`: Could be wrong near midnight
-
-This causes analytics to show "peak hours" at wrong times.
-
-### 2. Edge Functions
-Functions like `calculate-order-eta` and `calculate-waitlist-eta` use:
-```typescript
-const dayOfWeek = now.getDay();     // Uses Deno server timezone (UTC)
-const hourOfDay = now.getHours();    // Uses Deno server timezone (UTC)
-```
-
-### 3. Frontend Date Queries
-Reports and analytics send ISO timestamps which are correctly handled, but the **returned hourly distribution data** is still based on UTC hour extraction.
-
-### 4. Reservation Time Slots (Partially Fixed)
-The recent fix converts local times to ISO before sending to the edge function - this is correct and should be the pattern everywhere.
-
-## Solution: Venue-Based Timezone
-
-### Approach
-Store a `timezone` field on each venue (e.g., `"Africa/Johannesburg"`) and use it consistently:
-
-1. **Database Layer**: Extract hour/day using venue's timezone
-2. **Edge Functions**: Convert UTC to venue timezone before processing
-3. **Frontend**: Display all times in venue/local timezone
-4. **Analytics**: Aggregate data using venue timezone
-
-## Implementation Plan
-
-### Phase 1: Add Timezone to Venues
-
-**Database Migration**:
-```sql
--- Add timezone column to venues (default to South Africa for existing venues)
-ALTER TABLE venues ADD COLUMN IF NOT EXISTS timezone TEXT DEFAULT 'Africa/Johannesburg';
-
--- Add comment for documentation
-COMMENT ON COLUMN venues.timezone IS 'IANA timezone identifier for venue location';
-```
-
-**Update Merchant Settings UI**:
-Add timezone selector in `src/components/merchant/MerchantSettings.tsx`:
-```tsx
-<Select value={timezone} onValueChange={setTimezone}>
-  <SelectItem value="Africa/Johannesburg">South Africa (SAST)</SelectItem>
-  <SelectItem value="Africa/Lagos">West Africa (WAT)</SelectItem>
-  <SelectItem value="Europe/London">UK (GMT/BST)</SelectItem>
-  {/* More common timezones */}
-</Select>
-```
-
-### Phase 2: Fix Database Trigger Functions
-
-Update `track_order_analytics()` to use venue timezone:
-
-```sql
-CREATE OR REPLACE FUNCTION public.track_order_analytics()
-RETURNS trigger
-LANGUAGE plpgsql
-SECURITY DEFINER
-SET search_path TO 'public'
-AS $function$
-DECLARE
-  v_items_count INTEGER;
-  v_quoted_time INTEGER;
-  v_venue_timezone TEXT;
-  v_local_timestamp TIMESTAMPTZ;
-BEGIN
-  -- Get venue timezone
-  SELECT COALESCE(timezone, 'Africa/Johannesburg') INTO v_venue_timezone
-  FROM venues WHERE id = NEW.venue_id;
+Patron selects: Monday + 01:00
+Code does:
+  const reservationDateTime = new Date(reservationDate); // Monday midnight
+  reservationDateTime.setHours(1, 0, 0, 0);             // → Monday 1:00 AM  ← WRONG!
   
-  -- Convert to venue local time for analytics
-  v_local_timestamp := NEW.created_at AT TIME ZONE v_venue_timezone;
-  
-  -- Count items
-  v_items_count := jsonb_array_length(COALESCE(NEW.items, '[]'::jsonb));
-  
-  IF TG_OP = 'INSERT' AND NEW.status != 'rejected' THEN
-    IF NEW.eta IS NOT NULL THEN
-      v_quoted_time := EXTRACT(EPOCH FROM (NEW.eta - NEW.created_at))::INTEGER / 60;
-    ELSE
-      v_quoted_time := 15;
-    END IF;
-    
-    INSERT INTO public.order_analytics (
-      venue_id, order_id, placed_at, quoted_prep_time,
-      day_of_week, hour_of_day, items_count
-    ) VALUES (
-      NEW.venue_id, NEW.id, NEW.created_at, v_quoted_time,
-      EXTRACT(DOW FROM v_local_timestamp)::INTEGER,   -- Use LOCAL time
-      EXTRACT(HOUR FROM v_local_timestamp)::INTEGER,  -- Use LOCAL time
-      v_items_count
-    );
-  END IF;
-  
-  -- ... rest of function
-END;
-$function$
+Should be:                                               // → Tuesday 1:00 AM ← CORRECT
 ```
 
-Apply similar fix to `track_waitlist_analytics()`.
+`01:00` in an overnight context means 1 AM on **Tuesday** (the next calendar day), but the code puts it at 1 AM on **Monday** — which is 15 hours in the past relative to a 4 PM opening. The reservation is immediately "passed" the moment it's created.
 
-### Phase 3: Fix Edge Functions
+## Proof from the Database
 
-**Create shared timezone utility**:
+Looking at actual reservation data: reservations with `06:15:00+00` UTC correspond to 8:15 AM SAST morning slots — these are regular morning bookings. But for overnight venues, slots like `00:15`, `01:00` must add one day to be correct.
+
+## Two Places to Fix
+
+### Fix 1 — `src/components/TableReadyFlow.tsx` (handleJoinWaitlist)
+
+The `reservationDateTime` construction at lines 778-784 needs to detect if the selected time is an overnight slot (time < opening time of that day) and add one calendar day.
+
+**Current code:**
 ```typescript
-// supabase/functions/_shared/timezone.ts
-export function getVenueLocalTime(utcTime: Date, timezone: string): Date {
-  // Convert UTC to venue local time
-  return new Date(utcTime.toLocaleString('en-US', { timeZone: timezone }));
-}
-
-export function getVenueLocalHour(utcTime: Date, timezone: string): number {
-  const local = getVenueLocalTime(utcTime, timezone);
-  return local.getHours();
-}
-
-export function getVenueLocalDayOfWeek(utcTime: Date, timezone: string): number {
-  const local = getVenueLocalTime(utcTime, timezone);
-  return local.getDay();
-}
+if (bookingType === "later" && reservationDate && reservationTime) {
+  const [hours, minutes] = reservationTime.split(':').map(Number);
+  const reservationDateTime = new Date(reservationDate);
+  reservationDateTime.setHours(hours, minutes, 0, 0);
 ```
 
-**Update calculate-order-eta**:
+**Fixed code:**
 ```typescript
-// Fetch venue with timezone
-const { data: venue } = await supabase
-  .from('venues')
-  .select('settings, timezone')
-  .eq('id', venue_id)
-  .single();
+if (bookingType === "later" && reservationDate && reservationTime) {
+  const [hours, minutes] = reservationTime.split(':').map(Number);
+  const reservationDateTime = new Date(reservationDate);
+  reservationDateTime.setHours(hours, minutes, 0, 0);
 
-const timezone = venue?.timezone || 'Africa/Johannesburg';
-const now = new Date();
-const dayOfWeek = getVenueLocalDayOfWeek(now, timezone);
-const hourOfDay = getVenueLocalHour(now, timezone);
+  // Fix for overnight hours: if the venue has overnight hours and the selected
+  // time is in the "early morning" portion (i.e., time < opening time), 
+  // it actually belongs to the NEXT calendar day.
+  const businessHours = selectedVenueData?.settings?.business_hours;
+  const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  const dayKey = dayNames[reservationDate.getDay()];
+  const dayHours = businessHours?.[dayKey];
+  
+  if (dayHours?.is_overnight && dayHours.open) {
+    const [openH, openM] = dayHours.open.split(':').map(Number);
+    const slotTotalMinutes = hours * 60 + minutes;
+    const openTotalMinutes = openH * 60 + openM;
+    // If slot time is before the opening time, it's an overnight slot (next calendar day)
+    if (slotTotalMinutes < openTotalMinutes) {
+      reservationDateTime.setDate(reservationDateTime.getDate() + 1);
+    }
+  }
 ```
 
-**Update calculate-waitlist-eta** with same pattern.
+### Fix 2 — `src/components/TableReadyFlow.tsx` (checkAvailability effect)
 
-### Phase 4: Fix Analytics Edge Functions
+The same overnight correction must be applied when constructing the ISO timestamps for the `check-time-slot-availability` edge function (lines 576-584). Currently:
 
-**Update get-venue-analytics**:
 ```typescript
-// When building hourly distribution, use venue timezone
-const venueTimezone = venue?.timezone || 'Africa/Johannesburg';
-
-const hourlyOrders = Array(24).fill(0);
-orderAnalytics?.forEach(o => {
-  // Convert placed_at (stored as UTC) to venue local hour
-  const localHour = getVenueLocalHour(new Date(o.placed_at), venueTimezone);
-  hourlyOrders[localHour] = (hourlyOrders[localHour] || 0) + 1;
+const timeSlotsWithISO = timeSlots.map(time => {
+  const [hours, minutes] = time.split(':').map(Number);
+  const slotDate = new Date(reservationDate);
+  slotDate.setHours(hours, minutes, 0, 0);
+  return { time, iso: slotDate.toISOString() };
 });
 ```
 
-**Update get-venue-efficiency-analytics** with same pattern.
+This has the same bug — overnight slots get the wrong date. Fix:
 
-### Phase 5: Frontend Display Consistency
-
-**Create timezone display utility**:
 ```typescript
-// src/utils/timezone.ts
-export function formatTimeInVenueTimezone(
-  isoTimestamp: string,
-  venueTimezone: string,
-  format: 'time' | 'datetime' | 'date' = 'datetime'
-): string {
-  const date = new Date(isoTimestamp);
-  const options: Intl.DateTimeFormatOptions = { timeZone: venueTimezone };
-  
-  switch (format) {
-    case 'time':
-      return date.toLocaleTimeString('en-ZA', { ...options, hour: '2-digit', minute: '2-digit' });
-    case 'date':
-      return date.toLocaleDateString('en-ZA', options);
-    default:
-      return date.toLocaleString('en-ZA', options);
+const businessHours = selectedVenueData?.settings?.business_hours;
+const dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+const dayKey = dayNames[reservationDate.getDay()];
+const dayHours = businessHours?.[dayKey];
+const openingHour = dayHours?.is_overnight && dayHours.open
+  ? parseInt(dayHours.open.split(':')[0], 10) * 60 + parseInt(dayHours.open.split(':')[1], 10)
+  : null;
+
+const timeSlotsWithISO = timeSlots.map(time => {
+  const [hours, minutes] = time.split(':').map(Number);
+  const slotDate = new Date(reservationDate);
+  slotDate.setHours(hours, minutes, 0, 0);
+  // Overnight correction: early-morning slots belong to next calendar day
+  if (openingHour !== null && (hours * 60 + minutes) < openingHour) {
+    slotDate.setDate(slotDate.getDate() + 1);
   }
-}
+  return { time, iso: slotDate.toISOString() };
+});
 ```
 
-Use this utility in:
-- Merchant dashboard time displays
-- Patron order/waitlist ETA displays
-- Analytics charts (hourly labels)
-- Export data formatting
+### Fix 3 — `src/utils/businessHours.ts` (getAvailableReservationTimes display)
 
-## Files to Create/Modify
+The `isToday` check on line 1855 in `TableReadyFlow.tsx` uses `reservationDate?.toDateString()`. For an overnight venue, early-morning slots shown on "today's" date selection actually fire at "tomorrow" midnight — this is a display-only edge case that is acceptable and does not need a fix (the UI shows the correct date; only the submitted time needs correction).
 
-| File | Action | Purpose |
-|------|--------|---------|
-| Database migration | Create | Add `timezone` column to venues |
-| `track_order_analytics()` | Modify | Use venue timezone for hour/day extraction |
-| `track_waitlist_analytics()` | Modify | Use venue timezone for hour/day extraction |
-| `supabase/functions/_shared/timezone.ts` | Create | Shared timezone utilities |
-| `supabase/functions/calculate-order-eta/index.ts` | Modify | Use venue timezone |
-| `supabase/functions/calculate-waitlist-eta/index.ts` | Modify | Use venue timezone |
-| `supabase/functions/get-venue-analytics/index.ts` | Modify | Use venue timezone for hourly aggregation |
-| `supabase/functions/get-venue-efficiency-analytics/index.ts` | Modify | Use venue timezone |
-| `src/utils/timezone.ts` | Create | Frontend timezone display utilities |
-| `src/components/merchant/MerchantSettings.tsx` | Modify | Add timezone selector |
+However, the `getAvailableReservationTimes` function needs to stop generating overnight early-morning slots on the "today" date picker when those overnight slots are actually in the past. Currently, if a venue's overnight hours go until 2 AM and it is currently 11 PM, the function correctly prunes past slots via `minimumLeadTimeMinutes`. But if it's 1 PM and the venue opens at 4 PM with overnight close at 2 AM, the overnight slots (00:00–01:30) for "today" should be shown but labelled as belonging to the next morning — which is already handled by the fix in Fix 1 and Fix 2 (the date is corrected before submission).
 
-## Benefits
+## Flow After Fix
 
-1. **Accurate Peak Hour Analytics**: 6 PM rush hour shows correctly as 18:00, not 16:00
-2. **Correct ETA Predictions**: Historical data queried by matching local time conditions
-3. **Consistent User Experience**: Patrons and merchants see times in their local timezone
-4. **Future Multi-Region Support**: Each venue can have its own timezone
+```
+Patron selects:  Monday + 01:00 (overnight venue, closes Tue 2 AM)
+                  ↓
+reservationDateTime = new Date(Monday)   // Monday midnight
+.setHours(1, 0, 0, 0)                   // → Monday 1:00 AM (local)
+dayHours.is_overnight = true
+slotMinutes (60) < openMinutes (16*60)  // TRUE → overnight slot
+.setDate(date + 1)                      // → Tuesday 1:00 AM (local) ✓
+.toISOString()                          // → "2026-02-17T23:00:00Z" (UTC) ✓
+```
 
-## Default Timezone Strategy
+## Files to Modify
 
-For simplicity and the stated use case (99% same timezone):
-- Default to `Africa/Johannesburg` for existing venues
-- New venues inherit default but can be changed
-- All times displayed using venue timezone
+| File | Lines | Change |
+|------|-------|--------|
+| `src/components/TableReadyFlow.tsx` | ~778–784 | Add overnight day-correction when building `reservationDateTime` in `handleJoinWaitlist` |
+| `src/components/TableReadyFlow.tsx` | ~576–584 | Add same overnight day-correction in the `checkAvailability` effect's ISO timestamp construction |
 
-## Testing Checklist
+## No Database or Edge Function Changes Needed
 
-1. Create an order at 6 PM local and verify analytics show hour 18
-2. Check that hourly distribution chart shows correct peak times
-3. Verify ETA calculations use correct local hour for historical matching
-4. Confirm reservation time slots display correctly across timezone boundaries
-5. Test exports show local times, not UTC
-
+The storage format is correct (UTC ISO strings). The query in `Index.tsx` line 254 is also correct — the `status.in.(waiting,...)` condition ensures all active reservations show regardless of time, so filtering is not the issue. The sole bug is in how the local time string `"01:00"` gets converted to a JavaScript `Date` without accounting for which calendar day that time belongs to in an overnight schedule.
