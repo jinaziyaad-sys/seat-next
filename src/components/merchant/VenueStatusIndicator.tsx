@@ -111,9 +111,9 @@ export function VenueStatusIndicator({ venueId, settings }: VenueStatusIndicator
       const businessHours: BusinessHours = settings.business_hours || {};
       const holidayClosures: HolidayClosure[] = settings.holiday_closures || [];
       const gracePeriods = {
-        last_reservation: settings.last_reservation_before_close || 0,
-        last_order: settings.last_order_before_close || 15,
-        last_waitlist_join: settings.last_waitlist_before_close || 30,
+        last_reservation: settings.grace_periods?.last_reservation ?? 0,
+        last_order: settings.grace_periods?.last_order ?? 15,
+        last_waitlist_join: settings.grace_periods?.last_waitlist_join ?? 30,
       };
 
       const status = checkVenueStatus(businessHours, holidayClosures, gracePeriods, 'waitlist');
