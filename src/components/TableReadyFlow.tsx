@@ -573,10 +573,23 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       
       // Convert time slots to ISO timestamps to fix timezone mismatch
       // The edge function was parsing local time strings as UTC, causing wrong availability checks
+      // Also apply overnight correction: early-morning slots (before opening time) belong to the NEXT calendar day
+      const _bizHours = selectedVenueData?.settings?.business_hours as Record<string, { open?: string; close?: string; is_overnight?: boolean; is_closed?: boolean }> | undefined;
+      const _dayNames = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+      const _dayKey = _dayNames[reservationDate.getDay()];
+      const _dayHours = _bizHours?.[_dayKey];
+      const _openingMinutes = _dayHours?.is_overnight && _dayHours.open
+        ? parseInt(_dayHours.open.split(':')[0], 10) * 60 + parseInt(_dayHours.open.split(':')[1] ?? '0', 10)
+        : null;
+
       const timeSlotsWithISO = timeSlots.map(time => {
         const [hours, minutes] = time.split(':').map(Number);
         const slotDate = new Date(reservationDate);
         slotDate.setHours(hours, minutes, 0, 0);
+        // Overnight correction: early-morning slots belong to next calendar day
+        if (_openingMinutes !== null && (hours * 60 + minutes) < _openingMinutes) {
+          slotDate.setDate(slotDate.getDate() + 1);
+        }
         return {
           time: time,  // Keep original for display/keying
           iso: slotDate.toISOString()  // Correct UTC time for database query
@@ -779,6 +792,20 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
         const [hours, minutes] = reservationTime.split(':').map(Number);
         const reservationDateTime = new Date(reservationDate);
         reservationDateTime.setHours(hours, minutes, 0, 0);
+
+        // Overnight correction: early-morning slots (before opening time) belong to the NEXT calendar day
+        const _bizHoursJoin = selectedVenueData?.settings?.business_hours as Record<string, { open?: string; is_overnight?: boolean }> | undefined;
+        const _dayNamesJoin = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+        const _dayKeyJoin = _dayNamesJoin[reservationDate.getDay()];
+        const _dayHoursJoin = _bizHoursJoin?.[_dayKeyJoin];
+        if (_dayHoursJoin?.is_overnight && _dayHoursJoin.open) {
+          const [openH, openM] = _dayHoursJoin.open.split(':').map(Number);
+          const slotTotalMinutes = hours * 60 + minutes;
+          const openTotalMinutes = openH * 60 + (openM ?? 0);
+          if (slotTotalMinutes < openTotalMinutes) {
+            reservationDateTime.setDate(reservationDateTime.getDate() + 1);
+          }
+        }
 
         // Check for existing reservations (duplicate prevention)
         const bufferMinutes = 30;
