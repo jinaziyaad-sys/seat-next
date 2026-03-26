@@ -445,54 +445,63 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
         {/* Location bar */}
         <div className="px-4 pb-3 space-y-2">
           {showLocationSearch ? (
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search a city or address..."
-                  value={locationQuery}
-                  onChange={(e) => setLocationQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleLocationSearch()}
-                  className="pl-9 pr-10"
-                  autoFocus
-                />
-                {searchingLocation && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                )}
-              </div>
-              <Button variant="ghost" size="icon" className="shrink-0" onClick={() => { setShowLocationSearch(false); setLocationQuery(""); }}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-          ) : null}
-
-          {showLocationSearch && (
-            <div className="rounded-lg border border-border bg-card overflow-hidden">
-              {locationSuggestions.length > 0 ? (
-                locationSuggestions.map((suggestion) => (
-                  <button
-                    key={`${suggestion.label}-${suggestion.lat}-${suggestion.lng}`}
-                    type="button"
-                    onClick={() => handleLocationSearch(suggestion)}
-                    className="flex w-full items-start gap-3 border-b border-border px-3 py-3 text-left transition-colors hover:bg-muted/50 last:border-b-0"
-                  >
-                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-foreground">{suggestion.label}</p>
-                      {suggestion.precision && (
-                        <p className="text-xs capitalize text-muted-foreground">
-                          {suggestion.precision.replace("_", " ")}
-                        </p>
-                      )}
-                    </div>
-                  </button>
-                ))
-              ) : locationQuery.trim().length >= 2 && !searchingLocation ? (
-                <div className="px-3 py-4 text-sm text-muted-foreground">
-                  No locations found. Try a nearby city, suburb, or full address.
+            <>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search a city or address..."
+                    value={locationQuery}
+                    onChange={(e) => setLocationQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleLocationSearch()}
+                    className="pl-9 pr-10"
+                    autoFocus
+                  />
+                  {searchingLocation && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
                 </div>
-              ) : null}
-            </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => {
+                    setShowLocationSearch(false);
+                    setLocationQuery("");
+                    setLocationSuggestions([]);
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+
+              <div className="overflow-hidden rounded-lg border border-border bg-card">
+                {locationSuggestions.length > 0 ? (
+                  locationSuggestions.map((suggestion) => (
+                    <button
+                      key={`${suggestion.label}-${suggestion.lat}-${suggestion.lng}`}
+                      type="button"
+                      onClick={() => handleLocationSearch(suggestion)}
+                      className="flex w-full items-start gap-3 border-b border-border px-3 py-3 text-left transition-colors hover:bg-muted/50 last:border-b-0"
+                    >
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{suggestion.label}</p>
+                        {suggestion.precision && (
+                          <p className="text-xs capitalize text-muted-foreground">
+                            {suggestion.precision.replace("_", " ")}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  ))
+                ) : locationQuery.trim().length >= 2 && !searchingLocation ? (
+                  <div className="px-3 py-4 text-sm text-muted-foreground">
+                    No locations found. Try a nearby city, suburb, or full address.
+                  </div>
+                ) : null}
+              </div>
+            </>
           ) : (
             <div className="flex items-center gap-2 text-sm">
               <Navigation className="h-4 w-4 text-primary shrink-0" />
