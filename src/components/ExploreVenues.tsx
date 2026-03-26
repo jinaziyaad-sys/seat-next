@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { VenueLogo } from "@/components/VenueLogo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,6 +48,13 @@ interface VenueRecommendation {
   address?: string;
 }
 
+interface LocationSuggestion {
+  lat: number;
+  lng: number;
+  label: string;
+  precision?: string;
+}
+
 const FILTER_OPTIONS = [
   { id: "halaal", label: "Halaal", icon: "🕌" },
   { id: "vegetarian", label: "Vegetarian", icon: "🥬" },
@@ -81,6 +88,7 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
   const [showLocationSearch, setShowLocationSearch] = useState(false);
   const [locationQuery, setLocationQuery] = useState("");
   const [searchingLocation, setSearchingLocation] = useState(false);
+  const [locationSuggestions, setLocationSuggestions] = useState<LocationSuggestion[]>([]);
   
   // Messenger state for venue inquiries
   const [messengerOpen, setMessengerOpen] = useState(false);
@@ -88,7 +96,10 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
   const [creatingInquiry, setCreatingInquiry] = useState<string | null>(null);
 
   // The active coordinates used for searching
-  const activeCoords = customLocation ? { lat: customLocation.lat, lng: customLocation.lng } : userLocation;
+  const activeCoords = useMemo(
+    () => (customLocation ? { lat: customLocation.lat, lng: customLocation.lng } : userLocation),
+    [customLocation, userLocation]
+  );
 
   useEffect(() => {
     checkAuth();
@@ -100,6 +111,67 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
       fetchRecommendations();
     }
   }, [user, activeCoords, searchRadius]);
+
+  useEffect(() => {
+    if (!showLocationSearch) {
+      setLocationSuggestions([]);
+      setSearchingLocation(false);
+      return;
+    }
+
+    const query = locationQuery.trim();
+    if (query.length < 2) {
+      setLocationSuggestions([]);
+      setSearchingLocation(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(async () => {
+      setSearchingLocation(true);
+
+      try {
+        const { data, error } = await supabase.functions.invoke("validate-address", {
+          body: { address: query, limit: 5 },
+        });
+
+        if (cancelled) return;
+
+        if (error) {
+          console.error("Location suggestions error:", error);
+          setLocationSuggestions([]);
+          return;
+        }
+
+        const suggestions = Array.isArray(data?.suggestions)
+          ? data.suggestions
+              .map((suggestion: any) => ({
+                lat: suggestion.latitude,
+                lng: suggestion.longitude,
+                label: suggestion.formatted_address,
+                precision: suggestion.precision,
+              }))
+              .filter((suggestion: LocationSuggestion) => Boolean(suggestion.label))
+          : [];
+
+        setLocationSuggestions(suggestions);
+      } catch (error) {
+        if (!cancelled) {
+          console.error("Location suggestions error:", error);
+          setLocationSuggestions([]);
+        }
+      } finally {
+        if (!cancelled) {
+          setSearchingLocation(false);
+        }
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [locationQuery, showLocationSearch]);
 
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -127,27 +199,48 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
     localStorage.setItem("explore_radius", radius.toString());
   };
 
-  const handleLocationSearch = async () => {
+  const applyCustomLocation = (location: LocationSuggestion) => {
+    setCustomLocation({
+      lat: location.lat,
+      lng: location.lng,
+      label: location.label,
+    });
+    setShowLocationSearch(false);
+    setLocationQuery("");
+    setLocationSuggestions([]);
+  };
+
+  const handleLocationSearch = async (selectedSuggestion?: LocationSuggestion) => {
+    if (selectedSuggestion) {
+      applyCustomLocation(selectedSuggestion);
+      return;
+    }
+
+    if (locationSuggestions.length > 0) {
+      applyCustomLocation(locationSuggestions[0]);
+      return;
+    }
+
     if (!locationQuery.trim()) return;
     setSearchingLocation(true);
     try {
       const { data, error } = await supabase.functions.invoke("validate-address", {
-        body: { address: locationQuery.trim() },
+        body: { address: locationQuery.trim(), limit: 5 },
       });
       if (error || !data?.valid) {
+        setLocationSuggestions([]);
         toast({
           title: "Location not found",
           description: "Try a different city or address",
           variant: "destructive",
         });
       } else {
-        setCustomLocation({
+        applyCustomLocation({
           lat: data.latitude,
           lng: data.longitude,
-          label: locationQuery.trim(),
+          label: data.formatted_address || locationQuery.trim(),
+          precision: data.precision,
         });
-        setShowLocationSearch(false);
-        setLocationQuery("");
       }
     } catch (err) {
       console.error("Location search error:", err);
@@ -160,6 +253,7 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
     setCustomLocation(null);
     setShowLocationSearch(false);
     setLocationQuery("");
+    setLocationSuggestions([]);
   };
 
   const fetchRecommendations = async () => {
@@ -351,25 +445,63 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
         {/* Location bar */}
         <div className="px-4 pb-3 space-y-2">
           {showLocationSearch ? (
-            <div className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Search a city or address..."
-                  value={locationQuery}
-                  onChange={(e) => setLocationQuery(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleLocationSearch()}
-                  className="pl-9 pr-10"
-                  autoFocus
-                />
-                {searchingLocation && (
-                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-                )}
+            <>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search a city or address..."
+                    value={locationQuery}
+                    onChange={(e) => setLocationQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleLocationSearch()}
+                    className="pl-9 pr-10"
+                    autoFocus
+                  />
+                  {searchingLocation && (
+                    <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                  )}
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0"
+                  onClick={() => {
+                    setShowLocationSearch(false);
+                    setLocationQuery("");
+                    setLocationSuggestions([]);
+                  }}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
               </div>
-              <Button variant="ghost" size="icon" className="shrink-0" onClick={() => { setShowLocationSearch(false); setLocationQuery(""); }}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
+
+              <div className="overflow-hidden rounded-lg border border-border bg-card">
+                {locationSuggestions.length > 0 ? (
+                  locationSuggestions.map((suggestion) => (
+                    <button
+                      key={`${suggestion.label}-${suggestion.lat}-${suggestion.lng}`}
+                      type="button"
+                      onClick={() => handleLocationSearch(suggestion)}
+                      className="flex w-full items-start gap-3 border-b border-border px-3 py-3 text-left transition-colors hover:bg-muted/50 last:border-b-0"
+                    >
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium">{suggestion.label}</p>
+                        {suggestion.precision && (
+                          <p className="text-xs capitalize text-muted-foreground">
+                            {suggestion.precision.replace("_", " ")}
+                          </p>
+                        )}
+                      </div>
+                    </button>
+                  ))
+                ) : locationQuery.trim().length >= 2 && !searchingLocation ? (
+                  <div className="px-3 py-4 text-sm text-muted-foreground">
+                    No locations found. Try a nearby city, suburb, or full address.
+                  </div>
+                ) : null}
+              </div>
+            </>
           ) : (
             <div className="flex items-center gap-2 text-sm">
               <Navigation className="h-4 w-4 text-primary shrink-0" />
@@ -377,6 +509,10 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
                 <>
                   <span className="text-muted-foreground">Searching in:</span>
                   <span className="font-medium truncate">{customLocation.label}</span>
+                  <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setShowLocationSearch(true)}>
+                    <Pencil className="h-3 w-3 mr-1" />
+                    Change
+                  </Button>
                   <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={clearCustomLocation}>
                     <X className="h-3 w-3" />
                   </Button>

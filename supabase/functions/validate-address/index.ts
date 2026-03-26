@@ -7,7 +7,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { address } = await req.json();
+    const { address, limit } = await req.json();
+    const safeLimit = Math.min(Math.max(Number(limit) || 5, 1), 5);
 
     if (!address || typeof address !== 'string') {
       return new Response(
@@ -19,7 +20,7 @@ Deno.serve(async (req) => {
     console.log('Validating address:', address);
 
     // Call Nominatim API with enhanced parameters for better precision
-    const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=5&addressdetails=1&extratags=1`;
+    const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=${safeLimit}&addressdetails=1&extratags=1`;
     
     const response = await fetch(nominatimUrl, {
       headers: {
@@ -42,6 +43,7 @@ Deno.serve(async (req) => {
       return new Response(
         JSON.stringify({ 
           valid: false, 
+          suggestions: [],
           error: 'Address not found. Please check and try again.' 
         }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -88,6 +90,13 @@ Deno.serve(async (req) => {
     rankedResults.sort((a: any, b: any) => b.precisionScore - a.precisionScore);
     
     const bestResult = rankedResults[0];
+    const suggestions = rankedResults.slice(0, safeLimit).map((result: any) => ({
+      latitude: parseFloat(result.lat),
+      longitude: parseFloat(result.lon),
+      formatted_address: result.display_name,
+      precision: result.precisionLevel,
+      address_components: result.address,
+    }));
     
     console.log('Best result:', {
       display_name: bestResult.display_name,
@@ -104,6 +113,7 @@ Deno.serve(async (req) => {
         formatted_address: bestResult.display_name,
         precision: bestResult.precisionLevel,
         address_components: bestResult.address,
+          suggestions,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
