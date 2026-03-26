@@ -320,7 +320,7 @@ export default function DevDashboard() {
         table_configuration: []
       };
 
-      const { error } = await supabase
+      const { data: venueData, error } = await supabase
         .from("venues")
         .insert({
           name: venueName,
@@ -331,9 +331,31 @@ export default function DevDashboard() {
           latitude: validatedAddress?.latitude || null,
           longitude: validatedAddress?.longitude || null,
           settings: DEFAULT_VENUE_SETTINGS
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
+
+      // Upload logo if provided
+      if (logoFile && venueData?.id) {
+        const ext = logoFile.name.split('.').pop();
+        const filePath = `${venueData.id}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('venue-logos')
+          .upload(filePath, logoFile, { upsert: true });
+        
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from('venue-logos')
+            .getPublicUrl(filePath);
+          
+          await supabase
+            .from('venues')
+            .update({ logo_url: urlData.publicUrl })
+            .eq('id', venueData.id);
+        }
+      }
 
       toast({
         title: "Success!",
@@ -347,6 +369,8 @@ export default function DevDashboard() {
       setServiceTypes(["food_ready", "table_ready"]);
       setValidatedAddress(null);
       setShowCreateMap(false);
+      setLogoFile(null);
+      setLogoPreview(null);
       fetchVenues();
     } catch (error: any) {
       toast({
