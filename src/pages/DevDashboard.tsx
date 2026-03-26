@@ -1313,6 +1313,28 @@ export default function DevDashboard() {
                             </p>
                           </div>
 
+                          {/* Logo Upload (Edit) */}
+                          <div className="space-y-2">
+                            <Label>Venue Logo</Label>
+                            <div className="flex items-center gap-4">
+                              <VenueLogo logoUrl={editLogoPreview} name={editVenueName || 'V'} size="xl" />
+                              <div className="flex-1">
+                                <Input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      setEditLogoFile(file);
+                                      setEditLogoPreview(URL.createObjectURL(file));
+                                    }
+                                  }}
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">Square image recommended</p>
+                              </div>
+                            </div>
+                          </div>
+
                           <div className="space-y-3">
                             <Label>Service Types *</Label>
                             <div className="space-y-2">
