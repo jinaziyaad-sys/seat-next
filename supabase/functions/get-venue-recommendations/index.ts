@@ -51,7 +51,7 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-    const { user_id, location, filters } = await req.json();
+    const { user_id, location, filters, radius_km } = await req.json();
 
     // 1. Fetch patron preferences if user is logged in
     let patronPreferences: PatronPreferences | null = null;
@@ -145,8 +145,18 @@ serve(async (req) => {
       return R * c;
     };
 
+    // 6b. Filter by radius if location and radius_km are provided
+    const maxRadius = radius_km && location?.lat && location?.lng ? radius_km : null;
+    const filteredByRadius = maxRadius
+      ? venueDataList.filter((venue) => {
+          if (!venue.latitude || !venue.longitude) return false;
+          const dist = calculateDistance(location.lat, location.lng, venue.latitude, venue.longitude);
+          return dist <= maxRadius;
+        })
+      : venueDataList;
+
     // 7. Score and rank venues
-    const scoredVenues = venueDataList.map((venue) => {
+    const scoredVenues = filteredByRadius.map((venue) => {
       const attributes = venue.settings?.venue_attributes;
       let score = 50; // Base score
 
