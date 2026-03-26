@@ -46,6 +46,7 @@ interface VenueRecommendation {
     gluten_free_options?: boolean;
   };
   address?: string;
+  logo_url?: string | null;
 }
 
 interface LocationSuggestion {
@@ -672,7 +673,7 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3 flex-1">
-                    <VenueLogo logoUrl={(venue as any).logo_url} name={venue.name} size="lg" />
+                    <VenueLogo logoUrl={venue.logo_url} name={venue.name} size="lg" />
                     <div>
                       <h3 className="font-semibold text-lg">{venue.name}</h3>
                     {venue.address && (
