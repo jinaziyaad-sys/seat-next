@@ -1,72 +1,93 @@
 
 
-# Fix Open/Closed & Busyness Indicators on Merchant Dashboard
+# Add Venue Logo Support
 
-## Problems Found
+## Overview
 
-### 1. Broken `is_open` Logic (Critical)
-Line 120 in `VenueStatusIndicator.tsx`:
-```typescript
-setVenueStatus({ is_open: status.is_open || status.is_on_break === false, ... });
-```
-`status.is_on_break === false` is true whenever the venue is **not** on a break — including when it's simply **closed**. So a closed venue still shows "Open". The correct logic should be:
-```typescript
-is_open: status.is_open
-```
-If the intent was "show as open when on break" (since the venue is technically open, just paused), it should be `status.is_open || status.is_on_break`, but `checkVenueStatus` already returns `is_open: false` during breaks, so the indicator should just use `status.is_open` directly, and optionally show a separate "On Break" state.
+Add the ability for developers to upload a restaurant logo when creating/editing venues. The logo will display across the patron dashboard (venue search, explore, tracking cards) and the merchant dashboard (header, venue switcher).
 
-### 2. Grace Period Skews Merchant View
-The component calls `checkVenueStatus` with `checkType: 'waitlist'`, which applies a **30-minute** grace period. This means the merchant sees "Closed" 30 minutes before actual closing time, which is misleading for the operator. The merchant dashboard should show the raw open/closed status without grace period cutoffs — grace periods are for patron-facing logic only.
+## Current State
 
-### 3. Busyness Counts Include Future Reservations
-The waitlist query counts all entries with status `waiting` or `ready` — this includes future reservations that haven't arrived yet. A reservation for 8 PM shouldn't count toward "busyness" at 2 PM. The query should filter to only current activity (walk-ins + reservations whose `reservation_time` is within a reasonable window, e.g., now ± 30 min).
+- The `venues` table has no `logo_url` column
+- Venue creation in `DevDashboard.tsx` collects name, address, phone, service types — no logo
+- No storage bucket exists for venue logos
+- Venue cards in `ExploreVenues.tsx`, `TableReadyFlow.tsx`, `FoodReadyFlow.tsx`, and `MerchantDashboard.tsx` show only text — no image
 
 ## Changes
 
-### File: `src/components/merchant/VenueStatusIndicator.tsx`
+### 1. Database Migration
 
-**Fix 1 — Open/Closed logic (line 120)**:
-Replace the broken boolean expression with just `status.is_open`. Add a separate "On Break" badge state when `status.is_on_break` is true.
+- Add `logo_url TEXT` column to `venues` table
+- Create a `venue-logos` public storage bucket
+- Add RLS policies: anyone can read, authenticated admins/super_admins can upload
 
-**Fix 2 — Remove grace period from merchant view (line 119)**:
-Pass zero grace periods so the merchant sees the actual operating status:
-```typescript
-const gracePeriods = { last_reservation: 0, last_order: 0, last_waitlist_join: 0 };
+```sql
+ALTER TABLE public.venues ADD COLUMN logo_url text;
+
+INSERT INTO storage.buckets (id, name, public) VALUES ('venue-logos', 'venue-logos', true);
+
+CREATE POLICY "Anyone can view venue logos"
+ON storage.objects FOR SELECT USING (bucket_id = 'venue-logos');
+
+CREATE POLICY "Authenticated users can upload venue logos"
+ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'venue-logos');
+
+CREATE POLICY "Authenticated users can update venue logos"
+ON storage.objects FOR UPDATE TO authenticated
+USING (bucket_id = 'venue-logos');
 ```
 
-**Fix 3 — Filter busyness to current activity (lines 60-65)**:
-Add a filter to exclude future reservations from the waitlist count. Only count entries where `reservation_time` is null (walk-ins) or `reservation_time` is within 30 minutes of now:
-```typescript
-// Active walk-ins
-const { count: walkInCount } = await supabase
-  .from('waitlist_entries')
-  .select('*', { count: 'exact', head: true })
-  .eq('venue_id', venueId)
-  .in('status', ['waiting', 'ready'])
-  .is('reservation_time', null);
+### 2. Dev Dashboard — Logo Upload on Create & Edit
 
-// Active reservations (time is within ±30 min of now)
-const windowStart = new Date(Date.now() - 30 * 60000).toISOString();
-const windowEnd = new Date(Date.now() + 30 * 60000).toISOString();
-const { count: activeResCount } = await supabase
-  .from('waitlist_entries')
-  .select('*', { count: 'exact', head: true })
-  .eq('venue_id', venueId)
-  .in('status', ['waiting', 'ready'])
-  .not('reservation_time', 'is', null)
-  .gte('reservation_time', windowStart)
-  .lte('reservation_time', windowEnd);
+**File: `src/pages/DevDashboard.tsx`**
+
+- Add a file input / image preview in the "Create Venue" form
+- On submit: upload image to `venue-logos/{venueId}.{ext}`, get public URL, save to `logo_url`
+- Same for the "Edit Venue" dialog — show current logo, allow replacement
+
+### 3. Patron-Facing Components — Display Logo
+
+**Files:**
+- `src/components/ExploreVenues.tsx` — Show logo in venue card (circular avatar, fallback to first letter of name)
+- `src/components/TableReadyFlow.tsx` — Show logo in venue list when selecting a venue
+- `src/components/FoodReadyFlow.tsx` — Show logo in venue list when selecting a venue
+- `src/pages/Index.tsx` — Show logo in active tracking cards (waitlist/order entries)
+
+Each will use the Avatar component with the logo URL and a letter-initial fallback.
+
+### 4. Merchant-Facing Components — Display Logo
+
+**Files:**
+- `src/components/Header.tsx` or `src/pages/MerchantDashboard.tsx` — Show venue logo in the merchant dashboard header
+- `src/components/merchant/VenueSwitcher.tsx` — Show logo next to venue name in the switcher dropdown
+
+### 5. Shared Logo Component
+
+Create a small reusable `VenueLogo` component:
+```tsx
+// src/components/VenueLogo.tsx
+function VenueLogo({ logoUrl, name, size = "md" }) {
+  return (
+    <Avatar className={sizeClasses[size]}>
+      <AvatarImage src={logoUrl} alt={name} />
+      <AvatarFallback>{name?.charAt(0)}</AvatarFallback>
+    </Avatar>
+  );
+}
 ```
 
-**Fix 4 — Add "On Break" badge state**:
-When `status.is_on_break` is true, show an amber "On Break" badge with the break reason and resume time in the tooltip, instead of "Closed".
+## Files Summary
 
-## Summary of Visual Changes
-
-| Current | Fixed |
-|---------|-------|
-| Shows "Open" when venue is closed | Shows "Closed" correctly |
-| Shows "Closed" 30 min before actual close | Shows "Open" until actual close time |
-| "Quiet" counts future reservations | Only counts current walk-ins + imminent reservations |
-| No break indicator | Shows "On Break" with reason + resume time |
+| File | Change |
+|------|--------|
+| Migration SQL | Add `logo_url` column, create storage bucket |
+| `src/components/VenueLogo.tsx` | New reusable logo avatar component |
+| `src/pages/DevDashboard.tsx` | Add logo upload to create/edit venue forms |
+| `src/components/ExploreVenues.tsx` | Show logo in venue cards |
+| `src/components/TableReadyFlow.tsx` | Show logo in venue selection list |
+| `src/components/FoodReadyFlow.tsx` | Show logo in venue selection list |
+| `src/pages/Index.tsx` | Show logo in tracking cards |
+| `src/pages/MerchantDashboard.tsx` | Show logo in merchant header |
+| `src/components/merchant/VenueSwitcher.tsx` | Show logo in venue switcher |
 
