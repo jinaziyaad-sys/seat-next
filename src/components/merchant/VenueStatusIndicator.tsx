@@ -132,8 +132,8 @@ export function VenueStatusIndicator({ venueId, settings }: VenueStatusIndicator
       setVenueStatus({
         is_open: status.is_open,
         is_on_break: status.is_on_break || false,
-        break_reason: status.break_reason,
-        break_resume_time: status.break_resume_time,
+        break_reason: status.current_break_reason,
+        break_resume_time: status.break_ends_at,
         message: status.message,
       });
     };
