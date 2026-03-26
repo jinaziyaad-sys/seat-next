@@ -1100,12 +1100,13 @@ export default function DevDashboard() {
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                              setLogoFile(file);
-                              setLogoPreview(URL.createObjectURL(file));
+                              setCropTarget("create");
+                              setCropImageSrc(URL.createObjectURL(file));
+                              setCropDialogOpen(true);
                             }
                           }}
                         />
-                        <p className="text-xs text-muted-foreground mt-1">Square image recommended (e.g. 200×200)</p>
+                        <p className="text-xs text-muted-foreground mt-1">Upload any image — you can crop and adjust it</p>
                       </div>
                     </div>
                   </div>
@@ -1331,12 +1332,13 @@ export default function DevDashboard() {
                                   onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
-                                      setEditLogoFile(file);
-                                      setEditLogoPreview(URL.createObjectURL(file));
+                                      setCropTarget("edit");
+                                      setCropImageSrc(URL.createObjectURL(file));
+                                      setCropDialogOpen(true);
                                     }
                                   }}
                                 />
-                                <p className="text-xs text-muted-foreground mt-1">Square image recommended</p>
+                                <p className="text-xs text-muted-foreground mt-1">Upload any image — you can crop and adjust it</p>
                               </div>
                             </div>
                           </div>
