@@ -96,6 +96,8 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
   const [messengerOpen, setMessengerOpen] = useState(false);
   const [selectedVenueForChat, setSelectedVenueForChat] = useState<{ id: string; name: string; inquiryId?: string } | null>(null);
   const [creatingInquiry, setCreatingInquiry] = useState<string | null>(null);
+  const [directSearchResults, setDirectSearchResults] = useState<VenueRecommendation[]>([]);
+  const [searchingVenues, setSearchingVenues] = useState(false);
 
   // The active coordinates used for searching
   const activeCoords = useMemo(
@@ -368,6 +370,64 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
     }
   };
 
+  // Direct venue name search when user types a query
+  useEffect(() => {
+    const query = searchQuery.trim();
+    if (query.length < 2) {
+      setDirectSearchResults([]);
+      setSearchingVenues(false);
+      return;
+    }
+
+    let cancelled = false;
+    const timeoutId = window.setTimeout(async () => {
+      setSearchingVenues(true);
+      try {
+        const { data: venues, error } = await supabase
+          .from("venues")
+          .select("id, name, address, display_address, latitude, longitude, settings, logo_url")
+          .ilike("name", `%${query}%`)
+          .limit(10);
+
+        if (cancelled || error) return;
+
+        // Convert to VenueRecommendation format, excluding already-recommended venues
+        const existingIds = new Set(recommendations.map((r) => r.venue_id));
+        const extras: VenueRecommendation[] = (venues || [])
+          .filter((v) => !existingIds.has(v.id))
+          .map((v) => {
+            const settings = v.settings as any;
+            const attrs = settings?.venue_attributes || {};
+            return {
+              venue_id: v.id,
+              name: v.name,
+              match_score: 0,
+              busyness: "quiet" as const,
+              avg_rating: 0,
+              wait_estimate: "",
+              distance_km: null,
+              ai_reason: "",
+              cuisine_types: attrs.cuisine_types || [],
+              dietary_certifications: attrs.dietary_certifications || {},
+              address: v.display_address || v.address || undefined,
+              logo_url: v.logo_url,
+            };
+          });
+
+        setDirectSearchResults(extras);
+      } catch (err) {
+        console.error("Direct search error:", err);
+      } finally {
+        if (!cancelled) setSearchingVenues(false);
+      }
+    }, 300);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timeoutId);
+    };
+  }, [searchQuery, recommendations]);
+
   const filteredRecommendations = recommendations.filter((venue) => {
     // Search filter
     if (searchQuery) {
@@ -389,6 +449,11 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
 
     return true;
   });
+
+  // Merge direct search results with filtered recommendations
+  const allDisplayedVenues = searchQuery.trim().length >= 2
+    ? [...filteredRecommendations, ...directSearchResults]
+    : filteredRecommendations;
 
   const getBusynessColor = (busyness: string) => {
     switch (busyness) {
@@ -628,7 +693,7 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
               </CardContent>
             </Card>
           ))
-        ) : filteredRecommendations.length === 0 ? (
+        ) : allDisplayedVenues.length === 0 ? (
           <div className="text-center py-12 space-y-3">
             <MapPin className="h-10 w-10 text-muted-foreground mx-auto" />
             <p className="text-muted-foreground font-medium">
@@ -664,7 +729,7 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
             )}
           </div>
         ) : (
-          filteredRecommendations.map((venue) => (
+          allDisplayedVenues.map((venue) => (
             <Card 
               key={venue.venue_id}
               className="shadow-card cursor-pointer transition-all hover:shadow-floating hover:scale-[1.01] active:scale-[0.99] relative"
