@@ -348,6 +348,73 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
           </div>
         </div>
 
+        {/* Location bar */}
+        <div className="px-4 pb-3 space-y-2">
+          {showLocationSearch ? (
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search a city or address..."
+                  value={locationQuery}
+                  onChange={(e) => setLocationQuery(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleLocationSearch()}
+                  className="pl-9 pr-10"
+                  autoFocus
+                />
+                {searchingLocation && (
+                  <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+                )}
+              </div>
+              <Button variant="ghost" size="icon" className="shrink-0" onClick={() => { setShowLocationSearch(false); setLocationQuery(""); }}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-sm">
+              <Navigation className="h-4 w-4 text-primary shrink-0" />
+              {customLocation ? (
+                <>
+                  <span className="text-muted-foreground">Searching in:</span>
+                  <span className="font-medium truncate">{customLocation.label}</span>
+                  <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={clearCustomLocation}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <span className="text-muted-foreground">
+                    {userLocation ? "Using your location" : "Location unavailable"}
+                  </span>
+                  <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setShowLocationSearch(true)}>
+                    <Pencil className="h-3 w-3 mr-1" />
+                    Change
+                  </Button>
+                </>
+              )}
+            </div>
+          )}
+
+          {/* Radius chips */}
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-muted-foreground">Radius:</span>
+            {RADIUS_OPTIONS.map((r) => (
+              <button
+                key={r}
+                onClick={() => handleRadiusChange(r)}
+                className={cn(
+                  "px-2.5 py-1 rounded-full text-xs font-medium transition-all border",
+                  searchRadius === r
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "bg-muted/50 border-border hover:border-primary/50"
+                )}
+              >
+                {r}km
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Filters */}
         <div className="px-4 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
           {FILTER_OPTIONS.map((filter) => {
