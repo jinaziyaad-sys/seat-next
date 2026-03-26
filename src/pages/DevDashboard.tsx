@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus } from "lucide-react";
+import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus, Upload } from "lucide-react";
+import { VenueLogo } from "@/components/VenueLogo";
 import {
   Dialog,
   DialogContent,
@@ -53,6 +54,7 @@ interface Venue {
   staff_count?: number;
   latitude?: number | null;
   longitude?: number | null;
+  logo_url?: string | null;
 }
 
 // Validation schema for venue editing
@@ -119,6 +121,10 @@ export default function DevDashboard() {
   } | null>(null);
   const [quickAssignVenueId, setQuickAssignVenueId] = useState("");
   const [quickAssignRole, setQuickAssignRole] = useState<"admin" | "staff">("admin");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [editLogoFile, setEditLogoFile] = useState<File | null>(null);
+  const [editLogoPreview, setEditLogoPreview] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -314,7 +320,7 @@ export default function DevDashboard() {
         table_configuration: []
       };
 
-      const { error } = await supabase
+      const { data: venueData, error } = await supabase
         .from("venues")
         .insert({
           name: venueName,
@@ -325,9 +331,31 @@ export default function DevDashboard() {
           latitude: validatedAddress?.latitude || null,
           longitude: validatedAddress?.longitude || null,
           settings: DEFAULT_VENUE_SETTINGS
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
+
+      // Upload logo if provided
+      if (logoFile && venueData?.id) {
+        const ext = logoFile.name.split('.').pop();
+        const filePath = `${venueData.id}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('venue-logos')
+          .upload(filePath, logoFile, { upsert: true });
+        
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from('venue-logos')
+            .getPublicUrl(filePath);
+          
+          await supabase
+            .from('venues')
+            .update({ logo_url: urlData.publicUrl })
+            .eq('id', venueData.id);
+        }
+      }
 
       toast({
         title: "Success!",
@@ -341,6 +369,8 @@ export default function DevDashboard() {
       setServiceTypes(["food_ready", "table_ready"]);
       setValidatedAddress(null);
       setShowCreateMap(false);
+      setLogoFile(null);
+      setLogoPreview(null);
       fetchVenues();
     } catch (error: any) {
       toast({
@@ -541,6 +571,8 @@ export default function DevDashboard() {
     setEditVenueAddress(venue.address || "");
     setEditValidatedAddress(null);
     setEditingServiceTypes(venue.service_types || []);
+    setEditLogoFile(null);
+    setEditLogoPreview(venue.logo_url || null);
   };
 
   const handleValidateEditAddress = async () => {
@@ -644,6 +676,23 @@ export default function DevDashboard() {
         updateData.address = editVenueAddress.trim() || null;
       }
 
+      // Upload logo if a new file was selected
+      if (editLogoFile) {
+        const ext = editLogoFile.name.split('.').pop();
+        const filePath = `${editingVenue.id}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('venue-logos')
+          .upload(filePath, editLogoFile, { upsert: true });
+        
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from('venue-logos')
+            .getPublicUrl(filePath);
+          
+          updateData.logo_url = urlData.publicUrl;
+        }
+      }
+
       const { error } = await supabase
         .from("venues")
         .update(updateData)
@@ -675,6 +724,8 @@ export default function DevDashboard() {
     setEditingVenue(null);
     setEditValidatedAddress(null);
     setShowEditMap(false);
+    setEditLogoFile(null);
+    setEditLogoPreview(null);
   };
 
   const handleDeleteMerchant = async (userId: string, venueId: string, email: string) => {
@@ -1027,6 +1078,31 @@ export default function DevDashboard() {
                       </p>
                     )}
                   </div>
+                  {/* Logo Upload */}
+                  <div className="space-y-2">
+                    <Label>Venue Logo</Label>
+                    <div className="flex items-center gap-4">
+                      {logoPreview ? (
+                        <VenueLogo logoUrl={logoPreview} name={venueName || 'V'} size="xl" />
+                      ) : (
+                        <VenueLogo logoUrl={null} name={venueName || 'V'} size="xl" />
+                      )}
+                      <div className="flex-1">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setLogoFile(file);
+                              setLogoPreview(URL.createObjectURL(file));
+                            }
+                          }}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Square image recommended (e.g. 200×200)</p>
+                      </div>
+                    </div>
+                  </div>
                   <div className="space-y-3">
                     <Label>Service Types *</Label>
                     <div className="space-y-2">
@@ -1237,6 +1313,28 @@ export default function DevDashboard() {
                             </p>
                           </div>
 
+                          {/* Logo Upload (Edit) */}
+                          <div className="space-y-2">
+                            <Label>Venue Logo</Label>
+                            <div className="flex items-center gap-4">
+                              <VenueLogo logoUrl={editLogoPreview} name={editVenueName || 'V'} size="xl" />
+                              <div className="flex-1">
+                                <Input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      setEditLogoFile(file);
+                                      setEditLogoPreview(URL.createObjectURL(file));
+                                    }
+                                  }}
+                                />
+                                <p className="text-xs text-muted-foreground mt-1">Square image recommended</p>
+                              </div>
+                            </div>
+                          </div>
+
                           <div className="space-y-3">
                             <Label>Service Types *</Label>
                             <div className="space-y-2">
@@ -1277,7 +1375,8 @@ export default function DevDashboard() {
                         </div>
                       ) : (
                         // View Mode
-                        <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <VenueLogo logoUrl={venue.logo_url} name={venue.name} size="xl" />
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <h3 className="font-semibold text-lg">{venue.name}</h3>

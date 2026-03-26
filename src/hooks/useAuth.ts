@@ -10,6 +10,7 @@ interface UserRole {
   role: AppRole;
   venue_id: string | null;
   venue_name?: string;
+  venue_logo_url?: string | null;
 }
 
 export const useAuth = () => {
@@ -113,7 +114,7 @@ export const useMerchantAuth = () => {
       // Check user roles - fetch ALL roles for this user
       const { data: roles } = await supabase
         .from("user_roles")
-        .select("role, venue_id, venues(name)")
+        .select("role, venue_id, venues(name, logo_url)")
         .eq("user_id", user.id);
 
       if (!roles || roles.length === 0) {
@@ -154,6 +155,7 @@ export const useMerchantAuth = () => {
         role: r.role as AppRole,
         venue_id: r.venue_id,
         venue_name: (r.venues as any)?.name || "Unknown Venue",
+        venue_logo_url: (r.venues as any)?.logo_url || null,
       }));
 
       setAllVenueRoles(formattedRoles);
