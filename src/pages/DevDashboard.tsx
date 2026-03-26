@@ -350,9 +350,11 @@ export default function DevDashboard() {
             .from('venue-logos')
             .getPublicUrl(filePath);
           
+          // Add cache-buster to force fresh image load
+          const logoUrlWithCacheBuster = `${urlData.publicUrl}?t=${Date.now()}`;
           await supabase
             .from('venues')
-            .update({ logo_url: urlData.publicUrl })
+            .update({ logo_url: logoUrlWithCacheBuster })
             .eq('id', venueData.id);
         }
       }
@@ -689,7 +691,7 @@ export default function DevDashboard() {
             .from('venue-logos')
             .getPublicUrl(filePath);
           
-          updateData.logo_url = urlData.publicUrl;
+          updateData.logo_url = `${urlData.publicUrl}?t=${Date.now()}`;
         }
       }
 
