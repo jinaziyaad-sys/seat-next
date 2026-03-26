@@ -691,7 +691,7 @@ export default function DevDashboard() {
             .from('venue-logos')
             .getPublicUrl(filePath);
           
-          updateData.logo_url = urlData.publicUrl;
+          updateData.logo_url = `${urlData.publicUrl}?t=${Date.now()}`;
         }
       }
 
