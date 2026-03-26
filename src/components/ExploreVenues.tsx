@@ -89,6 +89,7 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
   const [locationQuery, setLocationQuery] = useState("");
   const [searchingLocation, setSearchingLocation] = useState(false);
   const [locationSuggestions, setLocationSuggestions] = useState<LocationSuggestion[]>([]);
+  const [locationSearchDone, setLocationSearchDone] = useState(false);
   
   // Messenger state for venue inquiries
   const [messengerOpen, setMessengerOpen] = useState(false);
@@ -123,10 +124,12 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
     if (query.length < 2) {
       setLocationSuggestions([]);
       setSearchingLocation(false);
+      setLocationSearchDone(false);
       return;
     }
 
     let cancelled = false;
+    setLocationSearchDone(false);
     const timeoutId = window.setTimeout(async () => {
       setSearchingLocation(true);
 
@@ -163,6 +166,7 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
       } finally {
         if (!cancelled) {
           setSearchingLocation(false);
+          setLocationSearchDone(true);
         }
       }
     }, 300);
@@ -495,7 +499,7 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
                       </div>
                     </button>
                   ))
-                ) : locationQuery.trim().length >= 2 && !searchingLocation ? (
+              ) : locationQuery.trim().length >= 2 && !searchingLocation && locationSearchDone ? (
                   <div className="px-3 py-4 text-sm text-muted-foreground">
                     No locations found. Try a nearby city, suburb, or full address.
                   </div>
