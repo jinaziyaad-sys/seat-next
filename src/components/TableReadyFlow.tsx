@@ -1813,6 +1813,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                           <span>Wait: {venue.waitTime}</span>
                         </div>
                       </div>
+                      </div>
                       <div className="flex flex-col items-end gap-2 shrink-0">
                         {venue.distance !== undefined && (
                           <Badge variant="secondary" className="flex items-center gap-1">
