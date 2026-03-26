@@ -169,8 +169,9 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
       const { data, error } = await supabase.functions.invoke("get-venue-recommendations", {
         body: {
           user_id: user?.id || null,
-          location: userLocation,
+          location: activeCoords,
           filters: activeFilters.length > 0 ? activeFilters : undefined,
+          radius_km: activeCoords ? searchRadius : undefined,
         },
       });
 
