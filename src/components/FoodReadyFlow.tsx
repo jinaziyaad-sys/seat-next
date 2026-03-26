@@ -886,6 +886,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
                                 <span>{venue.display_address || venue.address}</span>
                               </div>
                             )}
+                            </div>
                           </div>
                           {venue.distance !== undefined && (
                             <Badge variant="secondary" className="flex items-center gap-1 shrink-0">
