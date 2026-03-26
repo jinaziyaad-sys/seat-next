@@ -14,6 +14,7 @@ interface UserRole {
   role: AppRole;
   venue_id: string | null;
   venue_name?: string;
+  venue_logo_url?: string | null;
 }
 
 interface VenueSwitcherProps {
@@ -27,7 +28,7 @@ export const VenueSwitcher = ({ currentVenue, allVenues, onVenueChange }: VenueS
   if (allVenues.length <= 1) {
     return (
       <div className="flex items-center gap-2">
-        <Building2 className="h-5 w-5 text-muted-foreground" />
+        <VenueLogo logoUrl={currentVenue.venue_logo_url} name={currentVenue.venue_name || ''} size="md" />
         <h1 className="text-2xl font-bold text-primary">{currentVenue.venue_name}</h1>
       </div>
     );
@@ -37,7 +38,7 @@ export const VenueSwitcher = ({ currentVenue, allVenues, onVenueChange }: VenueS
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="h-auto p-2 hover:bg-accent/50 gap-2" animate={false}>
-          <Building2 className="h-5 w-5 text-muted-foreground" />
+          <VenueLogo logoUrl={currentVenue.venue_logo_url} name={currentVenue.venue_name || ''} size="md" />
           <h1 className="text-2xl font-bold text-primary">{currentVenue.venue_name}</h1>
           <ChevronDown className="h-4 w-4 text-muted-foreground" />
         </Button>
@@ -47,10 +48,10 @@ export const VenueSwitcher = ({ currentVenue, allVenues, onVenueChange }: VenueS
           <DropdownMenuItem
             key={venue.venue_id}
             onClick={() => venue.venue_id && onVenueChange(venue.venue_id)}
-            className="flex items-center justify-between cursor-pointer"
+            className="flex items-center gap-3 cursor-pointer"
           >
-            <span className={venue.venue_id === currentVenue.venue_id ? "font-semibold" : ""}>
-              {venue.venue_name}
+            <VenueLogo logoUrl={venue.venue_logo_url} name={venue.venue_name || ''} size="sm" />
+            <span className={cn("flex-1", venue.venue_id === currentVenue.venue_id ? "font-semibold" : "")}>
             </span>
             <div className="flex items-center gap-2">
               <Badge 
