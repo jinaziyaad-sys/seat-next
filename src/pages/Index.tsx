@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { VenueLogo } from "@/components/VenueLogo";
 import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon, AlertTriangle, Info, X, Wrench, MessageSquare } from "lucide-react";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { useNavigate } from "react-router-dom";
@@ -782,21 +783,17 @@ const Index = () => {
                         setActiveTab("food-ready");
                       }}
                     >
-                      <div className={cn(
-                        "w-12 h-12 rounded-full flex items-center justify-center",
-                        order.status === 'ready' ? "bg-success/20" : 
-                        order.status === 'rejected' ? "bg-destructive/20" :
-                        order.status === 'collected' ? "bg-success/20" :
-                        "bg-primary/10"
-                      )}>
-                        <UtensilsCrossed className={cn(
-                          "w-6 h-6",
-                          order.status === 'ready' ? "text-success" : 
-                          order.status === 'rejected' ? "text-destructive" :
-                          order.status === 'collected' ? "text-success" :
-                          "text-primary"
-                        )} />
-                      </div>
+                      <VenueLogo 
+                        logoUrl={order.venues?.logo_url} 
+                        name={order.venues?.name || ''} 
+                        size="lg"
+                        className={cn(
+                          order.status === 'ready' ? "ring-2 ring-success" : 
+                          order.status === 'rejected' ? "ring-2 ring-destructive" :
+                          order.status === 'collected' ? "ring-2 ring-success" :
+                          ""
+                        )}
+                      />
                       <div>
                         <span className="inline-block text-xs font-bold uppercase tracking-wider text-white bg-primary px-2 py-0.5 rounded mb-1">
                           Order
@@ -964,23 +961,18 @@ const Index = () => {
                         setActiveTab("table-ready");
                       }}
                     >
-                      <div className={cn(
-                        "w-12 h-12 rounded-full flex items-center justify-center",
-                        entry.status === 'ready' ? "bg-success/20" : 
-                        (entry.status === 'cancelled' || entry.status === 'no_show') ? "bg-destructive/20" :
-                        entry.status === 'seated' ? "bg-success/20" :
-                        isOverdue ? "bg-amber-500/20" :
-                        "bg-accent/10"
-                      )}>
-                        <Users className={cn(
-                          "w-6 h-6",
-                          entry.status === 'ready' ? "text-success" : 
-                          (entry.status === 'cancelled' || entry.status === 'no_show') ? "text-destructive" :
-                          entry.status === 'seated' ? "text-success" :
-                          isOverdue ? "text-amber-600 dark:text-amber-400" :
-                          "text-accent"
-                        )} />
-                      </div>
+                      <VenueLogo 
+                        logoUrl={entry.venues?.logo_url} 
+                        name={entry.venues?.name || ''} 
+                        size="lg"
+                        className={cn(
+                          entry.status === 'ready' ? "ring-2 ring-success" : 
+                          (entry.status === 'cancelled' || entry.status === 'no_show') ? "ring-2 ring-destructive" :
+                          entry.status === 'seated' ? "ring-2 ring-success" :
+                          isOverdue ? "ring-2 ring-amber-500" :
+                          ""
+                        )}
+                      />
                       <div>
                         <span className={cn(
                           "inline-block text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded mb-1",
