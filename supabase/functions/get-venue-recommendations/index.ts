@@ -37,6 +37,7 @@ interface VenueData {
   settings: { venue_attributes?: VenueAttributes } | null;
   waitlist_count: number;
   avg_rating: number;
+  logo_url: string | null;
 }
 
 serve(async (req) => {
