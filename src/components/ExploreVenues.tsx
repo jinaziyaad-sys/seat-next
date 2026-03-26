@@ -488,15 +488,37 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
             </Card>
           ))
         ) : filteredRecommendations.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted-foreground">No venues match your filters</p>
+          <div className="text-center py-12 space-y-3">
+            <MapPin className="h-10 w-10 text-muted-foreground mx-auto" />
+            <p className="text-muted-foreground font-medium">
+              {customLocation
+                ? `No venues found near ${customLocation.label}`
+                : recommendations.length === 0
+                  ? "No venues found in this area"
+                  : "No venues match your filters"}
+            </p>
+            <p className="text-sm text-muted-foreground">
+              {customLocation
+                ? "Try a different location or increase your search radius"
+                : recommendations.length === 0
+                  ? "Try increasing your search radius"
+                  : "Try adjusting your filters"}
+            </p>
             {activeFilters.length > 0 && (
               <Button 
                 variant="link" 
                 onClick={() => setActiveFilters([])}
-                className="mt-2"
               >
                 Clear filters
+              </Button>
+            )}
+            {searchRadius < 100 && recommendations.length === 0 && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={() => handleRadiusChange(100)}
+              >
+                Expand to 100km
               </Button>
             )}
           </div>
