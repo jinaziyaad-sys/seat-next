@@ -1,93 +1,61 @@
 
 
-# Add Venue Logo Support
+# Location-Based Venue Search with Radius & Custom Location
 
-## Overview
+## Problem
+Currently, the Explore Venues page fetches **all** venues from the database with no distance filtering. Every restaurant on the platform shows up regardless of how far away it is.
 
-Add the ability for developers to upload a restaurant logo when creating/editing venues. The logo will display across the patron dashboard (venue search, explore, tracking cards) and the merchant dashboard (header, venue switcher).
-
-## Current State
-
-- The `venues` table has no `logo_url` column
-- Venue creation in `DevDashboard.tsx` collects name, address, phone, service types — no logo
-- No storage bucket exists for venue logos
-- Venue cards in `ExploreVenues.tsx`, `TableReadyFlow.tsx`, `FoodReadyFlow.tsx`, and `MerchantDashboard.tsx` show only text — no image
+## Solution
+Add two features to the patron's Explore page:
+1. **Search radius** — a configurable distance filter (default 25km, options: 10/25/50/100km)
+2. **Custom location ("Passport" mode)** — let patrons search in a different city by typing an address/city name, geocoded via a free API
 
 ## Changes
 
-### 1. Database Migration
+### 1. Edge Function: `get-venue-recommendations/index.ts`
+- Accept new `radius_km` parameter from the request body
+- After calculating distances, **filter out** venues beyond the radius (only when location is provided)
+- If no location is provided, return all venues (current behavior)
 
-- Add `logo_url TEXT` column to `venues` table
-- Create a `venue-logos` public storage bucket
-- Add RLS policies: anyone can read, authenticated admins/super_admins can upload
+### 2. Frontend: `src/components/ExploreVenues.tsx`
+- Add state for `searchRadius` (default 25) and `customLocation` (null = use device GPS)
+- Add a **location bar** below the search input showing current location mode:
+  - "Using your location" with a pencil/edit icon, or
+  - "Searching in: Durban" with an X to clear
+- Tapping edit opens a **location search input** where the patron types a city/address
+  - Use the existing `validate-address` edge function (or a simple geocoding call) to resolve coordinates
+- Add a **radius selector** as a row of chips: `10km`, `25km`, `50km`, `100km`
+- Pass `radius_km` and the active location to `fetchRecommendations`
+- When custom location is set, pass those coords instead of GPS coords
+- Persist the patron's last-used radius in localStorage
 
-```sql
-ALTER TABLE public.venues ADD COLUMN logo_url text;
+### 3. Edge Function: `validate-address/index.ts` (reuse)
+- Already exists for address validation — check if it returns lat/lng coordinates that can be reused for the location search. If not, add a lightweight geocoding call using the Lovable AI gateway or a free geocoding service.
 
-INSERT INTO storage.buckets (id, name, public) VALUES ('venue-logos', 'venue-logos', true);
+## UI Layout (below existing search bar)
 
-CREATE POLICY "Anyone can view venue logos"
-ON storage.objects FOR SELECT USING (bucket_id = 'venue-logos');
-
-CREATE POLICY "Authenticated users can upload venue logos"
-ON storage.objects FOR INSERT TO authenticated
-WITH CHECK (bucket_id = 'venue-logos');
-
-CREATE POLICY "Authenticated users can update venue logos"
-ON storage.objects FOR UPDATE TO authenticated
-USING (bucket_id = 'venue-logos');
+```text
+┌─────────────────────────────────────────┐
+│ 📍 Using your location  [Change]        │
+│                                         │
+│ Radius: [10km] [25km●] [50km] [100km]  │
+└─────────────────────────────────────────┘
 ```
 
-### 2. Dev Dashboard — Logo Upload on Create & Edit
-
-**File: `src/pages/DevDashboard.tsx`**
-
-- Add a file input / image preview in the "Create Venue" form
-- On submit: upload image to `venue-logos/{venueId}.{ext}`, get public URL, save to `logo_url`
-- Same for the "Edit Venue" dialog — show current logo, allow replacement
-
-### 3. Patron-Facing Components — Display Logo
-
-**Files:**
-- `src/components/ExploreVenues.tsx` — Show logo in venue card (circular avatar, fallback to first letter of name)
-- `src/components/TableReadyFlow.tsx` — Show logo in venue list when selecting a venue
-- `src/components/FoodReadyFlow.tsx` — Show logo in venue list when selecting a venue
-- `src/pages/Index.tsx` — Show logo in active tracking cards (waitlist/order entries)
-
-Each will use the Avatar component with the logo URL and a letter-initial fallback.
-
-### 4. Merchant-Facing Components — Display Logo
-
-**Files:**
-- `src/components/Header.tsx` or `src/pages/MerchantDashboard.tsx` — Show venue logo in the merchant dashboard header
-- `src/components/merchant/VenueSwitcher.tsx` — Show logo next to venue name in the switcher dropdown
-
-### 5. Shared Logo Component
-
-Create a small reusable `VenueLogo` component:
-```tsx
-// src/components/VenueLogo.tsx
-function VenueLogo({ logoUrl, name, size = "md" }) {
-  return (
-    <Avatar className={sizeClasses[size]}>
-      <AvatarImage src={logoUrl} alt={name} />
-      <AvatarFallback>{name?.charAt(0)}</AvatarFallback>
-    </Avatar>
-  );
-}
+When "Change" is tapped:
+```text
+┌─────────────────────────────────────────┐
+│ 🔍 Search a city or address...    [✕]   │
+│                                         │
+│ Radius: [10km] [25km●] [50km] [100km]  │
+└─────────────────────────────────────────┘
 ```
 
 ## Files Summary
 
 | File | Change |
 |------|--------|
-| Migration SQL | Add `logo_url` column, create storage bucket |
-| `src/components/VenueLogo.tsx` | New reusable logo avatar component |
-| `src/pages/DevDashboard.tsx` | Add logo upload to create/edit venue forms |
-| `src/components/ExploreVenues.tsx` | Show logo in venue cards |
-| `src/components/TableReadyFlow.tsx` | Show logo in venue selection list |
-| `src/components/FoodReadyFlow.tsx` | Show logo in venue selection list |
-| `src/pages/Index.tsx` | Show logo in tracking cards |
-| `src/pages/MerchantDashboard.tsx` | Show logo in merchant header |
-| `src/components/merchant/VenueSwitcher.tsx` | Show logo in venue switcher |
+| `supabase/functions/get-venue-recommendations/index.ts` | Add `radius_km` param, filter venues by distance |
+| `src/components/ExploreVenues.tsx` | Add location bar, radius chips, custom location input, pass params to edge function |
+| `supabase/functions/validate-address/index.ts` | Verify it returns lat/lng (reuse for geocoding) |
 
