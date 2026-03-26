@@ -20,11 +20,12 @@ Deno.serve(async (req) => {
     console.log('Validating address:', address);
 
     // Call Nominatim API with enhanced parameters for better precision
-    const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=${safeLimit}&addressdetails=1&extratags=1&accept_language=en`;
+    const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=${safeLimit}&addressdetails=1&extratags=1`;
     
     const response = await fetch(nominatimUrl, {
       headers: {
         'User-Agent': 'VenueManagementApp/1.0', // Nominatim requires a User-Agent
+        'Accept-Language': 'en',
       },
     });
 
