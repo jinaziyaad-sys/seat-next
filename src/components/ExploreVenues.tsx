@@ -17,7 +17,10 @@ import {
   Search,
   ChevronRight,
   Loader2,
-  MessageSquare
+  MessageSquare,
+  Navigation,
+  Pencil,
+  X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -52,6 +55,8 @@ const FILTER_OPTIONS = [
   { id: "short_wait", label: "Short Wait", icon: "⚡" },
 ];
 
+const RADIUS_OPTIONS = [10, 25, 50, 100];
+
 interface ExploreVenuesProps {
   onBack: () => void;
   onSelectVenue?: (venueId: string) => void;
@@ -67,10 +72,23 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const { toast } = useToast();
   
+  // Location & radius state
+  const [searchRadius, setSearchRadius] = useState<number>(() => {
+    const saved = localStorage.getItem("explore_radius");
+    return saved ? parseInt(saved, 10) : 25;
+  });
+  const [customLocation, setCustomLocation] = useState<{ lat: number; lng: number; label: string } | null>(null);
+  const [showLocationSearch, setShowLocationSearch] = useState(false);
+  const [locationQuery, setLocationQuery] = useState("");
+  const [searchingLocation, setSearchingLocation] = useState(false);
+  
   // Messenger state for venue inquiries
   const [messengerOpen, setMessengerOpen] = useState(false);
   const [selectedVenueForChat, setSelectedVenueForChat] = useState<{ id: string; name: string; inquiryId?: string } | null>(null);
   const [creatingInquiry, setCreatingInquiry] = useState<string | null>(null);
+
+  // The active coordinates used for searching
+  const activeCoords = customLocation ? { lat: customLocation.lat, lng: customLocation.lng } : userLocation;
 
   useEffect(() => {
     checkAuth();
@@ -81,7 +99,7 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
     if (user !== undefined) {
       fetchRecommendations();
     }
-  }, [user, userLocation]);
+  }, [user, activeCoords, searchRadius]);
 
   const checkAuth = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -99,10 +117,49 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
         },
         (error) => {
           console.log("Geolocation error:", error);
-          // Continue without location
         }
       );
     }
+  };
+
+  const handleRadiusChange = (radius: number) => {
+    setSearchRadius(radius);
+    localStorage.setItem("explore_radius", radius.toString());
+  };
+
+  const handleLocationSearch = async () => {
+    if (!locationQuery.trim()) return;
+    setSearchingLocation(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("validate-address", {
+        body: { address: locationQuery.trim() },
+      });
+      if (error || !data?.valid) {
+        toast({
+          title: "Location not found",
+          description: "Try a different city or address",
+          variant: "destructive",
+        });
+      } else {
+        setCustomLocation({
+          lat: data.latitude,
+          lng: data.longitude,
+          label: locationQuery.trim(),
+        });
+        setShowLocationSearch(false);
+        setLocationQuery("");
+      }
+    } catch (err) {
+      console.error("Location search error:", err);
+    } finally {
+      setSearchingLocation(false);
+    }
+  };
+
+  const clearCustomLocation = () => {
+    setCustomLocation(null);
+    setShowLocationSearch(false);
+    setLocationQuery("");
   };
 
   const fetchRecommendations = async () => {
