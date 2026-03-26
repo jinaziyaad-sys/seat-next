@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus } from "lucide-react";
+import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus, Upload } from "lucide-react";
+import { VenueLogo } from "@/components/VenueLogo";
 import {
   Dialog,
   DialogContent,
@@ -53,6 +54,7 @@ interface Venue {
   staff_count?: number;
   latitude?: number | null;
   longitude?: number | null;
+  logo_url?: string | null;
 }
 
 // Validation schema for venue editing
