@@ -1,4 +1,5 @@
 import { ChevronDown, Building2 } from "lucide-react";
+import { VenueLogo } from "@/components/VenueLogo";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,

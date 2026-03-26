@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { VenueLogo } from "@/components/VenueLogo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -875,8 +876,10 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
                     >
                       <CardContent className="p-4">
                         <div className="flex justify-between items-start gap-3">
-                          <div className="flex flex-col gap-1 flex-1">
-                            <span className="font-medium">{venue.name}</span>
+                          <div className="flex items-center gap-3 flex-1">
+                            <VenueLogo logoUrl={(venue as any).logo_url} name={venue.name} size="md" />
+                            <div className="flex flex-col gap-1 flex-1">
+                              <span className="font-medium">{venue.name}</span>
                             {(venue.display_address || venue.address) && (
                               <div className="flex items-center gap-1 text-sm text-muted-foreground group-hover:text-accent-foreground transition-colors">
                                 <MapPin size={14} />

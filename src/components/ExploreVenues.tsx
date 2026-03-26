@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { VenueLogo } from "@/components/VenueLogo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -383,8 +384,10 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
             >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-semibold text-lg">{venue.name}</h3>
+                  <div className="flex items-center gap-3 flex-1">
+                    <VenueLogo logoUrl={(venue as any).logo_url} name={venue.name} size="lg" />
+                    <div>
+                      <h3 className="font-semibold text-lg">{venue.name}</h3>
                     {venue.address && (
                       <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
                         <MapPin className="h-3 w-3" />
