@@ -37,6 +37,7 @@ interface VenueData {
   settings: { venue_attributes?: VenueAttributes } | null;
   waitlist_count: number;
   avg_rating: number;
+  logo_url: string | null;
 }
 
 serve(async (req) => {
@@ -70,7 +71,7 @@ serve(async (req) => {
     // 2. Fetch all venues with their attributes
     const { data: venues, error: venuesError } = await supabase
       .from("venues")
-      .select("id, name, address, display_address, latitude, longitude, settings");
+      .select("id, name, address, display_address, latitude, longitude, settings, logo_url");
 
     if (venuesError) {
       throw new Error(`Failed to fetch venues: ${venuesError.message}`);
@@ -127,6 +128,7 @@ serve(async (req) => {
         settings: venue.settings as { venue_attributes?: VenueAttributes } | null,
         waitlist_count: waitlistCount,
         avg_rating: avgRating,
+        logo_url: venue.logo_url || null,
       };
     });
 
@@ -232,6 +234,7 @@ serve(async (req) => {
         cuisine_types: attributes?.cuisine_types || [],
         dietary_certifications: attributes?.dietary_certifications || {},
         address: venue.address,
+        logo_url: venue.logo_url || null,
       };
     });
 
