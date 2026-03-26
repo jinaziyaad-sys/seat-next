@@ -53,6 +53,7 @@ export const VenueSwitcher = ({ currentVenue, allVenues, onVenueChange }: VenueS
           >
             <VenueLogo logoUrl={venue.venue_logo_url} name={venue.venue_name || ''} size="sm" />
             <span className={cn("flex-1", venue.venue_id === currentVenue.venue_id ? "font-semibold" : "")}>
+              {venue.venue_name}
             </span>
             <div className="flex items-center gap-2">
               <Badge 
