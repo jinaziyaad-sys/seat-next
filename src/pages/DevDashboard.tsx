@@ -1375,7 +1375,8 @@ export default function DevDashboard() {
                         </div>
                       ) : (
                         // View Mode
-                        <div className="flex items-start justify-between gap-4">
+                        <div className="flex items-start gap-4">
+                          <VenueLogo logoUrl={venue.logo_url} name={venue.name} size="xl" />
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-2">
                               <h3 className="font-semibold text-lg">{venue.name}</h3>
