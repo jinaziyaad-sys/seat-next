@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus, Upload } from "lucide-react";
 import { VenueLogo } from "@/components/VenueLogo";
+import { LogoCropDialog } from "@/components/LogoCropDialog";
 import {
   Dialog,
   DialogContent,
@@ -125,6 +126,9 @@ export default function DevDashboard() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [editLogoFile, setEditLogoFile] = useState<File | null>(null);
   const [editLogoPreview, setEditLogoPreview] = useState<string | null>(null);
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string>("");
+  const [cropTarget, setCropTarget] = useState<"create" | "edit">("create");
   const navigate = useNavigate();
   const { toast } = useToast();
 
