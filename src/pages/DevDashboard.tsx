@@ -571,6 +571,8 @@ export default function DevDashboard() {
     setEditVenueAddress(venue.address || "");
     setEditValidatedAddress(null);
     setEditingServiceTypes(venue.service_types || []);
+    setEditLogoFile(null);
+    setEditLogoPreview(venue.logo_url || null);
   };
 
   const handleValidateEditAddress = async () => {
@@ -674,6 +676,23 @@ export default function DevDashboard() {
         updateData.address = editVenueAddress.trim() || null;
       }
 
+      // Upload logo if a new file was selected
+      if (editLogoFile) {
+        const ext = editLogoFile.name.split('.').pop();
+        const filePath = `${editingVenue.id}.${ext}`;
+        const { error: uploadError } = await supabase.storage
+          .from('venue-logos')
+          .upload(filePath, editLogoFile, { upsert: true });
+        
+        if (!uploadError) {
+          const { data: urlData } = supabase.storage
+            .from('venue-logos')
+            .getPublicUrl(filePath);
+          
+          updateData.logo_url = urlData.publicUrl;
+        }
+      }
+
       const { error } = await supabase
         .from("venues")
         .update(updateData)
@@ -705,6 +724,8 @@ export default function DevDashboard() {
     setEditingVenue(null);
     setEditValidatedAddress(null);
     setShowEditMap(false);
+    setEditLogoFile(null);
+    setEditLogoPreview(null);
   };
 
   const handleDeleteMerchant = async (userId: string, venueId: string, email: string) => {
