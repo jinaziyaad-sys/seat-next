@@ -1078,6 +1078,31 @@ export default function DevDashboard() {
                       </p>
                     )}
                   </div>
+                  {/* Logo Upload */}
+                  <div className="space-y-2">
+                    <Label>Venue Logo</Label>
+                    <div className="flex items-center gap-4">
+                      {logoPreview ? (
+                        <VenueLogo logoUrl={logoPreview} name={venueName || 'V'} size="xl" />
+                      ) : (
+                        <VenueLogo logoUrl={null} name={venueName || 'V'} size="xl" />
+                      )}
+                      <div className="flex-1">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) {
+                              setLogoFile(file);
+                              setLogoPreview(URL.createObjectURL(file));
+                            }
+                          }}
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Square image recommended (e.g. 200×200)</p>
+                      </div>
+                    </div>
+                  </div>
                   <div className="space-y-3">
                     <Label>Service Types *</Label>
                     <div className="space-y-2">
