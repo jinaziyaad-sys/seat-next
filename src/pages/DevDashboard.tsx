@@ -121,6 +121,10 @@ export default function DevDashboard() {
   } | null>(null);
   const [quickAssignVenueId, setQuickAssignVenueId] = useState("");
   const [quickAssignRole, setQuickAssignRole] = useState<"admin" | "staff">("admin");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [editLogoFile, setEditLogoFile] = useState<File | null>(null);
+  const [editLogoPreview, setEditLogoPreview] = useState<string | null>(null);
   const navigate = useNavigate();
   const { toast } = useToast();
 
