@@ -15,6 +15,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus, Upload } from "lucide-react";
 import { VenueLogo } from "@/components/VenueLogo";
+import { LogoCropDialog } from "@/components/LogoCropDialog";
 import {
   Dialog,
   DialogContent,
@@ -125,6 +126,9 @@ export default function DevDashboard() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [editLogoFile, setEditLogoFile] = useState<File | null>(null);
   const [editLogoPreview, setEditLogoPreview] = useState<string | null>(null);
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string>("");
+  const [cropTarget, setCropTarget] = useState<"create" | "edit">("create");
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -1096,12 +1100,13 @@ export default function DevDashboard() {
                           onChange={(e) => {
                             const file = e.target.files?.[0];
                             if (file) {
-                              setLogoFile(file);
-                              setLogoPreview(URL.createObjectURL(file));
+                              setCropTarget("create");
+                              setCropImageSrc(URL.createObjectURL(file));
+                              setCropDialogOpen(true);
                             }
                           }}
                         />
-                        <p className="text-xs text-muted-foreground mt-1">Square image recommended (e.g. 200×200)</p>
+                        <p className="text-xs text-muted-foreground mt-1">Upload any image — you can crop and adjust it</p>
                       </div>
                     </div>
                   </div>
@@ -1327,12 +1332,13 @@ export default function DevDashboard() {
                                   onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (file) {
-                                      setEditLogoFile(file);
-                                      setEditLogoPreview(URL.createObjectURL(file));
+                                      setCropTarget("edit");
+                                      setCropImageSrc(URL.createObjectURL(file));
+                                      setCropDialogOpen(true);
                                     }
                                   }}
                                 />
-                                <p className="text-xs text-muted-foreground mt-1">Square image recommended</p>
+                                <p className="text-xs text-muted-foreground mt-1">Upload any image — you can crop and adjust it</p>
                               </div>
                             </div>
                           </div>
@@ -1844,6 +1850,29 @@ export default function DevDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Logo Crop Dialog */}
+      <LogoCropDialog
+        open={cropDialogOpen}
+        imageSrc={cropImageSrc}
+        onClose={() => {
+          setCropDialogOpen(false);
+          setCropImageSrc("");
+        }}
+        onCropComplete={(croppedBlob) => {
+          const file = new File([croppedBlob], "logo.png", { type: "image/png" });
+          const preview = URL.createObjectURL(croppedBlob);
+          if (cropTarget === "create") {
+            setLogoFile(file);
+            setLogoPreview(preview);
+          } else {
+            setEditLogoFile(file);
+            setEditLogoPreview(preview);
+          }
+          setCropDialogOpen(false);
+          setCropImageSrc("");
+        }}
+      />
     </div>
   );
 }
