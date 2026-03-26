@@ -1850,6 +1850,29 @@ export default function DevDashboard() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Logo Crop Dialog */}
+      <LogoCropDialog
+        open={cropDialogOpen}
+        imageSrc={cropImageSrc}
+        onClose={() => {
+          setCropDialogOpen(false);
+          setCropImageSrc("");
+        }}
+        onCropComplete={(croppedBlob) => {
+          const file = new File([croppedBlob], "logo.png", { type: "image/png" });
+          const preview = URL.createObjectURL(croppedBlob);
+          if (cropTarget === "create") {
+            setLogoFile(file);
+            setLogoPreview(preview);
+          } else {
+            setEditLogoFile(file);
+            setEditLogoPreview(preview);
+          }
+          setCropDialogOpen(false);
+          setCropImageSrc("");
+        }}
+      />
     </div>
   );
 }
