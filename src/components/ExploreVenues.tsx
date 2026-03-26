@@ -182,8 +182,8 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
           description: "Failed to load recommendations",
           variant: "destructive",
         });
-      } else if (data?.recommendations) {
-        setRecommendations(data.recommendations);
+      } else {
+        setRecommendations(data?.recommendations || []);
       }
     } catch (err) {
       console.error("Error:", err);

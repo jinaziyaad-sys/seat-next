@@ -155,6 +155,13 @@ serve(async (req) => {
         })
       : venueDataList;
 
+    // Early return if no venues within radius
+    if (filteredByRadius.length === 0) {
+      return new Response(JSON.stringify({ recommendations: [] }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // 7. Score and rank venues
     const scoredVenues = filteredByRadius.map((venue) => {
       const attributes = venue.settings?.venue_attributes;
