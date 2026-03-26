@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Clock, Users, ChefHat, Circle } from 'lucide-react';
+import { Clock, Users, ChefHat, Circle, Coffee } from 'lucide-react';
 import { checkVenueStatus, BusinessHours, HolidayClosure } from '@/utils/businessHours';
 
 interface VenueStatusIndicatorProps {
@@ -19,6 +19,14 @@ interface CapacityData {
   capacityPercentage: number;
 }
 
+interface VenueStatusState {
+  is_open: boolean;
+  is_on_break: boolean;
+  break_reason?: string;
+  break_resume_time?: string;
+  message: string;
+}
+
 export function VenueStatusIndicator({ venueId, settings }: VenueStatusIndicatorProps) {
   const [capacity, setCapacity] = useState<CapacityData>({
     activeOrders: 0,
@@ -26,16 +34,14 @@ export function VenueStatusIndicator({ venueId, settings }: VenueStatusIndicator
     busynessLevel: 'low',
     capacityPercentage: 0,
   });
-  const [venueStatus, setVenueStatus] = useState<{ is_open: boolean; message: string }>({
+  const [venueStatus, setVenueStatus] = useState<VenueStatusState>({
     is_open: true,
+    is_on_break: false,
     message: '',
   });
 
-  // Calculate busyness level based on active orders and waitlist
   const calculateBusyness = (orders: number, waitlist: number): { level: BusynessLevel; percentage: number } => {
-    // Thresholds can be adjusted based on venue capacity
     const totalActive = orders + waitlist;
-    
     if (totalActive <= 3) {
       return { level: 'low', percentage: Math.min((totalActive / 10) * 100, 30) };
     } else if (totalActive <= 8) {
@@ -45,27 +51,39 @@ export function VenueStatusIndicator({ venueId, settings }: VenueStatusIndicator
     }
   };
 
-  // Fetch active counts
   useEffect(() => {
     if (!venueId) return;
 
     const fetchCounts = async () => {
-      // Fetch active orders (placed, in_prep, awaiting_verification)
+      // Active orders
       const { count: ordersCount } = await supabase
         .from('orders')
         .select('*', { count: 'exact', head: true })
         .eq('venue_id', venueId)
         .in('status', ['placed', 'in_prep', 'awaiting_verification']);
 
-      // Fetch active waitlist (waiting, ready)
-      const { count: waitlistCount } = await supabase
+      // Walk-ins (no reservation_time)
+      const { count: walkInCount } = await supabase
         .from('waitlist_entries')
         .select('*', { count: 'exact', head: true })
         .eq('venue_id', venueId)
-        .in('status', ['waiting', 'ready']);
+        .in('status', ['waiting', 'ready'])
+        .is('reservation_time', null);
+
+      // Active reservations within ±30 min window
+      const windowStart = new Date(Date.now() - 30 * 60000).toISOString();
+      const windowEnd = new Date(Date.now() + 30 * 60000).toISOString();
+      const { count: activeResCount } = await supabase
+        .from('waitlist_entries')
+        .select('*', { count: 'exact', head: true })
+        .eq('venue_id', venueId)
+        .in('status', ['waiting', 'ready'])
+        .not('reservation_time', 'is', null)
+        .gte('reservation_time', windowStart)
+        .lte('reservation_time', windowEnd);
 
       const orders = ordersCount || 0;
-      const waitlist = waitlistCount || 0;
+      const waitlist = (walkInCount || 0) + (activeResCount || 0);
       const { level, percentage } = calculateBusyness(orders, waitlist);
 
       setCapacity({
@@ -78,7 +96,6 @@ export function VenueStatusIndicator({ venueId, settings }: VenueStatusIndicator
 
     fetchCounts();
 
-    // Set up real-time subscriptions
     const ordersChannel = supabase
       .channel(`venue-orders-status-${venueId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders', filter: `venue_id=eq.${venueId}` }, () => {
@@ -93,7 +110,6 @@ export function VenueStatusIndicator({ venueId, settings }: VenueStatusIndicator
       })
       .subscribe();
 
-    // Update counts every 30 seconds as backup
     const interval = setInterval(fetchCounts, 30000);
 
     return () => {
@@ -103,73 +119,86 @@ export function VenueStatusIndicator({ venueId, settings }: VenueStatusIndicator
     };
   }, [venueId]);
 
-  // Check venue open/closed status
   useEffect(() => {
     if (!settings) return;
 
     const checkStatus = () => {
       const businessHours: BusinessHours = settings.business_hours || {};
       const holidayClosures: HolidayClosure[] = settings.holiday_closures || [];
-      const gracePeriods = {
-        last_reservation: settings.grace_periods?.last_reservation ?? 0,
-        last_order: settings.grace_periods?.last_order ?? 15,
-        last_waitlist_join: settings.grace_periods?.last_waitlist_join ?? 30,
-      };
+      // Zero grace periods for merchant view — show actual operating status
+      const gracePeriods = { last_reservation: 0, last_order: 0, last_waitlist_join: 0 };
 
       const status = checkVenueStatus(businessHours, holidayClosures, gracePeriods, 'waitlist');
-      setVenueStatus({ is_open: status.is_open || status.is_on_break === false, message: status.message });
+      setVenueStatus({
+        is_open: status.is_open,
+        is_on_break: status.is_on_break || false,
+        break_reason: status.break_reason,
+        break_resume_time: status.break_resume_time,
+        message: status.message,
+      });
     };
 
     checkStatus();
-    // Update status every minute
     const interval = setInterval(checkStatus, 60000);
-
     return () => clearInterval(interval);
   }, [settings]);
 
   const getStatusColor = (level: BusynessLevel) => {
     switch (level) {
-      case 'low':
-        return 'text-green-500';
-      case 'moderate':
-        return 'text-yellow-500';
-      case 'high':
-        return 'text-red-500';
+      case 'low': return 'text-green-500';
+      case 'moderate': return 'text-yellow-500';
+      case 'high': return 'text-red-500';
     }
   };
 
   const getStatusBgColor = (level: BusynessLevel) => {
     switch (level) {
-      case 'low':
-        return 'bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400';
-      case 'moderate':
-        return 'bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400';
-      case 'high':
-        return 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400';
+      case 'low': return 'bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400';
+      case 'moderate': return 'bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400';
+      case 'high': return 'bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400';
     }
   };
 
   const getStatusLabel = (level: BusynessLevel) => {
     switch (level) {
-      case 'low':
-        return 'Quiet';
-      case 'moderate':
-        return 'Moderate';
-      case 'high':
-        return 'Busy';
+      case 'low': return 'Quiet';
+      case 'moderate': return 'Moderate';
+      case 'high': return 'Busy';
     }
   };
 
-  return (
-    <div className="flex items-center gap-3">
-      {/* Business Hours Status */}
+  const getOpenClosedBadge = () => {
+    if (venueStatus.is_on_break) {
+      return (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Badge
+              variant="outline"
+              className="gap-1.5 cursor-help bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400"
+            >
+              <Coffee className="h-3 w-3" />
+              On Break
+            </Badge>
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            <div className="space-y-1">
+              <p className="font-medium">On Break</p>
+              {venueStatus.break_reason && <p className="text-sm">{venueStatus.break_reason}</p>}
+              {venueStatus.break_resume_time && <p className="text-sm">Resumes at {venueStatus.break_resume_time}</p>}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      );
+    }
+
+    return (
       <Tooltip>
         <TooltipTrigger asChild>
-          <Badge 
-            variant="outline" 
+          <Badge
+            variant="outline"
             className={`gap-1.5 cursor-help ${
-              venueStatus.is_open 
-                ? 'bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400' 
+              venueStatus.is_open
+                ? 'bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400'
                 : 'bg-muted border-muted-foreground/30 text-muted-foreground'
             }`}
           >
@@ -181,13 +210,18 @@ export function VenueStatusIndicator({ venueId, settings }: VenueStatusIndicator
           <p>{venueStatus.message || 'Business hours status'}</p>
         </TooltipContent>
       </Tooltip>
+    );
+  };
 
-      {/* Busyness Indicator */}
-      {venueStatus.is_open && (
+  return (
+    <div className="flex items-center gap-3">
+      {getOpenClosedBadge()}
+
+      {(venueStatus.is_open || venueStatus.is_on_break) && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <Badge 
-              variant="outline" 
+            <Badge
+              variant="outline"
               className={`gap-1.5 cursor-help ${getStatusBgColor(capacity.busynessLevel)}`}
             >
               <Circle className={`h-2 w-2 fill-current ${getStatusColor(capacity.busynessLevel)}`} />
@@ -208,7 +242,7 @@ export function VenueStatusIndicator({ venueId, settings }: VenueStatusIndicator
                 </span>
               </div>
               <div className="w-full bg-muted rounded-full h-1.5 mt-2">
-                <div 
+                <div
                   className={`h-1.5 rounded-full transition-all ${
                     capacity.busynessLevel === 'low' ? 'bg-green-500' :
                     capacity.busynessLevel === 'moderate' ? 'bg-yellow-500' : 'bg-red-500'
