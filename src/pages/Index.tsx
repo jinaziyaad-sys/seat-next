@@ -240,7 +240,7 @@ const Index = () => {
     try {
       const { data: orders } = await supabase
         .from('orders')
-        .select('*, venues(name, settings)')
+        .select('*, venues(name, settings, logo_url)')
         .eq('user_id', user.id)
         .eq('patron_dismissed', false)
         .in('status', ['awaiting_verification', 'placed', 'in_prep', 'ready', 'collected', 'rejected'])
@@ -248,7 +248,7 @@ const Index = () => {
 
       const { data: waitlist } = await supabase
         .from('waitlist_entries')
-        .select('*, venues(name, settings)')
+        .select('*, venues(name, settings, logo_url)')
         .eq('user_id', user.id)
         .eq('patron_dismissed', false)
         .or('status.in.(waiting,ready,seated,cancelled,no_show),and(reservation_type.eq.reservation,reservation_time.gte.' + new Date().toISOString() + ')')

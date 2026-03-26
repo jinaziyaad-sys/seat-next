@@ -446,7 +446,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       
       const { data, error } = await supabase
         .from("venues")
-        .select("id, name, address, display_address, service_types, settings, waitlist_preferences, latitude, longitude")
+        .select("id, name, address, display_address, service_types, settings, waitlist_preferences, latitude, longitude, logo_url")
         .contains("service_types", ["table_ready"])
         .order("name");
       

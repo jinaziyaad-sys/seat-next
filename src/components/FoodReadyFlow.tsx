@@ -303,7 +303,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
       
       const { data, error } = await supabase
         .from("venues")
-        .select("id, name, address, display_address, phone, service_types, settings, latitude, longitude")
+        .select("id, name, address, display_address, phone, service_types, settings, latitude, longitude, logo_url")
         .contains("service_types", ["food_ready"])
         .order("name");
       
