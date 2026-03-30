@@ -373,7 +373,8 @@ const MerchantDashboard = () => {
     if (hasTableReady) count++; // Waitlist tab
     if (hasReservations) count++; // Reservations tab
     if (userRole?.role === "admin") {
-      count += 3; // Staff + Settings + Loyalty always visible for admin
+      count += 2; // Staff + Settings always visible for admin
+      if (loyaltyAdminEnabled) count++; // Loyalty tab
       if (hasAnalytics) count++; // Reports tab
     }
     return Math.max(count, 1);
