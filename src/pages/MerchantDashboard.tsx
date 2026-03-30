@@ -71,6 +71,7 @@ const MerchantDashboard = () => {
   const [kitchenHasNew, setKitchenHasNew] = useState(false);
   const [waitlistHasNew, setWaitlistHasNew] = useState(false);
   const [reservationHasNew, setReservationHasNew] = useState(false);
+  const [loyaltyAdminEnabled, setLoyaltyAdminEnabled] = useState(false);
   
   // Help system state
   const [helpOpen, setHelpOpen] = useState(false);
