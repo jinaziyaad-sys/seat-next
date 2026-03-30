@@ -93,6 +93,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
           const venue = venueMap.get(l.venue_id);
           const program = programMap.get(l.venue_id);
           if (!venue || !program) return null;
+          const reward = rewardsMap.get(program.id);
           return {
             venue_id: l.venue_id,
             venue_name: venue.name,
@@ -105,6 +106,9 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
             lifetime_points: l.lifetime_points,
             active_codes: codesMap.get(l.venue_id) || [],
             admin_enabled: program.admin_enabled !== false,
+            next_reward_name: reward?.name || null,
+            next_reward_description: reward?.description || null,
+            next_reward_threshold: program.type === 'stamp_card' ? (reward?.stamps_required || program.stamp_threshold || 10) : (reward?.points_required || null),
           };
         })
         .filter(Boolean) as LoyaltyCardData[];
