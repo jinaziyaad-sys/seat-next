@@ -175,6 +175,74 @@ export type Database = {
           },
         ]
       }
+      discount_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          redeemed_at: string | null
+          redeemed_by_staff_id: string | null
+          reward_id: string | null
+          reward_name: string | null
+          status: string
+          user_id: string
+          venue_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          redeemed_at?: string | null
+          redeemed_by_staff_id?: string | null
+          reward_id?: string | null
+          reward_name?: string | null
+          status?: string
+          user_id: string
+          venue_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          redeemed_at?: string | null
+          redeemed_by_staff_id?: string | null
+          reward_id?: string | null
+          reward_name?: string | null
+          status?: string
+          user_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "discount_codes_redeemed_by_staff_id_fkey"
+            columns: ["redeemed_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_codes_reward_id_fkey"
+            columns: ["reward_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_rewards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_codes_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "discount_codes_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feature_requests: {
         Row: {
           ai_summary: string | null
@@ -222,6 +290,168 @@ export type Database = {
           votes?: number | null
         }
         Relationships: []
+      }
+      loyalty_programs: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          points_per_order: number | null
+          points_per_visit: number | null
+          stamp_threshold: number | null
+          type: string
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          points_per_order?: number | null
+          points_per_visit?: number | null
+          stamp_threshold?: number | null
+          type?: string
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          points_per_order?: number | null
+          points_per_visit?: number | null
+          stamp_threshold?: number | null
+          type?: string
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_programs_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_rewards: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          points_required: number | null
+          program_id: string
+          reward_type: string
+          stamps_required: number | null
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          points_required?: number | null
+          program_id: string
+          reward_type?: string
+          stamps_required?: number | null
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          points_required?: number | null
+          program_id?: string
+          reward_type?: string
+          stamps_required?: number | null
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_rewards_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_rewards_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_transactions: {
+        Row: {
+          created_at: string
+          id: string
+          points_delta: number | null
+          program_id: string
+          source_id: string | null
+          source_type: string | null
+          stamps_delta: number | null
+          type: string
+          user_id: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          points_delta?: number | null
+          program_id: string
+          source_id?: string | null
+          source_type?: string | null
+          stamps_delta?: number | null
+          type: string
+          user_id: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          points_delta?: number | null
+          program_id?: string
+          source_id?: string | null
+          source_type?: string | null
+          stamps_delta?: number | null
+          type?: string
+          user_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_transactions_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "loyalty_transactions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       messages: {
         Row: {
@@ -573,6 +803,67 @@ export type Database = {
           },
         ]
       }
+      patron_loyalty: {
+        Row: {
+          created_at: string
+          id: string
+          lifetime_points: number
+          lifetime_stamps: number
+          points_balance: number
+          program_id: string
+          stamps_count: number
+          updated_at: string
+          user_id: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lifetime_points?: number
+          lifetime_stamps?: number
+          points_balance?: number
+          program_id: string
+          stamps_count?: number
+          updated_at?: string
+          user_id: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lifetime_points?: number
+          lifetime_stamps?: number
+          points_balance?: number
+          program_id?: string
+          stamps_count?: number
+          updated_at?: string
+          user_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patron_loyalty_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patron_loyalty_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patron_loyalty_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patron_notification_preferences: {
         Row: {
           created_at: string
@@ -815,6 +1106,115 @@ export type Database = {
           verification_method?: string | null
         }
         Relationships: []
+      }
+      promo_campaigns: {
+        Row: {
+          amount_charged: number | null
+          banner_image_url: string | null
+          clicks_count: number
+          created_at: string
+          created_by: string | null
+          cta_link: string | null
+          cta_text: string | null
+          description: string | null
+          end_date: string | null
+          id: string
+          impressions_count: number
+          is_active: boolean
+          payment_notes: string | null
+          payment_status: string
+          placements: string[]
+          start_date: string
+          title: string
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          amount_charged?: number | null
+          banner_image_url?: string | null
+          clicks_count?: number
+          created_at?: string
+          created_by?: string | null
+          cta_link?: string | null
+          cta_text?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          impressions_count?: number
+          is_active?: boolean
+          payment_notes?: string | null
+          payment_status?: string
+          placements?: string[]
+          start_date?: string
+          title: string
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          amount_charged?: number | null
+          banner_image_url?: string | null
+          clicks_count?: number
+          created_at?: string
+          created_by?: string | null
+          cta_link?: string | null
+          cta_text?: string | null
+          description?: string | null
+          end_date?: string | null
+          id?: string
+          impressions_count?: number
+          is_active?: boolean
+          payment_notes?: string | null
+          payment_status?: string
+          placements?: string[]
+          start_date?: string
+          title?: string
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_campaigns_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      promo_impressions: {
+        Row: {
+          campaign_id: string
+          clicked: boolean
+          created_at: string
+          id: string
+          placement: string
+          user_id: string | null
+        }
+        Insert: {
+          campaign_id: string
+          clicked?: boolean
+          created_at?: string
+          id?: string
+          placement: string
+          user_id?: string | null
+        }
+        Update: {
+          campaign_id?: string
+          clicked?: boolean
+          created_at?: string
+          id?: string
+          placement?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_impressions_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "promo_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_roles: {
         Row: {
