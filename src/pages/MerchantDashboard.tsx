@@ -71,6 +71,7 @@ const MerchantDashboard = () => {
   const [kitchenHasNew, setKitchenHasNew] = useState(false);
   const [waitlistHasNew, setWaitlistHasNew] = useState(false);
   const [reservationHasNew, setReservationHasNew] = useState(false);
+  const [loyaltyAdminEnabled, setLoyaltyAdminEnabled] = useState(false);
   
   // Help system state
   const [helpOpen, setHelpOpen] = useState(false);
@@ -179,6 +180,15 @@ const MerchantDashboard = () => {
         setVenueData(data);
         setVenueServiceTypes(data.service_types || ["food_ready", "table_ready"]);
       }
+      
+      // Check if loyalty is admin-enabled for this venue
+      const { data: loyaltyData } = await supabase
+        .from("loyalty_programs")
+        .select("admin_enabled")
+        .eq("venue_id", userRole.venue_id)
+        .maybeSingle();
+      setLoyaltyAdminEnabled(loyaltyData?.admin_enabled !== false && !!loyaltyData);
+      
       setLoadingVenue(false);
     };
 
@@ -363,7 +373,8 @@ const MerchantDashboard = () => {
     if (hasTableReady) count++; // Waitlist tab
     if (hasReservations) count++; // Reservations tab
     if (userRole?.role === "admin") {
-      count += 3; // Staff + Settings + Loyalty always visible for admin
+      count += 2; // Staff + Settings always visible for admin
+      if (loyaltyAdminEnabled) count++; // Loyalty tab
       if (hasAnalytics) count++; // Reports tab
     }
     return Math.max(count, 1);
@@ -559,10 +570,12 @@ const MerchantDashboard = () => {
                     Reports
                   </TabsTrigger>
                 )}
-                <TabsTrigger value="loyalty" className="flex items-center gap-2">
-                  <Gift size={16} />
-                  Loyalty
-                </TabsTrigger>
+                {loyaltyAdminEnabled && (
+                  <TabsTrigger value="loyalty" className="flex items-center gap-2">
+                    <Gift size={16} />
+                    Loyalty
+                  </TabsTrigger>
+                )}
               </>
             )}
           </TabsList>
@@ -612,9 +625,11 @@ const MerchantDashboard = () => {
                 </TabsContent>
               )}
 
-              <TabsContent value="loyalty">
-                <LoyaltyManagement venueId={userRole.venue_id!} />
-              </TabsContent>
+              {loyaltyAdminEnabled && (
+                <TabsContent value="loyalty">
+                  <LoyaltyManagement venueId={userRole.venue_id!} />
+                </TabsContent>
+              )}
             </>
           ) : (
             <>
