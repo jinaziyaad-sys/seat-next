@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { VenueLogo } from "@/components/VenueLogo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -739,8 +739,13 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
           allDisplayedVenues.map((venue) => (
             <Card 
               key={venue.venue_id}
-              className="shadow-card cursor-pointer transition-all hover:shadow-floating hover:scale-[1.01] active:scale-[0.99] relative"
+              ref={venue.venue_id === initialVenueId ? highlightRef : undefined}
+              className={cn(
+                "shadow-card cursor-pointer transition-all hover:shadow-floating hover:scale-[1.01] active:scale-[0.99] relative",
+                venue.venue_id === initialVenueId && "ring-2 ring-primary"
+              )}
               onClick={() => onSelectVenue?.(venue.venue_id)}
+            >
             >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
