@@ -64,15 +64,25 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
 
       const venueIds = loyaltyData.map(l => l.venue_id);
       
-      const [venuesRes, programsRes, codesRes] = await Promise.all([
+      const [venuesRes, programsRes, codesRes, rewardsRes] = await Promise.all([
         supabase.from("venues").select("id, name, logo_url").in("id", venueIds),
         supabase.from("loyalty_programs").select("*").in("venue_id", venueIds).eq("is_active", true),
         supabase.from("discount_codes").select("code, reward_name, venue_id").eq("user_id", user.id).eq("status", "active"),
+        supabase.from("loyalty_rewards").select("*").in("venue_id", venueIds).eq("is_active", true),
       ]);
 
       const venueMap = new Map(venuesRes.data?.map(v => [v.id, v]) || []);
       const programMap = new Map(programsRes.data?.map(p => [p.venue_id, p]) || []);
       const codesMap = new Map<string, { code: string; reward_name: string | null }[]>();
+      // Build rewards map keyed by program_id
+      const rewardsMap = new Map<string, { name: string; description: string | null; stamps_required: number | null; points_required: number | null }>();
+      rewardsRes.data?.forEach(r => {
+        // Keep the first (lowest threshold) reward per program
+        if (!rewardsMap.has(r.program_id)) {
+          rewardsMap.set(r.program_id, { name: r.name, description: r.description, stamps_required: r.stamps_required, points_required: r.points_required });
+        }
+      });
+
       codesRes.data?.forEach(c => {
         if (!codesMap.has(c.venue_id)) codesMap.set(c.venue_id, []);
         codesMap.get(c.venue_id)!.push(c);
