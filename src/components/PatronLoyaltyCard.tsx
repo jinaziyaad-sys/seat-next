@@ -19,6 +19,9 @@ interface LoyaltyCardData {
   lifetime_points: number;
   active_codes: { code: string; reward_name: string | null }[];
   admin_enabled: boolean;
+  next_reward_name: string | null;
+  next_reward_description: string | null;
+  next_reward_threshold: number | null;
 }
 
 interface PatronLoyaltyCardProps {
