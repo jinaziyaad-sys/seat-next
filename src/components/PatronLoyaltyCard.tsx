@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { VenueLogo } from "@/components/VenueLogo";
-import { Gift, Stamp, Star, ChevronRight, Ticket, Loader2 } from "lucide-react";
+import { Gift, Stamp, Star, ChevronRight, Ticket, Loader2, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface LoyaltyCardData {
   venue_id: string;
@@ -18,21 +18,31 @@ interface LoyaltyCardData {
   lifetime_stamps: number;
   lifetime_points: number;
   active_codes: { code: string; reward_name: string | null }[];
+  admin_enabled: boolean;
 }
 
 interface PatronLoyaltyCardProps {
   compact?: boolean;
-  venueId?: string; // If provided, show only this venue
+  venueId?: string;
 }
 
 export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCardProps) => {
   const [cards, setCards] = useState<LoyaltyCardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLoyaltyData();
   }, [venueId]);
+
+  const copyCode = async (code: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    toast.success("Code copied!");
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
 
   const fetchLoyaltyData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -81,6 +91,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
             lifetime_stamps: l.lifetime_stamps,
             lifetime_points: l.lifetime_points,
             active_codes: codesMap.get(l.venue_id) || [],
+            admin_enabled: program.admin_enabled !== false,
           };
         })
         .filter(Boolean) as LoyaltyCardData[];
@@ -126,95 +137,113 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
         </div>
       )}
 
-      {cards.map(card => (
-        <Card
-          key={card.venue_id}
-          className={cn(
-            "overflow-hidden transition-all cursor-pointer hover:shadow-md",
-            "bg-gradient-to-br from-card to-muted/50"
-          )}
-          onClick={() => setExpandedCard(expandedCard === card.venue_id ? null : card.venue_id)}
-        >
-          <CardContent className={cn("p-4", compact && "p-3")}>
-            <div className="flex items-center gap-3">
-              <VenueLogo logoUrl={card.venue_logo} name={card.venue_name} size="sm" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <p className="font-semibold text-sm truncate">{card.venue_name}</p>
-                  {card.active_codes.length > 0 && (
-                    <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-green-600">
-                      <Ticket className="h-3 w-3 mr-0.5" />
-                      {card.active_codes.length}
-                    </Badge>
+      {cards.map(card => {
+        const hasRewards = card.active_codes.length > 0;
+
+        return (
+          <Card
+            key={card.venue_id}
+            className={cn(
+              "overflow-hidden transition-all cursor-pointer hover:shadow-md",
+              "bg-gradient-to-br from-card to-muted/50",
+              hasRewards && "ring-2 ring-primary/40"
+            )}
+            onClick={() => setExpandedCard(expandedCard === card.venue_id ? null : card.venue_id)}
+          >
+            <CardContent className={cn("p-4", compact && "p-3")}>
+              <div className="flex items-center gap-3">
+                <VenueLogo logoUrl={card.venue_logo} name={card.venue_name} size="sm" />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <p className="font-semibold text-sm truncate">{card.venue_name}</p>
+                    {!card.admin_enabled && (
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Paused</Badge>
+                    )}
+                    {hasRewards && (
+                      <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-primary animate-pulse">
+                        <Gift className="h-3 w-3 mr-0.5" />
+                        Reward Ready!
+                      </Badge>
+                    )}
+                  </div>
+
+                  {card.program_type === "stamp_card" ? (
+                    <div className="mt-1">
+                      <div className="flex gap-1">
+                        {Array.from({ length: card.stamp_threshold }).map((_, i) => (
+                          <div
+                            key={i}
+                            className={cn(
+                              "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all",
+                              i < card.stamps_count
+                                ? "bg-primary border-primary text-primary-foreground"
+                                : "border-muted-foreground/30"
+                            )}
+                          >
+                            {i < card.stamps_count && <Stamp className="h-3 w-3" />}
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {card.stamps_count}/{card.stamp_threshold} stamps
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="mt-1 flex items-center gap-2">
+                      <Star className="h-4 w-4 text-amber-500" />
+                      <span className="font-bold text-lg">{card.points_balance}</span>
+                      <span className="text-xs text-muted-foreground">points</span>
+                    </div>
                   )}
                 </div>
+                <ChevronRight className={cn(
+                  "h-4 w-4 text-muted-foreground transition-transform",
+                  expandedCard === card.venue_id && "rotate-90"
+                )} />
+              </div>
 
-                {card.program_type === "stamp_card" ? (
-                  <div className="mt-1">
-                    <div className="flex gap-1">
-                      {Array.from({ length: card.stamp_threshold }).map((_, i) => (
-                        <div
-                          key={i}
-                          className={cn(
-                            "h-5 w-5 rounded-full border-2 flex items-center justify-center transition-all",
-                            i < card.stamps_count
-                              ? "bg-primary border-primary text-primary-foreground"
-                              : "border-muted-foreground/30"
-                          )}
-                        >
-                          {i < card.stamps_count && <Stamp className="h-3 w-3" />}
-                        </div>
-                      ))}
+              {/* Expanded: active reward codes */}
+              {expandedCard === card.venue_id && hasRewards && (
+                <div className="mt-3 pt-3 border-t space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase">Your Rewards</p>
+                  <p className="text-xs text-muted-foreground">
+                    Tell the staff your code when ordering to redeem your reward.
+                  </p>
+                  {card.active_codes.map((code, i) => (
+                    <div key={i} className="flex items-center justify-between bg-primary/10 rounded-lg p-2.5">
+                      <div>
+                        <p className="text-sm font-medium">{code.reward_name || "Reward"}</p>
+                        <code className="text-xs font-mono text-primary font-bold">{code.code}</code>
+                      </div>
+                      <button
+                        onClick={(e) => copyCode(code.code, e)}
+                        className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+                      >
+                        {copiedCode === code.code ? (
+                          <><Check className="h-3 w-3" /> Copied</>
+                        ) : (
+                          <><Copy className="h-3 w-3" /> Copy</>
+                        )}
+                      </button>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      {card.stamps_count}/{card.stamp_threshold} stamps
-                    </p>
-                  </div>
-                ) : (
-                  <div className="mt-1 flex items-center gap-2">
-                    <Star className="h-4 w-4 text-amber-500" />
-                    <span className="font-bold text-lg">{card.points_balance}</span>
-                    <span className="text-xs text-muted-foreground">points</span>
-                  </div>
-                )}
-              </div>
-              <ChevronRight className={cn(
-                "h-4 w-4 text-muted-foreground transition-transform",
-                expandedCard === card.venue_id && "rotate-90"
-              )} />
-            </div>
+                  ))}
+                </div>
+              )}
 
-            {/* Expanded view with active codes */}
-            {expandedCard === card.venue_id && card.active_codes.length > 0 && (
-              <div className="mt-3 pt-3 border-t space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase">Your Rewards</p>
-                {card.active_codes.map((code, i) => (
-                  <div key={i} className="flex items-center justify-between bg-green-500/10 rounded-lg p-2">
-                    <div>
-                      <p className="text-sm font-medium">{code.reward_name || "Reward"}</p>
-                      <code className="text-xs font-mono text-primary font-bold">{code.code}</code>
-                    </div>
-                    <Badge variant="outline" className="text-green-600 border-green-600 text-xs">
-                      Show to staff
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {expandedCard === card.venue_id && (
-              <div className="mt-2 pt-2 border-t">
-                <p className="text-xs text-muted-foreground">
-                  Lifetime: {card.program_type === "stamp_card" 
-                    ? `${card.lifetime_stamps} stamps earned` 
-                    : `${card.lifetime_points} points earned`
-                  }
-                </p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      ))}
+              {expandedCard === card.venue_id && (
+                <div className="mt-2 pt-2 border-t">
+                  <p className="text-xs text-muted-foreground">
+                    Lifetime: {card.program_type === "stamp_card" 
+                      ? `${card.lifetime_stamps} stamps earned` 
+                      : `${card.lifetime_points} points earned`
+                    }
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        );
+      })}
     </div>
   );
 };

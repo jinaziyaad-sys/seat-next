@@ -23,6 +23,7 @@ import { Messenger } from "@/components/Messenger";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { CelebrationOverlay } from "@/components/ui/celebration-overlay";
 import { PromoBanner } from "@/components/PromoBanner";
+import { PatronLoyaltyCard } from "@/components/PatronLoyaltyCard";
 import { PhonePromptDialog } from "@/components/PhonePromptDialog";
 import { ActiveTrackingListSkeleton } from "@/components/ui/skeleton-card";
 import { useMultipleUnreadMessages } from "@/hooks/useUnreadMessages";
