@@ -1,123 +1,161 @@
 
 
-# Improve ETA Accuracy for Waitlist, Reservations & Food Prep
+# Loyalty System & Promotional Banners
 
-## Current Weaknesses
+## Overview
 
-1. **Waitlist ETA**: Uses a flat 5 min/person queue multiplier instead of learning actual turnover rates. `get_venue_capacity_status` uses UTC `EXTRACT(HOUR FROM now())` instead of venue-local time for snapshot lookups. No recency weighting — a 30-day-old data point counts the same as yesterday's.
+Two major features: (1) a venue-specific loyalty program (stamp card or points, restaurant's choice) with automatic discount code rewards, and (2) a promotional banner system across the patron app, managed by super admins with future self-serve Stripe billing.
 
-2. **Food Prep ETA**: Same lack of recency weighting. Kitchen load multiplier uses fixed thresholds (3/7) rather than learning from the venue's actual patterns. No feedback loop showing merchants how accurate predictions were.
+---
 
-3. **Capacity Status**: Uses hardcoded baseline of 10 orders when no historical average exists. Doesn't factor in the venue's configured `venue_capacity` (guest count) at all.
+## Part 1: Loyalty System
 
-## Plan
+### How it works
 
-### 1. Fix capacity status to use venue-local time and configured capacity
+- Each venue chooses **stamp card** or **points** mode in their settings
+- **Stamp card**: patron earns 1 stamp per visit (seated) or order (collected). After X stamps, they unlock a reward (e.g., "Free dessert"). Merchant sets the threshold and reward description.
+- **Points**: patron earns N points per visit/order. Merchant defines reward tiers (e.g., 50pts = 10% off, 100pts = free meal). More flexible.
+- When a reward is earned, the app generates a **unique discount code** visible to the patron
+- Patron tells staff the code at the venue. Staff verifies/redeems it from their dashboard.
+- Platform (dev) can see all loyalty programs and override settings if needed
 
-**File**: New migration
+### Who controls what
 
-- Update `get_venue_capacity_status` to accept timezone param, convert `now()` to local time for snapshot lookups
-- Use the venue's `settings->>'venue_capacity'` as the denominator instead of hardcoded 10
-- Fall back to historical average only when venue_capacity isn't set
+| Control | Merchant | Dev (Super Admin) |
+|---------|----------|-------------------|
+| Enable/disable loyalty | Yes | Yes (override) |
+| Choose stamp vs points | Yes | Yes |
+| Set thresholds/rewards | Yes | Yes (override) |
+| Issue manual discount codes | Yes | Yes |
+| View redemption analytics | Own venue | All venues |
+| Suspend a loyalty program | No | Yes |
 
-### 2. Replace fixed 5-min queue multiplier with learned turnover rate
+### Database tables (new migration)
 
-**File**: New migration (update `calculate_dynamic_wait_time`)
+```text
+loyalty_programs
+  id, venue_id, type (stamp_card | points), 
+  stamp_threshold, points_per_visit, points_per_order,
+  is_active, created_at, updated_at
 
-- Query `waitlist_analytics` for actual per-position wait times at this venue (how long each person ahead typically waits)
-- Calculate `avg_turnover_minutes = AVG(actual_wait_time) / AVG(position_at_join)` from recent data
-- Use that instead of the hardcoded `5 * queue_length`
-- Fall back to 5 min/person when insufficient data
+loyalty_rewards  
+  id, venue_id, program_id, name, description,
+  stamps_required OR points_required, reward_type (discount_code | free_item | custom),
+  is_active
 
-### 3. Add recency weighting to both ETA functions
+patron_loyalty
+  id, user_id, venue_id, program_id,
+  stamps_count, points_balance, 
+  lifetime_stamps, lifetime_points,
+  created_at, updated_at
 
-**File**: New migration (update both `calculate_dynamic_prep_time` and `calculate_dynamic_wait_time`)
+loyalty_transactions
+  id, user_id, venue_id, program_id,
+  type (stamp_earned | points_earned | reward_redeemed),
+  stamps_delta, points_delta, 
+  source_type (order | waitlist), source_id,
+  created_at
 
-- Weight recent data more heavily: orders/entries from last 7 days count 3x, 8-14 days count 2x, 15-30 days count 1x
-- Use weighted average instead of simple `AVG()`
-- This makes the system adapt faster to operational changes (new chef, menu change, etc.)
-
-### 4. Update `calculate-waitlist-eta` edge function to pass timezone to capacity check
-
-**File**: `supabase/functions/calculate-waitlist-eta/index.ts`
-
-- Pass venue timezone when calling the updated capacity function
-- Also query active reservations arriving within next 30 min to factor imminent load into the ETA
-
-### 5. Add ETA accuracy tracking to merchant dashboard
-
-**File**: `src/components/merchant/SmartInsights.tsx` (or new component)
-
-- Query `order_analytics` and `waitlist_analytics` comparing `quoted_prep_time` vs `actual_prep_time` and `quoted_wait_time` vs `actual_wait_time`
-- Show accuracy percentage and average deviation
-- This gives merchants visibility into how well the system is predicting
-
-## Technical Details
-
-### Updated `get_venue_capacity_status` (migration)
-```sql
-CREATE OR REPLACE FUNCTION public.get_venue_capacity_status(p_venue_id UUID)
-RETURNS TABLE(...) AS $$
-DECLARE
-  v_venue_capacity INTEGER;
-  v_venue_timezone TEXT;
-  v_local_hour INTEGER;
-  v_local_dow INTEGER;
-BEGIN
-  -- Get configured capacity + timezone
-  SELECT 
-    COALESCE((settings->>'venue_capacity')::INT, 40),
-    COALESCE(timezone, 'Africa/Johannesburg')
-  INTO v_venue_capacity, v_venue_timezone
-  FROM venues WHERE id = p_venue_id;
-  
-  -- Use venue-local time for snapshot lookup
-  v_local_hour := EXTRACT(HOUR FROM (now() AT TIME ZONE v_venue_timezone));
-  v_local_dow := EXTRACT(DOW FROM (now() AT TIME ZONE v_venue_timezone));
-  
-  -- ... use v_venue_capacity as denominator for percentage
-END;
-$$
+discount_codes
+  id, venue_id, user_id, code (unique 8-char),
+  reward_id, status (active | redeemed | expired),
+  expires_at, redeemed_at, redeemed_by_staff_id,
+  created_at
 ```
 
-### Updated `calculate_dynamic_wait_time` — learned turnover
-```sql
--- Replace: v_position_mult := p_current_waitlist_length * 5;
--- With:
-SELECT COALESCE(
-  AVG(actual_wait_time)::NUMERIC / NULLIF(COUNT(*), 0),
-  5.0
-) INTO v_per_person_rate
-FROM waitlist_analytics
-WHERE venue_id = p_venue_id
-  AND actual_wait_time IS NOT NULL
-  AND joined_at > (now() - INTERVAL '14 days');
+### Automatic stamp/point earning
 
-v_position_mult := p_current_waitlist_length * v_per_person_rate;
-```
+- Database triggers on `orders` (when status → `collected`) and `waitlist_entries` (when status → `seated`) automatically credit the patron's loyalty account
+- When stamps/points cross a reward threshold, auto-generate a discount code
 
-### Recency weighting example
-```sql
-SELECT 
-  SUM(actual_prep_time * CASE
-    WHEN placed_at > now() - INTERVAL '7 days' THEN 3
-    WHEN placed_at > now() - INTERVAL '14 days' THEN 2
-    ELSE 1
-  END) / SUM(CASE
-    WHEN placed_at > now() - INTERVAL '7 days' THEN 3
-    WHEN placed_at > now() - INTERVAL '14 days' THEN 2
-    ELSE 1
-  END)
-INTO v_avg_prep_time
-FROM order_analytics
-WHERE ...
-```
+### Frontend changes
 
-## Files Changed
+**Merchant dashboard** — new "Loyalty" tab or section in Settings:
+- Toggle loyalty on/off, choose type
+- Configure stamp threshold or point values
+- Define rewards
+- View active discount codes and redeem them
+- Redemption history
+
+**Patron app** — loyalty card visible in:
+- Profile section (all venue loyalty cards)
+- Active tracking screen (current venue's loyalty progress)
+- After order/visit completion (stamp animation + progress update)
+
+**Dev dashboard** — loyalty overview across all venues in analytics
+
+### Files changed
 
 | File | Change |
 |------|--------|
-| New migration | Update 3 DB functions: `get_venue_capacity_status`, `calculate_dynamic_wait_time`, `calculate_dynamic_prep_time` |
-| `supabase/functions/calculate-waitlist-eta/index.ts` | Pass imminent reservations count to capacity consideration |
-| `src/components/merchant/SmartInsights.tsx` | Add ETA accuracy insight card |
+| New migration | Create 5 tables + triggers for auto-earning |
+| `src/components/merchant/MerchantSettings.tsx` | Add loyalty configuration accordion |
+| `src/components/merchant/LoyaltyManagement.tsx` | New — redemption dashboard for staff |
+| `src/components/PatronLoyaltyCard.tsx` | New — stamp/points card UI for patrons |
+| `src/components/ProfileSection.tsx` | Add loyalty cards section |
+| `src/pages/Index.tsx` | Show loyalty progress on active tracking cards |
+| `src/pages/MerchantDashboard.tsx` | Add loyalty tab |
+
+---
+
+## Part 2: Promotional Banners
+
+### How it works
+
+- Super admin creates **ad campaigns** in the dev dashboard: selects a venue, writes copy, sets dates, chooses placements
+- Banners appear across the patron app in 4 locations:
+  1. **Home screen carousel** — rotating banner at top
+  2. **Explore page** — "Featured" badge + promoted position
+  3. **Active tracking screen** — subtle banner while waiting
+  4. **Push notifications** — scheduled promo push to patrons in the area
+- Campaigns have start/end dates and impression tracking
+
+### Payment model (Phase 1: Admin-managed)
+
+- Dev dashboard has a "Promotions" management section
+- Super admin creates campaigns after receiving offline payment from the venue
+- Campaign record includes `payment_status` (paid | pending | comp) and `amount_charged`
+- No Stripe integration yet — just tracking fields for manual reconciliation
+- Phase 2 (future): self-serve Stripe checkout for merchants to buy ad slots
+
+### Database tables
+
+```text
+promo_campaigns
+  id, venue_id, title, description, 
+  banner_image_url, cta_text, cta_link,
+  placements (array: home, explore, tracking, push),
+  start_date, end_date, is_active,
+  payment_status, amount_charged, payment_notes,
+  impressions_count, clicks_count,
+  created_by, created_at, updated_at
+
+promo_impressions
+  id, campaign_id, user_id, placement, 
+  clicked, created_at
+```
+
+### Frontend changes
+
+| File | Change |
+|------|--------|
+| New migration | Create promo tables |
+| `src/components/PromoBanner.tsx` | New — reusable banner component |
+| `src/pages/Index.tsx` | Add promo carousel at top of home screen |
+| `src/components/ExploreVenues.tsx` | Add "Featured" badge and promoted venues |
+| `src/pages/DevDashboard.tsx` | Add promotions management tab |
+| `src/components/dev/PromotionsManager.tsx` | New — CRUD for campaigns |
+| Edge function `send-promo-push` | New — sends push notifications for promo campaigns |
+
+---
+
+## Implementation Order
+
+Given the scope, I recommend splitting into 3 phases:
+
+1. **Phase 1 — Loyalty database + merchant config** (tables, triggers, merchant settings UI)
+2. **Phase 2 — Patron loyalty UI + discount codes** (loyalty cards, code generation, staff redemption)
+3. **Phase 3 — Promo banners** (campaign management, patron-facing banners, impression tracking)
+
+Shall I start with Phase 1?
 
