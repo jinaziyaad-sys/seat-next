@@ -291,6 +291,68 @@ export type Database = {
         }
         Relationships: []
       }
+      loyalty_challenges: {
+        Row: {
+          created_at: string
+          description: string | null
+          end_date: string | null
+          goal_type: string
+          goal_value: number
+          id: string
+          is_active: boolean
+          reward_description: string | null
+          reward_name: string
+          reward_points: number | null
+          reward_stamps: number | null
+          start_date: string
+          title: string
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          goal_type?: string
+          goal_value?: number
+          id?: string
+          is_active?: boolean
+          reward_description?: string | null
+          reward_name: string
+          reward_points?: number | null
+          reward_stamps?: number | null
+          start_date?: string
+          title: string
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          end_date?: string | null
+          goal_type?: string
+          goal_value?: number
+          id?: string
+          is_active?: boolean
+          reward_description?: string | null
+          reward_name?: string
+          reward_points?: number | null
+          reward_stamps?: number | null
+          start_date?: string
+          title?: string
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_challenges_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       loyalty_programs: {
         Row: {
           admin_enabled: boolean | null
@@ -394,6 +456,56 @@ export type Database = {
           },
           {
             foreignKeyName: "loyalty_rewards_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      loyalty_tiers: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          min_lifetime_points: number | null
+          min_lifetime_stamps: number | null
+          perks: Json | null
+          sort_order: number | null
+          tier_name: string
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          min_lifetime_points?: number | null
+          min_lifetime_stamps?: number | null
+          perks?: Json | null
+          sort_order?: number | null
+          tier_name: string
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          min_lifetime_points?: number | null
+          min_lifetime_stamps?: number | null
+          perks?: Json | null
+          sort_order?: number | null
+          tier_name?: string
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "loyalty_tiers_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
@@ -771,6 +883,88 @@ export type Database = {
         }
         Relationships: []
       }
+      patron_cashback_balance: {
+        Row: {
+          balance: number
+          created_at: string
+          id: string
+          lifetime_earned: number
+          updated_at: string
+          user_id: string
+          venue_id: string
+        }
+        Insert: {
+          balance?: number
+          created_at?: string
+          id?: string
+          lifetime_earned?: number
+          updated_at?: string
+          user_id: string
+          venue_id: string
+        }
+        Update: {
+          balance?: number
+          created_at?: string
+          id?: string
+          lifetime_earned?: number
+          updated_at?: string
+          user_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patron_cashback_balance_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patron_challenge_progress: {
+        Row: {
+          challenge_id: string
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          current_progress: number
+          id: string
+          reward_claimed: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          challenge_id: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          current_progress?: number
+          id?: string
+          reward_claimed?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          challenge_id?: string
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          current_progress?: number
+          id?: string
+          reward_claimed?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patron_challenge_progress_challenge_id_fkey"
+            columns: ["challenge_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_challenges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       patron_dining_preferences: {
         Row: {
           avoid_ingredients: string[] | null
@@ -959,6 +1153,51 @@ export type Database = {
           venue_id?: string | null
         }
         Relationships: []
+      }
+      patron_tier_status: {
+        Row: {
+          achieved_at: string
+          created_at: string
+          current_tier_id: string | null
+          id: string
+          updated_at: string
+          user_id: string
+          venue_id: string
+        }
+        Insert: {
+          achieved_at?: string
+          created_at?: string
+          current_tier_id?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+          venue_id: string
+        }
+        Update: {
+          achieved_at?: string
+          created_at?: string
+          current_tier_id?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patron_tier_status_current_tier_id_fkey"
+            columns: ["current_tier_id"]
+            isOneToOne: false
+            referencedRelation: "loyalty_tiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "patron_tier_status_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       platform_config: {
         Row: {
@@ -1225,6 +1464,94 @@ export type Database = {
           },
         ]
       }
+      referral_codes: {
+        Row: {
+          code: string
+          created_at: string
+          id: string
+          is_active: boolean
+          user_id: string
+          uses_count: number
+          venue_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          user_id: string
+          uses_count?: number
+          venue_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          user_id?: string
+          uses_count?: number
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_codes_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      referral_completions: {
+        Row: {
+          completed_at: string
+          id: string
+          referee_id: string
+          referee_reward_type: string | null
+          referee_reward_value: number | null
+          referee_rewarded: boolean
+          referrer_id: string
+          referrer_reward_type: string | null
+          referrer_reward_value: number | null
+          referrer_rewarded: boolean
+          venue_id: string
+        }
+        Insert: {
+          completed_at?: string
+          id?: string
+          referee_id: string
+          referee_reward_type?: string | null
+          referee_reward_value?: number | null
+          referee_rewarded?: boolean
+          referrer_id: string
+          referrer_reward_type?: string | null
+          referrer_reward_value?: number | null
+          referrer_rewarded?: boolean
+          venue_id: string
+        }
+        Update: {
+          completed_at?: string
+          id?: string
+          referee_id?: string
+          referee_reward_type?: string | null
+          referee_reward_value?: number | null
+          referee_rewarded?: boolean
+          referrer_id?: string
+          referrer_reward_type?: string | null
+          referrer_reward_value?: number | null
+          referrer_rewarded?: boolean
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_completions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -1298,6 +1625,47 @@ export type Database = {
           },
         ]
       }
+      venue_cashback_config: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          max_credit_per_order: number | null
+          min_order_value: number | null
+          percentage: number
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_credit_per_order?: number | null
+          min_order_value?: number | null
+          percentage?: number
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_credit_per_order?: number | null
+          min_order_value?: number | null
+          percentage?: number
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_cashback_config_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       venue_inquiries: {
         Row: {
           created_at: string
@@ -1328,6 +1696,50 @@ export type Database = {
             foreignKeyName: "venue_inquiries_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      venue_referral_config: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          referee_reward_type: string
+          referee_reward_value: number
+          referrer_reward_type: string
+          referrer_reward_value: number
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          referee_reward_type?: string
+          referee_reward_value?: number
+          referrer_reward_type?: string
+          referrer_reward_value?: number
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          referee_reward_type?: string
+          referee_reward_value?: number
+          referrer_reward_type?: string
+          referrer_reward_value?: number
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "venue_referral_config_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
             referencedRelation: "venues"
             referencedColumns: ["id"]
           },
