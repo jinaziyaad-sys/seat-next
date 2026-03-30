@@ -180,6 +180,15 @@ const MerchantDashboard = () => {
         setVenueData(data);
         setVenueServiceTypes(data.service_types || ["food_ready", "table_ready"]);
       }
+      
+      // Check if loyalty is admin-enabled for this venue
+      const { data: loyaltyData } = await supabase
+        .from("loyalty_programs")
+        .select("admin_enabled")
+        .eq("venue_id", userRole.venue_id)
+        .maybeSingle();
+      setLoyaltyAdminEnabled(loyaltyData?.admin_enabled !== false && !!loyaltyData);
+      
       setLoadingVenue(false);
     };
 
