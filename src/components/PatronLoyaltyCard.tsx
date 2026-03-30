@@ -100,7 +100,22 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
     );
   }
 
-  if (cards.length === 0) return null;
+  if (cards.length === 0) {
+    if (compact) return null;
+    return (
+      <Card className="shadow-card">
+        <CardContent className="p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <Gift className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold">Loyalty Cards</h3>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Visit participating restaurants to start earning stamps or points toward rewards!
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-3">
