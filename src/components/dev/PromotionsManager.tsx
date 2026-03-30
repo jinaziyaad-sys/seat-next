@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Megaphone, Eye, MousePointer, Loader2, Trash2, Edit2 } from "lucide-react";
+import { Plus, Megaphone, Eye, MousePointer, Loader2, Trash2, Edit2, Upload, X, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -53,8 +53,10 @@ export const PromotionsManager = () => {
   const [venues, setVenues] = useState<Venue[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [form, setForm] = useState({
     venue_id: "",
@@ -96,6 +98,45 @@ export const PromotionsManager = () => {
       is_active: true, payment_status: "pending", amount_charged: "0", payment_notes: "",
     });
     setEditingId(null);
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast({ title: "Invalid file", description: "Please select an image file", variant: "destructive" });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({ title: "File too large", description: "Max 5MB", variant: "destructive" });
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const ext = file.name.split(".").pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      
+      const { error: uploadError } = await supabase.storage
+        .from("promo-banners")
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("promo-banners")
+        .getPublicUrl(fileName);
+
+      setForm(p => ({ ...p, banner_image_url: publicUrl }));
+      toast({ title: "Image uploaded" });
+    } catch (error: any) {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   const handleSave = async () => {
@@ -227,18 +268,65 @@ export const PromotionsManager = () => {
                 <Label>Description</Label>
                 <Textarea value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} placeholder="Get 10% off your entire bill..." />
               </div>
+
+              {/* Banner Image Upload */}
               <div className="space-y-2">
-                <Label>Banner Image URL</Label>
-                <Input value={form.banner_image_url} onChange={e => setForm(p => ({ ...p, banner_image_url: e.target.value }))} placeholder="https://..." />
+                <Label>Banner Image</Label>
+                {form.banner_image_url ? (
+                  <div className="relative rounded-lg overflow-hidden border">
+                    <img
+                      src={form.banner_image_url}
+                      alt="Banner preview"
+                      className="w-full h-32 object-cover"
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 h-6 w-6"
+                      onClick={() => setForm(p => ({ ...p, banner_image_url: "" }))}
+                    >
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div
+                    className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary/50 transition-colors"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    {uploading ? (
+                      <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+                    ) : (
+                      <>
+                        <ImageIcon className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
+                        <p className="text-sm text-muted-foreground">Click to upload banner image</p>
+                        <p className="text-xs text-muted-foreground mt-1">Max 5MB • JPG, PNG, WebP</p>
+                      </>
+                    )}
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleImageUpload}
+                />
+                <Input
+                  value={form.banner_image_url}
+                  onChange={e => setForm(p => ({ ...p, banner_image_url: e.target.value }))}
+                  placeholder="Or paste image URL..."
+                  className="text-xs"
+                />
               </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>CTA Text</Label>
                   <Input value={form.cta_text} onChange={e => setForm(p => ({ ...p, cta_text: e.target.value }))} />
                 </div>
                 <div className="space-y-2">
-                  <Label>CTA Link</Label>
-                  <Input value={form.cta_link} onChange={e => setForm(p => ({ ...p, cta_link: e.target.value }))} placeholder="https://..." />
+                  <Label>CTA Link (optional)</Label>
+                  <Input value={form.cta_link} onChange={e => setForm(p => ({ ...p, cta_link: e.target.value }))} placeholder="Leave empty for in-app venue link" />
                 </div>
               </div>
 
@@ -313,36 +401,45 @@ export const PromotionsManager = () => {
             <Card key={campaign.id}>
               <CardContent className="p-4">
                 <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <h3 className="font-semibold">{campaign.title}</h3>
-                      <Badge variant={campaign.is_active ? "default" : "secondary"}>
-                        {campaign.is_active ? "Active" : "Inactive"}
-                      </Badge>
-                      <Badge variant={
-                        campaign.payment_status === "paid" ? "default" :
-                        campaign.payment_status === "comp" ? "secondary" : "outline"
-                      }>
-                        {campaign.payment_status}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-muted-foreground mt-1">{campaign.venue_name}</p>
-                    {campaign.description && (
-                      <p className="text-sm mt-1">{campaign.description}</p>
+                  <div className="flex items-start gap-3 flex-1">
+                    {campaign.banner_image_url && (
+                      <img
+                        src={campaign.banner_image_url}
+                        alt={campaign.title}
+                        className="w-16 h-16 rounded-md object-cover shrink-0"
+                      />
                     )}
-                    <div className="flex items-center gap-4 mt-2">
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Eye className="h-3 w-3" />
-                        {campaign.impressions_count} impressions
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h3 className="font-semibold">{campaign.title}</h3>
+                        <Badge variant={campaign.is_active ? "default" : "secondary"}>
+                          {campaign.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                        <Badge variant={
+                          campaign.payment_status === "paid" ? "default" :
+                          campaign.payment_status === "comp" ? "secondary" : "outline"
+                        }>
+                          {campaign.payment_status}
+                        </Badge>
                       </div>
-                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <MousePointer className="h-3 w-3" />
-                        {campaign.clicks_count} clicks
-                      </div>
-                      <div className="flex gap-1">
-                        {campaign.placements?.map(p => (
-                          <Badge key={p} variant="outline" className="text-[10px]">{p}</Badge>
-                        ))}
+                      <p className="text-sm text-muted-foreground mt-1">{campaign.venue_name}</p>
+                      {campaign.description && (
+                        <p className="text-sm mt-1">{campaign.description}</p>
+                      )}
+                      <div className="flex items-center gap-4 mt-2">
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Eye className="h-3 w-3" />
+                          {campaign.impressions_count} impressions
+                        </div>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <MousePointer className="h-3 w-3" />
+                          {campaign.clicks_count} clicks
+                        </div>
+                        <div className="flex gap-1">
+                          {campaign.placements?.map(p => (
+                            <Badge key={p} variant="outline" className="text-[10px]">{p}</Badge>
+                          ))}
+                        </div>
                       </div>
                     </div>
                   </div>
