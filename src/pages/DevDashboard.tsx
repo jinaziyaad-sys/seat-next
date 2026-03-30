@@ -92,6 +92,7 @@ const VenueLoyaltyToggle = ({ venueId }: { venueId: string }) => {
   );
 };
 
+interface Venue {
   id: string;
   name: string;
   address: string | null;
