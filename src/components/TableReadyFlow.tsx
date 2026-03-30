@@ -320,7 +320,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
 
   // Handle initial entry from home page
   useEffect(() => {
-    if (initialEntry) {
+    if (initialEntry && !initialEntry.__promoVenueId) {
       const entry: WaitlistEntry = {
         id: initialEntry.id,
         venue: initialEntry.venues?.name || "",
