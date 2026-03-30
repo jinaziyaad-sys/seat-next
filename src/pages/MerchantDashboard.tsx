@@ -625,9 +625,11 @@ const MerchantDashboard = () => {
                 </TabsContent>
               )}
 
-              <TabsContent value="loyalty">
-                <LoyaltyManagement venueId={userRole.venue_id!} />
-              </TabsContent>
+              {loyaltyAdminEnabled && (
+                <TabsContent value="loyalty">
+                  <LoyaltyManagement venueId={userRole.venue_id!} />
+                </TabsContent>
+              )}
             </>
           ) : (
             <>
