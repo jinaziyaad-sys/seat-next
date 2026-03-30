@@ -29,6 +29,7 @@ import { PatronManagement } from "@/components/dev/PatronManagement";
 import { PlatformAnalytics } from "@/components/dev/PlatformAnalytics";
 import { AIControlCenter } from "@/components/dev/AIControlCenter";
 import { DevExport } from "@/components/dev/DevExport";
+import { PromotionsManager } from "@/components/dev/PromotionsManager";
 import { LocationMap } from "@/components/LocationMap";
 import { InteractiveLocationMap } from "@/components/InteractiveLocationMap";
 import {
@@ -949,6 +950,9 @@ export default function DevDashboard() {
               <Sparkles className="h-3 w-3" />
               AI Control
             </TabsTrigger>
+            <TabsTrigger value="promotions" className="flex items-center gap-1">
+              Promotions
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="venues" className="space-y-6">
@@ -1761,6 +1765,10 @@ export default function DevDashboard() {
 
           <TabsContent value="ai-control">
             <AIControlCenter />
+          </TabsContent>
+
+          <TabsContent value="promotions">
+            <PromotionsManager />
           </TabsContent>
         </Tabs>
       </div>

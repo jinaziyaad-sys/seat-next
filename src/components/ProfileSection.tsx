@@ -12,6 +12,7 @@ import { ThemeToggle } from "@/components/ThemeToggle";
 import { PatronNotificationSettings } from "@/components/PatronNotificationSettings";
 import { PatronDiningPreferences } from "@/components/PatronDiningPreferences";
 import { YearlyRecap } from "@/components/YearlyRecap";
+import { PatronLoyaltyCard } from "@/components/PatronLoyaltyCard";
 import { useYearlyRecap } from "@/hooks/useYearlyRecap";
 
 interface UserProfile {
@@ -224,6 +225,9 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
 
       {/* Notifications Section */}
       <PatronNotificationSettings />
+
+      {/* Loyalty Cards */}
+      <PatronLoyaltyCard />
 
       {/* Dining Preferences Section */}
       <PatronDiningPreferences />

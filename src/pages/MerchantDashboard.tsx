@@ -17,13 +17,14 @@ import { SoundSnoozeButton } from "@/components/merchant/SoundSnoozeButton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar, AlertTriangle, Info, X, Wrench } from "lucide-react";
+import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar, AlertTriangle, Info, X, Wrench, Gift } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId, playPatronArrivedSound } from "@/utils/notificationSound";
 import { toast as sonnerToast } from "sonner";
 import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
 import { MerchantMessengerHub } from "@/components/merchant/MerchantMessengerHub";
+import { LoyaltyManagement } from "@/components/merchant/LoyaltyManagement";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -362,7 +363,7 @@ const MerchantDashboard = () => {
     if (hasTableReady) count++; // Waitlist tab
     if (hasReservations) count++; // Reservations tab
     if (userRole?.role === "admin") {
-      count += 2; // Staff + Settings always visible for admin
+      count += 3; // Staff + Settings + Loyalty always visible for admin
       if (hasAnalytics) count++; // Reports tab
     }
     return Math.max(count, 1);
@@ -558,6 +559,10 @@ const MerchantDashboard = () => {
                     Reports
                   </TabsTrigger>
                 )}
+                <TabsTrigger value="loyalty" className="flex items-center gap-2">
+                  <Gift size={16} />
+                  Loyalty
+                </TabsTrigger>
               </>
             )}
           </TabsList>
@@ -606,6 +611,10 @@ const MerchantDashboard = () => {
                   )}
                 </TabsContent>
               )}
+
+              <TabsContent value="loyalty">
+                <LoyaltyManagement venueId={userRole.venue_id!} />
+              </TabsContent>
             </>
           ) : (
             <>
