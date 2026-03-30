@@ -44,6 +44,17 @@ serve(async (req) => {
       .eq('venue_id', venue_id)
       .eq('status', 'waiting');
 
+    // Count imminent reservations arriving within next 30 minutes
+    const thirtyMinFromNow = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
+    const { count: imminentReservations } = await supabase
+      .from('waitlist_entries')
+      .select('*', { count: 'exact', head: true })
+      .eq('venue_id', venue_id)
+      .eq('reservation_type', 'reservation')
+      .eq('status', 'waiting')
+      .gte('reservation_time', now.toISOString())
+      .lte('reservation_time', thirtyMinFromNow);
+
     // Call database function to get dynamic wait time
     const { data: waitTimeData, error: waitError } = await supabase
       .rpc('calculate_dynamic_wait_time', {
@@ -51,7 +62,7 @@ serve(async (req) => {
         p_party_size: party_size,
         p_hour: hourOfDay,
         p_day_of_week: dayOfWeek,
-        p_current_waitlist_length: waitlistLength || 0
+        p_current_waitlist_length: (waitlistLength || 0) + (imminentReservations || 0)
       });
 
     if (waitError) {
@@ -72,7 +83,7 @@ serve(async (req) => {
 
     // Add buffer time if near capacity
     if (capacity?.is_busy) {
-      capacityFactor = Math.ceil(result.estimated_minutes * 0.15); // Add 15% buffer
+      capacityFactor = Math.ceil(result.estimated_minutes * 0.15);
     }
 
     const finalMinutes = result.estimated_minutes + capacityFactor;
@@ -91,6 +102,7 @@ serve(async (req) => {
       venue_id,
       party_size,
       current_waitlist: waitlistLength,
+      imminent_reservations: imminentReservations,
       position,
       base_minutes: result.estimated_minutes,
       final_minutes: finalMinutes,
@@ -113,7 +125,8 @@ serve(async (req) => {
           position_factor: Math.round(result.position_multiplier),
           capacity_factor: capacityFactor,
           party_size_factor: result.party_size_factor,
-          data_points: result.data_points
+          data_points: result.data_points,
+          imminent_reservations: imminentReservations || 0
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
