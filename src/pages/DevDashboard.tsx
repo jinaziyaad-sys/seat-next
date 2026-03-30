@@ -64,7 +64,28 @@ const VenueLoyaltyToggle = ({ venueId }: { venueId: string }) => {
       });
   }, [venueId]);
 
-  if (!loyaltyStatus?.exists) return null;
+  const [creating, setCreating] = useState(false);
+
+  const createLoyaltyProgram = async () => {
+    setCreating(true);
+    try {
+      const { error } = await supabase.from("loyalty_programs").insert({
+        venue_id: venueId,
+        type: "stamp_card",
+        is_active: true,
+        admin_enabled: true,
+        stamp_threshold: 10,
+        earning_sources: ["order", "waitlist"],
+      });
+      if (error) throw error;
+      setLoyaltyStatus({ exists: true, adminEnabled: true, isActive: true });
+      toast({ title: "Loyalty program created for this venue" });
+    } catch (e: any) {
+      toast({ title: "Error", description: e.message, variant: "destructive" });
+    } finally {
+      setCreating(false);
+    }
+  };
 
   const toggleAdmin = async (enabled: boolean) => {
     await supabase
@@ -75,11 +96,17 @@ const VenueLoyaltyToggle = ({ venueId }: { venueId: string }) => {
     toast({ title: enabled ? "Loyalty enabled" : "Loyalty suspended" });
   };
 
+  if (loyaltyStatus === null) return null;
+
   return (
     <div className="flex items-center gap-2 mt-1">
       <Gift className="h-3.5 w-3.5 text-muted-foreground" />
       <span className="text-xs text-muted-foreground">Loyalty:</span>
-      {loyaltyStatus.adminEnabled ? (
+      {!loyaltyStatus.exists ? (
+        <Badge variant="outline" className="text-xs cursor-pointer" onClick={createLoyaltyProgram}>
+          {creating ? "Creating..." : "+ Enable Loyalty"}
+        </Badge>
+      ) : loyaltyStatus.adminEnabled ? (
         <Badge variant="secondary" className="text-xs cursor-pointer" onClick={() => toggleAdmin(false)}>
           {loyaltyStatus.isActive ? "Active" : "Inactive (merchant off)"}
         </Badge>
