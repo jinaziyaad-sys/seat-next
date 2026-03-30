@@ -35,6 +35,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
   const [loading, setLoading] = useState(true);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [claimingVenue, setClaimingVenue] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLoyaltyData();
