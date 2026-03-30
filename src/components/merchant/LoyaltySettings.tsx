@@ -7,7 +7,8 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Gift, Plus, Trash2, Save, Loader2, Stamp, Star } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Gift, Plus, Trash2, Save, Loader2, Stamp, Star, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -36,6 +37,9 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
   const [pointsPerVisit, setPointsPerVisit] = useState("10");
   const [pointsPerOrder, setPointsPerOrder] = useState("10");
   const [rewards, setRewards] = useState<LoyaltyReward[]>([]);
+  const [earningSources, setEarningSources] = useState<string[]>(["order", "waitlist"]);
+  const [adminEnabled, setAdminEnabled] = useState(true);
+  const [venueServiceTypes, setVenueServiceTypes] = useState<string[]>([]);
   const [stats, setStats] = useState({ totalMembers: 0, totalRedemptions: 0, activeDiscounts: 0 });
 
   useEffect(() => {
@@ -45,6 +49,14 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
   const fetchProgram = async () => {
     setLoading(true);
     try {
+      // Fetch venue service types
+      const { data: venueData } = await supabase
+        .from("venues")
+        .select("service_types")
+        .eq("id", venueId)
+        .single();
+      if (venueData?.service_types) setVenueServiceTypes(venueData.service_types);
+
       const { data: program } = await supabase
         .from("loyalty_programs")
         .select("*")
@@ -58,6 +70,8 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
         setStampThreshold(String(program.stamp_threshold || 10));
         setPointsPerVisit(String(program.points_per_visit || 10));
         setPointsPerOrder(String(program.points_per_order || 10));
+        setEarningSources((program as any).earning_sources || ["order", "waitlist"]);
+        setAdminEnabled((program as any).admin_enabled !== false);
 
         const { data: rewardsData } = await supabase
           .from("loyalty_rewards")
@@ -108,7 +122,8 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
             points_per_visit: parseInt(pointsPerVisit),
             points_per_order: parseInt(pointsPerOrder),
             is_active: isActive,
-          })
+            earning_sources: earningSources,
+          } as any)
           .eq("id", programId);
         if (error) throw error;
       } else {
@@ -121,7 +136,8 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
             points_per_visit: parseInt(pointsPerVisit),
             points_per_order: parseInt(pointsPerOrder),
             is_active: isActive,
-          })
+            earning_sources: earningSources,
+          } as any)
           .select()
           .single();
         if (error) throw error;
@@ -212,6 +228,16 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Admin suspended warning */}
+          {!adminEnabled && (
+            <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <p className="text-sm text-destructive font-medium">
+                This loyalty program has been suspended by the platform administrator.
+              </p>
+            </div>
+          )}
+
           {/* Stats */}
           {programId && (
             <div className="grid grid-cols-3 gap-4">
@@ -296,6 +322,48 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
               </div>
             </div>
           )}
+
+          <Separator />
+
+          {/* Earning Sources */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Earning Sources</Label>
+            <p className="text-xs text-muted-foreground">Choose how patrons earn loyalty credit</p>
+            <div className="space-y-2">
+              {venueServiceTypes.includes("food_ready") && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="earn-orders"
+                    checked={earningSources.includes("order")}
+                    onCheckedChange={(checked) => {
+                      setEarningSources(prev =>
+                        checked ? [...prev, "order"] : prev.filter(s => s !== "order")
+                      );
+                    }}
+                  />
+                  <label htmlFor="earn-orders" className="text-sm cursor-pointer">
+                    🍔 Earn from food orders (when collected)
+                  </label>
+                </div>
+              )}
+              {venueServiceTypes.includes("table_ready") && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="earn-waitlist"
+                    checked={earningSources.includes("waitlist")}
+                    onCheckedChange={(checked) => {
+                      setEarningSources(prev =>
+                        checked ? [...prev, "waitlist"] : prev.filter(s => s !== "waitlist")
+                      );
+                    }}
+                  />
+                  <label htmlFor="earn-waitlist" className="text-sm cursor-pointer">
+                    🍽️ Earn from table visits (when seated)
+                  </label>
+                </div>
+              )}
+            </div>
+          </div>
 
           <Separator />
 

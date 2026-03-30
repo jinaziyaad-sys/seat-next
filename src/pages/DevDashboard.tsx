@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus, Upload } from "lucide-react";
+import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus, Upload, Gift } from "lucide-react";
 import { VenueLogo } from "@/components/VenueLogo";
 import { LogoCropDialog } from "@/components/LogoCropDialog";
 import {
@@ -43,6 +43,54 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+
+// Small inline component for loyalty toggle per venue
+const VenueLoyaltyToggle = ({ venueId }: { venueId: string }) => {
+  const [loyaltyStatus, setLoyaltyStatus] = useState<{ exists: boolean; adminEnabled: boolean; isActive: boolean } | null>(null);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    supabase
+      .from("loyalty_programs")
+      .select("id, is_active, admin_enabled")
+      .eq("venue_id", venueId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setLoyaltyStatus({ exists: true, adminEnabled: (data as any).admin_enabled !== false, isActive: data.is_active });
+        } else {
+          setLoyaltyStatus({ exists: false, adminEnabled: true, isActive: false });
+        }
+      });
+  }, [venueId]);
+
+  if (!loyaltyStatus?.exists) return null;
+
+  const toggleAdmin = async (enabled: boolean) => {
+    await supabase
+      .from("loyalty_programs")
+      .update({ admin_enabled: enabled } as any)
+      .eq("venue_id", venueId);
+    setLoyaltyStatus(prev => prev ? { ...prev, adminEnabled: enabled } : prev);
+    toast({ title: enabled ? "Loyalty enabled" : "Loyalty suspended" });
+  };
+
+  return (
+    <div className="flex items-center gap-2 mt-1">
+      <Gift className="h-3.5 w-3.5 text-muted-foreground" />
+      <span className="text-xs text-muted-foreground">Loyalty:</span>
+      {loyaltyStatus.adminEnabled ? (
+        <Badge variant="secondary" className="text-xs cursor-pointer" onClick={() => toggleAdmin(false)}>
+          {loyaltyStatus.isActive ? "Active" : "Inactive (merchant off)"}
+        </Badge>
+      ) : (
+        <Badge variant="destructive" className="text-xs cursor-pointer" onClick={() => toggleAdmin(true)}>
+          Suspended
+        </Badge>
+      )}
+    </div>
+  );
+};
 
 interface Venue {
   id: string;
@@ -1420,6 +1468,7 @@ export default function DevDashboard() {
                             <div className="text-sm text-muted-foreground mt-2">
                               {venue.staff_count} staff • {venue.orders_count} orders • {venue.waitlist_count} waitlist
                             </div>
+                            <VenueLoyaltyToggle venueId={venue.id} />
                           </div>
                           <div className="flex gap-2">
                             <Button 

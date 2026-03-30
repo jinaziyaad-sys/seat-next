@@ -293,7 +293,10 @@ export type Database = {
       }
       loyalty_programs: {
         Row: {
+          admin_enabled: boolean | null
+          admin_notes: string | null
           created_at: string
+          earning_sources: string[] | null
           id: string
           is_active: boolean
           points_per_order: number | null
@@ -304,7 +307,10 @@ export type Database = {
           venue_id: string
         }
         Insert: {
+          admin_enabled?: boolean | null
+          admin_notes?: string | null
           created_at?: string
+          earning_sources?: string[] | null
           id?: string
           is_active?: boolean
           points_per_order?: number | null
@@ -315,7 +321,10 @@ export type Database = {
           venue_id: string
         }
         Update: {
+          admin_enabled?: boolean | null
+          admin_notes?: string | null
           created_at?: string
+          earning_sources?: string[] | null
           id?: string
           is_active?: boolean
           points_per_order?: number | null
