@@ -69,9 +69,10 @@ const RADIUS_OPTIONS = [10, 25, 50, 100];
 interface ExploreVenuesProps {
   onBack: () => void;
   onSelectVenue?: (venueId: string) => void;
+  initialVenueId?: string;
 }
 
-export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
+export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: ExploreVenuesProps) {
   const [recommendations, setRecommendations] = useState<VenueRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
