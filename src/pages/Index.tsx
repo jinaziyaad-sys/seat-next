@@ -23,6 +23,7 @@ import { Messenger } from "@/components/Messenger";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { CelebrationOverlay } from "@/components/ui/celebration-overlay";
 import { PromoBanner } from "@/components/PromoBanner";
+import { PatronLoyaltyCard } from "@/components/PatronLoyaltyCard";
 import { PhonePromptDialog } from "@/components/PhonePromptDialog";
 import { ActiveTrackingListSkeleton } from "@/components/ui/skeleton-card";
 import { useMultipleUnreadMessages } from "@/hooks/useUnreadMessages";
@@ -691,6 +692,13 @@ const Index = () => {
       <div className="px-6 pt-4">
         <PromoBanner placement="home" />
       </div>
+
+      {/* Loyalty Cards - Compact on Home */}
+      {user && (
+        <div className="px-6 pt-2">
+          <PatronLoyaltyCard compact />
+        </div>
+      )}
 
       {/* Active Tracking Section - Show demo data during tour or real data */}
       {(user || isDemoMode) && (isLoadingTracking || activeOrders.length > 0 || activeWaitlist.length > 0 || isDemoMode) && (
