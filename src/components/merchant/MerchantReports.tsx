@@ -16,6 +16,7 @@ import { OperationsEfficiency } from "./OperationsEfficiency";
 import { CancellationHistory } from "./CancellationHistory";
 import { MerchantExport } from "./MerchantExport";
 import { SmartInsights } from "./SmartInsights";
+import { ETAAccuracyInsights } from "./ETAAccuracyInsights";
 import * as XLSX from 'xlsx';
 
 interface AnalyticsData {
@@ -719,6 +720,9 @@ export const MerchantReports = ({ venue }: { venue: any }) => {
                   }}
                   type="overview"
                 />
+                <div className="mt-4">
+                  <ETAAccuracyInsights venueId={venue.id} />
+                </div>
               </CardContent>
             </Card>
 
