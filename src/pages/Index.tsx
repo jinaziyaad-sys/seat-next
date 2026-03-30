@@ -690,7 +690,10 @@ const Index = () => {
 
       {/* Promotional Banner Carousel */}
       <div className="px-6 pt-4">
-        <PromoBanner placement="home" onNavigateToVenue={() => setActiveTab("table-ready")} />
+        <PromoBanner placement="home" onNavigateToVenue={(venueId) => {
+          setSelectedOrder({ __promoVenueId: venueId });
+          setActiveTab("table-ready");
+        }} />
       </div>
 
       {/* Loyalty Cards - Compact on Home */}

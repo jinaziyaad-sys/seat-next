@@ -469,6 +469,50 @@ export const PromotionsManager = () => {
                 </div>
               </div>
 
+              {/* Live Preview */}
+              {(form.title || form.banner_image_url) && (
+                <div className="space-y-2">
+                  <Label className="text-base font-semibold">Preview — how patrons will see this</Label>
+                  <div className="relative rounded-lg overflow-hidden border bg-gradient-to-br from-primary/5 to-accent/5">
+                    {form.banner_image_url && (
+                      <div className="relative h-44 w-full overflow-hidden">
+                        <img
+                          src={form.banner_image_url}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                        <div className="absolute bottom-2 left-3 right-3">
+                          <p className="text-white font-bold text-lg leading-tight">{form.title || "Campaign Title"}</p>
+                        </div>
+                      </div>
+                    )}
+                    <div className="p-4">
+                      {!form.banner_image_url && form.title && (
+                        <div className="flex items-center gap-2 mb-2">
+                          <Megaphone className="h-4 w-4 text-primary" />
+                          <p className="font-bold">{form.title}</p>
+                        </div>
+                      )}
+                      {form.description && (
+                        <p className="text-sm text-muted-foreground mb-3">{form.description}</p>
+                      )}
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-medium">
+                          {venues.find(v => v.id === form.venue_id)?.name || "Venue Name"}
+                        </span>
+                        {form.cta_text && (
+                          <Button size="sm" disabled>{form.cta_text}</Button>
+                        )}
+                      </div>
+                    </div>
+                    <Badge variant="outline" className="absolute top-2 right-2 text-[10px] bg-background/80 backdrop-blur-sm">
+                      Sponsored
+                    </Badge>
+                  </div>
+                </div>
+              )}
+
               <Separator />
 
               {/* Schedule */}

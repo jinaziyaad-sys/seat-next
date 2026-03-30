@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { VenueLogo } from "@/components/VenueLogo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -69,9 +69,10 @@ const RADIUS_OPTIONS = [10, 25, 50, 100];
 interface ExploreVenuesProps {
   onBack: () => void;
   onSelectVenue?: (venueId: string) => void;
+  initialVenueId?: string;
 }
 
-export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
+export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: ExploreVenuesProps) {
   const [recommendations, setRecommendations] = useState<VenueRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -99,6 +100,14 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
   const [creatingInquiry, setCreatingInquiry] = useState<string | null>(null);
   const [directSearchResults, setDirectSearchResults] = useState<VenueRecommendation[]>([]);
   const [searchingVenues, setSearchingVenues] = useState(false);
+  const highlightRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to highlighted venue from promo
+  useEffect(() => {
+    if (initialVenueId && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [initialVenueId, loading]);
 
   // The active coordinates used for searching
   const activeCoords = useMemo(
@@ -738,7 +747,11 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
           allDisplayedVenues.map((venue) => (
             <Card 
               key={venue.venue_id}
-              className="shadow-card cursor-pointer transition-all hover:shadow-floating hover:scale-[1.01] active:scale-[0.99] relative"
+              ref={venue.venue_id === initialVenueId ? highlightRef : undefined}
+              className={cn(
+                "shadow-card cursor-pointer transition-all hover:shadow-floating hover:scale-[1.01] active:scale-[0.99] relative",
+                venue.venue_id === initialVenueId && "ring-2 ring-primary"
+              )}
               onClick={() => onSelectVenue?.(venue.venue_id)}
             >
               <CardContent className="p-4">

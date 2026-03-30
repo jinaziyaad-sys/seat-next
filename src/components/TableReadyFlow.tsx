@@ -82,6 +82,8 @@ const extractExtensionReason = (notes: string | null | undefined): string | null
 };
 
 export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; initialEntry?: any }) {
+  // Check if initialEntry is actually a promo navigation with a venue ID
+  const promoVenueId = initialEntry?.__promoVenueId as string | undefined;
   const { toast } = useToast();
   const [step, setStep] = useState<"entry-select" | "venue-select" | "booking-type" | "reservation-details" | "party-details" | "waiting" | "ready" | "awaiting-confirmation" | "delayed-countdown" | "feedback" | "cancelled-details">("entry-select");
   const [selectedVenue, setSelectedVenue] = useState("");
@@ -123,7 +125,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   
   // New state for tabbed interface
   const [activeTableTab, setActiveTableTab] = useState<"waitlist" | "reservations">("waitlist");
-  const [showExploreView, setShowExploreView] = useState(false);
+  const [showExploreView, setShowExploreView] = useState(!!promoVenueId);
   
   // State for time slot availability checking
   const [slotAvailability, setSlotAvailability] = useState<Record<string, { available: boolean; reason?: string }>>({});
@@ -1706,6 +1708,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       <ExploreVenues 
         onBack={() => setShowExploreView(false)}
         onSelectVenue={handleExploreVenueSelect}
+        initialVenueId={promoVenueId}
       />
     );
   }
