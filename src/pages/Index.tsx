@@ -22,6 +22,7 @@ import { MessengerHub } from "@/components/MessengerHub";
 import { Messenger } from "@/components/Messenger";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { CelebrationOverlay } from "@/components/ui/celebration-overlay";
+import { PromoBanner } from "@/components/PromoBanner";
 import { PhonePromptDialog } from "@/components/PhonePromptDialog";
 import { ActiveTrackingListSkeleton } from "@/components/ui/skeleton-card";
 import { useMultipleUnreadMessages } from "@/hooks/useUnreadMessages";
@@ -684,6 +685,11 @@ const Index = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Promotional Banner Carousel */}
+      <div className="px-6 pt-4">
+        <PromoBanner placement="home" />
       </div>
 
       {/* Active Tracking Section - Show demo data during tour or real data */}
