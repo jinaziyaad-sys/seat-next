@@ -160,7 +160,7 @@ export const PromoBanner = ({ placement, className, onDismiss }: PromoBannerProp
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 {campaign.venue_logo && (
-                  <VenueLogo logoUrl={campaign.venue_logo} venueName={campaign.venue_name || ""} size="sm" />
+                  <VenueLogo logoUrl={campaign.venue_logo} name={campaign.venue_name || ""} size="sm" />
                 )}
                 {campaign.venue_name && (
                   <span className="text-sm font-medium">{campaign.venue_name}</span>

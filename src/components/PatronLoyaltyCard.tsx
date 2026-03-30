@@ -122,7 +122,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
         >
           <CardContent className={cn("p-4", compact && "p-3")}>
             <div className="flex items-center gap-3">
-              <VenueLogo logoUrl={card.venue_logo} venueName={card.venue_name} size="sm" />
+              <VenueLogo logoUrl={card.venue_logo} name={card.venue_name} size="sm" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-sm truncate">{card.venue_name}</p>
