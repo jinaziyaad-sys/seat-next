@@ -611,6 +611,10 @@ const MerchantDashboard = () => {
                   )}
                 </TabsContent>
               )}
+
+              <TabsContent value="loyalty">
+                <LoyaltyManagement venueId={userRole.venue_id!} />
+              </TabsContent>
             </>
           ) : (
             <>

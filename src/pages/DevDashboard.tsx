@@ -949,6 +949,9 @@ export default function DevDashboard() {
               <Sparkles className="h-3 w-3" />
               AI Control
             </TabsTrigger>
+            <TabsTrigger value="promotions" className="flex items-center gap-1">
+              Promotions
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="venues" className="space-y-6">
@@ -1761,6 +1764,10 @@ export default function DevDashboard() {
 
           <TabsContent value="ai-control">
             <AIControlCenter />
+          </TabsContent>
+
+          <TabsContent value="promotions">
+            <PromotionsManager />
           </TabsContent>
         </Tabs>
       </div>
