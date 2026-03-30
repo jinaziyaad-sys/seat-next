@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { VenueLogo } from "@/components/VenueLogo";
-import { Gift, Stamp, Star, ChevronRight, Ticket, Loader2, Copy, Check, Trophy } from "lucide-react";
+import { Gift, Stamp, Star, ChevronRight, Ticket, Loader2, Copy, Check, Trophy, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -35,6 +35,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
   const [loading, setLoading] = useState(true);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [claimingVenue, setClaimingVenue] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLoyaltyData();
@@ -46,6 +47,29 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
     setCopiedCode(code);
     toast.success("Code copied!");
     setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const claimReward = async (venueId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setClaimingVenue(venueId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Please sign in"); return; }
+
+      const { data, error } = await supabase.functions.invoke('claim-loyalty-reward', {
+        body: { venue_id: venueId },
+      });
+
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+
+      toast.success(`🎉 Reward claimed: ${data.reward_name}! Code: ${data.code}`);
+      await fetchLoyaltyData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to claim reward");
+    } finally {
+      setClaimingVenue(null);
+    }
   };
 
   const fetchLoyaltyData = async () => {
@@ -157,7 +181,10 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
 
       {cards.map(card => {
         const hasRewards = card.active_codes.length > 0;
-
+        const canClaim = !hasRewards && (
+          (card.program_type === "stamp_card" && card.stamps_count >= card.stamp_threshold) ||
+          (card.program_type === "points" && card.next_reward_threshold && card.points_balance >= card.next_reward_threshold)
+        );
         return (
           <Card
             key={card.venue_id}
@@ -226,6 +253,20 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
                     </div>
                   )}
                 </div>
+                {canClaim && (
+                  <button
+                    onClick={(e) => claimReward(card.venue_id, e)}
+                    disabled={claimingVenue === card.venue_id}
+                    className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors animate-pulse shrink-0"
+                  >
+                    {claimingVenue === card.venue_id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3 w-3" />
+                    )}
+                    Claim!
+                  </button>
+                )}
                 <ChevronRight className={cn(
                   "h-4 w-4 text-muted-foreground transition-transform",
                   expandedCard === card.venue_id && "rotate-90"
