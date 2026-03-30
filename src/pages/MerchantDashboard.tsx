@@ -559,6 +559,10 @@ const MerchantDashboard = () => {
                     Reports
                   </TabsTrigger>
                 )}
+                <TabsTrigger value="loyalty" className="flex items-center gap-2">
+                  <Gift size={16} />
+                  Loyalty
+                </TabsTrigger>
               </>
             )}
           </TabsList>
