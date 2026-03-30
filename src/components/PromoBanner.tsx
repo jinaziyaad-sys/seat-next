@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { VenueLogo } from "@/components/VenueLogo";
-import { ChevronLeft, ChevronRight, Megaphone, X } from "lucide-react";
+import { Megaphone, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 
@@ -23,25 +23,29 @@ interface PromoBannerProps {
   placement: "home" | "explore" | "tracking";
   className?: string;
   onDismiss?: () => void;
+  onNavigateToVenue?: (venueId: string) => void;
 }
 
-export const PromoBanner = ({ placement, className, onDismiss }: PromoBannerProps) => {
+export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue }: PromoBannerProps) => {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [dismissed, setDismissed] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const touchStartX = useRef<number | null>(null);
+  const pauseTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     fetchCampaigns();
   }, [placement]);
 
-  // Auto-rotate carousel
+  // Auto-rotate carousel (pauses on interaction)
   useEffect(() => {
-    if (campaigns.length <= 1) return;
+    if (campaigns.length <= 1 || paused) return;
     const interval = setInterval(() => {
       setCurrentIndex(prev => (prev + 1) % campaigns.length);
     }, 5000);
     return () => clearInterval(interval);
-  }, [campaigns.length]);
+  }, [campaigns.length, paused]);
 
   const fetchCampaigns = async () => {
     const { data } = await supabase
@@ -86,6 +90,39 @@ export const PromoBanner = ({ placement, className, onDismiss }: PromoBannerProp
     });
   };
 
+  const handleCTAClick = (campaign: Campaign) => {
+    trackClick(campaign.id);
+    if (campaign.cta_link) {
+      window.open(campaign.cta_link, "_blank");
+    } else if (onNavigateToVenue) {
+      onNavigateToVenue(campaign.venue_id);
+    }
+  };
+
+  const pauseAndResume = useCallback(() => {
+    setPaused(true);
+    if (pauseTimeout.current) clearTimeout(pauseTimeout.current);
+    pauseTimeout.current = setTimeout(() => setPaused(false), 8000);
+  }, []);
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartX.current === null || campaigns.length <= 1) return;
+    const diff = touchStartX.current - e.changedTouches[0].clientX;
+    if (Math.abs(diff) > 50) {
+      pauseAndResume();
+      if (diff > 0) {
+        setCurrentIndex(prev => (prev + 1) % campaigns.length);
+      } else {
+        setCurrentIndex(prev => (prev - 1 + campaigns.length) % campaigns.length);
+      }
+    }
+    touchStartX.current = null;
+  };
+
   if (campaigns.length === 0 || dismissed) return null;
 
   const campaign = campaigns[currentIndex];
@@ -101,15 +138,12 @@ export const PromoBanner = ({ placement, className, onDismiss }: PromoBannerProp
               <p className="text-xs text-muted-foreground">at {campaign.venue_name}</p>
             )}
           </div>
-          {campaign.cta_text && campaign.cta_link && (
+          {campaign.cta_text && (
             <Button
               variant="ghost"
               size="sm"
               className="shrink-0 text-xs"
-              onClick={() => {
-                trackClick(campaign.id);
-                window.open(campaign.cta_link!, "_blank");
-              }}
+              onClick={() => handleCTAClick(campaign)}
             >
               {campaign.cta_text}
             </Button>
@@ -128,11 +162,18 @@ export const PromoBanner = ({ placement, className, onDismiss }: PromoBannerProp
   }
 
   return (
-    <div className={cn("relative", className)}>
+    <div
+      className={cn("relative", className)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
       <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
         <CardContent className="p-0">
           {campaign.banner_image_url && (
-            <div className="relative h-32 w-full overflow-hidden">
+            <div
+              className="relative h-32 w-full overflow-hidden cursor-pointer"
+              onClick={() => handleCTAClick(campaign)}
+            >
               <img
                 src={campaign.banner_image_url}
                 alt={campaign.title}
@@ -167,13 +208,10 @@ export const PromoBanner = ({ placement, className, onDismiss }: PromoBannerProp
                 )}
               </div>
               
-              {campaign.cta_text && campaign.cta_link && (
+              {campaign.cta_text && (
                 <Button
                   size="sm"
-                  onClick={() => {
-                    trackClick(campaign.id);
-                    window.open(campaign.cta_link!, "_blank");
-                  }}
+                  onClick={() => handleCTAClick(campaign)}
                 >
                   {campaign.cta_text}
                 </Button>
@@ -191,7 +229,7 @@ export const PromoBanner = ({ placement, className, onDismiss }: PromoBannerProp
                     "h-1.5 rounded-full transition-all",
                     i === currentIndex ? "w-6 bg-primary" : "w-1.5 bg-muted-foreground/30"
                   )}
-                  onClick={() => setCurrentIndex(i)}
+                  onClick={() => { setCurrentIndex(i); pauseAndResume(); }}
                 />
               ))}
             </div>
