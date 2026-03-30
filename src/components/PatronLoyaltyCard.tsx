@@ -181,7 +181,10 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
 
       {cards.map(card => {
         const hasRewards = card.active_codes.length > 0;
-
+        const canClaim = !hasRewards && (
+          (card.program_type === "stamp_card" && card.stamps_count >= card.stamp_threshold) ||
+          (card.program_type === "points" && card.next_reward_threshold && card.points_balance >= card.next_reward_threshold)
+        );
         return (
           <Card
             key={card.venue_id}
