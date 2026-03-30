@@ -100,6 +100,14 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
   const [creatingInquiry, setCreatingInquiry] = useState<string | null>(null);
   const [directSearchResults, setDirectSearchResults] = useState<VenueRecommendation[]>([]);
   const [searchingVenues, setSearchingVenues] = useState(false);
+  const highlightRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to highlighted venue from promo
+  useEffect(() => {
+    if (initialVenueId && highlightRef.current) {
+      highlightRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [initialVenueId, loading]);
 
   // The active coordinates used for searching
   const activeCoords = useMemo(
@@ -745,7 +753,6 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                 venue.venue_id === initialVenueId && "ring-2 ring-primary"
               )}
               onClick={() => onSelectVenue?.(venue.venue_id)}
-            >
             >
               <CardContent className="p-4">
                 <div className="flex items-start justify-between mb-3">
