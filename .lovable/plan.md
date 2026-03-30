@@ -1,54 +1,49 @@
 
 
-# Fix Loyalty Reward Redemption
+# Improve Promotional Banner System
 
-## Root Cause
+## Current Issues
 
-The trigger functions `credit_loyalty_on_order()` and `credit_loyalty_on_waitlist()` exist as functions but the `CREATE TRIGGER` statements didn't persist — the schema dump shows **"no triggers in the database"**. This means:
-
-1. Stamps may have been manually inserted or credited by an earlier migration, but the reward threshold check (which generates the discount code) never ran
-2. The patron now has 1/1 stamps but no discount code exists in `discount_codes`
+1. **No image upload** — the banner image field is just a URL text input. There's no file upload to Supabase Storage, so admins must host images externally.
+2. **CTA click opens external URL** — `window.open(cta_link, "_blank")` opens whatever URL the admin typed. There's no in-app action (like navigating to the venue's page in Explore).
+3. **Carousel works but is basic** — multiple active campaigns auto-rotate every 5 seconds with dot indicators. No swipe support.
+4. **No storage bucket** for promo banner images exists yet.
 
 ## Plan
 
-### 1. Re-attach all loyalty and analytics triggers via new migration
+### 1. Create `promo-banners` storage bucket (migration)
 
-Re-create every trigger with `DROP TRIGGER IF EXISTS` + `CREATE TRIGGER` to ensure they're properly attached:
+New migration to create a public bucket for banner images with appropriate RLS policies (super admins can upload, anyone can read).
 
-- `trg_credit_loyalty_on_order` on `orders` (AFTER UPDATE)
-- `trg_credit_loyalty_on_waitlist` on `waitlist_entries` (AFTER UPDATE)
-- `trg_notify_waitlist_ready` on `waitlist_entries` (AFTER UPDATE)
-- `trg_notify_order_ready` on `orders` (AFTER UPDATE)
-- `trg_track_order_analytics` on `orders` (AFTER INSERT OR UPDATE)
-- `trg_track_waitlist_analytics` on `waitlist_entries` (AFTER INSERT OR UPDATE)
-- `trg_update_customer_analytics_on_order` on `orders` (AFTER UPDATE)
-- `trg_update_customer_analytics_on_waitlist` on `waitlist_entries` (AFTER UPDATE)
-- `trg_update_waitlist_positions` on `waitlist_entries` (AFTER INSERT, UPDATE, DELETE)
+### 2. Add image upload to PromotionsManager
 
-Also include a one-time fix: for any `patron_loyalty` rows where `stamps_count >= stamp_threshold` and no active discount code exists, generate the reward code now.
+**File**: `src/components/dev/PromotionsManager.tsx`
 
-### 2. Add a "Claim Reward" fallback button in PatronLoyaltyCard
+- Replace the "Banner Image URL" text input with a file upload input
+- On file select, upload to `promo-banners` bucket, get public URL, set it on the form
+- Show image preview when a URL exists
+- Keep the URL field as a fallback (some admins may want to paste an external URL)
 
-As a safety net (in case triggers fail again), when `stamps_count >= stamp_threshold` and `active_codes` is empty, show a "Claim Reward" button that calls an edge function to generate the discount code server-side.
+### 3. Improve CTA click behavior — navigate to venue in-app
 
-**File**: `src/components/PatronLoyaltyCard.tsx`
-- Detect when stamps are at/above threshold but no codes exist
-- Show a "Claim Reward" button
-- On click, invoke `claim-loyalty-reward` edge function
+**File**: `src/components/PromoBanner.tsx`
 
-### 3. Create `claim-loyalty-reward` edge function
+- When `cta_link` is empty or not set, clicking the CTA (or the whole banner) navigates the patron to that venue in the Explore tab (switch to explore tab and highlight the venue)
+- When `cta_link` is a URL, keep the current `window.open` behavior
+- Track clicks in both cases
 
-**File**: `supabase/functions/claim-loyalty-reward/index.ts`
-- Validates the user has enough stamps/points for a reward at that venue
-- Generates the discount code
-- Resets stamps to 0
-- Returns the new code
+### 4. Add swipe support to carousel
+
+**File**: `src/components/PromoBanner.tsx`
+
+- Add touch event handlers (`onTouchStart`, `onTouchEnd`) for swipe left/right to change slides on mobile
+- Pause auto-rotation when user interacts, resume after 8 seconds of inactivity
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| New migration | Re-attach all triggers + backfill missing reward codes |
-| `src/components/PatronLoyaltyCard.tsx` | Add "Claim Reward" fallback button |
-| `supabase/functions/claim-loyalty-reward/index.ts` | New edge function for manual reward claiming |
+| New migration | Create `promo-banners` public storage bucket + RLS policies |
+| `src/components/dev/PromotionsManager.tsx` | Add file upload input for banner images, image preview |
+| `src/components/PromoBanner.tsx` | Add swipe support, improve CTA click to navigate to venue in-app when no external link |
 
