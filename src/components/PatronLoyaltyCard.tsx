@@ -253,6 +253,20 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
                     </div>
                   )}
                 </div>
+                {canClaim && (
+                  <button
+                    onClick={(e) => claimReward(card.venue_id, e)}
+                    disabled={claimingVenue === card.venue_id}
+                    className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors animate-pulse shrink-0"
+                  >
+                    {claimingVenue === card.venue_id ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3 w-3" />
+                    )}
+                    Claim!
+                  </button>
+                )}
                 <ChevronRight className={cn(
                   "h-4 w-4 text-muted-foreground transition-transform",
                   expandedCard === card.venue_id && "rotate-90"
