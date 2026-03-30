@@ -1802,6 +1802,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                       <div className="flex items-center gap-3 flex-1">
                         <VenueLogo logoUrl={(venue as any).logo_url} name={venue.name} size="md" />
                         <div className="flex flex-col gap-1 flex-1">
+                        <h3 className="font-semibold group-hover:text-accent-foreground transition-colors">{venue.name}</h3>
                         {(venue.display_address || venue.address) && (
                           <div className="flex items-center gap-1 text-sm text-muted-foreground group-hover:text-accent-foreground transition-colors">
                             <MapPin size={14} />
