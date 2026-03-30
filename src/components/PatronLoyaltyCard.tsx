@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { VenueLogo } from "@/components/VenueLogo";
-import { Gift, Stamp, Star, ChevronRight, Ticket, Loader2, Copy, Check, Trophy } from "lucide-react";
+import { Gift, Stamp, Star, ChevronRight, Ticket, Loader2, Copy, Check, Trophy, Sparkles } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
