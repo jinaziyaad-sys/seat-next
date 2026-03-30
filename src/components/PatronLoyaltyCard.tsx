@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { VenueLogo } from "@/components/VenueLogo";
-import { Gift, Stamp, Star, ChevronRight, Ticket, Loader2, Copy, Check } from "lucide-react";
+import { Gift, Stamp, Star, ChevronRight, Ticket, Loader2, Copy, Check, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -203,13 +204,25 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
                         {card.stamps_count}/{card.stamp_threshold} stamps
+                        {card.next_reward_name 
+                          ? ` · ${card.stamp_threshold - card.stamps_count} more for ${card.next_reward_name}`
+                          : " · Keep collecting!"}
                       </p>
                     </div>
                   ) : (
-                    <div className="mt-1 flex items-center gap-2">
-                      <Star className="h-4 w-4 text-amber-500" />
-                      <span className="font-bold text-lg">{card.points_balance}</span>
-                      <span className="text-xs text-muted-foreground">points</span>
+                    <div className="mt-1">
+                      <div className="flex items-center gap-2">
+                        <Star className="h-4 w-4 text-amber-500" />
+                        <span className="font-bold text-lg">{card.points_balance}</span>
+                        <span className="text-xs text-muted-foreground">points</span>
+                      </div>
+                      {card.next_reward_name && card.next_reward_threshold && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {card.next_reward_threshold - card.points_balance > 0
+                            ? `${card.next_reward_threshold - card.points_balance} more for ${card.next_reward_name}`
+                            : `Ready to claim: ${card.next_reward_name}!`}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -248,8 +261,25 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
               )}
 
               {expandedCard === card.venue_id && (
-                <div className="mt-2 pt-2 border-t">
-                  <p className="text-xs text-muted-foreground">
+                <div className="mt-2 pt-2 border-t space-y-2">
+                  {/* Progress toward next reward */}
+                  {card.next_reward_name && !hasRewards && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <Trophy className="h-3.5 w-3.5 text-primary" />
+                        <p className="text-xs font-semibold">Next Reward: {card.next_reward_name}</p>
+                      </div>
+                      {card.next_reward_description && (
+                        <p className="text-xs text-muted-foreground">{card.next_reward_description}</p>
+                      )}
+                      {card.program_type === "stamp_card" ? (
+                        <Progress value={(card.stamps_count / card.stamp_threshold) * 100} className="h-2" />
+                      ) : card.next_reward_threshold ? (
+                        <Progress value={Math.min((card.points_balance / card.next_reward_threshold) * 100, 100)} className="h-2" />
+                      ) : null}
+                    </div>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
                     Lifetime: {card.program_type === "stamp_card" 
                       ? `${card.lifetime_stamps} stamps earned` 
                       : `${card.lifetime_points} points earned`
