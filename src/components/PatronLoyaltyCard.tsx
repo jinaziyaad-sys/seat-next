@@ -49,6 +49,29 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
+  const claimReward = async (venueId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setClaimingVenue(venueId);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Please sign in"); return; }
+
+      const { data, error } = await supabase.functions.invoke('claim-loyalty-reward', {
+        body: { venue_id: venueId },
+      });
+
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+
+      toast.success(`🎉 Reward claimed: ${data.reward_name}! Code: ${data.code}`);
+      await fetchLoyaltyData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to claim reward");
+    } finally {
+      setClaimingVenue(null);
+    }
+  };
+
   const fetchLoyaltyData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
