@@ -692,6 +692,13 @@ const Index = () => {
         <PromoBanner placement="home" />
       </div>
 
+      {/* Loyalty Cards - Compact on Home */}
+      {user && (
+        <div className="px-6 pt-2">
+          <PatronLoyaltyCard compact />
+        </div>
+      )}
+
       {/* Active Tracking Section - Show demo data during tour or real data */}
       {(user || isDemoMode) && (isLoadingTracking || activeOrders.length > 0 || activeWaitlist.length > 0 || isDemoMode) && (
         <div className="p-6 space-y-4" data-tour="active-tracking">
