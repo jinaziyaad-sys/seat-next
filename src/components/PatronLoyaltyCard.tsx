@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import { VenueLogo } from "@/components/VenueLogo";
-import { Gift, Stamp, Star, ChevronRight, Ticket, Loader2, Copy, Check } from "lucide-react";
+import { Gift, Stamp, Star, ChevronRight, Ticket, Loader2, Copy, Check, Trophy } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -19,6 +20,9 @@ interface LoyaltyCardData {
   lifetime_points: number;
   active_codes: { code: string; reward_name: string | null }[];
   admin_enabled: boolean;
+  next_reward_name: string | null;
+  next_reward_description: string | null;
+  next_reward_threshold: number | null;
 }
 
 interface PatronLoyaltyCardProps {
@@ -61,15 +65,25 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
 
       const venueIds = loyaltyData.map(l => l.venue_id);
       
-      const [venuesRes, programsRes, codesRes] = await Promise.all([
+      const [venuesRes, programsRes, codesRes, rewardsRes] = await Promise.all([
         supabase.from("venues").select("id, name, logo_url").in("id", venueIds),
         supabase.from("loyalty_programs").select("*").in("venue_id", venueIds).eq("is_active", true),
         supabase.from("discount_codes").select("code, reward_name, venue_id").eq("user_id", user.id).eq("status", "active"),
+        supabase.from("loyalty_rewards").select("*").in("venue_id", venueIds).eq("is_active", true),
       ]);
 
       const venueMap = new Map(venuesRes.data?.map(v => [v.id, v]) || []);
       const programMap = new Map(programsRes.data?.map(p => [p.venue_id, p]) || []);
       const codesMap = new Map<string, { code: string; reward_name: string | null }[]>();
+      // Build rewards map keyed by program_id
+      const rewardsMap = new Map<string, { name: string; description: string | null; stamps_required: number | null; points_required: number | null }>();
+      rewardsRes.data?.forEach(r => {
+        // Keep the first (lowest threshold) reward per program
+        if (!rewardsMap.has(r.program_id)) {
+          rewardsMap.set(r.program_id, { name: r.name, description: r.description, stamps_required: r.stamps_required, points_required: r.points_required });
+        }
+      });
+
       codesRes.data?.forEach(c => {
         if (!codesMap.has(c.venue_id)) codesMap.set(c.venue_id, []);
         codesMap.get(c.venue_id)!.push(c);
@@ -80,6 +94,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
           const venue = venueMap.get(l.venue_id);
           const program = programMap.get(l.venue_id);
           if (!venue || !program) return null;
+          const reward = rewardsMap.get(program.id);
           return {
             venue_id: l.venue_id,
             venue_name: venue.name,
@@ -92,6 +107,9 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
             lifetime_points: l.lifetime_points,
             active_codes: codesMap.get(l.venue_id) || [],
             admin_enabled: program.admin_enabled !== false,
+            next_reward_name: reward?.name || null,
+            next_reward_description: reward?.description || null,
+            next_reward_threshold: program.type === 'stamp_card' ? (reward?.stamps_required || program.stamp_threshold || 10) : (reward?.points_required || null),
           };
         })
         .filter(Boolean) as LoyaltyCardData[];
@@ -186,13 +204,25 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
                         {card.stamps_count}/{card.stamp_threshold} stamps
+                        {card.next_reward_name 
+                          ? ` · ${card.stamp_threshold - card.stamps_count} more for ${card.next_reward_name}`
+                          : " · Keep collecting!"}
                       </p>
                     </div>
                   ) : (
-                    <div className="mt-1 flex items-center gap-2">
-                      <Star className="h-4 w-4 text-amber-500" />
-                      <span className="font-bold text-lg">{card.points_balance}</span>
-                      <span className="text-xs text-muted-foreground">points</span>
+                    <div className="mt-1">
+                      <div className="flex items-center gap-2">
+                        <Star className="h-4 w-4 text-amber-500" />
+                        <span className="font-bold text-lg">{card.points_balance}</span>
+                        <span className="text-xs text-muted-foreground">points</span>
+                      </div>
+                      {card.next_reward_name && card.next_reward_threshold && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {card.next_reward_threshold - card.points_balance > 0
+                            ? `${card.next_reward_threshold - card.points_balance} more for ${card.next_reward_name}`
+                            : `Ready to claim: ${card.next_reward_name}!`}
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>
@@ -231,8 +261,25 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
               )}
 
               {expandedCard === card.venue_id && (
-                <div className="mt-2 pt-2 border-t">
-                  <p className="text-xs text-muted-foreground">
+                <div className="mt-2 pt-2 border-t space-y-2">
+                  {/* Progress toward next reward */}
+                  {card.next_reward_name && !hasRewards && (
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <Trophy className="h-3.5 w-3.5 text-primary" />
+                        <p className="text-xs font-semibold">Next Reward: {card.next_reward_name}</p>
+                      </div>
+                      {card.next_reward_description && (
+                        <p className="text-xs text-muted-foreground">{card.next_reward_description}</p>
+                      )}
+                      {card.program_type === "stamp_card" ? (
+                        <Progress value={(card.stamps_count / card.stamp_threshold) * 100} className="h-2" />
+                      ) : card.next_reward_threshold ? (
+                        <Progress value={Math.min((card.points_balance / card.next_reward_threshold) * 100, 100)} className="h-2" />
+                      ) : null}
+                    </div>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">
                     Lifetime: {card.program_type === "stamp_card" 
                       ? `${card.lifetime_stamps} stamps earned` 
                       : `${card.lifetime_points} points earned`
