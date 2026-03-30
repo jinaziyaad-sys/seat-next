@@ -172,7 +172,7 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
         <CardContent className="p-0">
           {campaign.banner_image_url && (
             <div
-              className="relative h-44 w-full overflow-hidden cursor-pointer"
+              className="relative w-full overflow-hidden cursor-pointer aspect-video"
               onClick={() => handleCTAClick(campaign)}
             >
               <img

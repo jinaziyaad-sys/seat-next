@@ -475,7 +475,7 @@ export const PromotionsManager = () => {
                   <Label className="text-base font-semibold">Preview — how patrons will see this</Label>
                   <div className="relative rounded-lg overflow-hidden border bg-gradient-to-br from-primary/5 to-accent/5">
                     {form.banner_image_url && (
-                      <div className="relative h-44 w-full overflow-hidden">
+                      <div className="relative w-full overflow-hidden aspect-video">
                         <img
                           src={form.banner_image_url}
                           alt="Preview"
