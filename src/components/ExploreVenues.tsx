@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { PatronBusynessIndicator } from "@/components/PatronBusynessIndicator";
 import { Messenger } from "@/components/Messenger";
+import { PromoBanner } from "@/components/PromoBanner";
 import { cn } from "@/lib/utils";
 
 interface VenueRecommendation {
@@ -663,6 +664,11 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
           </Card>
         </div>
       )}
+
+      {/* Promoted Venues Banner */}
+      <div className="px-4 pt-4">
+        <PromoBanner placement="explore" />
+      </div>
 
       {/* Recommendations */}
       <div className="p-4 space-y-4">
