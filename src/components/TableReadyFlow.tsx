@@ -82,6 +82,8 @@ const extractExtensionReason = (notes: string | null | undefined): string | null
 };
 
 export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; initialEntry?: any }) {
+  // Check if initialEntry is actually a promo navigation with a venue ID
+  const promoVenueId = initialEntry?.__promoVenueId as string | undefined;
   const { toast } = useToast();
   const [step, setStep] = useState<"entry-select" | "venue-select" | "booking-type" | "reservation-details" | "party-details" | "waiting" | "ready" | "awaiting-confirmation" | "delayed-countdown" | "feedback" | "cancelled-details">("entry-select");
   const [selectedVenue, setSelectedVenue] = useState("");
