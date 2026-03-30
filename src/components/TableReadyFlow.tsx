@@ -125,7 +125,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   
   // New state for tabbed interface
   const [activeTableTab, setActiveTableTab] = useState<"waitlist" | "reservations">("waitlist");
-  const [showExploreView, setShowExploreView] = useState(false);
+  const [showExploreView, setShowExploreView] = useState(!!promoVenueId);
   
   // State for time slot availability checking
   const [slotAvailability, setSlotAvailability] = useState<Record<string, { available: boolean; reason?: string }>>({});
@@ -1708,6 +1708,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
       <ExploreVenues 
         onBack={() => setShowExploreView(false)}
         onSelectVenue={handleExploreVenueSelect}
+        initialVenueId={promoVenueId}
       />
     );
   }
