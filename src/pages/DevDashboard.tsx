@@ -1420,6 +1420,7 @@ export default function DevDashboard() {
                             <div className="text-sm text-muted-foreground mt-2">
                               {venue.staff_count} staff • {venue.orders_count} orders • {venue.waitlist_count} waitlist
                             </div>
+                            <VenueLoyaltyToggle venueId={venue.id} />
                           </div>
                           <div className="flex gap-2">
                             <Button 
