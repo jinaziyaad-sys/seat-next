@@ -228,6 +228,16 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Admin suspended warning */}
+          {!adminEnabled && (
+            <div className="flex items-center gap-2 p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+              <p className="text-sm text-destructive font-medium">
+                This loyalty program has been suspended by the platform administrator.
+              </p>
+            </div>
+          )}
+
           {/* Stats */}
           {programId && (
             <div className="grid grid-cols-3 gap-4">
@@ -312,6 +322,48 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
               </div>
             </div>
           )}
+
+          <Separator />
+
+          {/* Earning Sources */}
+          <div className="space-y-3">
+            <Label className="text-base font-semibold">Earning Sources</Label>
+            <p className="text-xs text-muted-foreground">Choose how patrons earn loyalty credit</p>
+            <div className="space-y-2">
+              {venueServiceTypes.includes("food_ready") && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="earn-orders"
+                    checked={earningSources.includes("order")}
+                    onCheckedChange={(checked) => {
+                      setEarningSources(prev =>
+                        checked ? [...prev, "order"] : prev.filter(s => s !== "order")
+                      );
+                    }}
+                  />
+                  <label htmlFor="earn-orders" className="text-sm cursor-pointer">
+                    🍔 Earn from food orders (when collected)
+                  </label>
+                </div>
+              )}
+              {venueServiceTypes.includes("table_ready") && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="earn-waitlist"
+                    checked={earningSources.includes("waitlist")}
+                    onCheckedChange={(checked) => {
+                      setEarningSources(prev =>
+                        checked ? [...prev, "waitlist"] : prev.filter(s => s !== "waitlist")
+                      );
+                    }}
+                  />
+                  <label htmlFor="earn-waitlist" className="text-sm cursor-pointer">
+                    🍽️ Earn from table visits (when seated)
+                  </label>
+                </div>
+              )}
+            </div>
+          </div>
 
           <Separator />
 
