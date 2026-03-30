@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { format } from "date-fns";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,10 +10,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Megaphone, Eye, MousePointer, Loader2, Trash2, Edit2, Upload, X, Image as ImageIcon } from "lucide-react";
+import { Plus, Megaphone, Eye, MousePointer, Loader2, Trash2, Edit2, X, Image as ImageIcon, CalendarIcon, ChevronDown, StopCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { BannerCropDialog } from "@/components/BannerCropDialog";
+import { cn } from "@/lib/utils";
 
 interface Campaign {
   id: string;
@@ -56,8 +62,13 @@ export const PromotionsManager = () => {
   const [uploading, setUploading] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [archivedOpen, setArchivedOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
+  // Crop dialog state
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState("");
+
   const [form, setForm] = useState({
     venue_id: "",
     title: "",
@@ -70,6 +81,10 @@ export const PromotionsManager = () => {
     payment_status: "pending",
     amount_charged: "0",
     payment_notes: "",
+    start_date: null as Date | null,
+    end_date: null as Date | null,
+    start_time: "00:00",
+    end_time: "23:59",
   });
 
   useEffect(() => {
@@ -96,11 +111,12 @@ export const PromotionsManager = () => {
       venue_id: "", title: "", description: "", banner_image_url: "",
       cta_text: "Learn More", cta_link: "", placements: ["home"],
       is_active: true, payment_status: "pending", amount_charged: "0", payment_notes: "",
+      start_date: null, end_date: null, start_time: "00:00", end_time: "23:59",
     });
     setEditingId(null);
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -114,14 +130,26 @@ export const PromotionsManager = () => {
       return;
     }
 
+    // Open crop dialog
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropImageSrc(reader.result as string);
+      setCropDialogOpen(true);
+    };
+    reader.readAsDataURL(file);
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    setCropDialogOpen(false);
     setUploading(true);
     try {
-      const ext = file.name.split(".").pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-      
+      const fileName = `${Date.now()}-${Math.random().toString(36).slice(2)}.jpg`;
+
       const { error: uploadError } = await supabase.storage
         .from("promo-banners")
-        .upload(fileName, file);
+        .upload(fileName, croppedBlob, { contentType: "image/jpeg" });
 
       if (uploadError) throw uploadError;
 
@@ -135,8 +163,15 @@ export const PromotionsManager = () => {
       toast({ title: "Upload failed", description: error.message, variant: "destructive" });
     } finally {
       setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = "";
     }
+  };
+
+  const buildDatetime = (date: Date | null, time: string): string | null => {
+    if (!date) return null;
+    const [h, m] = time.split(":").map(Number);
+    const d = new Date(date);
+    d.setHours(h, m, 0, 0);
+    return d.toISOString();
   };
 
   const handleSave = async () => {
@@ -161,6 +196,8 @@ export const PromotionsManager = () => {
         amount_charged: parseFloat(form.amount_charged) || 0,
         payment_notes: form.payment_notes || null,
         created_by: user?.id,
+        start_date: buildDatetime(form.start_date, form.start_time) || new Date().toISOString(),
+        end_date: buildDatetime(form.end_date, form.end_time),
       };
 
       if (editingId) {
@@ -195,6 +232,10 @@ export const PromotionsManager = () => {
       payment_status: campaign.payment_status,
       amount_charged: String(campaign.amount_charged || 0),
       payment_notes: campaign.payment_notes || "",
+      start_date: campaign.start_date ? new Date(campaign.start_date) : null,
+      end_date: campaign.end_date ? new Date(campaign.end_date) : null,
+      start_time: campaign.start_date ? format(new Date(campaign.start_date), "HH:mm") : "00:00",
+      end_time: campaign.end_date ? format(new Date(campaign.end_date), "HH:mm") : "23:59",
     });
     setEditingId(campaign.id);
     setDialogOpen(true);
@@ -210,6 +251,19 @@ export const PromotionsManager = () => {
     }
   };
 
+  const handleTerminate = async (id: string) => {
+    const { error } = await supabase.from("promo_campaigns").update({
+      is_active: false,
+      end_date: new Date().toISOString(),
+    }).eq("id", id);
+    if (error) {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Campaign terminated" });
+      fetchData();
+    }
+  };
+
   const togglePlacement = (placement: string) => {
     setForm(prev => ({
       ...prev,
@@ -218,6 +272,10 @@ export const PromotionsManager = () => {
         : [...prev.placements, placement],
     }));
   };
+
+  const isArchived = (c: Campaign) => !c.is_active || (c.end_date && new Date(c.end_date) < new Date());
+  const activeCampaigns = campaigns.filter(c => !isArchived(c));
+  const archivedCampaigns = campaigns.filter(c => isArchived(c));
 
   if (loading) {
     return (
@@ -228,6 +286,87 @@ export const PromotionsManager = () => {
       </Card>
     );
   }
+
+  const renderCampaignCard = (campaign: Campaign, archived: boolean) => (
+    <Card key={campaign.id}>
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between">
+          <div className="flex items-start gap-3 flex-1">
+            {campaign.banner_image_url && (
+              <img
+                src={campaign.banner_image_url}
+                alt={campaign.title}
+                className="w-20 h-12 rounded-md object-cover shrink-0"
+              />
+            )}
+            <div className="flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-semibold">{campaign.title}</h3>
+                <Badge variant={campaign.is_active ? "default" : "secondary"}>
+                  {campaign.is_active ? "Active" : "Ended"}
+                </Badge>
+                <Badge variant={
+                  campaign.payment_status === "paid" ? "default" :
+                  campaign.payment_status === "comp" ? "secondary" : "outline"
+                }>
+                  {campaign.payment_status}
+                </Badge>
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">{campaign.venue_name}</p>
+              {campaign.description && (
+                <p className="text-sm mt-1 line-clamp-1">{campaign.description}</p>
+              )}
+              <div className="flex items-center gap-4 mt-2 flex-wrap">
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <Eye className="h-3 w-3" />
+                  {campaign.impressions_count} impressions
+                </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                  <MousePointer className="h-3 w-3" />
+                  {campaign.clicks_count} clicks
+                </div>
+                <div className="flex gap-1">
+                  {campaign.placements?.map(p => (
+                    <Badge key={p} variant="outline" className="text-[10px]">{p}</Badge>
+                  ))}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                <CalendarIcon className="h-3 w-3" />
+                {format(new Date(campaign.start_date), "MMM d, yyyy HH:mm")}
+                {campaign.end_date && (
+                  <> → {format(new Date(campaign.end_date), "MMM d, yyyy HH:mm")}</>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="flex gap-1">
+            {!archived && (
+              <>
+                <Button variant="ghost" size="icon" onClick={() => handleEdit(campaign)}>
+                  <Edit2 className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-destructive"
+                  onClick={() => handleTerminate(campaign.id)}
+                  title="Terminate campaign"
+                >
+                  <StopCircle className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+            {archived && (
+              <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(campaign.id)}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="space-y-6">
@@ -277,7 +416,7 @@ export const PromotionsManager = () => {
                     <img
                       src={form.banner_image_url}
                       alt="Banner preview"
-                      className="w-full h-32 object-cover"
+                      className="w-full h-40 object-cover"
                     />
                     <Button
                       variant="destructive"
@@ -299,7 +438,7 @@ export const PromotionsManager = () => {
                       <>
                         <ImageIcon className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
                         <p className="text-sm text-muted-foreground">Click to upload banner image</p>
-                        <p className="text-xs text-muted-foreground mt-1">Max 5MB • JPG, PNG, WebP</p>
+                        <p className="text-xs text-muted-foreground mt-1">16:9 crop • Max 5MB • JPG, PNG, WebP</p>
                       </>
                     )}
                   </div>
@@ -309,7 +448,7 @@ export const PromotionsManager = () => {
                   type="file"
                   accept="image/*"
                   className="hidden"
-                  onChange={handleImageUpload}
+                  onChange={handleFileSelect}
                 />
                 <Input
                   value={form.banner_image_url}
@@ -327,6 +466,67 @@ export const PromotionsManager = () => {
                 <div className="space-y-2">
                   <Label>CTA Link (optional)</Label>
                   <Input value={form.cta_link} onChange={e => setForm(p => ({ ...p, cta_link: e.target.value }))} placeholder="Leave empty for in-app venue link" />
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Schedule */}
+              <div className="space-y-3">
+                <Label className="text-base font-semibold">Schedule</Label>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Start Date</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal text-sm", !form.start_date && "text-muted-foreground")}>
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {form.start_date ? format(form.start_date, "MMM d, yyyy") : "Now"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={form.start_date || undefined}
+                          onSelect={(d) => setForm(p => ({ ...p, start_date: d || null }))}
+                          className="p-3 pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <Input
+                      type="time"
+                      value={form.start_time}
+                      onChange={e => setForm(p => ({ ...p, start_time: e.target.value }))}
+                      className="text-xs"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">End Date (optional)</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal text-sm", !form.end_date && "text-muted-foreground")}>
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {form.end_date ? format(form.end_date, "MMM d, yyyy") : "No end date"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={form.end_date || undefined}
+                          onSelect={(d) => setForm(p => ({ ...p, end_date: d || null }))}
+                          className="p-3 pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    {form.end_date && (
+                      <Input
+                        type="time"
+                        value={form.end_time}
+                        onChange={e => setForm(p => ({ ...p, end_time: e.target.value }))}
+                        className="text-xs"
+                      />
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -388,75 +588,47 @@ export const PromotionsManager = () => {
         </Dialog>
       </div>
 
-      {/* Campaign List */}
-      {campaigns.length === 0 ? (
+      {/* Active Campaigns */}
+      {activeCampaigns.length === 0 && archivedCampaigns.length === 0 ? (
         <Card>
           <CardContent className="p-8 text-center text-muted-foreground">
             No campaigns yet. Create one to get started.
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4">
-          {campaigns.map(campaign => (
-            <Card key={campaign.id}>
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3 flex-1">
-                    {campaign.banner_image_url && (
-                      <img
-                        src={campaign.banner_image_url}
-                        alt={campaign.title}
-                        className="w-16 h-16 rounded-md object-cover shrink-0"
-                      />
-                    )}
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-semibold">{campaign.title}</h3>
-                        <Badge variant={campaign.is_active ? "default" : "secondary"}>
-                          {campaign.is_active ? "Active" : "Inactive"}
-                        </Badge>
-                        <Badge variant={
-                          campaign.payment_status === "paid" ? "default" :
-                          campaign.payment_status === "comp" ? "secondary" : "outline"
-                        }>
-                          {campaign.payment_status}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">{campaign.venue_name}</p>
-                      {campaign.description && (
-                        <p className="text-sm mt-1">{campaign.description}</p>
-                      )}
-                      <div className="flex items-center gap-4 mt-2">
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Eye className="h-3 w-3" />
-                          {campaign.impressions_count} impressions
-                        </div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <MousePointer className="h-3 w-3" />
-                          {campaign.clicks_count} clicks
-                        </div>
-                        <div className="flex gap-1">
-                          {campaign.placements?.map(p => (
-                            <Badge key={p} variant="outline" className="text-[10px]">{p}</Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(campaign)}>
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(campaign.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+        <div className="space-y-6">
+          {activeCampaigns.length > 0 && (
+            <div className="space-y-3">
+              <h3 className="text-lg font-semibold">Active Campaigns ({activeCampaigns.length})</h3>
+              <div className="grid gap-4">
+                {activeCampaigns.map(c => renderCampaignCard(c, false))}
+              </div>
+            </div>
+          )}
+
+          {archivedCampaigns.length > 0 && (
+            <Collapsible open={archivedOpen} onOpenChange={setArchivedOpen}>
+              <CollapsibleTrigger asChild>
+                <Button variant="ghost" className="w-full justify-between">
+                  <span className="text-muted-foreground">Archived Campaigns ({archivedCampaigns.length})</span>
+                  <ChevronDown className={cn("h-4 w-4 transition-transform", archivedOpen && "rotate-180")} />
+                </Button>
+              </CollapsibleTrigger>
+              <CollapsibleContent className="space-y-3 pt-2">
+                {archivedCampaigns.map(c => renderCampaignCard(c, true))}
+              </CollapsibleContent>
+            </Collapsible>
+          )}
         </div>
       )}
+
+      {/* Banner Crop Dialog */}
+      <BannerCropDialog
+        open={cropDialogOpen}
+        imageSrc={cropImageSrc}
+        onClose={() => setCropDialogOpen(false)}
+        onCropComplete={handleCropComplete}
+      />
     </div>
   );
 };

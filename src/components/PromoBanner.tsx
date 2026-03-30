@@ -52,7 +52,8 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
       .from("promo_campaigns")
       .select("*")
       .eq("is_active", true)
-      .contains("placements", [placement]);
+      .contains("placements", [placement])
+      .lte("start_date", new Date().toISOString());
 
     if (data?.length) {
       const venueIds = [...new Set(data.map(c => c.venue_id))];
@@ -171,7 +172,7 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
         <CardContent className="p-0">
           {campaign.banner_image_url && (
             <div
-              className="relative h-32 w-full overflow-hidden cursor-pointer"
+              className="relative h-44 w-full overflow-hidden cursor-pointer"
               onClick={() => handleCTAClick(campaign)}
             >
               <img
