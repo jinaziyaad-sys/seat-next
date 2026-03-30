@@ -667,7 +667,7 @@ export function ExploreVenues({ onBack, onSelectVenue }: ExploreVenuesProps) {
 
       {/* Promoted Venues Banner */}
       <div className="px-4 pt-4">
-        <PromoBanner placement="explore" />
+        <PromoBanner placement="explore" onNavigateToVenue={(venueId) => onSelectVenue?.(venueId)} />
       </div>
 
       {/* Recommendations */}
