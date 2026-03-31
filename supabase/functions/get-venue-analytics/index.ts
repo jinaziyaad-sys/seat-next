@@ -13,8 +13,9 @@ serve(async (req) => {
   }
 
   try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
+      supabaseUrl,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
@@ -22,6 +23,47 @@ serve(async (req) => {
 
     if (!venue_id) {
       throw new Error('venue_id is required');
+    }
+
+    // Verify caller has access to this venue
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const supabaseAuth = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY') ?? '', {
+      global: { headers: { Authorization: authHeader } },
+      auth: { autoRefreshToken: false, persistSession: false },
+    });
+    const token = authHeader.replace('Bearer ', '');
+    const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getClaims(token);
+    
+    if (claimsError || !claimsData?.claims?.sub) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const callerId = claimsData.claims.sub;
+    
+    // Check if caller is super_admin or has a role at this venue
+    const { data: isSuperAdmin } = await supabase.rpc('is_super_admin', { _user_id: callerId });
+    if (!isSuperAdmin) {
+      const { data: venueAccess } = await supabase
+        .from('user_roles')
+        .select('id')
+        .eq('user_id', callerId)
+        .eq('venue_id', venue_id)
+        .limit(1)
+        .single();
+      
+      if (!venueAccess) {
+        return new Response(JSON.stringify({ error: 'Forbidden: no access to this venue' }), {
+          status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
     }
 
     // Fetch venue timezone

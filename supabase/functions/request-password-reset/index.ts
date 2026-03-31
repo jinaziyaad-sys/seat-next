@@ -6,17 +6,13 @@ const corsHeaders = {
 }
 
 Deno.serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('Request password reset function invoked');
-    
     const { email } = await req.json();
 
-    // Validate input
     if (!email || typeof email !== 'string') {
       return new Response(
         JSON.stringify({ error: 'Email is required' }),
@@ -32,17 +28,30 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create Supabase admin client
     const supabaseAdmin = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false
-        }
-      }
+      { auth: { autoRefreshToken: false, persistSession: false } }
     );
+
+    // Rate limiting: max 3 requests per email per hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count } = await supabaseAdmin
+      .from('password_reset_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('email', email.toLowerCase())
+      .gte('created_at', oneHourAgo);
+
+    if (count !== null && count >= 3) {
+      // Still return success to not reveal rate limiting per email
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'Your request has been submitted. An administrator will contact you with a new password.',
+        }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     // Try to find user by email in profiles table
     const { data: profile } = await supabaseAdmin
@@ -54,7 +63,6 @@ Deno.serve(async (req) => {
     let userId = profile?.id || null;
     let venueName = null;
 
-    // If we found a user, try to get their venue
     if (userId) {
       const { data: roleData } = await supabaseAdmin
         .from('user_roles')
@@ -68,7 +76,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Create the password reset request
     const { error: insertError } = await supabaseAdmin
       .from('password_reset_requests')
       .insert({
@@ -86,9 +93,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    console.log('Password reset request created for:', email);
-
-    // Always return success to not reveal if user exists
     return new Response(
       JSON.stringify({
         success: true,
