@@ -96,6 +96,39 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
     }
   };
 
+  const submitReferralCode = async (venueId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!referralInput.trim()) return;
+    setSubmittingReferral(venueId);
+    try {
+      const { data, error } = await supabase.functions.invoke('process-referral', {
+        body: { referral_code: referralInput.trim(), venue_id: venueId }
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+      toast.success(`🎉 ${data.message || "Referral applied!"}`);
+      setReferralInput("");
+      await fetchLoyaltyData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to apply referral code");
+    } finally { setSubmittingReferral(null); }
+  };
+
+  const shareReferralCode = async (code: string, venueName: string, rewardInfo: string | null, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const message = `Join me at ${venueName}! Use my referral code ${code} to earn bonus rewards.${rewardInfo ? ` ${rewardInfo}` : ''}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `${venueName} Referral`, text: message });
+      } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(message);
+      setCopiedCode(code);
+      toast.success("Referral message copied!");
+      setTimeout(() => setCopiedCode(null), 2000);
+    }
+  };
+
   const fetchLoyaltyData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
