@@ -428,25 +428,66 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
 
                   {/* Referral code */}
                   {card.referral_active && (
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <p className="text-xs font-semibold flex items-center gap-1">
-                        <Users className="h-3 w-3 text-blue-500" /> Referral
+                        <Users className="h-3 w-3 text-primary" /> Refer a Friend
                       </p>
+                      {card.referral_config_referrer_reward && (
+                        <p className="text-[11px] text-muted-foreground">
+                          You get <span className="font-semibold text-foreground">{card.referral_config_referrer_reward}</span>, they get <span className="font-semibold text-foreground">{card.referral_config_referee_reward}</span> when they use your code.
+                        </p>
+                      )}
                       {card.referral_code ? (
-                        <div className="flex items-center justify-between bg-blue-500/10 rounded-lg p-2">
-                          <div>
-                            <p className="text-xs text-muted-foreground">Share your code:</p>
-                            <code className="text-sm font-mono font-bold text-blue-600">{card.referral_code}</code>
-                            <p className="text-[10px] text-muted-foreground">{card.referral_uses} referral{card.referral_uses !== 1 ? 's' : ''} made</p>
+                        <div className="bg-primary/10 rounded-lg p-2.5 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Your code:</p>
+                              <code className="text-sm font-mono font-bold text-primary">{card.referral_code}</code>
+                              <p className="text-[10px] text-muted-foreground">{card.referral_uses} referral{card.referral_uses !== 1 ? 's' : ''} made</p>
+                            </div>
+                            <div className="flex gap-1.5">
+                              <button onClick={(e) => copyCode(card.referral_code!, e)} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
+                                {copiedCode === card.referral_code ? <><Check className="h-3 w-3" /> Copied</> : <><Copy className="h-3 w-3" /> Copy</>}
+                              </button>
+                              <button onClick={(e) => shareReferralCode(card.referral_code!, card.venue_name, card.referral_config_referee_reward, e)} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                                <Share2 className="h-3 w-3" /> Share
+                              </button>
+                            </div>
                           </div>
-                          <button onClick={(e) => copyCode(card.referral_code!, e)} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-blue-500 text-white hover:bg-blue-600 transition-colors">
-                            {copiedCode === card.referral_code ? <><Check className="h-3 w-3" /> Copied</> : <><Copy className="h-3 w-3" /> Copy</>}
-                          </button>
                         </div>
                       ) : (
-                        <button onClick={(e) => generateReferralCode(card.venue_id, e)} className="text-xs px-3 py-1.5 rounded-md bg-blue-500 text-white hover:bg-blue-600 transition-colors">
+                        <button onClick={(e) => generateReferralCode(card.venue_id, e)} className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
                           Get Referral Code
                         </button>
+                      )}
+
+                      {/* Enter a referral code */}
+                      {card.referral_already_used ? (
+                        <div className="flex items-center gap-1.5 text-xs text-green-600 bg-green-500/10 rounded-lg p-2">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          <span>Referral applied for this venue</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] text-muted-foreground">Have a friend's referral code?</p>
+                          <div className="flex gap-1.5">
+                            <Input
+                              placeholder="Enter code"
+                              value={referralInput}
+                              onChange={(e) => setReferralInput(e.target.value.toUpperCase())}
+                              onClick={(e) => e.stopPropagation()}
+                              className="h-8 text-xs font-mono uppercase"
+                              maxLength={10}
+                            />
+                            <button
+                              onClick={(e) => submitReferralCode(card.venue_id, e)}
+                              disabled={!referralInput.trim() || submittingReferral === card.venue_id}
+                              className="shrink-0 flex items-center gap-1 text-xs px-3 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                            >
+                              {submittingReferral === card.venue_id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Apply"}
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   )}
