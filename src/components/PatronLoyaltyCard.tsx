@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
 import { VenueLogo } from "@/components/VenueLogo";
-import { Gift, Stamp, Star, ChevronRight, Loader2, Copy, Check, Trophy, Sparkles, Crown, Percent, Users, Target } from "lucide-react";
+import { Gift, Stamp, Star, ChevronRight, Loader2, Copy, Check, Trophy, Sparkles, Crown, Percent, Users, Target, Share2, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -32,6 +33,9 @@ interface LoyaltyCardData {
   referral_code: string | null;
   referral_uses: number;
   referral_active: boolean;
+  referral_config_referrer_reward: string | null;
+  referral_config_referee_reward: string | null;
+  referral_already_used: boolean;
   active_challenges: { title: string; goal_value: number; current_progress: number; completed: boolean; reward_name: string }[];
 }
 
@@ -46,6 +50,8 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [claimingVenue, setClaimingVenue] = useState<string | null>(null);
+  const [referralInput, setReferralInput] = useState<string>("");
+  const [submittingReferral, setSubmittingReferral] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLoyaltyData();
@@ -90,6 +96,39 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
     }
   };
 
+  const submitReferralCode = async (venueId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!referralInput.trim()) return;
+    setSubmittingReferral(venueId);
+    try {
+      const { data, error } = await supabase.functions.invoke('process-referral', {
+        body: { referral_code: referralInput.trim(), venue_id: venueId }
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+      toast.success(`🎉 ${data.message || "Referral applied!"}`);
+      setReferralInput("");
+      await fetchLoyaltyData();
+    } catch (err: any) {
+      toast.error(err.message || "Failed to apply referral code");
+    } finally { setSubmittingReferral(null); }
+  };
+
+  const shareReferralCode = async (code: string, venueName: string, rewardInfo: string | null, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const message = `Join me at ${venueName}! Use my referral code ${code} to earn bonus rewards.${rewardInfo ? ` ${rewardInfo}` : ''}`;
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `${venueName} Referral`, text: message });
+      } catch { /* user cancelled */ }
+    } else {
+      await navigator.clipboard.writeText(message);
+      setCopiedCode(code);
+      toast.success("Referral message copied!");
+      setTimeout(() => setCopiedCode(null), 2000);
+    }
+  };
+
   const fetchLoyaltyData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
@@ -102,7 +141,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
 
       const venueIds = loyaltyData.map(l => l.venue_id);
 
-      const [venuesRes, programsRes, codesRes, rewardsRes, tiersRes, tierStatusRes, cashbackRes, cashbackConfigRes, referralRes, referralConfigRes, challengesRes, progressRes] = await Promise.all([
+      const [venuesRes, programsRes, codesRes, rewardsRes, tiersRes, tierStatusRes, cashbackRes, cashbackConfigRes, referralRes, referralConfigRes, challengesRes, progressRes, referralCompletionsRes] = await Promise.all([
         supabase.from("venues").select("id, name, logo_url").in("id", venueIds),
         supabase.from("loyalty_programs").select("*").in("venue_id", venueIds).eq("is_active", true),
         supabase.from("discount_codes").select("code, reward_name, venue_id").eq("user_id", user.id).eq("status", "active"),
@@ -115,6 +154,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
         supabase.from("venue_referral_config").select("*").in("venue_id", venueIds),
         supabase.from("loyalty_challenges").select("*").in("venue_id", venueIds).eq("is_active", true),
         supabase.from("patron_challenge_progress").select("*").eq("user_id", user.id),
+        supabase.from("referral_completions").select("venue_id").eq("referee_id", user.id).in("venue_id", venueIds),
       ]);
 
       const venueMap = new Map(venuesRes.data?.map(v => [v.id, v]) || []);
@@ -143,6 +183,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
         challengesByVenue.get(ch.venue_id)!.push(ch);
       });
       const progressMap = new Map(progressRes.data?.map(p => [p.challenge_id, p]) || []);
+      const referralCompletedVenues = new Set(referralCompletionsRes.data?.map(rc => rc.venue_id) || []);
 
       const cardData: LoyaltyCardData[] = loyaltyData
         .map(l => {
@@ -201,6 +242,9 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
             referral_code: ref?.code || null,
             referral_uses: ref?.uses_count || 0,
             referral_active: refConfig?.is_active || false,
+            referral_config_referrer_reward: refConfig ? `${refConfig.referrer_reward_value} ${refConfig.referrer_reward_type}` : null,
+            referral_config_referee_reward: refConfig ? `${refConfig.referee_reward_value} ${refConfig.referee_reward_type}` : null,
+            referral_already_used: referralCompletedVenues.has(l.venue_id),
             active_challenges: activeChallenges,
           };
         })
@@ -384,25 +428,66 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
 
                   {/* Referral code */}
                   {card.referral_active && (
-                    <div className="space-y-1.5">
+                    <div className="space-y-2">
                       <p className="text-xs font-semibold flex items-center gap-1">
-                        <Users className="h-3 w-3 text-blue-500" /> Referral
+                        <Users className="h-3 w-3 text-primary" /> Refer a Friend
                       </p>
+                      {card.referral_config_referrer_reward && (
+                        <p className="text-[11px] text-muted-foreground">
+                          You get <span className="font-semibold text-foreground">{card.referral_config_referrer_reward}</span>, they get <span className="font-semibold text-foreground">{card.referral_config_referee_reward}</span> when they use your code.
+                        </p>
+                      )}
                       {card.referral_code ? (
-                        <div className="flex items-center justify-between bg-blue-500/10 rounded-lg p-2">
-                          <div>
-                            <p className="text-xs text-muted-foreground">Share your code:</p>
-                            <code className="text-sm font-mono font-bold text-blue-600">{card.referral_code}</code>
-                            <p className="text-[10px] text-muted-foreground">{card.referral_uses} referral{card.referral_uses !== 1 ? 's' : ''} made</p>
+                        <div className="bg-primary/10 rounded-lg p-2.5 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Your code:</p>
+                              <code className="text-sm font-mono font-bold text-primary">{card.referral_code}</code>
+                              <p className="text-[10px] text-muted-foreground">{card.referral_uses} referral{card.referral_uses !== 1 ? 's' : ''} made</p>
+                            </div>
+                            <div className="flex gap-1.5">
+                              <button onClick={(e) => copyCode(card.referral_code!, e)} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
+                                {copiedCode === card.referral_code ? <><Check className="h-3 w-3" /> Copied</> : <><Copy className="h-3 w-3" /> Copy</>}
+                              </button>
+                              <button onClick={(e) => shareReferralCode(card.referral_code!, card.venue_name, card.referral_config_referee_reward, e)} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+                                <Share2 className="h-3 w-3" /> Share
+                              </button>
+                            </div>
                           </div>
-                          <button onClick={(e) => copyCode(card.referral_code!, e)} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-blue-500 text-white hover:bg-blue-600 transition-colors">
-                            {copiedCode === card.referral_code ? <><Check className="h-3 w-3" /> Copied</> : <><Copy className="h-3 w-3" /> Copy</>}
-                          </button>
                         </div>
                       ) : (
-                        <button onClick={(e) => generateReferralCode(card.venue_id, e)} className="text-xs px-3 py-1.5 rounded-md bg-blue-500 text-white hover:bg-blue-600 transition-colors">
+                        <button onClick={(e) => generateReferralCode(card.venue_id, e)} className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
                           Get Referral Code
                         </button>
+                      )}
+
+                      {/* Enter a referral code */}
+                      {card.referral_already_used ? (
+                        <div className="flex items-center gap-1.5 text-xs text-green-600 bg-green-500/10 rounded-lg p-2">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          <span>Referral applied for this venue</span>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5">
+                          <p className="text-[11px] text-muted-foreground">Have a friend's referral code?</p>
+                          <div className="flex gap-1.5">
+                            <Input
+                              placeholder="Enter code"
+                              value={referralInput}
+                              onChange={(e) => setReferralInput(e.target.value.toUpperCase())}
+                              onClick={(e) => e.stopPropagation()}
+                              className="h-8 text-xs font-mono uppercase"
+                              maxLength={10}
+                            />
+                            <button
+                              onClick={(e) => submitReferralCode(card.venue_id, e)}
+                              disabled={!referralInput.trim() || submittingReferral === card.venue_id}
+                              className="shrink-0 flex items-center gap-1 text-xs px-3 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                            >
+                              {submittingReferral === card.venue_id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Apply"}
+                            </button>
+                          </div>
+                        </div>
                       )}
                     </div>
                   )}
