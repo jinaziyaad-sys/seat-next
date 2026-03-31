@@ -76,9 +76,7 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
 
   // Cashback
   const [cashbackActive, setCashbackActive] = useState(false);
-  const [cashbackPercentage, setCashbackPercentage] = useState("5");
-  const [cashbackMinOrder, setCashbackMinOrder] = useState("0");
-  const [cashbackMaxCredit, setCashbackMaxCredit] = useState("50");
+  const [cashbackFixedAmount, setCashbackFixedAmount] = useState("5");
   const [cashbackSaving, setCashbackSaving] = useState(false);
 
   // Referral
