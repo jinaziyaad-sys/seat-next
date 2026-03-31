@@ -241,9 +241,9 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
     setCashbackSaving(true);
     try {
       const payload = {
-        venue_id: venueId, is_active: cashbackActive, percentage: parseFloat(cashbackPercentage),
-        min_order_value: parseFloat(cashbackMinOrder), max_credit_per_order: parseFloat(cashbackMaxCredit),
-      };
+        venue_id: venueId, is_active: cashbackActive, fixed_amount: parseFloat(cashbackFixedAmount),
+        percentage: 0, min_order_value: 0, max_credit_per_order: 0,
+      } as any;
       const { data: existing } = await supabase.from("venue_cashback_config").select("id").eq("venue_id", venueId).maybeSingle();
       if (existing) {
         await supabase.from("venue_cashback_config").update(payload).eq("id", existing.id);
