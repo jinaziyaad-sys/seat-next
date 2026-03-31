@@ -242,6 +242,9 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
             referral_code: ref?.code || null,
             referral_uses: ref?.uses_count || 0,
             referral_active: refConfig?.is_active || false,
+            referral_config_referrer_reward: refConfig ? `${refConfig.referrer_reward_value} ${refConfig.referrer_reward_type}` : null,
+            referral_config_referee_reward: refConfig ? `${refConfig.referee_reward_value} ${refConfig.referee_reward_type}` : null,
+            referral_already_used: referralCompletedVenues.has(l.venue_id),
             active_challenges: activeChallenges,
           };
         })
