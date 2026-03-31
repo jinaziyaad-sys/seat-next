@@ -590,21 +590,12 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Patrons earn a percentage of their order total back as venue credit. Automatically credited when orders are collected.
+                Patrons earn a fixed credit amount each time their order is collected. The credit is automatically added to their balance.
               </p>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Cashback %</Label>
-                  <Input type="number" min="1" max="50" value={cashbackPercentage} onChange={(e) => setCashbackPercentage(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Min Order Value</Label>
-                  <Input type="number" min="0" value={cashbackMinOrder} onChange={(e) => setCashbackMinOrder(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Max Credit/Order</Label>
-                  <Input type="number" min="0" value={cashbackMaxCredit} onChange={(e) => setCashbackMaxCredit(e.target.value)} />
-                </div>
+              <div className="space-y-2">
+                <Label>Credit per Order (R)</Label>
+                <Input type="number" min="1" max="500" value={cashbackFixedAmount} onChange={(e) => setCashbackFixedAmount(e.target.value)} className="max-w-[200px]" />
+                <p className="text-xs text-muted-foreground">Amount credited to the patron's balance each time an order is collected.</p>
               </div>
               <Button onClick={handleSaveCashback} disabled={cashbackSaving} className="w-full">
                 {cashbackSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
