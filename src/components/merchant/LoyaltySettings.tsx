@@ -142,9 +142,7 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
     const { data } = await supabase.from("venue_cashback_config").select("*").eq("venue_id", venueId).maybeSingle();
     if (data) {
       setCashbackActive(data.is_active);
-      setCashbackPercentage(String(data.percentage));
-      setCashbackMinOrder(String(data.min_order_value || 0));
-      setCashbackMaxCredit(String(data.max_credit_per_order || 50));
+      setCashbackFixedAmount(String((data as any).fixed_amount || 5));
     }
   };
 
