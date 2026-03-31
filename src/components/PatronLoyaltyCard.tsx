@@ -183,6 +183,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
         challengesByVenue.get(ch.venue_id)!.push(ch);
       });
       const progressMap = new Map(progressRes.data?.map(p => [p.challenge_id, p]) || []);
+      const referralCompletedVenues = new Set(referralCompletionsRes.data?.map(rc => rc.venue_id) || []);
 
       const cardData: LoyaltyCardData[] = loyaltyData
         .map(l => {
