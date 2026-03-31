@@ -33,6 +33,9 @@ interface LoyaltyCardData {
   referral_code: string | null;
   referral_uses: number;
   referral_active: boolean;
+  referral_config_referrer_reward: string | null;
+  referral_config_referee_reward: string | null;
+  referral_already_used: boolean;
   active_challenges: { title: string; goal_value: number; current_progress: number; completed: boolean; reward_name: string }[];
 }
 
