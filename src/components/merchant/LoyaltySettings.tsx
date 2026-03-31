@@ -76,9 +76,7 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
 
   // Cashback
   const [cashbackActive, setCashbackActive] = useState(false);
-  const [cashbackPercentage, setCashbackPercentage] = useState("5");
-  const [cashbackMinOrder, setCashbackMinOrder] = useState("0");
-  const [cashbackMaxCredit, setCashbackMaxCredit] = useState("50");
+  const [cashbackFixedAmount, setCashbackFixedAmount] = useState("5");
   const [cashbackSaving, setCashbackSaving] = useState(false);
 
   // Referral
@@ -144,9 +142,7 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
     const { data } = await supabase.from("venue_cashback_config").select("*").eq("venue_id", venueId).maybeSingle();
     if (data) {
       setCashbackActive(data.is_active);
-      setCashbackPercentage(String(data.percentage));
-      setCashbackMinOrder(String(data.min_order_value || 0));
-      setCashbackMaxCredit(String(data.max_credit_per_order || 50));
+      setCashbackFixedAmount(String((data as any).fixed_amount || 5));
     }
   };
 
@@ -245,9 +241,9 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
     setCashbackSaving(true);
     try {
       const payload = {
-        venue_id: venueId, is_active: cashbackActive, percentage: parseFloat(cashbackPercentage),
-        min_order_value: parseFloat(cashbackMinOrder), max_credit_per_order: parseFloat(cashbackMaxCredit),
-      };
+        venue_id: venueId, is_active: cashbackActive, fixed_amount: parseFloat(cashbackFixedAmount),
+        percentage: 0, min_order_value: 0, max_credit_per_order: 0,
+      } as any;
       const { data: existing } = await supabase.from("venue_cashback_config").select("id").eq("venue_id", venueId).maybeSingle();
       if (existing) {
         await supabase.from("venue_cashback_config").update(payload).eq("id", existing.id);
@@ -594,21 +590,12 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
             </CardHeader>
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Patrons earn a percentage of their order total back as venue credit. Automatically credited when orders are collected.
+                Patrons earn a fixed credit amount each time their order is collected. The credit is automatically added to their balance.
               </p>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Cashback %</Label>
-                  <Input type="number" min="1" max="50" value={cashbackPercentage} onChange={(e) => setCashbackPercentage(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Min Order Value</Label>
-                  <Input type="number" min="0" value={cashbackMinOrder} onChange={(e) => setCashbackMinOrder(e.target.value)} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Max Credit/Order</Label>
-                  <Input type="number" min="0" value={cashbackMaxCredit} onChange={(e) => setCashbackMaxCredit(e.target.value)} />
-                </div>
+              <div className="space-y-2">
+                <Label>Credit per Order (R)</Label>
+                <Input type="number" min="1" max="500" value={cashbackFixedAmount} onChange={(e) => setCashbackFixedAmount(e.target.value)} className="max-w-[200px]" />
+                <p className="text-xs text-muted-foreground">Amount credited to the patron's balance each time an order is collected.</p>
               </div>
               <Button onClick={handleSaveCashback} disabled={cashbackSaving} className="w-full">
                 {cashbackSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}

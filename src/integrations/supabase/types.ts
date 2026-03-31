@@ -1628,6 +1628,7 @@ export type Database = {
       venue_cashback_config: {
         Row: {
           created_at: string
+          fixed_amount: number
           id: string
           is_active: boolean
           max_credit_per_order: number | null
@@ -1638,6 +1639,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          fixed_amount?: number
           id?: string
           is_active?: boolean
           max_credit_per_order?: number | null
@@ -1648,6 +1650,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          fixed_amount?: number
           id?: string
           is_active?: boolean
           max_credit_per_order?: number | null
