@@ -141,7 +141,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
 
       const venueIds = loyaltyData.map(l => l.venue_id);
 
-      const [venuesRes, programsRes, codesRes, rewardsRes, tiersRes, tierStatusRes, cashbackRes, cashbackConfigRes, referralRes, referralConfigRes, challengesRes, progressRes] = await Promise.all([
+      const [venuesRes, programsRes, codesRes, rewardsRes, tiersRes, tierStatusRes, cashbackRes, cashbackConfigRes, referralRes, referralConfigRes, challengesRes, progressRes, referralCompletionsRes] = await Promise.all([
         supabase.from("venues").select("id, name, logo_url").in("id", venueIds),
         supabase.from("loyalty_programs").select("*").in("venue_id", venueIds).eq("is_active", true),
         supabase.from("discount_codes").select("code, reward_name, venue_id").eq("user_id", user.id).eq("status", "active"),
@@ -154,6 +154,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
         supabase.from("venue_referral_config").select("*").in("venue_id", venueIds),
         supabase.from("loyalty_challenges").select("*").in("venue_id", venueIds).eq("is_active", true),
         supabase.from("patron_challenge_progress").select("*").eq("user_id", user.id),
+        supabase.from("referral_completions").select("venue_id").eq("referee_id", user.id).in("venue_id", venueIds),
       ]);
 
       const venueMap = new Map(venuesRes.data?.map(v => [v.id, v]) || []);
