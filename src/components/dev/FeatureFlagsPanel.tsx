@@ -12,7 +12,7 @@ interface FeatureFlagsPanelProps {
   features: FeatureFlags;
   loading: boolean;
   onToggle: (key: string, value: boolean) => Promise<void>;
-  onRolloutChange?: (key: string, percentage: number) => Promise<void>;
+  onRolloutChange?: (key: string, percentage: number) => Promise<void> | Promise<boolean>;
   rolloutPercentages?: Record<string, number>;
 }
 
