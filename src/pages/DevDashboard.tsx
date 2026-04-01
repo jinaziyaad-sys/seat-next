@@ -29,6 +29,7 @@ import { PatronManagement } from "@/components/dev/PatronManagement";
 import { PlatformAnalytics } from "@/components/dev/PlatformAnalytics";
 import { AIControlCenter } from "@/components/dev/AIControlCenter";
 import { DevExport } from "@/components/dev/DevExport";
+import { DataRequestsPanel } from "@/components/dev/DataRequestsPanel";
 import { PromotionsManager } from "@/components/dev/PromotionsManager";
 import { LocationMap } from "@/components/LocationMap";
 import { InteractiveLocationMap } from "@/components/InteractiveLocationMap";
