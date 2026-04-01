@@ -1029,6 +1029,10 @@ export default function DevDashboard() {
             <TabsTrigger value="promotions" className="flex items-center gap-1">
               Promotions
             </TabsTrigger>
+            <TabsTrigger value="data-requests" className="flex items-center gap-1">
+              <Shield className="h-3 w-3" />
+              Data Requests
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="venues" className="space-y-6">
