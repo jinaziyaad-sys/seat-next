@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Shield, Download, Trash2, ExternalLink, Loader2 } from "lucide-react";
+import { Shield, Trash2, ExternalLink, Loader2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -43,32 +43,6 @@ export function DataPrivacySection() {
       .order("created_at", { ascending: false })
       .limit(5);
     if (data) setRequests(data as DataRequest[]);
-  };
-
-  const handleExportRequest = async () => {
-    setLoading(true);
-    const result = await withRateLimit(
-      "data-request",
-      async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Not authenticated");
-
-        const { error } = await supabase.from("data_deletion_requests").insert({
-          user_id: user.id,
-          request_type: "export",
-          status: "pending",
-        });
-        if (error) throw error;
-        return true;
-      },
-      () => toast({ title: "Please wait", description: "You can only submit one request at a time", variant: "destructive" })
-    );
-
-    if (result) {
-      toast({ title: "Export Requested", description: "Your data export request has been submitted. An admin will process it shortly." });
-      fetchRequests();
-    }
-    setLoading(false);
   };
 
   const handleDeletionRequest = async () => {
@@ -122,11 +96,6 @@ export function DataPrivacySection() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <Button variant="outline" onClick={handleExportRequest} disabled={loading} className="gap-2">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            Download My Data
-          </Button>
-
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" className="gap-2" disabled={loading}>

@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus, Upload, Gift, Shield } from "lucide-react";
+import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus, Upload, Gift, Shield, ScrollText, Activity } from "lucide-react";
 import { VenueLogo } from "@/components/VenueLogo";
 import { LogoCropDialog } from "@/components/LogoCropDialog";
 import {
@@ -30,6 +30,8 @@ import { PlatformAnalytics } from "@/components/dev/PlatformAnalytics";
 import { AIControlCenter } from "@/components/dev/AIControlCenter";
 import { DevExport } from "@/components/dev/DevExport";
 import { DataRequestsPanel } from "@/components/dev/DataRequestsPanel";
+import { AuditLogPanel } from "@/components/dev/AuditLogPanel";
+import { SystemHealthDashboard } from "@/components/dev/SystemHealthDashboard";
 import { PromotionsManager } from "@/components/dev/PromotionsManager";
 import { LocationMap } from "@/components/LocationMap";
 import { InteractiveLocationMap } from "@/components/InteractiveLocationMap";
@@ -1033,6 +1035,14 @@ export default function DevDashboard() {
               <Shield className="h-3 w-3" />
               Data Requests
             </TabsTrigger>
+            <TabsTrigger value="audit-log" className="flex items-center gap-1">
+              <ScrollText className="h-3 w-3" />
+              Audit Log
+            </TabsTrigger>
+            <TabsTrigger value="system-health" className="flex items-center gap-1">
+              <Activity className="h-3 w-3" />
+              System Health
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="venues" className="space-y-6">
@@ -1854,6 +1864,14 @@ export default function DevDashboard() {
 
           <TabsContent value="data-requests">
             <DataRequestsPanel />
+          </TabsContent>
+
+          <TabsContent value="audit-log">
+            <AuditLogPanel />
+          </TabsContent>
+
+          <TabsContent value="system-health">
+            <SystemHealthDashboard />
           </TabsContent>
         </Tabs>
       </div>

@@ -8,7 +8,7 @@ import { AIOperationsCenter } from './AIOperationsCenter';
 import { Loader2 } from 'lucide-react';
 
 export function AIControlCenter() {
-  const { configs, features, announcement, loading, updateConfig } = usePlatformConfig();
+  const { configs, features, announcement, loading, rolloutPercentages, updateConfig, updateRollout } = usePlatformConfig();
   const [activeTab, setActiveTab] = useState('operations');
 
   const handleToggleFeature = async (key: string, value: boolean) => {
@@ -73,6 +73,8 @@ export function AIControlCenter() {
             features={features}
             loading={loading}
             onToggle={handleToggleFeature}
+            onRolloutChange={updateRollout}
+            rolloutPercentages={rolloutPercentages}
           />
         </TabsContent>
 
