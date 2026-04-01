@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.4";
-import { getVenueLocalHour, getVenueLocalDayOfWeek, DEFAULT_TIMEZONE } from "../_shared/timezone.ts";
+import { getVenueLocalHour, getVenueLocalDayOfWeek, getVenueLocalComponents, DEFAULT_TIMEZONE } from "../_shared/timezone.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,7 +27,7 @@ serve(async (req) => {
     }
 
     // Fetch venue timezone
-    const { data: venueData } = await supabaseClient
+    const { data: venueData } = await supabase
       .from('venues')
       .select('timezone')
       .eq('id', venue_id)
@@ -143,7 +143,7 @@ serve(async (req) => {
     // Prep time trend (daily average)
     const dailyPrepTime: Record<string, { total: number; count: number }> = {};
     completedOrders.forEach(o => {
-      const dateKey = new Date(o.placed_at).toISOString().split('T')[0];
+      const dateKey = getVenueLocalComponents(new Date(o.placed_at), venueTimezone).dateString;
       if (!dailyPrepTime[dateKey]) {
         dailyPrepTime[dateKey] = { total: 0, count: 0 };
       }
