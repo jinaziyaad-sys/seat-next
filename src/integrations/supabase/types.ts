@@ -1312,13 +1312,9 @@ export type Database = {
           fcm_token: string | null
           full_name: string
           id: string
-          last_verification_sent_at: string | null
           phone: string | null
           phone_verified: boolean | null
           updated_at: string
-          verification_attempts: number | null
-          verification_code: string | null
-          verification_code_expires_at: string | null
           verification_method: string | null
         }
         Insert: {
@@ -1328,13 +1324,9 @@ export type Database = {
           fcm_token?: string | null
           full_name: string
           id: string
-          last_verification_sent_at?: string | null
           phone?: string | null
           phone_verified?: boolean | null
           updated_at?: string
-          verification_attempts?: number | null
-          verification_code?: string | null
-          verification_code_expires_at?: string | null
           verification_method?: string | null
         }
         Update: {
@@ -1344,13 +1336,9 @@ export type Database = {
           fcm_token?: string | null
           full_name?: string
           id?: string
-          last_verification_sent_at?: string | null
           phone?: string | null
           phone_verified?: boolean | null
           updated_at?: string
-          verification_attempts?: number | null
-          verification_code?: string | null
-          verification_code_expires_at?: string | null
           verification_method?: string | null
         }
         Relationships: []
@@ -1796,6 +1784,33 @@ export type Database = {
           timezone?: string | null
           updated_at?: string
           waitlist_preferences?: Json | null
+        }
+        Relationships: []
+      }
+      verification_codes: {
+        Row: {
+          attempts: number
+          code: string
+          created_at: string
+          expires_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          code: string
+          created_at?: string
+          expires_at: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          code?: string
+          created_at?: string
+          expires_at?: string
+          id?: string
+          user_id?: string
         }
         Relationships: []
       }

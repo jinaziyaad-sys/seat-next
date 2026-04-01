@@ -23,7 +23,7 @@ serve(async (req) => {
       );
     }
 
-    // Validate that the caller is the same user they're verifying OTP for
+    // Validate caller identity
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
@@ -60,40 +60,42 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { data: profile, error: fetchError } = await supabase
+    // Check if already verified
+    const { data: profile } = await supabase
       .from('profiles')
-      .select('verification_code, verification_code_expires_at, phone_verified, verification_attempts')
+      .select('phone_verified')
       .eq('id', userId)
       .single();
 
-    if (fetchError || !profile) {
-      return new Response(
-        JSON.stringify({ success: false, verified: false, message: 'User not found' }),
-        { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    if (profile.phone_verified) {
+    if (profile?.phone_verified) {
       return new Response(
         JSON.stringify({ success: true, verified: true, message: 'Phone already verified' }),
         { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    if (!profile.verification_code) {
+    // Get verification code from server-only table
+    const { data: verificationRecord, error: fetchError } = await supabase
+      .from('verification_codes')
+      .select('id, code, expires_at, attempts')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (fetchError || !verificationRecord) {
       return new Response(
         JSON.stringify({ success: false, verified: false, message: 'No verification code found. Please request a new code.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Check if too many failed attempts — invalidate OTP
-    const currentAttempts = profile.verification_attempts || 0;
-    if (currentAttempts >= MAX_FAILED_ATTEMPTS) {
+    // Check brute force
+    if (verificationRecord.attempts >= MAX_FAILED_ATTEMPTS) {
       await supabase
-        .from('profiles')
-        .update({ verification_code: null, verification_code_expires_at: null })
-        .eq('id', userId);
+        .from('verification_codes')
+        .delete()
+        .eq('id', verificationRecord.id);
 
       return new Response(
         JSON.stringify({ success: false, verified: false, message: 'Too many failed attempts. Please request a new code.' }),
@@ -101,13 +103,12 @@ serve(async (req) => {
       );
     }
 
-    // Check if code expired
-    const expiresAt = new Date(profile.verification_code_expires_at);
-    if (expiresAt < new Date()) {
+    // Check expiry
+    if (new Date(verificationRecord.expires_at) < new Date()) {
       await supabase
-        .from('profiles')
-        .update({ verification_code: null, verification_code_expires_at: null })
-        .eq('id', userId);
+        .from('verification_codes')
+        .delete()
+        .eq('id', verificationRecord.id);
 
       return new Response(
         JSON.stringify({ success: false, verified: false, message: 'Verification code expired. Please request a new code.' }),
@@ -115,30 +116,32 @@ serve(async (req) => {
       );
     }
 
-    // Verify code — on failure, increment attempts
-    if (profile.verification_code !== code) {
+    // Verify code
+    if (verificationRecord.code !== code) {
+      const newAttempts = verificationRecord.attempts + 1;
       await supabase
-        .from('profiles')
-        .update({ verification_attempts: currentAttempts + 1 })
-        .eq('id', userId);
+        .from('verification_codes')
+        .update({ attempts: newAttempts })
+        .eq('id', verificationRecord.id);
 
-      const remaining = MAX_FAILED_ATTEMPTS - (currentAttempts + 1);
+      const remaining = MAX_FAILED_ATTEMPTS - newAttempts;
       return new Response(
         JSON.stringify({ success: false, verified: false, message: `Invalid verification code. ${remaining} attempts remaining.` }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Code is valid
+    // Code is valid — mark phone as verified and delete the code
     const { error: updateError } = await supabase
       .from('profiles')
-      .update({
-        phone_verified: true,
-        verification_code: null,
-        verification_code_expires_at: null,
-        verification_attempts: 0,
-      })
+      .update({ phone_verified: true })
       .eq('id', userId);
+
+    // Clean up verification code
+    await supabase
+      .from('verification_codes')
+      .delete()
+      .eq('user_id', userId);
 
     if (updateError) {
       return new Response(

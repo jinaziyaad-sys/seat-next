@@ -7,15 +7,12 @@ const corsHeaders = {
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { phone, userId } = await req.json();
-
-    console.log('Send SMS OTP request:', { phone, userId });
 
     if (!phone || !userId) {
       return new Response(
@@ -24,7 +21,7 @@ serve(async (req) => {
       );
     }
 
-    // Validate that the caller is the same user they're requesting OTP for
+    // Validate that the caller is the same user
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
       return new Response(
@@ -51,7 +48,6 @@ serve(async (req) => {
       );
     }
     
-    // Verify the caller is requesting OTP for themselves
     if (claimsData.claims.sub !== userId) {
       return new Response(
         JSON.stringify({ success: false, message: 'Forbidden: cannot request OTP for another user' }),
@@ -59,56 +55,46 @@ serve(async (req) => {
       );
     }
 
-    // Initialize Supabase admin client for database operations
+    // Initialize Supabase admin client
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Check rate limiting - max 3 SMS per hour
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('verification_attempts, last_verification_sent_at')
-      .eq('id', userId)
-      .single();
+    // Check rate limiting from verification_codes table — max 3 codes per hour
+    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+    const { count } = await supabase
+      .from('verification_codes')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', oneHourAgo);
 
-    if (profile?.last_verification_sent_at) {
-      const lastSent = new Date(profile.last_verification_sent_at);
-      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-      
-      if (lastSent > oneHourAgo && profile.verification_attempts >= 3) {
-        return new Response(
-          JSON.stringify({ success: false, message: 'Too many verification attempts. Please try again later.' }),
-          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      // Reset attempts if more than an hour has passed
-      if (lastSent < oneHourAgo) {
-        await supabase
-          .from('profiles')
-          .update({ verification_attempts: 0 })
-          .eq('id', userId);
-      }
+    if (count !== null && count >= 3) {
+      return new Response(
+        JSON.stringify({ success: false, message: 'Too many verification attempts. Please try again later.' }),
+        { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
     }
 
     // Generate 6-digit OTP
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     const expiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes
 
-    console.log('Generated OTP:', otp, 'expires at:', expiresAt);
+    // Delete any existing codes for this user, then insert new one
+    await supabase
+      .from('verification_codes')
+      .delete()
+      .eq('user_id', userId);
 
-    // Store OTP in database
-    const { error: updateError } = await supabase
-      .from('profiles')
-      .update({
-        verification_code: otp,
-        verification_code_expires_at: expiresAt.toISOString(),
-        verification_attempts: (profile?.verification_attempts || 0) + 1,
-        last_verification_sent_at: new Date().toISOString(),
-      })
-      .eq('id', userId);
+    const { error: insertError } = await supabase
+      .from('verification_codes')
+      .insert({
+        user_id: userId,
+        code: otp,
+        expires_at: expiresAt.toISOString(),
+        attempts: 0,
+      });
 
-    if (updateError) {
-      console.error('Error storing OTP:', updateError);
+    if (insertError) {
+      console.error('Error storing OTP:', insertError);
       return new Response(
         JSON.stringify({ success: false, message: 'Failed to store verification code' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -149,7 +135,7 @@ serve(async (req) => {
     if (!twilioResponse.ok) {
       console.error('Twilio error:', twilioData);
       return new Response(
-        JSON.stringify({ success: false, message: 'Failed to send SMS', error: twilioData }),
+        JSON.stringify({ success: false, message: 'Failed to send SMS' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -168,7 +154,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in send-sms-otp:', error);
     return new Response(
-      JSON.stringify({ success: false, message: error.message }),
+      JSON.stringify({ success: false, message: 'An unexpected error occurred' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
