@@ -1035,6 +1035,14 @@ export default function DevDashboard() {
               <Shield className="h-3 w-3" />
               Data Requests
             </TabsTrigger>
+            <TabsTrigger value="audit-log" className="flex items-center gap-1">
+              <ScrollText className="h-3 w-3" />
+              Audit Log
+            </TabsTrigger>
+            <TabsTrigger value="system-health" className="flex items-center gap-1">
+              <Activity className="h-3 w-3" />
+              System Health
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="venues" className="space-y-6">
