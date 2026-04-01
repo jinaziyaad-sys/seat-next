@@ -1865,6 +1865,14 @@ export default function DevDashboard() {
           <TabsContent value="data-requests">
             <DataRequestsPanel />
           </TabsContent>
+
+          <TabsContent value="audit-log">
+            <AuditLogPanel />
+          </TabsContent>
+
+          <TabsContent value="system-health">
+            <SystemHealthDashboard />
+          </TabsContent>
         </Tabs>
       </div>
 
