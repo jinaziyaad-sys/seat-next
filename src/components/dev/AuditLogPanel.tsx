@@ -37,7 +37,7 @@ export function AuditLogPanel() {
 
   const fetchEntries = async () => {
     setLoading(true);
-    let query = supabase
+    let query = (supabase as any)
       .from('platform_audit_log')
       .select('*')
       .order('created_at', { ascending: false })
@@ -54,7 +54,6 @@ export function AuditLogPanel() {
     if (!error && data) {
       setEntries(data as AuditEntry[]);
       setHasMore(data.length > PAGE_SIZE);
-      if (data.length > PAGE_SIZE) data.pop();
     }
     setLoading(false);
   };

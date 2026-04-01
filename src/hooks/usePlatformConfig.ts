@@ -9,6 +9,8 @@ export interface PlatformConfig {
   description: string | null;
   category: string;
   updated_at: string;
+  rollout_percentage?: number;
+  user_segments?: any;
 }
 
 export interface FeatureFlags {
@@ -32,7 +34,9 @@ export interface UsePlatformConfigReturn {
   features: FeatureFlags;
   announcement: Announcement;
   loading: boolean;
+  rolloutPercentages: Record<string, number>;
   updateConfig: (key: string, value: any) => Promise<boolean>;
+  updateRollout: (key: string, percentage: number) => Promise<boolean>;
   refetch: () => Promise<void>;
 }
 
@@ -45,13 +49,32 @@ const DEFAULT_FEATURES: FeatureFlags = {
   analytics_enabled: true,
 };
 
+// Simple hash function for user ID -> 0-99
+function hashUserId(userId: string): number {
+  let hash = 0;
+  for (let i = 0; i < userId.length; i++) {
+    const char = userId.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash |= 0;
+  }
+  return Math.abs(hash) % 100;
+}
+
 export function usePlatformConfig(): UsePlatformConfigReturn {
   const [configs, setConfigs] = useState<PlatformConfig[]>([]);
   const [loading, setLoading] = useState(true);
+  const [userId, setUserId] = useState<string | null>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id ?? null);
+    });
+  }, []);
 
   const parseConfigs = useCallback((configList: PlatformConfig[]) => {
     const features = { ...DEFAULT_FEATURES };
+    const rolloutPercentages: Record<string, number> = {};
     let announcement: Announcement = null;
 
     configList.forEach((config) => {
@@ -59,13 +82,18 @@ export function usePlatformConfig(): UsePlatformConfigReturn {
         ? (config.value === 'true' ? true : config.value === 'false' ? false : config.value === 'null' ? null : config.value)
         : config.value;
 
+      const rollout = config.rollout_percentage ?? 100;
+
+      // Check if feature passes rollout gate
+      const passesRollout = userId ? hashUserId(userId) < rollout : true;
+
       // Feature flags
-      if (config.key === 'feature.food_ordering_enabled') features.food_ordering_enabled = !!value;
-      if (config.key === 'feature.waitlist_enabled') features.waitlist_enabled = !!value;
-      if (config.key === 'feature.reservations_enabled') features.reservations_enabled = !!value;
-      if (config.key === 'feature.ratings_enabled') features.ratings_enabled = !!value;
-      if (config.key === 'feature.kitchen_board_enabled') features.kitchen_board_enabled = !!value;
-      if (config.key === 'feature.analytics_enabled') features.analytics_enabled = !!value;
+      if (config.key === 'feature.food_ordering_enabled') { features.food_ordering_enabled = !!value && passesRollout; rolloutPercentages[config.key] = rollout; }
+      if (config.key === 'feature.waitlist_enabled') { features.waitlist_enabled = !!value && passesRollout; rolloutPercentages[config.key] = rollout; }
+      if (config.key === 'feature.reservations_enabled') { features.reservations_enabled = !!value && passesRollout; rolloutPercentages[config.key] = rollout; }
+      if (config.key === 'feature.ratings_enabled') { features.ratings_enabled = !!value && passesRollout; rolloutPercentages[config.key] = rollout; }
+      if (config.key === 'feature.kitchen_board_enabled') { features.kitchen_board_enabled = !!value && passesRollout; rolloutPercentages[config.key] = rollout; }
+      if (config.key === 'feature.analytics_enabled') { features.analytics_enabled = !!value && passesRollout; rolloutPercentages[config.key] = rollout; }
 
       // Announcement
       if (config.key === 'announcement.active' && value && value !== 'null') {
@@ -73,8 +101,8 @@ export function usePlatformConfig(): UsePlatformConfigReturn {
       }
     });
 
-    return { features, announcement };
-  }, []);
+    return { features, announcement, rolloutPercentages };
+  }, [userId]);
 
   const fetchConfigs = useCallback(async () => {
     try {
@@ -97,7 +125,6 @@ export function usePlatformConfig(): UsePlatformConfigReturn {
   }, []);
 
   const updateConfig = useCallback(async (key: string, value: any): Promise<boolean> => {
-    // Optimistic update - immediately update local state
     const previousConfigs = [...configs];
     const newValue = typeof value === 'boolean' ? String(value) : value;
     
@@ -120,27 +147,45 @@ export function usePlatformConfig(): UsePlatformConfigReturn {
         .eq('key', key);
 
       if (error) {
-        // Rollback on failure
         setConfigs(previousConfigs);
-        console.error('Error updating config:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Update Failed',
-          description: error.message,
-        });
+        toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
         return false;
       }
 
-      toast({
-        title: 'Configuration Updated',
-        description: `${key} has been updated successfully.`,
-      });
-
+      toast({ title: 'Configuration Updated', description: `${key} has been updated successfully.` });
       return true;
     } catch (error) {
-      // Rollback on failure
       setConfigs(previousConfigs);
       console.error('Error updating config:', error);
+      return false;
+    }
+  }, [toast, configs]);
+
+  const updateRollout = useCallback(async (key: string, percentage: number): Promise<boolean> => {
+    const previousConfigs = [...configs];
+    
+    setConfigs(prev => prev.map(config => 
+      config.key === key 
+        ? { ...config, rollout_percentage: percentage, updated_at: new Date().toISOString() }
+        : config
+    ));
+
+    try {
+      const { error } = await supabase
+        .from('platform_config')
+        .update({ rollout_percentage: percentage } as any)
+        .eq('key', key);
+
+      if (error) {
+        setConfigs(previousConfigs);
+        toast({ variant: 'destructive', title: 'Update Failed', description: error.message });
+        return false;
+      }
+
+      toast({ title: 'Rollout Updated', description: `${key} rollout set to ${percentage}%` });
+      return true;
+    } catch (error) {
+      setConfigs(previousConfigs);
       return false;
     }
   }, [toast, configs]);
@@ -148,19 +193,13 @@ export function usePlatformConfig(): UsePlatformConfigReturn {
   useEffect(() => {
     fetchConfigs();
 
-    // Subscribe to realtime updates
     const channel = supabase
       .channel('platform-config-changes')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'platform_config',
-        },
+        { event: '*', schema: 'public', table: 'platform_config' },
         (payload) => {
           console.log('Platform config changed:', payload);
-          
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             setConfigs((prev) => {
               const newConfig = payload.new as PlatformConfig;
@@ -179,19 +218,19 @@ export function usePlatformConfig(): UsePlatformConfigReturn {
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [fetchConfigs]);
 
-  const { features, announcement } = parseConfigs(configs);
+  const { features, announcement, rolloutPercentages } = parseConfigs(configs);
 
   return {
     configs,
     features,
     announcement,
     loading,
+    rolloutPercentages,
     updateConfig,
+    updateRollout,
     refetch: fetchConfigs,
   };
 }
