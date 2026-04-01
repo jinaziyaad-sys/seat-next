@@ -13,6 +13,7 @@ import { PatronNotificationSettings } from "@/components/PatronNotificationSetti
 import { PatronDiningPreferences } from "@/components/PatronDiningPreferences";
 import { YearlyRecap } from "@/components/YearlyRecap";
 import { PatronLoyaltyCard } from "@/components/PatronLoyaltyCard";
+import { DataPrivacySection } from "@/components/DataPrivacySection";
 import { useYearlyRecap } from "@/hooks/useYearlyRecap";
 
 interface UserProfile {
