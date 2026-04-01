@@ -1,70 +1,41 @@
 
 
-# Fix: Merchant Sign-In Broken by Recursive RLS on user_roles
+# Fix: Timezone Bugs in Analytics Display
 
-## Root Cause
+## Problem
+Orders created at 10 PM show as 7 PM in merchant analytics — a 3-hour offset indicating times are being displayed in UTC instead of the venue's local timezone.
 
-The security migration (`20260331125721`) introduced a "Staff can view venue roles" RLS policy on `user_roles` that sub-selects from `user_roles` itself:
+## Root Causes Found
 
-```sql
-USING (
-  venue_id IN (SELECT ur.venue_id FROM public.user_roles ur WHERE ur.user_id = auth.uid())
-)
-```
+### 1. `get-venue-efficiency-analytics` — typo crashes timezone lookup
+Line 30 references `supabaseClient` instead of `supabase`. This is an **undefined variable**, so the timezone fetch fails silently. The function either crashes or falls back incorrectly.
 
-This creates **recursive RLS evaluation** — PostgreSQL must evaluate RLS policies on `user_roles` to execute the subquery inside the RLS policy on `user_roles`. This causes the query to fail or return empty results.
+### 2. `get-venue-efficiency-analytics` — prep time trend uses UTC dates
+Line 146 uses `new Date(o.placed_at).toISOString().split('T')[0]` which gives the UTC date, not the venue-local date. Late-night orders get bucketed to the wrong day.
 
-The auth logs confirm: login succeeds (HTTP 200), then the role check query returns nothing, and the code signs the user out immediately.
+### 3. `order_analytics.hour_of_day` stored correctly but not always used
+The `track_order_analytics` trigger already stores venue-local `hour_of_day` and `day_of_week` in the `order_analytics` table. But the edge functions re-derive hours from `placed_at` using `getVenueLocalHour()`. This is fine when the timezone lookup works — but due to bug #1, it doesn't.
 
-## Fix
+### 4. Frontend display of order timestamps
+Need to verify that any direct timestamp display (e.g., in tables or tooltips) uses venue timezone formatting rather than raw UTC or browser-local time.
 
-Replace the recursive subquery policy with one that uses the existing `SECURITY DEFINER` function `get_user_venue()` (which bypasses RLS):
+## Fix Plan
 
-### Migration SQL
+### 1. Fix `supabaseClient` typo in efficiency analytics
+**File**: `supabase/functions/get-venue-efficiency-analytics/index.ts`
+- Line 30: Change `supabaseClient` → `supabase`
 
-```sql
--- Drop the recursive policy
-DROP POLICY IF EXISTS "Staff can view venue roles" ON public.user_roles;
+### 2. Fix prep time trend to use venue-local dates
+**Same file**, line 146: Use `getVenueLocalComponents()` or `Intl.DateTimeFormat` to get the venue-local date string instead of UTC.
 
--- Replace with a non-recursive version using security definer function
-CREATE POLICY "Staff can view venue roles"
-ON public.user_roles FOR SELECT
-TO authenticated
-USING (
-  venue_id = public.get_user_venue(auth.uid())
-);
-```
-
-**Note**: `get_user_venue` is `SECURITY DEFINER` and `LIMIT 1`, so it won't recurse. However, it only returns one venue. For multi-venue staff, we should also fix the snapshot insert policies that have the same recursive pattern.
-
-Also fix the two snapshot table policies that have the same recursive subquery issue:
-
-```sql
-DROP POLICY IF EXISTS "Staff can insert venue capacity snapshots" ON public.venue_capacity_snapshots;
-DROP POLICY IF EXISTS "Staff can insert daily snapshots" ON public.daily_venue_snapshots;
-
-CREATE POLICY "Staff can insert venue capacity snapshots"
-ON public.venue_capacity_snapshots FOR INSERT
-TO authenticated
-WITH CHECK (
-  venue_id = public.get_user_venue(auth.uid())
-  OR public.is_super_admin(auth.uid())
-);
-
-CREATE POLICY "Staff can insert daily snapshots"
-ON public.daily_venue_snapshots FOR INSERT
-TO authenticated
-WITH CHECK (
-  venue_id = public.get_user_venue(auth.uid())
-  OR public.is_super_admin(auth.uid())
-);
-```
+### 3. Verify `get-venue-analytics` function
+This function already correctly uses `getVenueLocalHour` with `venueTimezone` and doesn't have the typo — confirmed working.
 
 ## Files Changed
 
 | File | Change |
 |------|--------|
-| New migration SQL | Drop recursive policies, recreate using `get_user_venue()` security definer function |
+| `supabase/functions/get-venue-efficiency-analytics/index.ts` | Fix `supabaseClient` → `supabase` typo; fix prep time trend date grouping to use venue timezone |
 
-No frontend code changes needed — the auth flow code is correct, it's the database policy blocking the query.
+Single edge function fix — no frontend or migration changes needed.
 
