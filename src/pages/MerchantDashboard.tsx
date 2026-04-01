@@ -555,6 +555,12 @@ const MerchantDashboard = () => {
                 )}
               </TabsTrigger>
             )}
+            {hasTableReady && userRole.role === "admin" && (
+              <TabsTrigger value="floor-plan" className="flex items-center gap-2">
+                <LayoutGrid size={16} />
+                Floor Plan
+              </TabsTrigger>
+            )}
             {userRole.role === "admin" && (
               <>
                 <TabsTrigger value="staff" data-tour="tab-staff" className="flex items-center gap-2">
