@@ -73,6 +73,8 @@ export function AIControlCenter() {
             features={features}
             loading={loading}
             onToggle={handleToggleFeature}
+            onRolloutChange={updateRollout}
+            rolloutPercentages={rolloutPercentages}
           />
         </TabsContent>
 
