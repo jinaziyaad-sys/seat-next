@@ -1,41 +1,82 @@
+# ReadyUp Platform — Feature Gap Analysis & Roadmap
+
+Based on a thorough review of the entire codebase across all three portals (Patron, Merchant, Dev/Super Admin), here is a comprehensive list of what's missing, what can be improved, and new features worth adding.
+
+---
+
+## A. Patron App Gaps
 
 
-# Fix: Timezone Bugs in Analytics Display
 
-## Problem
-Orders created at 10 PM show as 7 PM in merchant analytics — a 3-hour offset indicating times are being displayed in UTC instead of the venue's local timezone.
+### 6. Social Features
 
-## Root Causes Found
+- No ability to invite friends to join a waitlist together
+- No sharing of venue experiences or reviews publicly
+- No "friends at this venue" indicator
 
-### 1. `get-venue-efficiency-analytics` — typo crashes timezone lookup
-Line 30 references `supabaseClient` instead of `supabase`. This is an **undefined variable**, so the timezone fetch fails silently. The function either crashes or falls back incorrectly.
+### 7. Multi-Language Support (i18n)
 
-### 2. `get-venue-efficiency-analytics` — prep time trend uses UTC dates
-Line 146 uses `new Date(o.placed_at).toISOString().split('T')[0]` which gives the UTC date, not the venue-local date. Late-night orders get bucketed to the wrong day.
+The entire app is English-only. For a South African audience, Afrikaans and other languages would broaden reach.
 
-### 3. `order_analytics.hour_of_day` stored correctly but not always used
-The `track_order_analytics` trigger already stores venue-local `hour_of_day` and `day_of_week` in the `order_analytics` table. But the edge functions re-derive hours from `placed_at` using `getVenueLocalHour()`. This is fine when the timezone lookup works — but due to bug #1, it doesn't.
+### 8. Offline / Poor Connectivity Handling
 
-### 4. Frontend display of order timestamps
-Need to verify that any direct timestamp display (e.g., in tables or tooltips) uses venue timezone formatting rather than raw UTC or browser-local time.
+No service worker or PWA manifest for offline support. If a patron loses signal while at a venue, they lose all tracking.
 
-## Fix Plan
+---
 
-### 1. Fix `supabaseClient` typo in efficiency analytics
-**File**: `supabase/functions/get-venue-efficiency-analytics/index.ts`
-- Line 30: Change `supabaseClient` → `supabase`
+## B. Merchant Dashboard Gaps
 
-### 2. Fix prep time trend to use venue-local dates
-**Same file**, line 146: Use `getVenueLocalComponents()` or `Intl.DateTimeFormat` to get the venue-local date string instead of UTC.
 
-### 3. Verify `get-venue-analytics` function
-This function already correctly uses `getVenueLocalHour` with `venueTimezone` and doesn't have the typo — confirmed working.
 
-## Files Changed
+### 11. Table Management (Live Floor Plan)
 
-| File | Change |
-|------|--------|
-| `supabase/functions/get-venue-efficiency-analytics/index.ts` | Fix `supabaseClient` → `supabase` typo; fix prep time trend date grouping to use venue timezone |
+`TableConfigurationManager` lets merchants define tables, but there's no **live floor plan view** showing which tables are occupied, available, or reserved in real-time.
 
-Single edge function fix — no frontend or migration changes needed.
+C. Dev / Platform Gaps
+
+### 19. Audit Log
+
+`ai_operations_log` exists but there's no general audit trail for admin actions (venue creation, role changes, config updates, data deletions).
+
+### 20. System Health Dashboard
+
+`VenueHealthReport` exists per-venue but there's no platform-wide system health view (edge function latency, error rates, database load, active users).
+
+### 21. A/B Testing Framework
+
+Feature flags exist as on/off toggles but there's no percentage rollout, user segmentation, or experiment tracking.
+
+### 22. Automated Alerting
+
+No automated alerts when error rates spike, venues go inactive, or system metrics cross thresholds.
+
+---
+
+## D. Cross-Cutting / Technical
+
+### 23. PWA / Installable App
+
+No `manifest.json`, no service worker. Adding PWA support would let patrons "install" the app on their home screen with push notifications.
+
+### 24. Email Notifications
+
+SMS OTP exists, push notifications exist, but there are **no email notifications** (order confirmations, waitlist updates, marketing).
+
+### 25. Rate Limiting on Client
+
+No client-side throttling on API calls. Rapid tapping could flood Supabase.
+
+### 26. Accessibility (a11y)
+
+No ARIA labels on interactive elements, no keyboard navigation testing, no screen reader support verified.
+
+### 27. End-to-End Testing
+
+No test files exist in the project. No Cypress, Playwright, or Vitest tests.
+
+### 28. Data Retention / POPIA Compliance
+
+For South African users, POPIA (Protection of Personal Information Act) compliance is needed. No data export, data deletion request flow, or privacy policy integration exists.
+
+---
 
