@@ -17,7 +17,7 @@ import { SoundSnoozeButton } from "@/components/merchant/SoundSnoozeButton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar, AlertTriangle, Info, X, Wrench, Gift } from "lucide-react";
+import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar, AlertTriangle, Info, X, Wrench, Gift, LayoutGrid } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId, playPatronArrivedSound } from "@/utils/notificationSound";
