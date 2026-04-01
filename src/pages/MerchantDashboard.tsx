@@ -605,6 +605,12 @@ const MerchantDashboard = () => {
             </TabsContent>
           )}
 
+          {hasTableReady && userRole.role === "admin" && (
+            <TabsContent value="floor-plan">
+              <LiveFloorPlan venueId={userRole.venue_id!} />
+            </TabsContent>
+          )}
+
           {userRole.role === "admin" ? (
             <>
               <TabsContent value="staff" data-tour="staff-content">
