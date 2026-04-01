@@ -1,48 +1,52 @@
 
 
-# Complete the Referral System UX
+# Add Staff Performance Under Analytics
 
-## Current State
-- Backend: `venue_referral_config` table, `referral_codes` table, `referral_completions` table, and `process-referral` edge function all exist
-- Patron can generate a referral code and copy it
-- **Missing**: No way for the referee (person receiving the code) to enter it anywhere
-- **Missing**: No explanation of what the referral does or how it benefits either party
-- **Missing**: No share functionality beyond copy
+## What changes
+Instead of creating a separate tab, add a **Staff Performance section** within the existing "Operations" tab in MerchantReports. This keeps all operational analytics together and avoids tab overload.
 
 ## Plan
 
-### 1. Add "Enter Referral Code" Input on Patron Loyalty Card
-**File**: `src/components/PatronLoyaltyCard.tsx`
+### 1. Create StaffPerformance component
+**New file**: `src/components/merchant/StaffPerformance.tsx`
 
-In the expanded referral section, below the "Share your code" block, add:
-- A text input field: "Have a referral code? Enter it here"
-- A submit button that calls the `process-referral` edge function
-- Success/error toast feedback ("Referral applied! You earned X stamps")
-- Once used, show "Referral applied" instead of the input (check `referral_completions` for this venue)
+- Accepts `venueId` and date range props
+- Queries `orders` joined with `order_analytics` grouped by `prepared_by_staff_id` and `marked_ready_by_staff_id`
+- Fetches staff names from `profiles` via the staff IDs found
+- Displays a table: staff name, orders handled, avg prep time, on-time %
+- Highlights top performer with a badge
+- Shows a SmartInsights block with `type="staff"`
 
-### 2. Improve Share UX
-**File**: `src/components/PatronLoyaltyCard.tsx`
+### 2. Create edge function for staff analytics
+**New file**: `supabase/functions/get-venue-staff-analytics/index.ts`
 
-Replace bare "Copy" with a richer share section:
-- Add a "Share" button that uses the Web Share API (falls back to copy)
-- Include a short pre-written message: "Join me at [Venue Name]! Use my code ABC123 to earn bonus rewards."
-- Show a brief explainer: "You both earn [reward] when they use your code"
+- Accepts `venueId`, `startDate`, `endDate`
+- Validates JWT and checks caller is venue staff/admin
+- Joins `orders` + `order_analytics` + `profiles` to aggregate per-staff metrics
+- Returns: `{ staff: [{ id, name, ordersHandled, avgPrepTime, onTimeRate }] }`
 
-### 3. Fetch Referral Completion Status
-**File**: `src/components/PatronLoyaltyCard.tsx`
+### 3. Extend SmartInsights with staff type
+**Edit**: `src/components/merchant/SmartInsights.tsx`
 
-Query `referral_completions` where `referee_id = user.id` per venue to determine if the patron has already used a referral code, so we hide the input and show "Referral applied" instead.
+- Add `"staff"` to the `type` union
+- Add `staffMetrics` to `InsightData` (workload distribution, top/bottom performers)
+- Generate insights like:
+  - "Workload imbalance — [Name] handles X% of orders"
+  - "[Name] has fastest prep at Y min"
+  - "No staff attribution on Z% of orders — ensure staff log in"
 
-### 4. Add Reward Info Display
-Show the configured rewards from `venue_referral_config` in the referral section:
-- "Refer a friend: You get [X stamps], they get [Y stamps]"
-- This gives context to why the patron should share
+### 4. Embed in Operations tab
+**Edit**: `src/components/merchant/OperationsEfficiency.tsx`
 
-## Files Changed
+- Import and render `StaffPerformance` below the existing efficiency charts
+- Pass through the venue ID and date range
+
+## Files
 
 | File | Change |
 |------|--------|
-| `src/components/PatronLoyaltyCard.tsx` | Add referral code input, share button, completion status check, reward info display |
-
-No database or edge function changes needed — all backend pieces exist.
+| `src/components/merchant/StaffPerformance.tsx` | New — staff metrics table + insights |
+| `supabase/functions/get-venue-staff-analytics/index.ts` | New — server-side aggregation |
+| `src/components/merchant/SmartInsights.tsx` | Add staff insight type and logic |
+| `src/components/merchant/OperationsEfficiency.tsx` | Render StaffPerformance section |
 
