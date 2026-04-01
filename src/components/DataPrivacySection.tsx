@@ -96,11 +96,6 @@ export function DataPrivacySection() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <Button variant="outline" onClick={handleExportRequest} disabled={loading} className="gap-2">
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-            Download My Data
-          </Button>
-
           <AlertDialog>
             <AlertDialogTrigger asChild>
               <Button variant="destructive" className="gap-2" disabled={loading}>
