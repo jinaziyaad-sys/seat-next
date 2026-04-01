@@ -25,6 +25,7 @@ import { toast as sonnerToast } from "sonner";
 import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
 import { MerchantMessengerHub } from "@/components/merchant/MerchantMessengerHub";
 import { LoyaltyManagement } from "@/components/merchant/LoyaltyManagement";
+import { LiveFloorPlan } from "@/components/merchant/LiveFloorPlan";
 import {
   AlertDialog,
   AlertDialogAction,
