@@ -14,6 +14,7 @@ import DevAuth from "./pages/DevAuth";
 import DevDashboard from "./pages/DevDashboard";
 
 import WaitlistJoin from "./pages/WaitlistJoin";
+import Privacy from "./pages/Privacy";
 
 const queryClient = new QueryClient();
 
