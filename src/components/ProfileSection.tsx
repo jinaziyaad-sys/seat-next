@@ -13,6 +13,7 @@ import { PatronNotificationSettings } from "@/components/PatronNotificationSetti
 import { PatronDiningPreferences } from "@/components/PatronDiningPreferences";
 import { YearlyRecap } from "@/components/YearlyRecap";
 import { PatronLoyaltyCard } from "@/components/PatronLoyaltyCard";
+import { DataPrivacySection } from "@/components/DataPrivacySection";
 import { useYearlyRecap } from "@/hooks/useYearlyRecap";
 
 interface UserProfile {
@@ -228,6 +229,9 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
 
       {/* Loyalty Cards */}
       <PatronLoyaltyCard />
+
+      {/* Data & Privacy Section (POPIA) */}
+      <DataPrivacySection />
 
       {/* Dining Preferences Section */}
       <PatronDiningPreferences />

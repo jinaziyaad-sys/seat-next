@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus, Upload, Gift } from "lucide-react";
+import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus, Upload, Gift, Shield } from "lucide-react";
 import { VenueLogo } from "@/components/VenueLogo";
 import { LogoCropDialog } from "@/components/LogoCropDialog";
 import {
@@ -29,6 +29,7 @@ import { PatronManagement } from "@/components/dev/PatronManagement";
 import { PlatformAnalytics } from "@/components/dev/PlatformAnalytics";
 import { AIControlCenter } from "@/components/dev/AIControlCenter";
 import { DevExport } from "@/components/dev/DevExport";
+import { DataRequestsPanel } from "@/components/dev/DataRequestsPanel";
 import { PromotionsManager } from "@/components/dev/PromotionsManager";
 import { LocationMap } from "@/components/LocationMap";
 import { InteractiveLocationMap } from "@/components/InteractiveLocationMap";
@@ -1028,6 +1029,10 @@ export default function DevDashboard() {
             <TabsTrigger value="promotions" className="flex items-center gap-1">
               Promotions
             </TabsTrigger>
+            <TabsTrigger value="data-requests" className="flex items-center gap-1">
+              <Shield className="h-3 w-3" />
+              Data Requests
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="venues" className="space-y-6">
@@ -1845,6 +1850,10 @@ export default function DevDashboard() {
 
           <TabsContent value="promotions">
             <PromotionsManager />
+          </TabsContent>
+
+          <TabsContent value="data-requests">
+            <DataRequestsPanel />
           </TabsContent>
         </Tabs>
       </div>

@@ -17,7 +17,7 @@ import { SoundSnoozeButton } from "@/components/merchant/SoundSnoozeButton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar, AlertTriangle, Info, X, Wrench, Gift } from "lucide-react";
+import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar, AlertTriangle, Info, X, Wrench, Gift, LayoutGrid } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId, playPatronArrivedSound } from "@/utils/notificationSound";
@@ -25,6 +25,7 @@ import { toast as sonnerToast } from "sonner";
 import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
 import { MerchantMessengerHub } from "@/components/merchant/MerchantMessengerHub";
 import { LoyaltyManagement } from "@/components/merchant/LoyaltyManagement";
+import { LiveFloorPlan } from "@/components/merchant/LiveFloorPlan";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -554,6 +555,12 @@ const MerchantDashboard = () => {
                 )}
               </TabsTrigger>
             )}
+            {hasTableReady && userRole.role === "admin" && (
+              <TabsTrigger value="floor-plan" className="flex items-center gap-2">
+                <LayoutGrid size={16} />
+                Floor Plan
+              </TabsTrigger>
+            )}
             {userRole.role === "admin" && (
               <>
                 <TabsTrigger value="staff" data-tour="tab-staff" className="flex items-center gap-2">
@@ -595,6 +602,12 @@ const MerchantDashboard = () => {
           {hasReservations && (
             <TabsContent value="reservations" data-tour="reservations-content">
               <ReservationCalendar venueId={userRole.venue_id!} venueName={userRole.venue_name || ""} />
+            </TabsContent>
+          )}
+
+          {hasTableReady && userRole.role === "admin" && (
+            <TabsContent value="floor-plan">
+              <LiveFloorPlan venueId={userRole.venue_id!} />
             </TabsContent>
           )}
 
