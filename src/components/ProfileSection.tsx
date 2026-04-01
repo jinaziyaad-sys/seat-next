@@ -230,6 +230,9 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
       {/* Loyalty Cards */}
       <PatronLoyaltyCard />
 
+      {/* Data & Privacy Section (POPIA) */}
+      <DataPrivacySection />
+
       {/* Dining Preferences Section */}
       <PatronDiningPreferences />
 

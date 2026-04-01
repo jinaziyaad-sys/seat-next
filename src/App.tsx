@@ -31,6 +31,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/waitlist/:venueId" element={<WaitlistJoin />} />
+            <Route path="/privacy" element={<Privacy />} />
             
             {/* Merchant App Routes */}
             <Route path="/merchant/auth" element={<MerchantAuth />} />
