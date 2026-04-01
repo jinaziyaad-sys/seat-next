@@ -6,6 +6,7 @@ import { startOfDay, subDays, endOfDay, startOfToday } from "date-fns";
 import { DateRangePicker } from "./DateRangePicker";
 import { ComparativeMetrics } from "./ComparativeMetrics";
 import { SmartInsights } from "./SmartInsights";
+import { StaffPerformance } from "./StaffPerformance";
 import {
   Table,
   TableBody,
@@ -378,38 +379,8 @@ export const OperationsEfficiency = ({ venueId, venueCreatedAt }: OperationsEffi
         </Card>
       </div>
 
-      {/* Staff Leaderboard */}
-      {staffLeaderboard.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Staff Performance Leaderboard</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Rank</TableHead>
-                  <TableHead>Staff Member</TableHead>
-                  <TableHead className="text-center">Orders Completed</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {staffLeaderboard.map((staff, index) => (
-                  <TableRow key={staff.staff_id}>
-                    <TableCell>
-                      <Badge variant={index === 0 ? "default" : "secondary"}>
-                        #{index + 1}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="font-medium">{staff.name}</TableCell>
-                    <TableCell className="text-center">{staff.orders_completed}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      )}
+      {/* Staff Performance (Detailed) */}
+      <StaffPerformance venueId={venueId} startDate={startDate} endDate={endDate} />
     </div>
   );
 };

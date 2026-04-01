@@ -26,11 +26,21 @@ interface InsightData {
     previousValue: number;
     metricName: string;
   };
+  staffMetrics?: {
+    topPerformerName?: string;
+    topPerformerOrders?: number;
+    fastestPrepName?: string;
+    fastestPrepTime?: number;
+    unattributedPercentage?: number;
+    maxWorkloadPercentage?: number;
+    maxWorkloadName?: string;
+    staffCount?: number;
+  };
 }
 
 interface SmartInsightsProps {
   data: InsightData;
-  type: "orders" | "customers" | "operations" | "overview";
+  type: "orders" | "customers" | "operations" | "overview" | "staff";
 }
 
 interface Insight {
@@ -263,7 +273,57 @@ export const SmartInsights = ({ data, type }: SmartInsightsProps) => {
       }
     }
 
-    // Comparative Trend Insights
+    // Staff Performance Insights
+    if (type === "staff" && data.staffMetrics) {
+      const { topPerformerName, topPerformerOrders, fastestPrepName, fastestPrepTime, unattributedPercentage, maxWorkloadPercentage, maxWorkloadName, staffCount } = data.staffMetrics;
+
+      if (unattributedPercentage !== undefined && unattributedPercentage > 30) {
+        insights.push({
+          type: "warning",
+          title: "Low Staff Attribution",
+          message: `${unattributedPercentage}% of orders have no staff attribution. Ensure all staff members are logged in when processing orders for accurate performance tracking.`,
+          icon: AlertTriangle,
+        });
+      }
+
+      if (maxWorkloadPercentage !== undefined && maxWorkloadPercentage > 55 && maxWorkloadName) {
+        insights.push({
+          type: "warning",
+          title: "Uneven Workload Distribution",
+          message: `${maxWorkloadName} handles ${maxWorkloadPercentage}% of orders. Consider redistributing tasks more evenly across your team.`,
+          icon: Users,
+        });
+      }
+
+      if (fastestPrepName && fastestPrepTime !== undefined && fastestPrepTime < 10) {
+        insights.push({
+          type: "success",
+          title: "Speed Champion",
+          message: `${fastestPrepName} has the fastest average prep time at ${fastestPrepTime} minutes. Their workflow could serve as a model for the team.`,
+          icon: CheckCircle,
+        });
+      }
+
+      if (topPerformerName && topPerformerOrders !== undefined && topPerformerOrders > 0) {
+        insights.push({
+          type: "info",
+          title: "Top Performer",
+          message: `${topPerformerName} leads with ${topPerformerOrders} orders handled this period. Recognise and reward consistent performance.`,
+          icon: TrendingUp,
+        });
+      }
+
+      if (staffCount !== undefined && staffCount === 1) {
+        insights.push({
+          type: "info",
+          title: "Single Staff Coverage",
+          message: "Only one staff member has order attribution. If you have more team members, ensure they're logging in to track individual performance.",
+          icon: Info,
+        });
+      }
+    }
+
+
     if (data.comparativeData) {
       const { currentValue, previousValue, metricName } = data.comparativeData;
       const percentChange = ((currentValue - previousValue) / previousValue) * 100;
