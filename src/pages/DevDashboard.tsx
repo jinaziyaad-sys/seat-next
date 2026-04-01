@@ -1851,6 +1851,10 @@ export default function DevDashboard() {
           <TabsContent value="promotions">
             <PromotionsManager />
           </TabsContent>
+
+          <TabsContent value="data-requests">
+            <DataRequestsPanel />
+          </TabsContent>
         </Tabs>
       </div>
 
