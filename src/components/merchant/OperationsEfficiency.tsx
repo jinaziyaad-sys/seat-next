@@ -6,6 +6,7 @@ import { startOfDay, subDays, endOfDay, startOfToday } from "date-fns";
 import { DateRangePicker } from "./DateRangePicker";
 import { ComparativeMetrics } from "./ComparativeMetrics";
 import { SmartInsights } from "./SmartInsights";
+import { StaffPerformance } from "./StaffPerformance";
 import {
   Table,
   TableBody,
