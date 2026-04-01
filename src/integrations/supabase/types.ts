@@ -1238,6 +1238,36 @@ export type Database = {
           },
         ]
       }
+      platform_audit_log: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          details: Json | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+        }
+        Relationships: []
+      }
       platform_config: {
         Row: {
           category: string | null
@@ -1245,8 +1275,10 @@ export type Database = {
           description: string | null
           id: string
           key: string
+          rollout_percentage: number
           updated_at: string | null
           updated_by: string | null
+          user_segments: Json
           value: Json
         }
         Insert: {
@@ -1255,8 +1287,10 @@ export type Database = {
           description?: string | null
           id?: string
           key: string
+          rollout_percentage?: number
           updated_at?: string | null
           updated_by?: string | null
+          user_segments?: Json
           value: Json
         }
         Update: {
@@ -1265,8 +1299,10 @@ export type Database = {
           description?: string | null
           id?: string
           key?: string
+          rollout_percentage?: number
           updated_at?: string | null
           updated_by?: string | null
+          user_segments?: Json
           value?: Json
         }
         Relationships: []
@@ -2175,6 +2211,15 @@ export type Database = {
         Returns: boolean
       }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      log_audit_event: {
+        Args: {
+          p_action: string
+          p_details?: Json
+          p_entity_id: string
+          p_entity_type: string
+        }
+        Returns: undefined
+      }
       notify_user_via_push: {
         Args: {
           p_body: string
