@@ -26,11 +26,21 @@ interface InsightData {
     previousValue: number;
     metricName: string;
   };
+  staffMetrics?: {
+    topPerformerName?: string;
+    topPerformerOrders?: number;
+    fastestPrepName?: string;
+    fastestPrepTime?: number;
+    unattributedPercentage?: number;
+    maxWorkloadPercentage?: number;
+    maxWorkloadName?: string;
+    staffCount?: number;
+  };
 }
 
 interface SmartInsightsProps {
   data: InsightData;
-  type: "orders" | "customers" | "operations" | "overview";
+  type: "orders" | "customers" | "operations" | "overview" | "staff";
 }
 
 interface Insight {
