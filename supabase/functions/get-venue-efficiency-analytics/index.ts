@@ -143,7 +143,7 @@ serve(async (req) => {
     // Prep time trend (daily average)
     const dailyPrepTime: Record<string, { total: number; count: number }> = {};
     completedOrders.forEach(o => {
-      const dateKey = new Date(o.placed_at).toISOString().split('T')[0];
+      const dateKey = getVenueLocalComponents(new Date(o.placed_at), venueTimezone).dateString;
       if (!dailyPrepTime[dateKey]) {
         dailyPrepTime[dateKey] = { total: 0, count: 0 };
       }
