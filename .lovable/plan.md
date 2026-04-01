@@ -1,52 +1,70 @@
 
 
-# Add Staff Performance Under Analytics
+# Fix: Merchant Sign-In Broken by Recursive RLS on user_roles
 
-## What changes
-Instead of creating a separate tab, add a **Staff Performance section** within the existing "Operations" tab in MerchantReports. This keeps all operational analytics together and avoids tab overload.
+## Root Cause
 
-## Plan
+The security migration (`20260331125721`) introduced a "Staff can view venue roles" RLS policy on `user_roles` that sub-selects from `user_roles` itself:
 
-### 1. Create StaffPerformance component
-**New file**: `src/components/merchant/StaffPerformance.tsx`
+```sql
+USING (
+  venue_id IN (SELECT ur.venue_id FROM public.user_roles ur WHERE ur.user_id = auth.uid())
+)
+```
 
-- Accepts `venueId` and date range props
-- Queries `orders` joined with `order_analytics` grouped by `prepared_by_staff_id` and `marked_ready_by_staff_id`
-- Fetches staff names from `profiles` via the staff IDs found
-- Displays a table: staff name, orders handled, avg prep time, on-time %
-- Highlights top performer with a badge
-- Shows a SmartInsights block with `type="staff"`
+This creates **recursive RLS evaluation** — PostgreSQL must evaluate RLS policies on `user_roles` to execute the subquery inside the RLS policy on `user_roles`. This causes the query to fail or return empty results.
 
-### 2. Create edge function for staff analytics
-**New file**: `supabase/functions/get-venue-staff-analytics/index.ts`
+The auth logs confirm: login succeeds (HTTP 200), then the role check query returns nothing, and the code signs the user out immediately.
 
-- Accepts `venueId`, `startDate`, `endDate`
-- Validates JWT and checks caller is venue staff/admin
-- Joins `orders` + `order_analytics` + `profiles` to aggregate per-staff metrics
-- Returns: `{ staff: [{ id, name, ordersHandled, avgPrepTime, onTimeRate }] }`
+## Fix
 
-### 3. Extend SmartInsights with staff type
-**Edit**: `src/components/merchant/SmartInsights.tsx`
+Replace the recursive subquery policy with one that uses the existing `SECURITY DEFINER` function `get_user_venue()` (which bypasses RLS):
 
-- Add `"staff"` to the `type` union
-- Add `staffMetrics` to `InsightData` (workload distribution, top/bottom performers)
-- Generate insights like:
-  - "Workload imbalance — [Name] handles X% of orders"
-  - "[Name] has fastest prep at Y min"
-  - "No staff attribution on Z% of orders — ensure staff log in"
+### Migration SQL
 
-### 4. Embed in Operations tab
-**Edit**: `src/components/merchant/OperationsEfficiency.tsx`
+```sql
+-- Drop the recursive policy
+DROP POLICY IF EXISTS "Staff can view venue roles" ON public.user_roles;
 
-- Import and render `StaffPerformance` below the existing efficiency charts
-- Pass through the venue ID and date range
+-- Replace with a non-recursive version using security definer function
+CREATE POLICY "Staff can view venue roles"
+ON public.user_roles FOR SELECT
+TO authenticated
+USING (
+  venue_id = public.get_user_venue(auth.uid())
+);
+```
 
-## Files
+**Note**: `get_user_venue` is `SECURITY DEFINER` and `LIMIT 1`, so it won't recurse. However, it only returns one venue. For multi-venue staff, we should also fix the snapshot insert policies that have the same recursive pattern.
+
+Also fix the two snapshot table policies that have the same recursive subquery issue:
+
+```sql
+DROP POLICY IF EXISTS "Staff can insert venue capacity snapshots" ON public.venue_capacity_snapshots;
+DROP POLICY IF EXISTS "Staff can insert daily snapshots" ON public.daily_venue_snapshots;
+
+CREATE POLICY "Staff can insert venue capacity snapshots"
+ON public.venue_capacity_snapshots FOR INSERT
+TO authenticated
+WITH CHECK (
+  venue_id = public.get_user_venue(auth.uid())
+  OR public.is_super_admin(auth.uid())
+);
+
+CREATE POLICY "Staff can insert daily snapshots"
+ON public.daily_venue_snapshots FOR INSERT
+TO authenticated
+WITH CHECK (
+  venue_id = public.get_user_venue(auth.uid())
+  OR public.is_super_admin(auth.uid())
+);
+```
+
+## Files Changed
 
 | File | Change |
 |------|--------|
-| `src/components/merchant/StaffPerformance.tsx` | New — staff metrics table + insights |
-| `supabase/functions/get-venue-staff-analytics/index.ts` | New — server-side aggregation |
-| `src/components/merchant/SmartInsights.tsx` | Add staff insight type and logic |
-| `src/components/merchant/OperationsEfficiency.tsx` | Render StaffPerformance section |
+| New migration SQL | Drop recursive policies, recreate using `get_user_venue()` security definer function |
+
+No frontend code changes needed — the auth flow code is correct, it's the database policy blocking the query.
 
