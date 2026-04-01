@@ -45,32 +45,6 @@ export function DataPrivacySection() {
     if (data) setRequests(data as DataRequest[]);
   };
 
-  const handleExportRequest = async () => {
-    setLoading(true);
-    const result = await withRateLimit(
-      "data-request",
-      async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Not authenticated");
-
-        const { error } = await supabase.from("data_deletion_requests").insert({
-          user_id: user.id,
-          request_type: "export",
-          status: "pending",
-        });
-        if (error) throw error;
-        return true;
-      },
-      () => toast({ title: "Please wait", description: "You can only submit one request at a time", variant: "destructive" })
-    );
-
-    if (result) {
-      toast({ title: "Export Requested", description: "Your data export request has been submitted. An admin will process it shortly." });
-      fetchRequests();
-    }
-    setLoading(false);
-  };
-
   const handleDeletionRequest = async () => {
     setLoading(true);
     const result = await withRateLimit(
