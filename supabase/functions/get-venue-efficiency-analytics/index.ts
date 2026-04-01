@@ -27,7 +27,7 @@ serve(async (req) => {
     }
 
     // Fetch venue timezone
-    const { data: venueData } = await supabaseClient
+    const { data: venueData } = await supabase
       .from('venues')
       .select('timezone')
       .eq('id', venue_id)
