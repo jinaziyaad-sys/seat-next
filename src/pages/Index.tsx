@@ -294,8 +294,8 @@ const Index = () => {
               // Play food ready sound (repeats 3x every 10 seconds until collected)
               playFoodReadySound(payload.new.id);
               toast({
-                title: "🎉 Order Ready!",
-                description: `Order #${payload.new.order_number} is ready for pickup!`,
+                title: "🎉 " + t("home.orderReadyToast"),
+                description: t("home.orderReadyDesc", { number: payload.new.order_number }),
               });
             }
             
