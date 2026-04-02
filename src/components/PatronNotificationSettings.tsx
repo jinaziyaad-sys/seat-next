@@ -173,7 +173,7 @@ export function PatronNotificationSettings() {
 
         {/* Nudge Types */}
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Reminders</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">{t("notifications.reminders")}</h3>
           
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
