@@ -151,7 +151,7 @@ export function PatronNotificationSettings() {
             ) : notificationPermission === 'denied' ? (
               <Badge variant="destructive" className="gap-1">
                 <XCircle size={12} />
-                Blocked
+                {t("notifications.blocked")}
               </Badge>
             ) : (
               <Badge variant="secondary" className="gap-1">
