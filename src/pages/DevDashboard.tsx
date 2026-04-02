@@ -32,6 +32,7 @@ import { DevExport } from "@/components/dev/DevExport";
 import { DataRequestsPanel } from "@/components/dev/DataRequestsPanel";
 import { AuditLogPanel } from "@/components/dev/AuditLogPanel";
 import { SystemHealthDashboard } from "@/components/dev/SystemHealthDashboard";
+import { AlertRulesPanel } from "@/components/dev/AlertRulesPanel";
 import { PromotionsManager } from "@/components/dev/PromotionsManager";
 import { LocationMap } from "@/components/LocationMap";
 import { InteractiveLocationMap } from "@/components/InteractiveLocationMap";
