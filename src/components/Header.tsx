@@ -21,13 +21,17 @@ export const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60" role="banner">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-[100] focus:p-2 focus:bg-primary focus:text-primary-foreground">
+        Skip to content
+      </a>
       <div className="container flex h-14 items-center">
         <Button
           variant="ghost"
           size="sm"
           onClick={() => navigate(getHomeRoute())}
           className="hover:bg-transparent p-2"
+          aria-label="Go to home page"
         >
           <img 
             src={logo} 
