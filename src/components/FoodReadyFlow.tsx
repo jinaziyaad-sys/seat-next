@@ -60,6 +60,7 @@ const extractExtensionReason = (notes: string | null | undefined): string | null
 };
 
 export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; initialOrder?: any }) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<"scan" | "order-entry" | "rejected" | "tracking" | "cancelled-details">("scan");
   const [orderNumber, setOrderNumber] = useState("");
   const [selectedVenue, setSelectedVenue] = useState("");

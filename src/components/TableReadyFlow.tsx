@@ -83,6 +83,7 @@ const extractExtensionReason = (notes: string | null | undefined): string | null
 };
 
 export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; initialEntry?: any }) {
+  const { t } = useTranslation();
   // Check if initialEntry is actually a promo navigation with a venue ID
   const promoVenueId = initialEntry?.__promoVenueId as string | undefined;
   const { toast } = useToast();
