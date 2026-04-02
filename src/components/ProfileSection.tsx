@@ -219,8 +219,8 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">Password</p>
-              <p className="text-sm text-muted-foreground">Reset your account password</p>
+              <p className="font-medium">{t("profile.password")}</p>
+              <p className="text-sm text-muted-foreground">{t("profile.resetPassword")}</p>
             </div>
             <PasswordResetDialog userEmail={profile.email} />
           </div>
