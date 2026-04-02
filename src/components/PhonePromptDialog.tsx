@@ -130,8 +130,8 @@ export function PhonePromptDialog({
       }
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to verify code",
+        title: t("common.error"),
+        description: error.message || t("phone.failedVerify"),
         variant: "destructive",
       });
     } finally {
