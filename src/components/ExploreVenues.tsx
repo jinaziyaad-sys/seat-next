@@ -688,7 +688,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
         {user && !loading && recommendations.length > 0 && (
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">For You</span>
+            <span className="text-sm font-medium">{t("explore.forYou")}</span>
           </div>
         )}
 
