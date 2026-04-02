@@ -232,7 +232,7 @@ export function PatronNotificationSettings() {
         <div className="space-y-3 pt-2 border-t">
           <div className="flex items-center gap-2">
             <Clock size={16} className="text-muted-foreground" />
-            <h3 className="text-sm font-medium text-muted-foreground">Frequency</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">{t("notifications.frequency")}</h3>
           </div>
           
           <Select
