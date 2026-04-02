@@ -55,8 +55,8 @@ export const RatingDialog = ({
   const handleSubmit = async () => {
     if (rating === 0) {
       toast({
-        title: "Rating Required",
-        description: "Please select a star rating before submitting.",
+        title: t("rating.ratingRequired"),
+        description: t("rating.ratingRequiredDesc"),
         variant: "destructive"
       });
       return;
