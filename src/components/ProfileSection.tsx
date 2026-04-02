@@ -301,7 +301,12 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
               <p className="text-sm text-muted-foreground">{t("profile.languageDesc")}</p>
             </div>
             <Select
-              value={i18n.language?.startsWith('af') ? 'af' : i18n.language?.startsWith('zu') ? 'zu' : i18n.language?.startsWith('xh') ? 'xh' : i18n.language?.startsWith('st') ? 'st' : i18n.language?.startsWith('tn') ? 'tn' : i18n.language?.startsWith('nso') ? 'nso' : i18n.language?.startsWith('ve') ? 've' : i18n.language?.startsWith('ts') ? 'ts' : i18n.language?.startsWith('ss') ? 'ss' : i18n.language?.startsWith('nr') ? 'nr' : 'en'}
+              value={(() => {
+                const lang = i18n.language || 'en';
+                const supported = ['en','af','zu','xh','st','tn','nso','ve','ts','ss','nr','es','fr','pt','de','zh','ja','hi','ar','ko','ru','tr','it','nl','sw'];
+                const match = supported.find(s => lang.startsWith(s));
+                return match || 'en';
+              })()}
               onValueChange={async (lang) => {
                 i18n.changeLanguage(lang);
                 localStorage.setItem('readyup-language', lang);
@@ -313,8 +318,22 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
               <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-[300px]">
                 <SelectItem value="en">English</SelectItem>
+                <SelectItem value="es">Español</SelectItem>
+                <SelectItem value="fr">Français</SelectItem>
+                <SelectItem value="pt">Português</SelectItem>
+                <SelectItem value="de">Deutsch</SelectItem>
+                <SelectItem value="it">Italiano</SelectItem>
+                <SelectItem value="nl">Nederlands</SelectItem>
+                <SelectItem value="ru">Русский</SelectItem>
+                <SelectItem value="zh">中文</SelectItem>
+                <SelectItem value="ja">日本語</SelectItem>
+                <SelectItem value="ko">한국어</SelectItem>
+                <SelectItem value="hi">हिन्दी</SelectItem>
+                <SelectItem value="ar">العربية</SelectItem>
+                <SelectItem value="tr">Türkçe</SelectItem>
+                <SelectItem value="sw">Kiswahili</SelectItem>
                 <SelectItem value="af">Afrikaans</SelectItem>
                 <SelectItem value="zu">isiZulu</SelectItem>
                 <SelectItem value="xh">isiXhosa</SelectItem>
