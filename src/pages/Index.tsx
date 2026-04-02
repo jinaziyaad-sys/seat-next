@@ -1038,7 +1038,7 @@ const Index = () => {
                               <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mt-1">
                                 <AlertTriangle size={12} />
                                 <span>
-                                  Arriving within {minutesUntilRelease} min? Check in now!
+                                  {t("home.arrivingSoon", { minutes: minutesUntilRelease })}
                                 </span>
                               </div>
                             )}
