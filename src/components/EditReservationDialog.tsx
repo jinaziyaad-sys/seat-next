@@ -293,8 +293,8 @@ export function EditReservationDialog({
       }
 
       toast({
-        title: "Reservation Updated",
-        description: "Your changes have been saved.",
+        title: t("editReservation.reservationUpdated"),
+        description: t("editReservation.changesSaved"),
       });
 
       onSuccess({
