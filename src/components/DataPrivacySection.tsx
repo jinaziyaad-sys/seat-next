@@ -93,8 +93,7 @@ export function DataPrivacySection() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          In accordance with POPIA (Protection of Personal Information Act), you have the right to access, 
-          export, and request deletion of your personal data.
+          {t("privacy.description")}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3">
