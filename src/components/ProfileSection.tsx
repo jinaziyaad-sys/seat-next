@@ -286,19 +286,55 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
         </CardContent>
       </Card>
 
-      {/* Appearance Section */}
+      {/* Language Section */}
       <Card className="shadow-card">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <Palette size={24} />
-            <CardTitle>Appearance</CardTitle>
+            <Globe size={24} />
+            <CardTitle>{t("profile.language")}</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">Theme</p>
-              <p className="text-sm text-muted-foreground">Choose your preferred color scheme</p>
+              <p className="font-medium">{t("profile.language")}</p>
+              <p className="text-sm text-muted-foreground">{t("profile.languageDesc")}</p>
+            </div>
+            <Select
+              value={i18n.language?.startsWith('af') ? 'af' : 'en'}
+              onValueChange={async (lang) => {
+                i18n.changeLanguage(lang);
+                localStorage.setItem('readyup-language', lang);
+                if (user) {
+                  await supabase.from('profiles').update({ preferred_language: lang } as any).eq('id', user.id);
+                }
+              }}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="af">Afrikaans</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Appearance Section */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Palette size={24} />
+            <CardTitle>{t("profile.appearance")}</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">{t("profile.theme")}</p>
+              <p className="text-sm text-muted-foreground">{t("profile.themeDesc")}</p>
             </div>
             <ThemeToggle />
           </div>
