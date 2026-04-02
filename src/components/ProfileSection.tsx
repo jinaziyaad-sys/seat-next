@@ -202,7 +202,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
 
           {isEditing && (
             <Button onClick={handleSave} className="w-full">
-              Save Changes
+              {t("profile.save")}
             </Button>
           )}
         </CardContent>
