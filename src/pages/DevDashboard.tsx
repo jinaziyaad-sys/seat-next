@@ -1044,6 +1044,10 @@ export default function DevDashboard() {
               <Activity className="h-3 w-3" />
               System Health
             </TabsTrigger>
+            <TabsTrigger value="alerts" className="flex items-center gap-1">
+              <Bell className="h-3 w-3" />
+              Alerts
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="venues" className="space-y-6">
