@@ -113,3 +113,9 @@ verify_jwt = false
 
 [functions.check-time-slot-availability]
 verify_jwt = false
+
+[functions.check-alert-thresholds]
+verify_jwt = false
+
+[[functions.check-alert-thresholds.cron]]
+schedule = "*/30 * * * *"

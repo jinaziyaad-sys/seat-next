@@ -1878,6 +1878,10 @@ export default function DevDashboard() {
           <TabsContent value="system-health">
             <SystemHealthDashboard />
           </TabsContent>
+
+          <TabsContent value="alerts">
+            <AlertRulesPanel />
+          </TabsContent>
         </Tabs>
       </div>
 
