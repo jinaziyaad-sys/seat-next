@@ -293,8 +293,8 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
       if (error) {
         console.error("Error fetching recommendations:", error);
         toast({
-          title: "Error",
-          description: "Failed to load recommendations",
+          title: t("common.error"),
+          description: t("explore.failedRecommendations"),
           variant: "destructive",
         });
       } else {
