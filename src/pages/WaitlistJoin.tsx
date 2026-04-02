@@ -161,7 +161,7 @@ export default function WaitlistJoin() {
       <Card className="w-full max-w-md shadow-card">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-primary">
-            Join Waitlist
+            {t("waitlistJoin.title")}
           </CardTitle>
           <p className="text-lg font-semibold">{venue?.name}</p>
           {venue?.address && (
