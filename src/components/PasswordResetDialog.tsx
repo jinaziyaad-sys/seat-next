@@ -157,7 +157,7 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
               </AlertDescription>
             </Alert>
             <Button onClick={handleClose} className="w-full">
-              Done
+              {t("passwordReset.done")}
             </Button>
           </div>
         )}
