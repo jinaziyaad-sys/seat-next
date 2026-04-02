@@ -593,7 +593,7 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
+    <main id="main-content" className="min-h-screen bg-background" role="main">
       {/* Celebration Overlay for Ready Items */}
       {celebrationData && (
         <CelebrationOverlay
@@ -1300,7 +1300,7 @@ const Index = () => {
           venueName={cardMessengerContext.venueName}
         />
       )}
-    </div>
+    </main>
   );
 };
 

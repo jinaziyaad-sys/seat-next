@@ -44,6 +44,48 @@ export type Database = {
         }
         Relationships: []
       }
+      alert_rules: {
+        Row: {
+          comparison: string
+          cooldown_minutes: number
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          last_triggered_at: string | null
+          metric: string
+          notification_channel: string
+          threshold: number
+          updated_at: string
+        }
+        Insert: {
+          comparison?: string
+          cooldown_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          last_triggered_at?: string | null
+          metric: string
+          notification_channel?: string
+          threshold: number
+          updated_at?: string
+        }
+        Update: {
+          comparison?: string
+          cooldown_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          last_triggered_at?: string | null
+          metric?: string
+          notification_channel?: string
+          threshold?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customer_analytics: {
         Row: {
           avg_rating_given: number | null

@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus, Upload, Gift, Shield, ScrollText, Activity } from "lucide-react";
+import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus, Upload, Gift, Shield, ScrollText, Activity, Bell } from "lucide-react";
 import { VenueLogo } from "@/components/VenueLogo";
 import { LogoCropDialog } from "@/components/LogoCropDialog";
 import {
@@ -32,6 +32,7 @@ import { DevExport } from "@/components/dev/DevExport";
 import { DataRequestsPanel } from "@/components/dev/DataRequestsPanel";
 import { AuditLogPanel } from "@/components/dev/AuditLogPanel";
 import { SystemHealthDashboard } from "@/components/dev/SystemHealthDashboard";
+import { AlertRulesPanel } from "@/components/dev/AlertRulesPanel";
 import { PromotionsManager } from "@/components/dev/PromotionsManager";
 import { LocationMap } from "@/components/LocationMap";
 import { InteractiveLocationMap } from "@/components/InteractiveLocationMap";
@@ -1043,6 +1044,10 @@ export default function DevDashboard() {
               <Activity className="h-3 w-3" />
               System Health
             </TabsTrigger>
+            <TabsTrigger value="alerts" className="flex items-center gap-1">
+              <Bell className="h-3 w-3" />
+              Alerts
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="venues" className="space-y-6">
@@ -1872,6 +1877,10 @@ export default function DevDashboard() {
 
           <TabsContent value="system-health">
             <SystemHealthDashboard />
+          </TabsContent>
+
+          <TabsContent value="alerts">
+            <AlertRulesPanel />
           </TabsContent>
         </Tabs>
       </div>
