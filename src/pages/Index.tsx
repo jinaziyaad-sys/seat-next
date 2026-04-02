@@ -1202,8 +1202,8 @@ const Index = () => {
                   <UtensilsCrossed size={28} />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Food Ready</h3>
-                  <p className="text-sm text-muted-foreground">Track your order status</p>
+                  <h3 className="font-semibold">{t("home.foodReady")}</h3>
+                  <p className="text-sm text-muted-foreground">{t("home.trackOrderStatus")}</p>
                 </div>
               </CardContent>
             </Card>
