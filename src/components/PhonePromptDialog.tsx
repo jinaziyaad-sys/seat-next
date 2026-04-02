@@ -87,8 +87,8 @@ export function PhonePromptDialog({
       }
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to update phone number",
+        title: t("common.error"),
+        description: error.message || t("phone.failedUpdate"),
         variant: "destructive",
       });
     } finally {
