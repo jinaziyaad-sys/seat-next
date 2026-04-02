@@ -481,11 +481,11 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
 
   const getBusynessLabel = (busyness: string) => {
     switch (busyness) {
-      case "quiet": return "Not busy";
-      case "moderate": return "Moderately busy";
-      case "busy": return "Busy";
-      case "very_busy": return "Very busy";
-      default: return "Unknown";
+      case "quiet": return t("explore.notBusy");
+      case "moderate": return t("explore.moderatelyBusy");
+      case "busy": return t("explore.busy");
+      case "very_busy": return t("explore.veryBusy");
+      default: return t("explore.unknown");
     }
   };
 
