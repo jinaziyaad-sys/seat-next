@@ -22,6 +22,7 @@
     "rate": "Rate",
     "clear": "Clear",
     "inviteFriends": "Invite Friends",
+    "inviteFriendsText": "Join me on the waitlist at {{venue}}!",
     "share": "Share",
     "foodReady": "Food Ready",
     "trackOrderStatus": "Track your order status",
