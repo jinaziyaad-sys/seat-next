@@ -156,7 +156,7 @@ export function PatronNotificationSettings() {
             ) : (
               <Badge variant="secondary" className="gap-1">
                 <HelpCircle size={12} />
-                Not set
+                {t("notifications.notSet")}
               </Badge>
             )}
           </div>
