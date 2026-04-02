@@ -222,7 +222,7 @@ export default function WaitlistJoin() {
 
           {availablePreferences.length > 0 && (
             <div className="space-y-3">
-              <Label>Seating Preferences (Optional)</Label>
+              <Label>{t("waitlistJoin.seatingPrefs")}</Label>
               <div className="space-y-2">
                 {availablePreferences.map((pref) => (
                   <div key={pref.id} className="flex items-center space-x-2">
