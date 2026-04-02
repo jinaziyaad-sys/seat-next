@@ -202,8 +202,8 @@ export function PhonePromptDialog({
       onComplete();
       onOpenChange(false);
       toast({
-        title: "Phone Saved",
-        description: "Your phone number has been saved. You can verify it later.",
+        title: t("phone.phoneSaved"),
+        description: t("phone.phoneSavedDesc"),
       });
     } catch (error: any) {
       toast({
