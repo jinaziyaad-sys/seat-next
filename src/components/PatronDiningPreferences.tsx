@@ -170,7 +170,7 @@ export function PatronDiningPreferences() {
       <CardHeader>
         <div className="flex items-center gap-3">
           <Utensils size={24} />
-          <CardTitle>Dining Preferences</CardTitle>
+          <CardTitle>{t("dining.title")}</CardTitle>
         </div>
         <p className="text-sm text-muted-foreground">
           Set your preferences to get personalized venue recommendations
