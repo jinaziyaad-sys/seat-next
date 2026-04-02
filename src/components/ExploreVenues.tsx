@@ -76,6 +76,7 @@ interface ExploreVenuesProps {
 }
 
 export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: ExploreVenuesProps) {
+  const { t } = useTranslation();
   const [recommendations, setRecommendations] = useState<VenueRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
