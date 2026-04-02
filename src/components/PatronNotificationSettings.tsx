@@ -142,7 +142,7 @@ export function PatronNotificationSettings() {
         {/* Notification Status */}
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Browser notifications</span>
+            <span className="text-sm font-medium">{t("notifications.browserNotifications")}</span>
             {notificationPermission === 'granted' ? (
               <Badge variant="default" className="gap-1 bg-green-500/20 text-green-700 dark:text-green-400 hover:bg-green-500/20">
                 <CheckCircle size={12} />
