@@ -1848,7 +1848,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             <ArrowLeft size={20} />
           </Button>
           <h1 className="text-2xl font-bold">
-            {activeTableTab === "waitlist" ? "Join Waitlist" : "Make a Reservation"}
+            {activeTableTab === "waitlist" ? t("tableReady.joinWaitlist") : t("tableReady.makeReservation")}
           </h1>
         </div>
 
