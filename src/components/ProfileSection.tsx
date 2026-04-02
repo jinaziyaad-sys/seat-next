@@ -158,7 +158,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
                 size="sm"
                 onClick={() => setIsEditing(!isEditing)}
               >
-                {isEditing ? "Cancel" : "Edit"}
+                {isEditing ? t("common.cancel") : t("profile.edit")}
               </Button>
             </div>
           </div>
