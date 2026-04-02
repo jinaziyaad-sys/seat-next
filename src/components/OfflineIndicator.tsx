@@ -24,8 +24,8 @@ export function OfflineIndicator() {
         const synced = await replayQueue(supabase);
         if (synced > 0) {
           toast({
-            title: "Back online",
-            description: `Synced ${synced} pending action${synced > 1 ? 's' : ''}`,
+            title: t("offline.backOnline"),
+            description: t("offline.synced", { count: synced }),
           });
         }
         setTimeout(() => setShowReconnected(false), 3000);
