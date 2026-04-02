@@ -881,12 +881,12 @@ const Index = () => {
                         order.status === 'collected' ? 'default' :
                         'secondary'
                       } className={order.status === 'awaiting_verification' ? 'border-orange-500 text-orange-600 dark:text-orange-400' : ''}>
-                        {order.status === 'ready' ? 'Ready' : 
-                         order.status === 'in_prep' ? 'Preparing' : 
-                         order.status === 'awaiting_verification' ? 'Verifying' :
-                         order.status === 'rejected' ? 'Cancelled' :
-                         order.status === 'collected' ? 'Collected' :
-                         'Placed'}
+                        {order.status === 'ready' ? t("status.ready") : 
+                         order.status === 'in_prep' ? t("status.preparing") : 
+                         order.status === 'awaiting_verification' ? t("status.verifying") :
+                         order.status === 'rejected' ? t("status.cancelled") :
+                         order.status === 'collected' ? t("status.collected") :
+                         t("status.placed")}
                       </Badge>
                       {shouldRate && (
                         <Button
