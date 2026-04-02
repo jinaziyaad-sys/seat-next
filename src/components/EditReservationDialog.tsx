@@ -341,7 +341,7 @@ export function EditReservationDialog({
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Party Size
+                {t("editReservation.partySize")}
               </Label>
               <Select value={partySize.toString()} onValueChange={(v) => setPartySize(parseInt(v))}>
                 <SelectTrigger>
