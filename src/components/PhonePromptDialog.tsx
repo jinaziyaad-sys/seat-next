@@ -169,8 +169,8 @@ export function PhonePromptDialog({
       }
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: "Failed to resend code",
+        title: t("common.error"),
+        description: t("phone.failedResend"),
         variant: "destructive",
       });
     } finally {
