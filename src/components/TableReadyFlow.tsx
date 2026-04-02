@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { VenueLogo } from "@/components/VenueLogo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -82,6 +83,7 @@ const extractExtensionReason = (notes: string | null | undefined): string | null
 };
 
 export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; initialEntry?: any }) {
+  const { t } = useTranslation();
   // Check if initialEntry is actually a promo navigation with a venue ID
   const promoVenueId = initialEntry?.__promoVenueId as string | undefined;
   const { toast } = useToast();
@@ -1721,7 +1723,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="text-2xl font-bold">Table Ready</h1>
+          <h1 className="text-2xl font-bold">{t("tableReady.title")}</h1>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
@@ -1738,8 +1740,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 <Users size={28} />
               </div>
               <div>
-                <h3 className="font-semibold">Waitlist</h3>
-                <p className="text-sm text-muted-foreground">Get seated today</p>
+                <h3 className="font-semibold">{t("tableReady.joinWaitlist")}</h3>
+                <p className="text-sm text-muted-foreground">{t("tableReady.waiting")}</p>
               </div>
             </CardContent>
           </Card>
@@ -1846,7 +1848,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
             <ArrowLeft size={20} />
           </Button>
           <h1 className="text-2xl font-bold">
-            {activeTableTab === "waitlist" ? "Join Waitlist" : "Make a Reservation"}
+            {activeTableTab === "waitlist" ? t("tableReady.joinWaitlist") : t("tableReady.makeReservation")}
           </h1>
         </div>
 

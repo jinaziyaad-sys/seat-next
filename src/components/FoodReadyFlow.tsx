@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { VenueLogo } from "@/components/VenueLogo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -59,6 +60,7 @@ const extractExtensionReason = (notes: string | null | undefined): string | null
 };
 
 export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; initialOrder?: any }) {
+  const { t } = useTranslation();
   const [step, setStep] = useState<"scan" | "order-entry" | "rejected" | "tracking" | "cancelled-details">("scan");
   const [orderNumber, setOrderNumber] = useState("");
   const [selectedVenue, setSelectedVenue] = useState("");
@@ -835,7 +837,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="text-2xl font-bold">Food Ready</h1>
+          <h1 className="text-2xl font-bold">{t("food.title")}</h1>
         </div>
 
 

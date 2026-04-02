@@ -118,12 +118,12 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="text-2xl font-bold">Profile</h1>
+          <h1 className="text-2xl font-bold">{t("profile.title")}</h1>
         </div>
         <Card className="shadow-card">
           <CardContent className="p-6 text-center">
-            <p className="mb-4">Please sign in to view your profile</p>
-            <Button onClick={() => navigate("/auth")}>Sign In</Button>
+            <p className="mb-4">{t("profile.signInRequired")}</p>
+            <Button onClick={() => navigate("/auth")}>{t("profile.signInButton")}</Button>
           </CardContent>
         </Card>
       </div>
@@ -137,7 +137,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="text-2xl font-bold">Profile</h1>
+          <h1 className="text-2xl font-bold">{t("profile.title")}</h1>
         </div>
         <Button variant="ghost" size="sm" onClick={handleSignOut}>
           <LogOut size={20} />
@@ -150,7 +150,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <User size={24} />
-              <CardTitle>Personal Information</CardTitle>
+              <CardTitle>{t("profile.personalInfo")}</CardTitle>
             </div>
             <div className="flex gap-2">
               <Button
@@ -158,17 +158,17 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
                 size="sm"
                 onClick={() => setIsEditing(!isEditing)}
               >
-                {isEditing ? "Cancel" : "Edit"}
+                {isEditing ? t("common.cancel") : t("profile.edit")}
               </Button>
             </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Full Name *</Label>
+            <Label htmlFor="name">{t("profile.fullName")} *</Label>
             <Input
               id="name"
-              placeholder="Your name"
+              placeholder={t("profile.namePlaceholder")}
               value={profile.full_name}
               onChange={(e) => updateProfile("full_name", e.target.value)}
               disabled={!isEditing}
@@ -177,23 +177,23 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
+            <Label htmlFor="email">{t("profile.email")}</Label>
             <Input
               id="email"
               type="email"
-              placeholder="your.email@example.com"
+              placeholder={t("profile.emailPlaceholder")}
               value={profile.email}
               disabled
             />
-            <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+            <p className="text-xs text-muted-foreground">{t("profile.emailCannotChange")}</p>
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number</Label>
+            <Label htmlFor="phone">{t("profile.phone")}</Label>
             <Input
               id="phone"
               type="tel"
-              placeholder="+1 (555) 123-4567"
+              placeholder={t("profile.phonePlaceholder")}
               value={profile.phone}
               onChange={(e) => updateProfile("phone", e.target.value)}
               disabled={!isEditing}
@@ -202,7 +202,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
 
           {isEditing && (
             <Button onClick={handleSave} className="w-full">
-              Save Changes
+              {t("profile.save")}
             </Button>
           )}
         </CardContent>
@@ -213,14 +213,14 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
         <CardHeader>
           <div className="flex items-center gap-3">
             <Shield size={24} />
-            <CardTitle>Security</CardTitle>
+            <CardTitle>{t("profile.security")}</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">Password</p>
-              <p className="text-sm text-muted-foreground">Reset your account password</p>
+              <p className="font-medium">{t("profile.password")}</p>
+              <p className="text-sm text-muted-foreground">{t("profile.resetPassword")}</p>
             </div>
             <PasswordResetDialog userEmail={profile.email} />
           </div>
@@ -244,7 +244,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
         <CardHeader>
           <div className="flex items-center gap-3">
             <Sparkles size={24} className="text-amber-400" />
-            <CardTitle>Your Year in Review</CardTitle>
+            <CardTitle>{t("profile.yearInReview")}</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -301,7 +301,12 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
               <p className="text-sm text-muted-foreground">{t("profile.languageDesc")}</p>
             </div>
             <Select
-              value={i18n.language?.startsWith('af') ? 'af' : i18n.language?.startsWith('zu') ? 'zu' : i18n.language?.startsWith('xh') ? 'xh' : i18n.language?.startsWith('st') ? 'st' : i18n.language?.startsWith('tn') ? 'tn' : i18n.language?.startsWith('nso') ? 'nso' : i18n.language?.startsWith('ve') ? 've' : i18n.language?.startsWith('ts') ? 'ts' : i18n.language?.startsWith('ss') ? 'ss' : i18n.language?.startsWith('nr') ? 'nr' : 'en'}
+              value={(() => {
+                const lang = i18n.language || 'en';
+                const supported = ['en','af','zu','xh','st','tn','nso','ve','ts','ss','nr','es','fr','pt','de','zh','ja','hi','ar','ko','ru','tr','it','nl','sw'];
+                const match = supported.find(s => lang.startsWith(s));
+                return match || 'en';
+              })()}
               onValueChange={async (lang) => {
                 i18n.changeLanguage(lang);
                 localStorage.setItem('readyup-language', lang);
@@ -313,8 +318,22 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
               <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="max-h-[300px]">
                 <SelectItem value="en">English</SelectItem>
+                <SelectItem value="es">Español</SelectItem>
+                <SelectItem value="fr">Français</SelectItem>
+                <SelectItem value="pt">Português</SelectItem>
+                <SelectItem value="de">Deutsch</SelectItem>
+                <SelectItem value="it">Italiano</SelectItem>
+                <SelectItem value="nl">Nederlands</SelectItem>
+                <SelectItem value="ru">Русский</SelectItem>
+                <SelectItem value="zh">中文</SelectItem>
+                <SelectItem value="ja">日本語</SelectItem>
+                <SelectItem value="ko">한국어</SelectItem>
+                <SelectItem value="hi">हिन्दी</SelectItem>
+                <SelectItem value="ar">العربية</SelectItem>
+                <SelectItem value="tr">Türkçe</SelectItem>
+                <SelectItem value="sw">Kiswahili</SelectItem>
                 <SelectItem value="af">Afrikaans</SelectItem>
                 <SelectItem value="zu">isiZulu</SelectItem>
                 <SelectItem value="xh">isiXhosa</SelectItem>
