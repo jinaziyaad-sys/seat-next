@@ -223,7 +223,7 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
             <Alert>
               <Mail className="h-4 w-4" />
               <AlertDescription className="text-sm">
-                You'll receive an email with a link to reset your password. The link is valid for 1 hour.
+                {t("passwordReset.emailResetInfo")}
               </AlertDescription>
             </Alert>
 
