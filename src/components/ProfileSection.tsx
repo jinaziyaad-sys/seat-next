@@ -25,6 +25,7 @@ interface UserProfile {
 }
 
 export function ProfileSection({ onBack }: { onBack: () => void }) {
+  const { t, i18n } = useTranslation();
   const [profile, setProfile] = useState<UserProfile>({
     full_name: "",
     email: "",
