@@ -173,6 +173,69 @@
     "backOnline": "Back online",
     "synced": "Synced {{count}} pending action(s)"
   },
+  "notifications": {
+    "title": "Notifications",
+    "browserNotifications": "Browser notifications",
+    "enabled": "Enabled",
+    "blocked": "Blocked",
+    "notSet": "Not set",
+    "howToEnable": "How to enable",
+    "reminders": "Reminders",
+    "mealtimeReminders": "Mealtime reminders",
+    "mealtimeDesc": "Get nudges around lunch and dinner time",
+    "favoriteAlerts": "Favorite venue alerts",
+    "favoriteDesc": "Know when your favorites have short waits",
+    "weekendPlanning": "Weekend planning",
+    "weekendDesc": "Get suggestions for weekend dining",
+    "reengagement": "We miss you nudges",
+    "reengagementDesc": "Reminders when you haven't visited in a while",
+    "quietHours": "Quiet Hours",
+    "quietHoursDesc": "No notifications during these hours",
+    "frequency": "Notification frequency",
+    "daily": "Daily",
+    "weekly": "Weekly",
+    "minimal": "Minimal",
+    "saved": "Saved",
+    "preferencesUpdated": "Notification preferences updated"
+  },
+  "privacy": {
+    "title": "Data & Privacy",
+    "description": "In accordance with POPIA (Protection of Personal Information Act), you have the right to access, export, and request deletion of your personal data.",
+    "requestDeletion": "Request Account Deletion",
+    "deleteConfirmTitle": "Are you sure?",
+    "deleteConfirmDesc": "This will submit a request to permanently delete your account and all associated data. An admin will review and process this within 30 days as required by POPIA. This action cannot be undone once processed.",
+    "yesDelete": "Yes, Request Deletion",
+    "viewPrivacyPolicy": "View Privacy Policy",
+    "recentRequests": "Recent Requests",
+    "pending": "Pending",
+    "processing": "Processing",
+    "completed": "Completed",
+    "rejected": "Rejected",
+    "deletionRequested": "Deletion Requested",
+    "deletionRequestedDesc": "Your account deletion request has been submitted. An admin will review it within 30 days."
+  },
+  "dining": {
+    "title": "Dining Preferences",
+    "dietary": "Dietary Requirements",
+    "cuisines": "Cuisine Preferences",
+    "maxWait": "Maximum Wait Time",
+    "maxWaitDesc": "{{minutes}} minutes",
+    "savePreferences": "Save Preferences",
+    "saving": "Saving...",
+    "saved": "Preferences saved",
+    "savedDesc": "Your dining preferences have been updated"
+  },
+  "loyalty": {
+    "title": "Loyalty & Rewards",
+    "stamps": "stamps",
+    "points": "points",
+    "nextReward": "Next reward",
+    "redeemCode": "Redeem Code",
+    "referFriends": "Refer Friends",
+    "cashback": "Cashback Balance",
+    "challenges": "Active Challenges",
+    "noPrograms": "No loyalty programs yet"
+  },
   "common": {
     "loading": "Loading...",
     "error": "Error",
@@ -184,6 +247,10 @@
     "next": "Next",
     "retry": "Retry",
     "min": "min",
-    "at": "at"
+    "at": "at",
+    "save": "Save",
+    "saved": "Saved",
+    "search": "Search",
+    "noResults": "No results found"
   }
 }
