@@ -244,7 +244,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
         <CardHeader>
           <div className="flex items-center gap-3">
             <Sparkles size={24} className="text-amber-400" />
-            <CardTitle>Your Year in Review</CardTitle>
+            <CardTitle>{t("profile.yearInReview")}</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
