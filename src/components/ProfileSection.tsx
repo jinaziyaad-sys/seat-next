@@ -213,7 +213,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
         <CardHeader>
           <div className="flex items-center gap-3">
             <Shield size={24} />
-            <CardTitle>Security</CardTitle>
+            <CardTitle>{t("profile.security")}</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
