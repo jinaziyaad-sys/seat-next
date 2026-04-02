@@ -300,8 +300,8 @@ export function PhonePromptDialog({
               disabled={loading || resendCooldown > 0}
             >
               {resendCooldown > 0 
-                ? `Resend Code (${resendCooldown}s)` 
-                : "Resend Code"
+                ? t("phone.resendCodeCountdown", { seconds: resendCooldown })
+                : t("phone.resendCode")
               }
             </Button>
 
