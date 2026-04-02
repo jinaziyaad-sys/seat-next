@@ -33,7 +33,9 @@ export const RatingDialog = ({
   const [hoveredRating, setHoveredRating] = useState(0);
   const [feedback, setFeedback] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   // Reset state when dialog opens
   useEffect(() => {
