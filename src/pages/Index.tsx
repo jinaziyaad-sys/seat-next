@@ -1076,10 +1076,10 @@ const Index = () => {
                                     </Badge>
                                     <span>
                                       {entry.confidence === 'high' 
-                                        ? 'Based on historical data' 
+                                        ? t("status.basedOnHistory")
                                         : entry.confidence === 'medium' 
-                                        ? 'Some historical data' 
-                                        : 'Venue default time'}
+                                        ? t("status.someHistory")
+                                        : t("status.venueDefault")}
                                     </span>
                                   </div>
                                 )}
