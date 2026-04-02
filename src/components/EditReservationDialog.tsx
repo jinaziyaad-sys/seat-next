@@ -332,8 +332,7 @@ export function EditReservationDialog({
           <div className="flex items-center gap-3 p-4 bg-destructive/10 rounded-lg">
             <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
             <p className="text-sm text-destructive">
-              Changes cannot be made within 2 hours of your reservation time. 
-              Please contact the restaurant directly.
+              {t("editReservation.cannotEdit")}
             </p>
           </div>
         ) : (
