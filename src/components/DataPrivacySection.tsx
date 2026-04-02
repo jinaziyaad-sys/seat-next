@@ -127,7 +127,7 @@ export function DataPrivacySection() {
           onClick={() => navigate("/privacy")}
         >
           <ExternalLink className="h-3 w-3" />
-          View Privacy Policy
+          {t("privacy.viewPrivacyPolicy")}
         </Button>
 
         {requests.length > 0 && (
