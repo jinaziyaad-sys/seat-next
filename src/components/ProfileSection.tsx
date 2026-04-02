@@ -108,7 +108,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
   };
 
   if (loading) {
-    return <div className="p-6">Loading...</div>;
+    return <div className="p-6">{t("common.loading")}</div>;
   }
 
   if (!user) {
