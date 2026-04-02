@@ -617,7 +617,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
 
           {/* Radius chips */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Radius:</span>
+            <span className="text-xs text-muted-foreground">{t("explore.radius")}</span>
             {RADIUS_OPTIONS.map((r) => (
               <button
                 key={r}
