@@ -242,8 +242,8 @@ export function EditReservationDialog({
 
         if (!tableResult?.available) {
           toast({
-            title: "Time Slot Unavailable",
-            description: tableResult?.reason || "No tables available for this party size at the selected time.",
+            title: t("editReservation.timeSlotUnavailable"),
+            description: tableResult?.reason || t("editReservation.noTablesAvailable"),
             variant: "destructive",
           });
           setIsLoading(false);
