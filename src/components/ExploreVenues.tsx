@@ -581,7 +581,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                   ))
               ) : locationQuery.trim().length >= 2 && !searchingLocation && locationSearchDone ? (
                   <div className="px-3 py-4 text-sm text-muted-foreground">
-                    No locations found. Try a nearby city, suburb, or full address.
+                    {t("explore.noLocationsFound")}
                   </div>
                 ) : null}
               </div>
