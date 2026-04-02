@@ -146,7 +146,7 @@ export function PatronNotificationSettings() {
             {notificationPermission === 'granted' ? (
               <Badge variant="default" className="gap-1 bg-green-500/20 text-green-700 dark:text-green-400 hover:bg-green-500/20">
                 <CheckCircle size={12} />
-                Enabled
+                {t("notifications.enabled")}
               </Badge>
             ) : notificationPermission === 'denied' ? (
               <Badge variant="destructive" className="gap-1">
