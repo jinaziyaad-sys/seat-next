@@ -232,11 +232,11 @@ export function PhonePromptDialog({
         {verificationStep === "input" ? (
           <div className="space-y-4">
             <div>
-              <Label htmlFor="phone-prompt">Phone Number (with country code)</Label>
+              <Label htmlFor="phone-prompt">{t("phone.phoneLabel")}</Label>
               <Input
                 id="phone-prompt"
                 type="tel"
-                placeholder="+1234567890"
+                placeholder={t("phone.phonePlaceholder")}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
