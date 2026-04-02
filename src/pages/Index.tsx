@@ -1052,7 +1052,7 @@ const Index = () => {
                         ) : (
                           <>
                             <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-                              Party of {entry.party_size}{entry.position ? ` • #${entry.position}` : ''}
+                              {t("home.partyOf", { size: entry.party_size })}{entry.position ? ` • #${entry.position}` : ''}
                             </p>
                         {(entry.status === 'cancelled' || entry.status === 'no_show') && (
                           <p className="text-xs text-destructive mt-1">
