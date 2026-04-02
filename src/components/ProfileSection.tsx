@@ -137,7 +137,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="text-2xl font-bold">Profile</h1>
+          <h1 className="text-2xl font-bold">{t("profile.title")}</h1>
         </div>
         <Button variant="ghost" size="sm" onClick={handleSignOut}>
           <LogOut size={20} />
