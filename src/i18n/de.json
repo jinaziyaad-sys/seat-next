@@ -1,0 +1,33 @@
+{
+  "nav": { "home": "Startseite", "food": "Essen", "table": "Tisch", "profile": "Profil" },
+  "home": {
+    "welcome": "Willkommen zurück", "signIn": "Anmelden zum Starten", "signInDescription": "Verfolge deine Bestellungen und Tischreservierungen",
+    "signInButton": "Anmelden", "signInOrUp": "Anmelden oder Registrieren", "signInTrack": "Melde dich an, um deine Bestellungen und Reservierungen zu verfolgen",
+    "activeTracking": "Aktive Verfolgung", "noActive": "Keine aktiven Bestellungen oder Wartelisteneinträge",
+    "explore": "Lokale Entdecken", "order": "Bestellung", "waitlist": "Warteliste", "table": "Tisch",
+    "dismiss": "Verwerfen", "rate": "Bewerten", "clear": "Löschen", "inviteFriends": "Freunde Einladen", "share": "Teilen",
+    "foodReady": "Essen Fertig", "trackOrderStatus": "Verfolge den Status deiner Bestellung",
+    "tableReady": "Tisch Bereit", "joinWaitlist": "Einer Warteliste beitreten",
+    "reservation": "Reservierung", "reservationFor": "Reservierung für {{size}}", "partyOf": "Gruppe von {{size}}",
+    "demoMode": "(Demo-Modus)", "noFeatures": "Derzeit sind keine Funktionen verfügbar.",
+    "orderReadyToast": "Bestellung Fertig!", "orderReadyDesc": "Bestellung #{{number}} ist zur Abholung bereit!",
+    "tableReadyToast": "Tisch Bereit!", "tableReadyDesc": "Dein Tisch für {{size}} ist bereit!",
+    "yourOrderReady": "Deine Bestellung ist Fertig!", "orderReadySub": "Bestellung #{{number}} bei {{venue}}",
+    "yourTableReady": "Dein Tisch ist Bereit!", "tableReadySub": "Gruppe von {{size}} bei {{venue}}",
+    "viewOrder": "Bestellung Anzeigen", "getSeated": "Ich bin Da - Platz Nehmen",
+    "orderRejected": "Bestellung Abgelehnt", "orderRejectedDesc": "Bestellung #{{number}} wurde von der Küche als ungültig markiert. Tippe auf die Bestellung, um es erneut zu versuchen.",
+    "tableReleased": "Tisch Freigegeben", "tableReleasedDesc": "Dein Tisch wurde freigegeben, da du nicht rechtzeitig angekommen bist.",
+    "arrivingSoon": "Kommst du in {{minutes}} Min? Jetzt einchecken!", "mayBeReleased": "Die Reservierung kann jederzeit freigegeben werden",
+    "minLate": "{{minutes}} Min zu spät", "cancelledBy": "Storniert von {{by}}", "noShowReleased": "Tisch freigegeben - nicht rechtzeitig erschienen",
+    "today": "Heute", "tomorrow": "Morgen"
+  },
+  "status": { "ready": "Bereit", "preparing": "In Vorbereitung", "verifying": "Überprüfung", "cancelled": "Storniert", "collected": "Abgeholt", "placed": "Aufgegeben", "waiting": "Wartend", "seated": "Platziert", "overdue": "Überfällig", "reserved": "Reserviert", "highConfidence": "Hohe Sicherheit", "medium": "Mittel", "estimate": "Schätzung", "basedOnHistory": "Basierend auf historischen Daten", "someHistory": "Einige historische Daten", "venueDefault": "Standard-Zeit des Lokals", "you": "dir", "system": "System", "venue": "Lokal" },
+  "waitlistJoin": { "title": "Warteliste Beitreten", "name": "Name", "namePlaceholder": "Dein Name", "nameRequired": "Name Erforderlich", "nameRequiredDesc": "Bitte gib deinen Namen ein", "phone": "Telefonnummer (Optional)", "phonePlaceholder": "+27 82 123 4567", "partySize": "Gruppengröße", "seatingPrefs": "Sitzplatzwünsche (Optional)", "joinButton": "Warteliste Beitreten", "joining": "Beitritt...", "added": "Zur Warteliste Hinzugefügt!", "addedDesc": "Du wirst benachrichtigt, wenn dein Tisch bereit ist.", "trackPosition": "Du kannst deine Position in Echtzeit verfolgen", "error": "Fehler", "venueNotFound": "Lokal nicht gefunden", "couldNotJoin": "Konnte der Warteliste nicht beitreten. Bitte versuche es erneut." },
+  "food": { "title": "Essen Fertig", "scanOrSearch": "Scanne oder suche dein Lokal", "orderNumber": "Bestellnummer", "submit": "Bestellung Verfolgen", "tracking": "Bestellverfolgung", "placed": "Bestellung Aufgegeben", "inPrep": "In Vorbereitung", "ready": "Bereit zur Abholung", "collected": "Abgeholt" },
+  "tableReady": { "title": "Tisch Bereit", "joinWaitlist": "Warteliste Beitreten", "makeReservation": "Reservierung Machen", "waiting": "Wartend", "ready": "Dein Tisch ist Bereit!", "seated": "Platziert", "confirmArrival": "Ich bin Da", "partySize": "Gruppengröße", "position": "Position" },
+  "profile": { "title": "Profil", "personalInfo": "Persönliche Informationen", "fullName": "Vollständiger Name", "email": "E-Mail", "phone": "Telefonnummer", "save": "Änderungen Speichern", "edit": "Bearbeiten", "cancel": "Abbrechen", "security": "Sicherheit", "password": "Passwort", "resetPassword": "Setze dein Kontopasswort zurück", "appearance": "Erscheinungsbild", "theme": "Thema", "themeDesc": "Wähle dein bevorzugtes Farbschema", "language": "Sprache", "languageDesc": "Wähle deine bevorzugte Sprache", "signOut": "Abmelden", "signInRequired": "Bitte melde dich an, um dein Profil zu sehen", "signInButton": "Anmelden", "friends": "Freunde", "noFriends": "Noch keine Freunde", "addFriend": "Freund Hinzufügen", "pending": "Ausstehend", "accepted": "Akzeptiert", "yearInReview": "Dein Jahresrückblick", "previewRecap": "Vorschau Zusammenfassung", "emailCannotChange": "E-Mail kann nicht geändert werden", "profileUpdated": "Profil erfolgreich aktualisiert", "namePlaceholder": "Dein Name", "emailPlaceholder": "deine.email@beispiel.de", "phonePlaceholder": "+49 (151) 123-4567" },
+  "explore": { "title": "Lokale Entdecken", "personalised": "Personalisiert für dich", "discover": "Entdecke Restaurants in der Nähe", "shareVenue": "Schau dir {{name}} auf ReadyUp an!", "noVenues": "Keine Lokale gefunden" },
+  "rating": { "title": "Bewerte dein Erlebnis", "subtitle": "Wie war dein Erlebnis bei {{venue}}?", "feedback": "Zusätzliches Feedback (Optional)", "feedbackPlaceholder": "Teile mehr Details über dein Erlebnis...", "skip": "Überspringen", "submit": "Bewertung Absenden", "submitting": "Wird gesendet...", "thanks": "Danke!", "thanksDesc": "Deine Bewertung wurde eingereicht.", "shareExperience": "Teile dein Erlebnis" },
+  "offline": { "banner": "Du bist offline — einige Funktionen sind möglicherweise nicht verfügbar", "backOnline": "Wieder online", "synced": "{{count}} ausstehende Aktion(en) synchronisiert" },
+  "common": { "loading": "Laden...", "error": "Fehler", "success": "Erfolg", "cancel": "Abbrechen", "confirm": "Bestätigen", "close": "Schließen", "back": "Zurück", "next": "Weiter", "retry": "Erneut Versuchen", "min": "Min", "at": "um" }
+}

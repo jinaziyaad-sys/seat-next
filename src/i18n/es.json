@@ -1,0 +1,117 @@
+{
+  "nav": { "home": "Inicio", "food": "Comida", "table": "Mesa", "profile": "Perfil" },
+  "home": {
+    "welcome": "Bienvenido de nuevo",
+    "signIn": "Inicia sesión para comenzar",
+    "signInDescription": "Rastrea tus pedidos y reservas de mesa",
+    "signInButton": "Iniciar Sesión",
+    "signInOrUp": "Iniciar Sesión o Registrarse",
+    "signInTrack": "Inicia sesión para rastrear tus pedidos y reservas",
+    "activeTracking": "Seguimiento Activo",
+    "noActive": "No hay pedidos ni entradas en lista de espera activos",
+    "explore": "Explorar Lugares",
+    "order": "Pedido",
+    "waitlist": "Lista de Espera",
+    "table": "Mesa",
+    "dismiss": "Descartar",
+    "rate": "Calificar",
+    "clear": "Limpiar",
+    "inviteFriends": "Invitar Amigos",
+    "share": "Compartir",
+    "foodReady": "Comida Lista",
+    "trackOrderStatus": "Rastrea el estado de tu pedido",
+    "tableReady": "Mesa Lista",
+    "joinWaitlist": "Unirse a una lista de espera",
+    "reservation": "Reserva",
+    "reservationFor": "Reserva para {{size}}",
+    "partyOf": "Grupo de {{size}}",
+    "demoMode": "(Modo Demo)",
+    "noFeatures": "No hay funciones disponibles actualmente.",
+    "orderReadyToast": "¡Pedido Listo!",
+    "orderReadyDesc": "¡El pedido #{{number}} está listo para recoger!",
+    "tableReadyToast": "¡Mesa Lista!",
+    "tableReadyDesc": "¡Tu mesa para {{size}} está lista!",
+    "yourOrderReady": "¡Tu Pedido está Listo!",
+    "orderReadySub": "Pedido #{{number}} en {{venue}}",
+    "yourTableReady": "¡Tu Mesa está Lista!",
+    "tableReadySub": "Grupo de {{size}} en {{venue}}",
+    "viewOrder": "Ver Pedido",
+    "getSeated": "Estoy Aquí - Sentarme",
+    "orderRejected": "Pedido Rechazado",
+    "orderRejectedDesc": "El pedido #{{number}} fue marcado como inválido por la cocina. Toca el pedido para reintentar.",
+    "tableReleased": "Mesa Liberada",
+    "tableReleasedDesc": "Tu mesa fue liberada porque no llegaste a tiempo. Puedes unirte a la lista de espera nuevamente.",
+    "arrivingSoon": "¿Llegas en {{minutes}} min? ¡Regístrate ahora!",
+    "mayBeReleased": "La reserva puede ser liberada en cualquier momento",
+    "minLate": "{{minutes}} min tarde",
+    "cancelledBy": "Cancelado por {{by}}",
+    "noShowReleased": "Mesa liberada - no llegaste a tiempo",
+    "today": "Hoy",
+    "tomorrow": "Mañana"
+  },
+  "status": {
+    "ready": "Listo", "preparing": "Preparando", "verifying": "Verificando", "cancelled": "Cancelado",
+    "collected": "Recogido", "placed": "Realizado", "waiting": "Esperando", "seated": "Sentado",
+    "overdue": "Atrasado", "reserved": "Reservado",
+    "highConfidence": "Alta Confianza", "medium": "Media", "estimate": "Estimación",
+    "basedOnHistory": "Basado en datos históricos", "someHistory": "Algunos datos históricos", "venueDefault": "Tiempo predeterminado del lugar",
+    "you": "ti", "system": "sistema", "venue": "lugar"
+  },
+  "waitlistJoin": {
+    "title": "Unirse a Lista de Espera", "name": "Nombre", "namePlaceholder": "Tu nombre",
+    "nameRequired": "Nombre Requerido", "nameRequiredDesc": "Por favor ingresa tu nombre",
+    "phone": "Número de Teléfono (Opcional)", "phonePlaceholder": "+27 82 123 4567",
+    "partySize": "Tamaño del Grupo", "seatingPrefs": "Preferencias de Asiento (Opcional)",
+    "joinButton": "Unirse a Lista de Espera", "joining": "Uniéndose...",
+    "added": "¡Agregado a la Lista de Espera!", "addedDesc": "Se te notificará cuando tu mesa esté lista.",
+    "trackPosition": "Podrás rastrear tu posición en tiempo real",
+    "error": "Error", "venueNotFound": "Lugar no encontrado",
+    "couldNotJoin": "No se pudo unir a la lista de espera. Por favor intenta de nuevo."
+  },
+  "food": {
+    "title": "Comida Lista", "scanOrSearch": "Escanea o busca tu lugar",
+    "orderNumber": "Número de Pedido", "submit": "Rastrear Pedido",
+    "tracking": "Seguimiento de Pedido", "placed": "Pedido Realizado",
+    "inPrep": "En Preparación", "ready": "Listo para Recoger", "collected": "Recogido"
+  },
+  "tableReady": {
+    "title": "Mesa Lista", "joinWaitlist": "Unirse a Lista de Espera",
+    "makeReservation": "Hacer Reserva", "waiting": "Esperando",
+    "ready": "¡Tu Mesa está Lista!", "seated": "Sentado",
+    "confirmArrival": "Estoy Aquí", "partySize": "Tamaño del Grupo", "position": "Posición"
+  },
+  "profile": {
+    "title": "Perfil", "personalInfo": "Información Personal", "fullName": "Nombre Completo",
+    "email": "Correo Electrónico", "phone": "Número de Teléfono", "save": "Guardar Cambios",
+    "edit": "Editar", "cancel": "Cancelar", "security": "Seguridad", "password": "Contraseña",
+    "resetPassword": "Restablecer la contraseña de tu cuenta", "appearance": "Apariencia",
+    "theme": "Tema", "themeDesc": "Elige tu esquema de colores preferido",
+    "language": "Idioma", "languageDesc": "Elige tu idioma preferido",
+    "signOut": "Cerrar Sesión", "signInRequired": "Por favor inicia sesión para ver tu perfil",
+    "signInButton": "Iniciar Sesión", "friends": "Amigos", "noFriends": "Sin amigos aún",
+    "addFriend": "Agregar Amigo", "pending": "Pendiente", "accepted": "Aceptado",
+    "yearInReview": "Tu Año en Revisión", "previewRecap": "Vista Previa del Resumen",
+    "emailCannotChange": "El correo no se puede cambiar", "profileUpdated": "Perfil actualizado exitosamente",
+    "namePlaceholder": "Tu nombre", "emailPlaceholder": "tu.correo@ejemplo.com", "phonePlaceholder": "+1 (555) 123-4567"
+  },
+  "explore": {
+    "title": "Explorar Lugares", "personalised": "Personalizado para ti",
+    "discover": "Descubre restaurantes cercanos", "shareVenue": "¡Mira {{name}} en ReadyUp!",
+    "noVenues": "No se encontraron lugares"
+  },
+  "rating": {
+    "title": "Califica tu Experiencia", "subtitle": "¿Cómo fue tu experiencia en {{venue}}?",
+    "feedback": "Comentarios Adicionales (Opcional)", "feedbackPlaceholder": "Comparte más detalles sobre tu experiencia...",
+    "skip": "Omitir", "submit": "Enviar Calificación", "submitting": "Enviando...",
+    "thanks": "¡Gracias!", "thanksDesc": "Tu calificación ha sido enviada.", "shareExperience": "Comparte tu experiencia"
+  },
+  "offline": {
+    "banner": "Estás sin conexión — algunas funciones pueden no estar disponibles",
+    "backOnline": "De vuelta en línea", "synced": "Se sincronizaron {{count}} acción(es) pendiente(s)"
+  },
+  "common": {
+    "loading": "Cargando...", "error": "Error", "success": "Éxito", "cancel": "Cancelar",
+    "confirm": "Confirmar", "close": "Cerrar", "back": "Atrás", "next": "Siguiente", "retry": "Reintentar",
+    "min": "min", "at": "a las"
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "nav": { "home": "首页", "food": "餐饮", "table": "餐桌", "profile": "个人资料" },
+  "home": {
+    "welcome": "欢迎回来", "signIn": "登录开始", "signInDescription": "追踪您的订单和餐桌预订",
+    "signInButton": "登录", "signInOrUp": "登录或注册", "signInTrack": "登录以追踪您的订单和预订",
+    "activeTracking": "实时追踪", "noActive": "没有活跃的订单或等位",
+    "explore": "探索场所", "order": "订单", "waitlist": "等位", "table": "餐桌",
+    "dismiss": "忽略", "rate": "评价", "clear": "清除", "inviteFriends": "邀请朋友", "share": "分享",
+    "foodReady": "餐品就绪", "trackOrderStatus": "追踪您的订单状态",
+    "tableReady": "餐桌就绪", "joinWaitlist": "加入等位",
+    "reservation": "预订", "reservationFor": "{{size}}人预订", "partyOf": "{{size}}人",
+    "demoMode": "（演示模式）", "noFeatures": "目前没有可用功能。",
+    "orderReadyToast": "订单就绪！", "orderReadyDesc": "订单 #{{number}} 可以取餐了！",
+    "tableReadyToast": "餐桌就绪！", "tableReadyDesc": "您的{{size}}人桌已就绪！",
+    "yourOrderReady": "您的订单已就绪！", "orderReadySub": "订单 #{{number}} 在 {{venue}}",
+    "yourTableReady": "您的餐桌已就绪！", "tableReadySub": "{{size}}人在 {{venue}}",
+    "viewOrder": "查看订单", "getSeated": "我到了 - 入座",
+    "orderRejected": "订单被拒", "orderRejectedDesc": "订单 #{{number}} 被厨房标记为无效。点击订单重试。",
+    "tableReleased": "餐桌已释放", "tableReleasedDesc": "由于您未按时到达，您的餐桌已被释放。您可以重新加入等位。",
+    "arrivingSoon": "{{minutes}}分钟内到达？立即签到！", "mayBeReleased": "预订可能随时被释放",
+    "minLate": "迟到{{minutes}}分钟", "cancelledBy": "由{{by}}取消", "noShowReleased": "餐桌已释放 - 未按时到达",
+    "today": "今天", "tomorrow": "明天"
+  },
+  "status": { "ready": "就绪", "preparing": "准备中", "verifying": "验证中", "cancelled": "已取消", "collected": "已取餐", "placed": "已下单", "waiting": "等待中", "seated": "已入座", "overdue": "超时", "reserved": "已预订", "highConfidence": "高置信度", "medium": "中等", "estimate": "估算", "basedOnHistory": "基于历史数据", "someHistory": "部分历史数据", "venueDefault": "场所默认时间", "you": "您", "system": "系统", "venue": "场所" },
+  "waitlistJoin": { "title": "加入等位", "name": "姓名", "namePlaceholder": "您的姓名", "nameRequired": "需要姓名", "nameRequiredDesc": "请输入您的姓名", "phone": "电话号码（可选）", "phonePlaceholder": "+86 138 1234 5678", "partySize": "人数", "seatingPrefs": "座位偏好（可选）", "joinButton": "加入等位", "joining": "加入中...", "added": "已加入等位！", "addedDesc": "餐桌就绪时将通知您。", "trackPosition": "您可以实时追踪您的位置", "error": "错误", "venueNotFound": "未找到场所", "couldNotJoin": "无法加入等位。请重试。" },
+  "food": { "title": "餐品就绪", "scanOrSearch": "扫描或搜索您的场所", "orderNumber": "订单号", "submit": "追踪订单", "tracking": "订单追踪", "placed": "已下单", "inPrep": "准备中", "ready": "可以取餐", "collected": "已取餐" },
+  "tableReady": { "title": "餐桌就绪", "joinWaitlist": "加入等位", "makeReservation": "预订", "waiting": "等待中", "ready": "您的餐桌已就绪！", "seated": "已入座", "confirmArrival": "我到了", "partySize": "人数", "position": "位置" },
+  "profile": { "title": "个人资料", "personalInfo": "个人信息", "fullName": "全名", "email": "电子邮件", "phone": "电话号码", "save": "保存更改", "edit": "编辑", "cancel": "取消", "security": "安全", "password": "密码", "resetPassword": "重置您的账户密码", "appearance": "外观", "theme": "主题", "themeDesc": "选择您偏好的配色方案", "language": "语言", "languageDesc": "选择您偏好的语言", "signOut": "退出", "signInRequired": "请登录以查看您的个人资料", "signInButton": "登录", "friends": "好友", "noFriends": "还没有好友", "addFriend": "添加好友", "pending": "待处理", "accepted": "已接受", "yearInReview": "您的年度回顾", "previewRecap": "预览回顾", "emailCannotChange": "邮箱不可更改", "profileUpdated": "个人资料更新成功", "namePlaceholder": "您的姓名", "emailPlaceholder": "your.email@example.com", "phonePlaceholder": "+86 138 1234 5678" },
+  "explore": { "title": "探索场所", "personalised": "为您个性化", "discover": "发现附近的餐厅", "shareVenue": "在ReadyUp上查看{{name}}！", "noVenues": "未找到场所" },
+  "rating": { "title": "评价您的体验", "subtitle": "您在{{venue}}的体验如何？", "feedback": "额外反馈（可选）", "feedbackPlaceholder": "分享更多关于您体验的细节...", "skip": "跳过", "submit": "提交评价", "submitting": "提交中...", "thanks": "谢谢！", "thanksDesc": "您的评价已提交。", "shareExperience": "分享您的体验" },
+  "offline": { "banner": "您已离线 — 部分功能可能不可用", "backOnline": "已恢复在线", "synced": "已同步{{count}}个待处理操作" },
+  "common": { "loading": "加载中...", "error": "错误", "success": "成功", "cancel": "取消", "confirm": "确认", "close": "关闭", "back": "返回", "next": "下一步", "retry": "重试", "min": "分钟", "at": "于" }
+}

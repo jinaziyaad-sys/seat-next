@@ -1,0 +1,33 @@
+{
+  "nav": { "home": "Nyumbani", "food": "Chakula", "table": "Meza", "profile": "Wasifu" },
+  "home": {
+    "welcome": "Karibu tena", "signIn": "Ingia ili Uanze", "signInDescription": "Fuatilia oda zako na uhifadhi wa meza",
+    "signInButton": "Ingia", "signInOrUp": "Ingia au Jisajili", "signInTrack": "Ingia ili kufuatilia oda na uhifadhi wako",
+    "activeTracking": "Ufuatiliaji Hai", "noActive": "Hakuna oda hai au maingizo ya orodha ya kusubiri",
+    "explore": "Gundua Maeneo", "order": "Oda", "waitlist": "Orodha ya Kusubiri", "table": "Meza",
+    "dismiss": "Ondoa", "rate": "Kadiria", "clear": "Futa", "inviteFriends": "Alika Marafiki", "share": "Shiriki",
+    "foodReady": "Chakula Kiko Tayari", "trackOrderStatus": "Fuatilia hali ya oda yako",
+    "tableReady": "Meza Iko Tayari", "joinWaitlist": "Jiunge na orodha ya kusubiri",
+    "reservation": "Uhifadhi", "reservationFor": "Uhifadhi kwa {{size}}", "partyOf": "Kundi la {{size}}",
+    "demoMode": "(Hali ya Maonyesho)", "noFeatures": "Hakuna vipengele vinavyopatikana kwa sasa.",
+    "orderReadyToast": "Oda Iko Tayari!", "orderReadyDesc": "Oda #{{number}} iko tayari kuchukuliwa!",
+    "tableReadyToast": "Meza Iko Tayari!", "tableReadyDesc": "Meza yako ya {{size}} iko tayari!",
+    "yourOrderReady": "Oda Yako Iko Tayari!", "orderReadySub": "Oda #{{number}} katika {{venue}}",
+    "yourTableReady": "Meza Yako Iko Tayari!", "tableReadySub": "Kundi la {{size}} katika {{venue}}",
+    "viewOrder": "Angalia Oda", "getSeated": "Niko Hapa - Kaa",
+    "orderRejected": "Oda Imekataliwa", "orderRejectedDesc": "Oda #{{number}} imewekwa alama kuwa batili na jikoni.",
+    "tableReleased": "Meza Imetolewa", "tableReleasedDesc": "Meza yako imetolewa kwa sababu hukufika kwa wakati.",
+    "arrivingSoon": "Unafika ndani ya dakika {{minutes}}? Jiandikishe sasa!", "mayBeReleased": "Uhifadhi unaweza kutolewa wakati wowote",
+    "minLate": "Dakika {{minutes}} kuchelewa", "cancelledBy": "Imefutwa na {{by}}", "noShowReleased": "Meza imetolewa - haukufika kwa wakati",
+    "today": "Leo", "tomorrow": "Kesho"
+  },
+  "status": { "ready": "Tayari", "preparing": "Inatayarishwa", "verifying": "Inathibitishwa", "cancelled": "Imefutwa", "collected": "Imechukuliwa", "placed": "Imewekwa", "waiting": "Inasubiri", "seated": "Amekaa", "overdue": "Imechelewa", "reserved": "Imehifadhiwa", "highConfidence": "Uhakika wa Juu", "medium": "Wastani", "estimate": "Makadirio", "basedOnHistory": "Kulingana na data ya kihistoria", "someHistory": "Data fulani ya kihistoria", "venueDefault": "Muda wa kawaida wa eneo", "you": "wewe", "system": "mfumo", "venue": "eneo" },
+  "waitlistJoin": { "title": "Jiunge na Orodha ya Kusubiri", "name": "Jina", "namePlaceholder": "Jina lako", "nameRequired": "Jina Linahitajika", "nameRequiredDesc": "Tafadhali ingiza jina lako", "phone": "Nambari ya Simu (Si lazima)", "phonePlaceholder": "+254 700 123 456", "partySize": "Ukubwa wa Kundi", "seatingPrefs": "Mapendeleo ya Kukaa (Si lazima)", "joinButton": "Jiunge na Orodha ya Kusubiri", "joining": "Inajiunga...", "added": "Umeongezwa kwenye Orodha ya Kusubiri!", "addedDesc": "Utaarifiwa meza yako itakapokuwa tayari.", "trackPosition": "Utaweza kufuatilia nafasi yako kwa wakati halisi", "error": "Kosa", "venueNotFound": "Eneo halipatikani", "couldNotJoin": "Haikuweza kujiunga na orodha ya kusubiri. Tafadhali jaribu tena." },
+  "food": { "title": "Chakula Tayari", "scanOrSearch": "Changanua au tafuta eneo lako", "orderNumber": "Nambari ya Oda", "submit": "Fuatilia Oda", "tracking": "Ufuatiliaji wa Oda", "placed": "Oda Imewekwa", "inPrep": "Inatayarishwa", "ready": "Tayari Kuchukuliwa", "collected": "Imechukuliwa" },
+  "tableReady": { "title": "Meza Tayari", "joinWaitlist": "Jiunge na Orodha ya Kusubiri", "makeReservation": "Fanya Uhifadhi", "waiting": "Inasubiri", "ready": "Meza Yako Iko Tayari!", "seated": "Amekaa", "confirmArrival": "Niko Hapa", "partySize": "Ukubwa wa Kundi", "position": "Nafasi" },
+  "profile": { "title": "Wasifu", "personalInfo": "Taarifa Binafsi", "fullName": "Jina Kamili", "email": "Barua pepe", "phone": "Nambari ya Simu", "save": "Hifadhi Mabadiliko", "edit": "Hariri", "cancel": "Ghairi", "security": "Usalama", "password": "Nenosiri", "resetPassword": "Weka upya nenosiri la akaunti yako", "appearance": "Mwonekano", "theme": "Mandhari", "themeDesc": "Chagua mpango wa rangi unaopendelea", "language": "Lugha", "languageDesc": "Chagua lugha unayopendelea", "signOut": "Toka", "signInRequired": "Tafadhali ingia ili kuona wasifu wako", "signInButton": "Ingia", "friends": "Marafiki", "noFriends": "Hakuna marafiki bado", "addFriend": "Ongeza Rafiki", "pending": "Inasubiri", "accepted": "Imekubaliwa", "yearInReview": "Mwaka Wako kwa Muhtasari", "previewRecap": "Hakiki Muhtasari", "emailCannotChange": "Barua pepe haiwezi kubadilishwa", "profileUpdated": "Wasifu umesasishwa kwa mafanikio", "namePlaceholder": "Jina lako", "emailPlaceholder": "your.email@example.com", "phonePlaceholder": "+254 700 123 456" },
+  "explore": { "title": "Gundua Maeneo", "personalised": "Imebinafsishwa kwako", "discover": "Pata mikahawa ya karibu", "shareVenue": "Angalia {{name}} kwenye ReadyUp!", "noVenues": "Hakuna maeneo yaliyopatikana" },
+  "rating": { "title": "Kadiria Uzoefu Wako", "subtitle": "Uzoefu wako ulikuwaje katika {{venue}}?", "feedback": "Maoni ya Ziada (Si lazima)", "feedbackPlaceholder": "Shiriki maelezo zaidi kuhusu uzoefu wako...", "skip": "Ruka", "submit": "Wasilisha Ukadiriaji", "submitting": "Inawasilishwa...", "thanks": "Asante!", "thanksDesc": "Ukadiriaji wako umewasilishwa.", "shareExperience": "Shiriki uzoefu wako" },
+  "offline": { "banner": "Huna mtandao — baadhi ya vipengele vinaweza kutopatikana", "backOnline": "Umerudi mtandaoni", "synced": "Zimesawazishwa {{count}} hatua zinazosubiri" },
+  "common": { "loading": "Inapakia...", "error": "Kosa", "success": "Mafanikio", "cancel": "Ghairi", "confirm": "Thibitisha", "close": "Funga", "back": "Nyuma", "next": "Inayofuata", "retry": "Jaribu Tena", "min": "dk", "at": "saa" }
+}

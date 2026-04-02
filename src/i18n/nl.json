@@ -1,0 +1,33 @@
+{
+  "nav": { "home": "Home", "food": "Eten", "table": "Tafel", "profile": "Profiel" },
+  "home": {
+    "welcome": "Welkom terug", "signIn": "Log in om te Beginnen", "signInDescription": "Volg je bestellingen en tafelreserveringen",
+    "signInButton": "Inloggen", "signInOrUp": "Inloggen of Registreren", "signInTrack": "Log in om je bestellingen en reserveringen te volgen",
+    "activeTracking": "Actief Volgen", "noActive": "Geen actieve bestellingen of wachtlijstinvoer",
+    "explore": "Locaties Verkennen", "order": "Bestelling", "waitlist": "Wachtlijst", "table": "Tafel",
+    "dismiss": "Sluiten", "rate": "Beoordelen", "clear": "Wissen", "inviteFriends": "Vrienden Uitnodigen", "share": "Delen",
+    "foodReady": "Eten Klaar", "trackOrderStatus": "Volg de status van je bestelling",
+    "tableReady": "Tafel Klaar", "joinWaitlist": "Aan wachtlijst toevoegen",
+    "reservation": "Reservering", "reservationFor": "Reservering voor {{size}}", "partyOf": "Groep van {{size}}",
+    "demoMode": "(Demo Modus)", "noFeatures": "Er zijn momenteel geen functies beschikbaar.",
+    "orderReadyToast": "Bestelling Klaar!", "orderReadyDesc": "Bestelling #{{number}} is klaar om op te halen!",
+    "tableReadyToast": "Tafel Klaar!", "tableReadyDesc": "Je tafel voor {{size}} is klaar!",
+    "yourOrderReady": "Je Bestelling is Klaar!", "orderReadySub": "Bestelling #{{number}} bij {{venue}}",
+    "yourTableReady": "Je Tafel is Klaar!", "tableReadySub": "Groep van {{size}} bij {{venue}}",
+    "viewOrder": "Bestelling Bekijken", "getSeated": "Ik ben er - Plaatsnemen",
+    "orderRejected": "Bestelling Afgewezen", "orderRejectedDesc": "Bestelling #{{number}} is door de keuken als ongeldig gemarkeerd.",
+    "tableReleased": "Tafel Vrijgegeven", "tableReleasedDesc": "Je tafel is vrijgegeven omdat je niet op tijd bent gekomen.",
+    "arrivingSoon": "Kom je binnen {{minutes}} min? Check nu in!", "mayBeReleased": "De reservering kan elk moment worden vrijgegeven",
+    "minLate": "{{minutes}} min te laat", "cancelledBy": "Geannuleerd door {{by}}", "noShowReleased": "Tafel vrijgegeven - niet op tijd gekomen",
+    "today": "Vandaag", "tomorrow": "Morgen"
+  },
+  "status": { "ready": "Klaar", "preparing": "Wordt bereid", "verifying": "Verificatie", "cancelled": "Geannuleerd", "collected": "Opgehaald", "placed": "Geplaatst", "waiting": "Wachtend", "seated": "Gezeten", "overdue": "Te laat", "reserved": "Gereserveerd", "highConfidence": "Hoog Vertrouwen", "medium": "Gemiddeld", "estimate": "Schatting", "basedOnHistory": "Gebaseerd op historische gegevens", "someHistory": "Enkele historische gegevens", "venueDefault": "Standaard tijd van locatie", "you": "jou", "system": "systeem", "venue": "locatie" },
+  "waitlistJoin": { "title": "Aan Wachtlijst Toevoegen", "name": "Naam", "namePlaceholder": "Je naam", "nameRequired": "Naam Vereist", "nameRequiredDesc": "Voer je naam in", "phone": "Telefoonnummer (Optioneel)", "phonePlaceholder": "+31 6 1234 5678", "partySize": "Groepsgrootte", "seatingPrefs": "Zitplaatsvoorkeur (Optioneel)", "joinButton": "Aan Wachtlijst Toevoegen", "joining": "Wordt toegevoegd...", "added": "Toegevoegd aan Wachtlijst!", "addedDesc": "Je wordt op de hoogte gebracht als je tafel klaar is.", "trackPosition": "Je kunt je positie in realtime volgen", "error": "Fout", "venueNotFound": "Locatie niet gevonden", "couldNotJoin": "Kon niet aan de wachtlijst worden toegevoegd. Probeer het opnieuw." },
+  "food": { "title": "Eten Klaar", "scanOrSearch": "Scan of zoek je locatie", "orderNumber": "Bestellingsnummer", "submit": "Bestelling Volgen", "tracking": "Bestelling Volgen", "placed": "Bestelling Geplaatst", "inPrep": "Wordt Bereid", "ready": "Klaar om Op te Halen", "collected": "Opgehaald" },
+  "tableReady": { "title": "Tafel Klaar", "joinWaitlist": "Aan Wachtlijst Toevoegen", "makeReservation": "Reserveren", "waiting": "Wachtend", "ready": "Je Tafel is Klaar!", "seated": "Gezeten", "confirmArrival": "Ik ben er", "partySize": "Groepsgrootte", "position": "Positie" },
+  "profile": { "title": "Profiel", "personalInfo": "Persoonlijke Informatie", "fullName": "Volledige Naam", "email": "E-mail", "phone": "Telefoonnummer", "save": "Wijzigingen Opslaan", "edit": "Bewerken", "cancel": "Annuleren", "security": "Beveiliging", "password": "Wachtwoord", "resetPassword": "Reset je accountwachtwoord", "appearance": "Uiterlijk", "theme": "Thema", "themeDesc": "Kies je favoriete kleurenschema", "language": "Taal", "languageDesc": "Kies je voorkeurstaal", "signOut": "Uitloggen", "signInRequired": "Log in om je profiel te zien", "signInButton": "Inloggen", "friends": "Vrienden", "noFriends": "Nog geen vrienden", "addFriend": "Vriend Toevoegen", "pending": "In afwachting", "accepted": "Geaccepteerd", "yearInReview": "Je Jaar in Overzicht", "previewRecap": "Samenvatting Bekijken", "emailCannotChange": "E-mail kan niet worden gewijzigd", "profileUpdated": "Profiel succesvol bijgewerkt", "namePlaceholder": "Je naam", "emailPlaceholder": "je.email@voorbeeld.nl", "phonePlaceholder": "+31 6 1234 5678" },
+  "explore": { "title": "Locaties Verkennen", "personalised": "Gepersonaliseerd voor jou", "discover": "Ontdek restaurants in de buurt", "shareVenue": "Bekijk {{name}} op ReadyUp!", "noVenues": "Geen locaties gevonden" },
+  "rating": { "title": "Beoordeel je Ervaring", "subtitle": "Hoe was je ervaring bij {{venue}}?", "feedback": "Extra Feedback (Optioneel)", "feedbackPlaceholder": "Deel meer details over je ervaring...", "skip": "Overslaan", "submit": "Beoordeling Indienen", "submitting": "Wordt verzonden...", "thanks": "Bedankt!", "thanksDesc": "Je beoordeling is ingediend.", "shareExperience": "Deel je ervaring" },
+  "offline": { "banner": "Je bent offline — sommige functies zijn mogelijk niet beschikbaar", "backOnline": "Weer online", "synced": "{{count}} wachtende actie(s) gesynchroniseerd" },
+  "common": { "loading": "Laden...", "error": "Fout", "success": "Succes", "cancel": "Annuleren", "confirm": "Bevestigen", "close": "Sluiten", "back": "Terug", "next": "Volgende", "retry": "Opnieuw Proberen", "min": "min", "at": "om" }
+}

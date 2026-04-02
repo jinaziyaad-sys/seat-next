@@ -1,0 +1,33 @@
+{
+  "nav": { "home": "ホーム", "food": "フード", "table": "テーブル", "profile": "プロフィール" },
+  "home": {
+    "welcome": "おかえりなさい", "signIn": "ログインして開始", "signInDescription": "注文とテーブル予約を追跡",
+    "signInButton": "ログイン", "signInOrUp": "ログインまたは登録", "signInTrack": "注文と予約を追跡するにはログインしてください",
+    "activeTracking": "アクティブ追跡", "noActive": "アクティブな注文やウェイトリストはありません",
+    "explore": "店舗を探す", "order": "注文", "waitlist": "ウェイトリスト", "table": "テーブル",
+    "dismiss": "閉じる", "rate": "評価", "clear": "クリア", "inviteFriends": "友達を招待", "share": "共有",
+    "foodReady": "料理完成", "trackOrderStatus": "注文状況を追跡",
+    "tableReady": "テーブル準備完了", "joinWaitlist": "ウェイトリストに参加",
+    "reservation": "予約", "reservationFor": "{{size}}名の予約", "partyOf": "{{size}}名",
+    "demoMode": "（デモモード）", "noFeatures": "現在利用可能な機能はありません。",
+    "orderReadyToast": "注文完成！", "orderReadyDesc": "注文 #{{number}} の受け取り準備ができました！",
+    "tableReadyToast": "テーブル準備完了！", "tableReadyDesc": "{{size}}名のテーブルが準備できました！",
+    "yourOrderReady": "ご注文の準備ができました！", "orderReadySub": "注文 #{{number}} {{venue}}にて",
+    "yourTableReady": "テーブルの準備ができました！", "tableReadySub": "{{size}}名 {{venue}}にて",
+    "viewOrder": "注文を見る", "getSeated": "到着しました - 着席する",
+    "orderRejected": "注文拒否", "orderRejectedDesc": "注文 #{{number}} はキッチンにより無効とされました。タップして再試行してください。",
+    "tableReleased": "テーブル解放", "tableReleasedDesc": "時間内に到着しなかったため、テーブルが解放されました。",
+    "arrivingSoon": "{{minutes}}分以内に到着？今すぐチェックイン！", "mayBeReleased": "予約はいつでも解放される可能性があります",
+    "minLate": "{{minutes}}分遅れ", "cancelledBy": "{{by}}によりキャンセル", "noShowReleased": "テーブル解放 - 時間内に到着しませんでした",
+    "today": "今日", "tomorrow": "明日"
+  },
+  "status": { "ready": "準備完了", "preparing": "準備中", "verifying": "確認中", "cancelled": "キャンセル済", "collected": "受取済", "placed": "注文済", "waiting": "待機中", "seated": "着席済", "overdue": "遅延", "reserved": "予約済", "highConfidence": "高信頼度", "medium": "中程度", "estimate": "推定", "basedOnHistory": "過去のデータに基づく", "someHistory": "一部の過去データ", "venueDefault": "店舗のデフォルト時間", "you": "あなた", "system": "システム", "venue": "店舗" },
+  "waitlistJoin": { "title": "ウェイトリストに参加", "name": "名前", "namePlaceholder": "お名前", "nameRequired": "名前が必要です", "nameRequiredDesc": "名前を入力してください", "phone": "電話番号（任意）", "phonePlaceholder": "+81 90 1234 5678", "partySize": "人数", "seatingPrefs": "席の希望（任意）", "joinButton": "ウェイトリストに参加", "joining": "参加中...", "added": "ウェイトリストに追加されました！", "addedDesc": "テーブルの準備ができたらお知らせします。", "trackPosition": "リアルタイムで順番を確認できます", "error": "エラー", "venueNotFound": "店舗が見つかりません", "couldNotJoin": "ウェイトリストに参加できませんでした。もう一度お試しください。" },
+  "food": { "title": "料理完成", "scanOrSearch": "スキャンまたは店舗を検索", "orderNumber": "注文番号", "submit": "注文を追跡", "tracking": "注文追跡", "placed": "注文済", "inPrep": "準備中", "ready": "受取可能", "collected": "受取済" },
+  "tableReady": { "title": "テーブル準備完了", "joinWaitlist": "ウェイトリストに参加", "makeReservation": "予約する", "waiting": "待機中", "ready": "テーブルの準備ができました！", "seated": "着席済", "confirmArrival": "到着しました", "partySize": "人数", "position": "順番" },
+  "profile": { "title": "プロフィール", "personalInfo": "個人情報", "fullName": "氏名", "email": "メール", "phone": "電話番号", "save": "変更を保存", "edit": "編集", "cancel": "キャンセル", "security": "セキュリティ", "password": "パスワード", "resetPassword": "アカウントのパスワードをリセット", "appearance": "外観", "theme": "テーマ", "themeDesc": "お好みの配色を選択", "language": "言語", "languageDesc": "お好みの言語を選択", "signOut": "ログアウト", "signInRequired": "プロフィールを見るにはログインしてください", "signInButton": "ログイン", "friends": "友達", "noFriends": "まだ友達がいません", "addFriend": "友達を追加", "pending": "保留中", "accepted": "承認済", "yearInReview": "年間レビュー", "previewRecap": "まとめをプレビュー", "emailCannotChange": "メールは変更できません", "profileUpdated": "プロフィールが更新されました", "namePlaceholder": "お名前", "emailPlaceholder": "your.email@example.com", "phonePlaceholder": "+81 90 1234 5678" },
+  "explore": { "title": "店舗を探す", "personalised": "あなた向けにパーソナライズ", "discover": "近くのレストランを見つける", "shareVenue": "ReadyUpで{{name}}をチェック！", "noVenues": "店舗が見つかりません" },
+  "rating": { "title": "体験を評価", "subtitle": "{{venue}}での体験はいかがでしたか？", "feedback": "追加フィードバック（任意）", "feedbackPlaceholder": "体験の詳細を共有...", "skip": "スキップ", "submit": "評価を送信", "submitting": "送信中...", "thanks": "ありがとうございます！", "thanksDesc": "評価が送信されました。", "shareExperience": "体験を共有" },
+  "offline": { "banner": "オフラインです — 一部の機能が利用できない場合があります", "backOnline": "オンラインに復帰", "synced": "{{count}}件の保留中のアクションを同期しました" },
+  "common": { "loading": "読み込み中...", "error": "エラー", "success": "成功", "cancel": "キャンセル", "confirm": "確認", "close": "閉じる", "back": "戻る", "next": "次へ", "retry": "再試行", "min": "分", "at": "に" }
+}

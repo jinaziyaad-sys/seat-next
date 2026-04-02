@@ -1,0 +1,33 @@
+{
+  "nav": { "home": "होम", "food": "खाना", "table": "टेबल", "profile": "प्रोफ़ाइल" },
+  "home": {
+    "welcome": "वापस स्वागत है", "signIn": "शुरू करने के लिए साइन इन करें", "signInDescription": "अपने ऑर्डर और टेबल बुकिंग ट्रैक करें",
+    "signInButton": "साइन इन", "signInOrUp": "साइन इन या साइन अप", "signInTrack": "अपने ऑर्डर और रिज़र्वेशन ट्रैक करने के लिए साइन इन करें",
+    "activeTracking": "सक्रिय ट्रैकिंग", "noActive": "कोई सक्रिय ऑर्डर या प्रतीक्षा सूची प्रविष्टियाँ नहीं",
+    "explore": "स्थान खोजें", "order": "ऑर्डर", "waitlist": "प्रतीक्षा सूची", "table": "टेबल",
+    "dismiss": "खारिज करें", "rate": "रेटिंग दें", "clear": "साफ़ करें", "inviteFriends": "दोस्तों को आमंत्रित करें", "share": "साझा करें",
+    "foodReady": "खाना तैयार", "trackOrderStatus": "अपने ऑर्डर की स्थिति ट्रैक करें",
+    "tableReady": "टेबल तैयार", "joinWaitlist": "प्रतीक्षा सूची में शामिल हों",
+    "reservation": "रिज़र्वेशन", "reservationFor": "{{size}} के लिए रिज़र्वेशन", "partyOf": "{{size}} का ग्रुप",
+    "demoMode": "(डेमो मोड)", "noFeatures": "वर्तमान में कोई सुविधा उपलब्ध नहीं है।",
+    "orderReadyToast": "ऑर्डर तैयार!", "orderReadyDesc": "ऑर्डर #{{number}} पिकअप के लिए तैयार है!",
+    "tableReadyToast": "टेबल तैयार!", "tableReadyDesc": "{{size}} के लिए आपकी टेबल तैयार है!",
+    "yourOrderReady": "आपका ऑर्डर तैयार है!", "orderReadySub": "ऑर्डर #{{number}} {{venue}} पर",
+    "yourTableReady": "आपकी टेबल तैयार है!", "tableReadySub": "{{size}} का ग्रुप {{venue}} पर",
+    "viewOrder": "ऑर्डर देखें", "getSeated": "मैं यहाँ हूँ - बैठें",
+    "orderRejected": "ऑर्डर अस्वीकृत", "orderRejectedDesc": "ऑर्डर #{{number}} को किचन द्वारा अमान्य चिह्नित किया गया। पुनः प्रयास के लिए ऑर्डर पर टैप करें।",
+    "tableReleased": "टेबल जारी", "tableReleasedDesc": "आपकी टेबल जारी कर दी गई क्योंकि आप समय पर नहीं पहुँचे।",
+    "arrivingSoon": "{{minutes}} मिनट में पहुँच रहे हैं? अभी चेक इन करें!", "mayBeReleased": "रिज़र्वेशन किसी भी समय जारी हो सकता है",
+    "minLate": "{{minutes}} मिनट देरी", "cancelledBy": "{{by}} द्वारा रद्द", "noShowReleased": "टेबल जारी - समय पर नहीं पहुँचे",
+    "today": "आज", "tomorrow": "कल"
+  },
+  "status": { "ready": "तैयार", "preparing": "तैयारी में", "verifying": "सत्यापन", "cancelled": "रद्द", "collected": "लिया गया", "placed": "दिया गया", "waiting": "प्रतीक्षा में", "seated": "बैठे", "overdue": "विलंबित", "reserved": "आरक्षित", "highConfidence": "उच्च विश्वास", "medium": "मध्यम", "estimate": "अनुमान", "basedOnHistory": "ऐतिहासिक डेटा पर आधारित", "someHistory": "कुछ ऐतिहासिक डेटा", "venueDefault": "स्थान का डिफ़ॉल्ट समय", "you": "आप", "system": "सिस्टम", "venue": "स्थान" },
+  "waitlistJoin": { "title": "प्रतीक्षा सूची में शामिल हों", "name": "नाम", "namePlaceholder": "आपका नाम", "nameRequired": "नाम आवश्यक", "nameRequiredDesc": "कृपया अपना नाम दर्ज करें", "phone": "फ़ोन नंबर (वैकल्पिक)", "phonePlaceholder": "+91 98765 43210", "partySize": "ग्रुप का आकार", "seatingPrefs": "बैठने की प्राथमिकता (वैकल्पिक)", "joinButton": "प्रतीक्षा सूची में शामिल हों", "joining": "शामिल हो रहे हैं...", "added": "प्रतीक्षा सूची में जोड़ा गया!", "addedDesc": "जब आपकी टेबल तैयार होगी तो आपको सूचित किया जाएगा।", "trackPosition": "आप अपनी स्थिति रियल-टाइम में ट्रैक कर सकेंगे", "error": "त्रुटि", "venueNotFound": "स्थान नहीं मिला", "couldNotJoin": "प्रतीक्षा सूची में शामिल नहीं हो सके। कृपया पुनः प्रयास करें।" },
+  "food": { "title": "खाना तैयार", "scanOrSearch": "स्कैन करें या अपना स्थान खोजें", "orderNumber": "ऑर्डर नंबर", "submit": "ऑर्डर ट्रैक करें", "tracking": "ऑर्डर ट्रैकिंग", "placed": "ऑर्डर दिया गया", "inPrep": "तैयारी में", "ready": "पिकअप के लिए तैयार", "collected": "लिया गया" },
+  "tableReady": { "title": "टेबल तैयार", "joinWaitlist": "प्रतीक्षा सूची में शामिल हों", "makeReservation": "रिज़र्वेशन करें", "waiting": "प्रतीक्षा में", "ready": "आपकी टेबल तैयार है!", "seated": "बैठे", "confirmArrival": "मैं यहाँ हूँ", "partySize": "ग्रुप का आकार", "position": "स्थिति" },
+  "profile": { "title": "प्रोफ़ाइल", "personalInfo": "व्यक्तिगत जानकारी", "fullName": "पूरा नाम", "email": "ईमेल", "phone": "फ़ोन नंबर", "save": "परिवर्तन सहेजें", "edit": "संपादित करें", "cancel": "रद्द करें", "security": "सुरक्षा", "password": "पासवर्ड", "resetPassword": "अपना खाता पासवर्ड रीसेट करें", "appearance": "दिखावट", "theme": "थीम", "themeDesc": "अपनी पसंदीदा रंग योजना चुनें", "language": "भाषा", "languageDesc": "अपनी पसंदीदा भाषा चुनें", "signOut": "साइन आउट", "signInRequired": "अपनी प्रोफ़ाइल देखने के लिए साइन इन करें", "signInButton": "साइन इन", "friends": "दोस्त", "noFriends": "अभी तक कोई दोस्त नहीं", "addFriend": "दोस्त जोड़ें", "pending": "लंबित", "accepted": "स्वीकृत", "yearInReview": "आपका वार्षिक सारांश", "previewRecap": "सारांश देखें", "emailCannotChange": "ईमेल बदला नहीं जा सकता", "profileUpdated": "प्रोफ़ाइल सफलतापूर्वक अपडेट की गई", "namePlaceholder": "आपका नाम", "emailPlaceholder": "your.email@example.com", "phonePlaceholder": "+91 98765 43210" },
+  "explore": { "title": "स्थान खोजें", "personalised": "आपके लिए व्यक्तिगत", "discover": "आस-पास के रेस्तरां खोजें", "shareVenue": "ReadyUp पर {{name}} देखें!", "noVenues": "कोई स्थान नहीं मिला" },
+  "rating": { "title": "अपने अनुभव को रेट करें", "subtitle": "{{venue}} में आपका अनुभव कैसा रहा?", "feedback": "अतिरिक्त प्रतिक्रिया (वैकल्पिक)", "feedbackPlaceholder": "अपने अनुभव के बारे में और विवरण साझा करें...", "skip": "छोड़ें", "submit": "रेटिंग सबमिट करें", "submitting": "सबमिट हो रहा है...", "thanks": "धन्यवाद!", "thanksDesc": "आपकी रेटिंग सबमिट हो गई है।", "shareExperience": "अपना अनुभव साझा करें" },
+  "offline": { "banner": "आप ऑफ़लाइन हैं — कुछ सुविधाएँ अनुपलब्ध हो सकती हैं", "backOnline": "वापस ऑनलाइन", "synced": "{{count}} लंबित कार्य सिंक किए गए" },
+  "common": { "loading": "लोड हो रहा है...", "error": "त्रुटि", "success": "सफलता", "cancel": "रद्द करें", "confirm": "पुष्टि करें", "close": "बंद करें", "back": "पीछे", "next": "अगला", "retry": "पुनः प्रयास", "min": "मिनट", "at": "पर" }
+}

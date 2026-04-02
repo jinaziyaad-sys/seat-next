@@ -1,0 +1,33 @@
+{
+  "nav": { "home": "الرئيسية", "food": "الطعام", "table": "الطاولة", "profile": "الملف الشخصي" },
+  "home": {
+    "welcome": "مرحباً بعودتك", "signIn": "سجل الدخول للبدء", "signInDescription": "تتبع طلباتك وحجوزات الطاولة",
+    "signInButton": "تسجيل الدخول", "signInOrUp": "تسجيل الدخول أو إنشاء حساب", "signInTrack": "سجل الدخول لتتبع طلباتك وحجوزاتك",
+    "activeTracking": "التتبع النشط", "noActive": "لا توجد طلبات نشطة أو إدخالات في قائمة الانتظار",
+    "explore": "استكشف الأماكن", "order": "طلب", "waitlist": "قائمة الانتظار", "table": "طاولة",
+    "dismiss": "تجاهل", "rate": "قيّم", "clear": "مسح", "inviteFriends": "دعوة أصدقاء", "share": "مشاركة",
+    "foodReady": "الطعام جاهز", "trackOrderStatus": "تتبع حالة طلبك",
+    "tableReady": "الطاولة جاهزة", "joinWaitlist": "انضم لقائمة الانتظار",
+    "reservation": "حجز", "reservationFor": "حجز لـ {{size}}", "partyOf": "مجموعة من {{size}}",
+    "demoMode": "(وضع تجريبي)", "noFeatures": "لا تتوفر ميزات حالياً.",
+    "orderReadyToast": "الطلب جاهز!", "orderReadyDesc": "الطلب #{{number}} جاهز للاستلام!",
+    "tableReadyToast": "الطاولة جاهزة!", "tableReadyDesc": "طاولتك لـ {{size}} جاهزة!",
+    "yourOrderReady": "طلبك جاهز!", "orderReadySub": "طلب #{{number}} في {{venue}}",
+    "yourTableReady": "طاولتك جاهزة!", "tableReadySub": "مجموعة من {{size}} في {{venue}}",
+    "viewOrder": "عرض الطلب", "getSeated": "أنا هنا - الجلوس",
+    "orderRejected": "طلب مرفوض", "orderRejectedDesc": "تم تمييز الطلب #{{number}} كغير صالح من المطبخ. اضغط على الطلب لإعادة المحاولة.",
+    "tableReleased": "تم تحرير الطاولة", "tableReleasedDesc": "تم تحرير طاولتك لأنك لم تصل في الوقت المحدد.",
+    "arrivingSoon": "ستصل خلال {{minutes}} دقيقة؟ سجل وصولك الآن!", "mayBeReleased": "قد يتم تحرير الحجز في أي لحظة",
+    "minLate": "متأخر {{minutes}} دقيقة", "cancelledBy": "ملغي من {{by}}", "noShowReleased": "تم تحرير الطاولة - لم تصل في الوقت",
+    "today": "اليوم", "tomorrow": "غداً"
+  },
+  "status": { "ready": "جاهز", "preparing": "قيد التحضير", "verifying": "قيد التحقق", "cancelled": "ملغي", "collected": "تم الاستلام", "placed": "تم الطلب", "waiting": "في الانتظار", "seated": "جالس", "overdue": "متأخر", "reserved": "محجوز", "highConfidence": "ثقة عالية", "medium": "متوسط", "estimate": "تقدير", "basedOnHistory": "بناءً على البيانات التاريخية", "someHistory": "بعض البيانات التاريخية", "venueDefault": "الوقت الافتراضي للمكان", "you": "أنت", "system": "النظام", "venue": "المكان" },
+  "waitlistJoin": { "title": "انضم لقائمة الانتظار", "name": "الاسم", "namePlaceholder": "اسمك", "nameRequired": "الاسم مطلوب", "nameRequiredDesc": "يرجى إدخال اسمك", "phone": "رقم الهاتف (اختياري)", "phonePlaceholder": "+966 50 123 4567", "partySize": "حجم المجموعة", "seatingPrefs": "تفضيلات الجلوس (اختياري)", "joinButton": "انضم لقائمة الانتظار", "joining": "جاري الانضمام...", "added": "تمت الإضافة لقائمة الانتظار!", "addedDesc": "سيتم إعلامك عندما تكون طاولتك جاهزة.", "trackPosition": "يمكنك تتبع موقعك في الوقت الفعلي", "error": "خطأ", "venueNotFound": "المكان غير موجود", "couldNotJoin": "تعذر الانضمام لقائمة الانتظار. يرجى المحاولة مرة أخرى." },
+  "food": { "title": "الطعام جاهز", "scanOrSearch": "امسح أو ابحث عن مكانك", "orderNumber": "رقم الطلب", "submit": "تتبع الطلب", "tracking": "تتبع الطلب", "placed": "تم الطلب", "inPrep": "قيد التحضير", "ready": "جاهز للاستلام", "collected": "تم الاستلام" },
+  "tableReady": { "title": "الطاولة جاهزة", "joinWaitlist": "انضم لقائمة الانتظار", "makeReservation": "احجز", "waiting": "في الانتظار", "ready": "طاولتك جاهزة!", "seated": "جالس", "confirmArrival": "أنا هنا", "partySize": "حجم المجموعة", "position": "الموقع" },
+  "profile": { "title": "الملف الشخصي", "personalInfo": "المعلومات الشخصية", "fullName": "الاسم الكامل", "email": "البريد الإلكتروني", "phone": "رقم الهاتف", "save": "حفظ التغييرات", "edit": "تعديل", "cancel": "إلغاء", "security": "الأمان", "password": "كلمة المرور", "resetPassword": "إعادة تعيين كلمة مرور حسابك", "appearance": "المظهر", "theme": "السمة", "themeDesc": "اختر نظام الألوان المفضل", "language": "اللغة", "languageDesc": "اختر لغتك المفضلة", "signOut": "تسجيل الخروج", "signInRequired": "يرجى تسجيل الدخول لعرض ملفك الشخصي", "signInButton": "تسجيل الدخول", "friends": "الأصدقاء", "noFriends": "لا يوجد أصدقاء بعد", "addFriend": "إضافة صديق", "pending": "قيد الانتظار", "accepted": "مقبول", "yearInReview": "مراجعة عامك", "previewRecap": "معاينة الملخص", "emailCannotChange": "لا يمكن تغيير البريد الإلكتروني", "profileUpdated": "تم تحديث الملف الشخصي بنجاح", "namePlaceholder": "اسمك", "emailPlaceholder": "your.email@example.com", "phonePlaceholder": "+966 50 123 4567" },
+  "explore": { "title": "استكشف الأماكن", "personalised": "مخصص لك", "discover": "اكتشف المطاعم القريبة", "shareVenue": "تحقق من {{name}} على ReadyUp!", "noVenues": "لم يتم العثور على أماكن" },
+  "rating": { "title": "قيّم تجربتك", "subtitle": "كيف كانت تجربتك في {{venue}}؟", "feedback": "ملاحظات إضافية (اختياري)", "feedbackPlaceholder": "شارك المزيد من التفاصيل حول تجربتك...", "skip": "تخطي", "submit": "إرسال التقييم", "submitting": "جاري الإرسال...", "thanks": "شكراً!", "thanksDesc": "تم إرسال تقييمك.", "shareExperience": "شارك تجربتك" },
+  "offline": { "banner": "أنت غير متصل — بعض الميزات قد لا تكون متاحة", "backOnline": "عدت للاتصال", "synced": "تمت مزامنة {{count}} إجراء(ات) معلقة" },
+  "common": { "loading": "جاري التحميل...", "error": "خطأ", "success": "نجاح", "cancel": "إلغاء", "confirm": "تأكيد", "close": "إغلاق", "back": "رجوع", "next": "التالي", "retry": "إعادة المحاولة", "min": "دقيقة", "at": "في" }
+}
