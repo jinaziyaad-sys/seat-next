@@ -308,8 +308,8 @@ const Index = () => {
             // Check if order was rejected
             if (payload.new.status === 'rejected') {
               toast({
-                title: "Order Rejected",
-                description: `Order #${payload.new.order_number} was marked as invalid by the kitchen. Tap the order to retry.`,
+                title: t("home.orderRejected"),
+                description: t("home.orderRejectedDesc", { number: payload.new.order_number }),
                 variant: "destructive",
               });
             }
