@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Home, UtensilsCrossed, Users, User } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface TabNavigationProps {
   activeTab: string;
