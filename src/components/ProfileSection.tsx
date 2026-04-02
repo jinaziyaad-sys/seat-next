@@ -301,7 +301,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
               <p className="text-sm text-muted-foreground">{t("profile.languageDesc")}</p>
             </div>
             <Select
-              value={i18n.language?.startsWith('af') ? 'af' : 'en'}
+              value={i18n.language?.startsWith('af') ? 'af' : i18n.language?.startsWith('zu') ? 'zu' : i18n.language?.startsWith('xh') ? 'xh' : i18n.language?.startsWith('st') ? 'st' : i18n.language?.startsWith('tn') ? 'tn' : i18n.language?.startsWith('nso') ? 'nso' : i18n.language?.startsWith('ve') ? 've' : i18n.language?.startsWith('ts') ? 'ts' : i18n.language?.startsWith('ss') ? 'ss' : i18n.language?.startsWith('nr') ? 'nr' : 'en'}
               onValueChange={async (lang) => {
                 i18n.changeLanguage(lang);
                 localStorage.setItem('readyup-language', lang);
@@ -310,12 +310,21 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
                 }
               }}
             >
-              <SelectTrigger className="w-[140px]">
+              <SelectTrigger className="w-[180px]">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="en">English</SelectItem>
                 <SelectItem value="af">Afrikaans</SelectItem>
+                <SelectItem value="zu">isiZulu</SelectItem>
+                <SelectItem value="xh">isiXhosa</SelectItem>
+                <SelectItem value="st">Sesotho</SelectItem>
+                <SelectItem value="tn">Setswana</SelectItem>
+                <SelectItem value="nso">Sepedi</SelectItem>
+                <SelectItem value="ve">Tshivenḓa</SelectItem>
+                <SelectItem value="ts">Xitsonga</SelectItem>
+                <SelectItem value="ss">siSwati</SelectItem>
+                <SelectItem value="nr">isiNdebele</SelectItem>
               </SelectContent>
             </Select>
           </div>
