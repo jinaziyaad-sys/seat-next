@@ -10,6 +10,7 @@ export function OfflineIndicator() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showReconnected, setShowReconnected] = useState(false);
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const handleOffline = () => setIsOffline(true);
