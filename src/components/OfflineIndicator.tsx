@@ -57,12 +57,12 @@ export function OfflineIndicator() {
       {isOffline ? (
         <>
           <WifiOff className="h-4 w-4" />
-          You're offline — some features may be unavailable
+          {t("offline.banner")}
         </>
       ) : (
         <>
           <Wifi className="h-4 w-4" />
-          Back online
+          {t("offline.backOnline")}
         </>
       )}
     </div>
