@@ -108,7 +108,7 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
         {trigger || (
           <Button variant="outline" size="sm">
             <KeyRound size={16} className="mr-2" />
-            Reset Password
+            {t("passwordReset.resetPassword")}
           </Button>
         )}
       </DialogTrigger>
