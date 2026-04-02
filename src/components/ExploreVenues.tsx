@@ -595,7 +595,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                   <span className="font-medium truncate">{customLocation.label}</span>
                   <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setShowLocationSearch(true)}>
                     <Pencil className="h-3 w-3 mr-1" />
-                    Change
+                    {t("explore.change")}
                   </Button>
                   <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={clearCustomLocation}>
                     <X className="h-3 w-3" />
