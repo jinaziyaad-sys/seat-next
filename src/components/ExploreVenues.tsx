@@ -251,8 +251,8 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
       if (error || !data?.valid) {
         setLocationSuggestions([]);
         toast({
-          title: "Location not found",
-          description: "Try a different city or address",
+          title: t("explore.locationNotFound"),
+          description: t("explore.locationNotFoundDesc"),
           variant: "destructive",
         });
       } else {
