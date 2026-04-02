@@ -165,7 +165,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="name">Full Name *</Label>
+            <Label htmlFor="name">{t("profile.fullName")} *</Label>
             <Input
               id="name"
               placeholder="Your name"
