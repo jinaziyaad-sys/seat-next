@@ -51,6 +51,7 @@ export function EditReservationDialog({
   onSuccess,
 }: EditReservationDialogProps) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [partySize, setPartySize] = useState(entry.party_size);
   const [reservationDate, setReservationDate] = useState<Date | undefined>(
