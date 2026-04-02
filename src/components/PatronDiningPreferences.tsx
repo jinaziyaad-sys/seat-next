@@ -269,10 +269,10 @@ export function PatronDiningPreferences() {
             {saving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                {t("dining.saving")}
               </>
             ) : (
-              "Save Preferences"
+              t("dining.savePreferences")
             )}
           </Button>
         )}

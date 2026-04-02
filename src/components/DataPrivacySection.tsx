@@ -132,7 +132,7 @@ export function DataPrivacySection() {
 
         {requests.length > 0 && (
           <div className="mt-4 space-y-2">
-            <p className="text-sm font-medium">Recent Requests</p>
+            <p className="text-sm font-medium">{t("privacy.recentRequests")}</p>
             {requests.map((req) => (
               <div key={req.id} className="flex items-center justify-between text-sm border rounded-lg p-3">
                 <div>
