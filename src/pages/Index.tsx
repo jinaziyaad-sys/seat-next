@@ -1057,8 +1057,8 @@ const Index = () => {
                         {(entry.status === 'cancelled' || entry.status === 'no_show') && (
                           <p className="text-xs text-destructive mt-1">
                             {entry.status === 'no_show' 
-                              ? "Table released - didn't arrive in time" 
-                              : `Cancelled by ${entry.cancelled_by === 'patron' ? 'you' : entry.cancelled_by === 'system' ? 'system' : 'venue'}`}
+                              ? t("home.noShowReleased")
+                              : t("home.cancelledBy", { by: entry.cancelled_by === 'patron' ? t("status.you") : entry.cancelled_by === 'system' ? t("status.system") : t("status.venue") })}
                           </p>
                         )}
                             {entry.eta && entry.status === 'waiting' && (
