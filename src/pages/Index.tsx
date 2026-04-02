@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { VenueLogo } from "@/components/VenueLogo";
-import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon, AlertTriangle, Info, X, Wrench, MessageSquare } from "lucide-react";
+import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon, AlertTriangle, Info, X, Wrench, MessageSquare, Share2 } from "lucide-react";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
