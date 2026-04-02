@@ -106,11 +106,9 @@ export function DataPrivacySection() {
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogTitle>{t("privacy.deleteConfirmTitle")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will submit a request to permanently delete your account and all associated data.
-                  An admin will review and process this within 30 days as required by POPIA. 
-                  This action cannot be undone once processed.
+                  {t("privacy.deleteConfirmDesc")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
