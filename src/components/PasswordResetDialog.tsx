@@ -74,8 +74,8 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
 
       setAdminHelpRequested(true);
       toast({
-        title: "Request Submitted ✅",
-        description: "An administrator will contact you with a new password.",
+        title: t("passwordReset.requestSuccess"),
+        description: t("passwordReset.requestSuccessDesc"),
       });
     } catch (error: any) {
       toast({
