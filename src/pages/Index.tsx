@@ -603,7 +603,7 @@ const Index = () => {
           type={celebrationData.type}
           title={celebrationData.title}
           subtitle={celebrationData.subtitle}
-          actionLabel={celebrationData.type === 'food-ready' ? 'View Order' : "I'm Here - Get Seated"}
+          actionLabel={celebrationData.type === 'food-ready' ? t("home.viewOrder") : t("home.getSeated")}
           onAction={() => {
             setShowCelebration(false);
             setSelectedOrder(celebrationData.item);
