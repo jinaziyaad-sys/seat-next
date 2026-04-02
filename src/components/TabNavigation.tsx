@@ -8,11 +8,11 @@ interface TabNavigationProps {
   onTabChange: (tab: string) => void;
 }
 
-const tabs = [
-  { id: "home", label: "Home", icon: Home },
-  { id: "food-ready", label: "Food", icon: UtensilsCrossed },
-  { id: "table-ready", label: "Table", icon: Users },
-  { id: "profile", label: "Profile", icon: User },
+const tabKeys = [
+  { id: "home", labelKey: "nav.home", icon: Home },
+  { id: "food-ready", labelKey: "nav.food", icon: UtensilsCrossed },
+  { id: "table-ready", labelKey: "nav.table", icon: Users },
+  { id: "profile", labelKey: "nav.profile", icon: User },
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
