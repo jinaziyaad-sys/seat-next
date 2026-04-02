@@ -498,9 +498,9 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-xl font-bold">Explore Venues</h1>
+            <h1 className="text-xl font-bold">{t("explore.title")}</h1>
             <p className="text-sm text-muted-foreground">
-              {user ? "Personalized for you" : "Discover nearby restaurants"}
+              {user ? t("explore.personalised") : t("explore.discover")}
             </p>
           </div>
           <Button 
