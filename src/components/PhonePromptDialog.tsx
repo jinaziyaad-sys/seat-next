@@ -40,8 +40,8 @@ export function PhonePromptDialog({
     const phoneRegex = /^\+?[1-9]\d{1,14}$/;
     if (!phoneRegex.test(phone.replace(/[\s-]/g, ''))) {
       toast({
-        title: "Invalid Phone",
-        description: "Please enter a valid phone number with country code (e.g., +27823077786).",
+        title: t("phone.invalidPhone"),
+        description: t("phone.invalidPhoneDesc"),
         variant: "destructive",
       });
       return;
