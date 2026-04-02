@@ -49,7 +49,7 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
                   isActive && "scale-110"
                 )} 
               />
-              <span className="text-xs font-medium">{tab.label}</span>
+              <span className="text-xs font-medium">{label}</span>
             </button>
           );
         })}
