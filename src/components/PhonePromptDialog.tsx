@@ -241,7 +241,7 @@ export function PhonePromptDialog({
                 onChange={(e) => setPhone(e.target.value)}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Include country code (e.g., +1 for US, +44 for UK)
+                {t("phone.countryCodeHint")}
               </p>
             </div>
 
