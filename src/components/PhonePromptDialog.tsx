@@ -33,6 +33,7 @@ export function PhonePromptDialog({
   const [otpCode, setOtpCode] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const handleSubmitPhone = async () => {
     // Validate phone format
