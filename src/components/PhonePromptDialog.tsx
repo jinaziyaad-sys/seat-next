@@ -123,8 +123,8 @@ export function PhonePromptDialog({
         onOpenChange(false);
       } else {
         toast({
-          title: "Verification Failed",
-          description: data.message || "Invalid verification code",
+          title: t("phone.verificationFailed"),
+          description: data.message || t("phone.failedVerify"),
           variant: "destructive",
         });
       }
