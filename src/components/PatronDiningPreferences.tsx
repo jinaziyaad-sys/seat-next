@@ -43,6 +43,7 @@ interface DiningPreferences {
 }
 
 export function PatronDiningPreferences() {
+  const { t } = useTranslation();
   const [preferences, setPreferences] = useState<DiningPreferences | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
