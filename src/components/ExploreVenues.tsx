@@ -874,7 +874,9 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                   )}
                 </div>
 
-                {/* Action arrow */}
+                {/* Friends at venue badge */}
+                {user && <FriendsAtVenue venueId={venue.venue_id} userId={user.id} />}
+
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
                   <ChevronRight className="h-5 w-5" />
                 </div>
