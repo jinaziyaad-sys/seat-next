@@ -709,8 +709,8 @@ const Index = () => {
       {(user || isDemoMode) && (isLoadingTracking || activeOrders.length > 0 || activeWaitlist.length > 0 || isDemoMode) && (
         <div className="p-6 space-y-4" data-tour="active-tracking">
           <h2 className="text-xl font-bold">
-            Active Tracking
-            {isDemoMode && <span className="ml-2 text-xs font-normal text-primary">(Demo Mode)</span>}
+            {t("home.activeTracking")}
+            {isDemoMode && <span className="ml-2 text-xs font-normal text-primary">{t("home.demoMode")}</span>}
           </h2>
           
           {/* Loading Skeleton */}
