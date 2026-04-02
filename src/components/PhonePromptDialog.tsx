@@ -99,8 +99,8 @@ export function PhonePromptDialog({
   const handleVerifyOTP = async () => {
     if (!otpCode || otpCode.length !== 6) {
       toast({
-        title: "Invalid Code",
-        description: "Please enter a 6-digit verification code",
+        title: t("phone.invalidCode"),
+        description: t("phone.invalidCodeDesc"),
         variant: "destructive",
       });
       return;
