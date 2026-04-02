@@ -253,8 +253,8 @@ export function EditReservationDialog({
         // Handle multi-table case - for now, show error and require cancel/rebook
         if (tableResult?.tables && tableResult.tables.length > 1) {
           toast({
-            title: "Multiple Tables Required",
-            description: "This party size requires multiple tables. Please cancel and create a new reservation.",
+            title: t("editReservation.multipleTablesRequired"),
+            description: t("editReservation.multipleTablesDesc"),
             variant: "destructive",
           });
           setIsLoading(false);
