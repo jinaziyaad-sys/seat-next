@@ -835,7 +835,7 @@ const Index = () => {
                             {order.confidence && (
                               <div className="text-[10px] text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-1">
                                 <Badge variant={order.confidence === 'high' ? 'default' : order.confidence === 'medium' ? 'secondary' : 'outline'} className="h-4 text-[9px] px-1">
-                                  {order.confidence === 'high' ? 'High Confidence' : order.confidence === 'medium' ? 'Medium' : 'Estimate'}
+                                  {order.confidence === 'high' ? t("status.highConfidence") : order.confidence === 'medium' ? t("status.medium") : t("status.estimate")}
                                 </Badge>
                                 <span>
                                   {order.confidence === 'high' 
