@@ -112,9 +112,9 @@ export function DataPrivacySection() {
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                 <AlertDialogAction onClick={handleDeletionRequest}>
-                  Yes, Request Deletion
+                  {t("privacy.yesDelete")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
