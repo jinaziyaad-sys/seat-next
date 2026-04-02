@@ -207,8 +207,8 @@ export function PhonePromptDialog({
       });
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to save phone number",
+        title: t("common.error"),
+        description: error.message || t("phone.failedSave"),
         variant: "destructive",
       });
     } finally {
