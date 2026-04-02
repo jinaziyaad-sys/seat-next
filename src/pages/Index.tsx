@@ -497,8 +497,8 @@ const Index = () => {
       celebrationShownForIds.current.add(readyEntry.id);
       setCelebrationData({
         type: 'table-ready',
-        title: 'Your Table is Ready!',
-        subtitle: `Party of ${readyEntry.party_size} at ${readyEntry.venues?.name || 'the restaurant'}`,
+        title: t("home.yourTableReady"),
+        subtitle: t("home.tableReadySub", { size: readyEntry.party_size, venue: readyEntry.venues?.name || '' }),
         item: readyEntry,
       });
       setShowCelebration(true);
