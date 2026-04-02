@@ -257,9 +257,9 @@ export function PatronNotificationSettings() {
         <div className="space-y-3 pt-2 border-t">
           <div className="flex items-center gap-2">
             <Moon size={16} className="text-muted-foreground" />
-            <h3 className="text-sm font-medium text-muted-foreground">Quiet Hours</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">{t("notifications.quietHours")}</h3>
           </div>
-          <p className="text-xs text-muted-foreground">No notifications between these hours</p>
+          <p className="text-xs text-muted-foreground">{t("notifications.quietHoursDesc")}</p>
           
           <div className="flex items-center gap-4">
             <div className="flex-1 space-y-1">
