@@ -114,15 +114,15 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Reset Password</DialogTitle>
+          <DialogTitle>{t("passwordReset.resetPassword")}</DialogTitle>
           <DialogDescription>
             {emailSent
-              ? "Check your email for the reset link"
+              ? t("passwordReset.checkEmail")
               : adminHelpRequested
-              ? "Your request has been submitted"
+              ? t("passwordReset.requestSubmitted")
               : showAdminHelpForm
-              ? "Request password reset assistance"
-              : "Choose how to reset your password"}
+              ? t("passwordReset.requestAssistance")
+              : t("passwordReset.chooseMethod")}
           </DialogDescription>
         </DialogHeader>
 
