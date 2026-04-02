@@ -126,11 +126,11 @@ export const RatingDialog = ({
       }
 
       toast({
-        title: "Thank You!",
-        description: "Your rating has been submitted.",
+        title: t("rating.thanks"),
+        description: t("rating.thanksDesc"),
       });
 
-      onComplete();
+      setSubmitted(true);
     } catch (error: any) {
       console.error("Error submitting rating:", error);
       toast({
