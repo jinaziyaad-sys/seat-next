@@ -387,8 +387,8 @@ const Index = () => {
                 payload.new.cancelled_by === 'system' &&
                 payload.old?.status === 'ready') {
               toast({
-                title: "⏰ Table Released",
-                description: "Your table was released as you didn't arrive in time. You can join the waitlist again if needed.",
+                title: "⏰ " + t("home.tableReleased"),
+                description: t("home.tableReleasedDesc"),
                 variant: "destructive",
               });
             }
