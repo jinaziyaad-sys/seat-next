@@ -95,8 +95,8 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
       });
     } else {
       toast({
-        title: "Success",
-        description: "Profile updated successfully",
+        title: t("common.success"),
+        description: t("profile.profileUpdated"),
       });
       setIsEditing(false);
     }
