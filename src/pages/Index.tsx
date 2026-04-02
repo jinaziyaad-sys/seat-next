@@ -1045,7 +1045,7 @@ const Index = () => {
                             {isOverdue && minutesUntilRelease === 0 && (
                               <div className="flex items-center gap-1 text-xs text-destructive mt-1">
                                 <AlertTriangle size={12} />
-                                <span>Reservation may be released any moment</span>
+                                <span>{t("home.mayBeReleased")}</span>
                               </div>
                             )}
                           </>
