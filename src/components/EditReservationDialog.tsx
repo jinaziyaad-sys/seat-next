@@ -434,11 +434,11 @@ export function EditReservationDialog({
 
             {/* Special Requests */}
             <div className="space-y-2">
-              <Label>Special Requests (Optional)</Label>
+              <Label>{t("editReservation.specialRequests")}</Label>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Any special requests or notes..."
+                placeholder={t("editReservation.specialRequestsPlaceholder")}
                 className="resize-none"
                 maxLength={500}
               />
