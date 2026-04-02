@@ -67,7 +67,7 @@ export function DataPrivacySection() {
     );
 
     if (result) {
-      toast({ title: "Deletion Requested", description: "Your account deletion request has been submitted. An admin will review it within 30 days." });
+      toast({ title: t("privacy.deletionRequested"), description: t("privacy.deletionRequestedDesc") });
       fetchRequests();
     }
     setLoading(false);

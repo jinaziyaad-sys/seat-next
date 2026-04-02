@@ -149,7 +149,7 @@ export const RatingDialog = ({
       navigator.share({ title: venueName, text, url }).catch(() => {});
     } else {
       navigator.clipboard.writeText(`${text} ${url}`);
-      toast({ title: "Link copied!" });
+      toast({ title: t("explore.linkCopied") });
     }
   };
 
