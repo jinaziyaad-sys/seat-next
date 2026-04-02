@@ -168,7 +168,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
             <Label htmlFor="name">{t("profile.fullName")} *</Label>
             <Input
               id="name"
-              placeholder="Your name"
+              placeholder={t("profile.namePlaceholder")}
               value={profile.full_name}
               onChange={(e) => updateProfile("full_name", e.target.value)}
               disabled={!isEditing}
