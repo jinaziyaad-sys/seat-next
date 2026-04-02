@@ -101,7 +101,7 @@ export function DataPrivacySection() {
             <AlertDialogTrigger asChild>
               <Button variant="destructive" className="gap-2" disabled={loading}>
                 <Trash2 className="h-4 w-4" />
-                Request Account Deletion
+                {t("privacy.requestDeletion")}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
