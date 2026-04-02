@@ -309,8 +309,8 @@ export function EditReservationDialog({
     } catch (err) {
       console.error("Error updating reservation:", err);
       toast({
-        title: "Update Failed",
-        description: "Unable to save changes. Please try again.",
+        title: t("editReservation.updateFailed"),
+        description: t("editReservation.unableToSave"),
         variant: "destructive",
       });
     } finally {
