@@ -372,7 +372,7 @@ export function EditReservationDialog({
                       !reservationDate && "text-muted-foreground"
                     )}
                   >
-                    {reservationDate ? format(reservationDate, "PPP") : "Select date"}
+                    {reservationDate ? format(reservationDate, "PPP") : t("editReservation.selectDate")}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
