@@ -916,7 +916,7 @@ const Index = () => {
                             handleDismissOrder(order.id);
                           }}
                         >
-                          Clear
+                          {t("home.clear")}
                         </Button>
                       )}
                     </div>
