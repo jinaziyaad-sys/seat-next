@@ -249,7 +249,7 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
                 onClick={() => setShowAdminHelpForm(true)}
               >
                 <HelpCircle className="h-4 w-4 mr-2" />
-                Request Admin Help
+                {t("passwordReset.requestAdminHelp")}
               </Button>
             </div>
           </form>
