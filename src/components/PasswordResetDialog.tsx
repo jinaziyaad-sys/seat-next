@@ -51,8 +51,8 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
       });
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to send reset email",
+        title: t("common.error"),
+        description: error.message || t("passwordReset.failedSendReset"),
         variant: "destructive",
       });
     } finally {
