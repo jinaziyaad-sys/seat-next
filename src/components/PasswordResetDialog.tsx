@@ -79,8 +79,8 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
       });
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to submit request",
+        title: t("common.error"),
+        description: error.message || t("passwordReset.failedSubmitRequest"),
         variant: "destructive",
       });
     } finally {
