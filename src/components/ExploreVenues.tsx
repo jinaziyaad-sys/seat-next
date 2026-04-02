@@ -604,11 +604,11 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
               ) : (
                 <>
                   <span className="text-muted-foreground">
-                    {userLocation ? "Using your location" : "Location unavailable"}
+                    {userLocation ? t("explore.usingLocation") : t("explore.locationUnavailable")}
                   </span>
                   <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setShowLocationSearch(true)}>
                     <Pencil className="h-3 w-3 mr-1" />
-                    Change
+                    {t("explore.change")}
                   </Button>
                 </>
               )}
