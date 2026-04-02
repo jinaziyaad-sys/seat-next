@@ -259,7 +259,7 @@ export default function WaitlistJoin() {
           </Button>
 
           <p className="text-xs text-center text-muted-foreground">
-            You'll be able to track your position in real-time
+            {t("waitlistJoin.trackPosition")}
           </p>
         </CardContent>
       </Card>
