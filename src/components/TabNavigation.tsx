@@ -16,11 +16,13 @@ const tabKeys = [
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
+  const { t } = useTranslation();
   return (
     <Card className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl border-0 bg-card shadow-floating">
       <nav className="flex items-center justify-around p-4" role="tablist" aria-label="Main navigation">
-        {tabs.map((tab) => {
+        {tabKeys.map((tab) => {
           const Icon = tab.icon;
+          const label = t(tab.labelKey);
           const isActive = activeTab === tab.id || (activeTab === "explore" && tab.id === "home");
           
           return (
