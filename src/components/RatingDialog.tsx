@@ -134,8 +134,8 @@ export const RatingDialog = ({
     } catch (error: any) {
       console.error("Error submitting rating:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to submit rating. Please try again.",
+        title: t("common.error"),
+        description: error.message || t("rating.failedSubmit"),
         variant: "destructive"
       });
       setIsSubmitting(false);
