@@ -1230,7 +1230,7 @@ const Index = () => {
           
           {!features.food_ordering_enabled && !features.waitlist_enabled && (
             <div className="col-span-2 text-center py-8 text-muted-foreground">
-              <p>No features are currently available.</p>
+              <p>{t("home.noFeatures")}</p>
             </div>
           )}
         </div>
