@@ -63,7 +63,7 @@ export function DataPrivacySection() {
         if (error) throw error;
         return true;
       },
-      () => toast({ title: "Please wait", description: "You can only submit one request at a time", variant: "destructive" })
+      () => toast({ title: t("privacy.pleaseWait"), description: t("privacy.oneRequestAtTime"), variant: "destructive" })
     );
 
     if (result) {
