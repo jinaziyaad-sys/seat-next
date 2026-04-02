@@ -60,8 +60,8 @@ export default function WaitlistJoin() {
 
       if (error || !data) {
         toast({
-          title: "Error",
-          description: "Venue not found",
+          title: t("waitlistJoin.error"),
+          description: t("waitlistJoin.venueNotFound"),
           variant: "destructive",
         });
         navigate("/");
