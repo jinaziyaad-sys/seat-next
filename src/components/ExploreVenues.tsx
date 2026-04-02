@@ -60,11 +60,11 @@ interface LocationSuggestion {
   precision?: string;
 }
 
-const FILTER_OPTIONS = [
-  { id: "halaal", label: "Halaal", icon: "🕌" },
-  { id: "vegetarian", label: "Vegetarian", icon: "🥬" },
-  { id: "vegan", label: "Vegan", icon: "🌱" },
-  { id: "short_wait", label: "Short Wait", icon: "⚡" },
+const FILTER_OPTION_IDS = [
+  { id: "halaal", labelKey: "explore.halaal", icon: "🕌" },
+  { id: "vegetarian", labelKey: "explore.vegetarian", icon: "🥬" },
+  { id: "vegan", labelKey: "explore.vegan", icon: "🌱" },
+  { id: "short_wait", labelKey: "explore.shortWait", icon: "⚡" },
 ];
 
 const RADIUS_OPTIONS = [10, 25, 50, 100];
