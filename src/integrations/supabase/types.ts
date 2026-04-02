@@ -1046,6 +1046,62 @@ export type Database = {
           },
         ]
       }
+      patron_checkins: {
+        Row: {
+          checked_in_at: string
+          expires_at: string
+          id: string
+          user_id: string
+          venue_id: string
+        }
+        Insert: {
+          checked_in_at?: string
+          expires_at?: string
+          id?: string
+          user_id: string
+          venue_id: string
+        }
+        Update: {
+          checked_in_at?: string
+          expires_at?: string
+          id?: string
+          user_id?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "patron_checkins_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      patron_connections: {
+        Row: {
+          created_at: string
+          friend_id: string
+          id: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          friend_id: string
+          id?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          friend_id?: string
+          id?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       patron_dining_preferences: {
         Row: {
           avoid_ingredients: string[] | null
@@ -1431,6 +1487,7 @@ export type Database = {
           id: string
           phone: string | null
           phone_verified: boolean | null
+          preferred_language: string
           updated_at: string
           verification_method: string | null
         }
@@ -1443,6 +1500,7 @@ export type Database = {
           id: string
           phone?: string | null
           phone_verified?: boolean | null
+          preferred_language?: string
           updated_at?: string
           verification_method?: string | null
         }
@@ -1455,6 +1513,7 @@ export type Database = {
           id?: string
           phone?: string | null
           phone_verified?: boolean | null
+          preferred_language?: string
           updated_at?: string
           verification_method?: string | null
         }
@@ -2007,6 +2066,7 @@ export type Database = {
           delayed_until: string | null
           edit_summary: string | null
           eta: string | null
+          group_id: string | null
           id: string
           last_edited_at: string | null
           linked_reservation_id: string | null
@@ -2040,6 +2100,7 @@ export type Database = {
           delayed_until?: string | null
           edit_summary?: string | null
           eta?: string | null
+          group_id?: string | null
           id?: string
           last_edited_at?: string | null
           linked_reservation_id?: string | null
@@ -2073,6 +2134,7 @@ export type Database = {
           delayed_until?: string | null
           edit_summary?: string | null
           eta?: string | null
+          group_id?: string | null
           id?: string
           last_edited_at?: string | null
           linked_reservation_id?: string | null
@@ -2095,6 +2157,13 @@ export type Database = {
           venue_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "waitlist_entries_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "waitlist_entries"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "waitlist_entries_user_id_fkey"
             columns: ["user_id"]

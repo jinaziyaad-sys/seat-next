@@ -38,13 +38,24 @@ export default defineConfig(({ mode }) => ({
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MB
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/cuoqjgahpfymxqrdlzlf\.supabase\.co\/.*/i,
+            urlPattern: /^https:\/\/cuoqjgahpfymxqrdlzlf\.supabase\.co\/rest\/.*/i,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'supabase-cache',
+              cacheName: 'supabase-api-cache',
               expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 // 1 hour
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/cuoqjgahpfymxqrdlzlf\.supabase\.co\/storage\/.*/i,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'supabase-storage-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 24 * 60 * 60
               }
             }
           }

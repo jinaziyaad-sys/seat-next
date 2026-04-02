@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { VenueLogo } from "@/components/VenueLogo";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,13 +21,15 @@ import {
   MessageSquare,
   Navigation,
   Pencil,
-  X
+  X,
+  Share2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { PatronBusynessIndicator } from "@/components/PatronBusynessIndicator";
 import { Messenger } from "@/components/Messenger";
 import { PromoBanner } from "@/components/PromoBanner";
+import { FriendsAtVenue } from "@/components/FriendsAtVenue";
 import { cn } from "@/lib/utils";
 
 interface VenueRecommendation {
@@ -73,6 +76,7 @@ interface ExploreVenuesProps {
 }
 
 export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: ExploreVenuesProps) {
+  const { t } = useTranslation();
   const [recommendations, setRecommendations] = useState<VenueRecommendation[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -772,6 +776,28 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* Share button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const url = `${window.location.origin}/waitlist/${venue.venue_id}`;
+                        if (navigator.share) {
+                          navigator.share({
+                            title: venue.name,
+                            text: t("explore.shareVenue", { name: venue.name }),
+                            url,
+                          }).catch(() => {});
+                        } else {
+                          navigator.clipboard.writeText(url);
+                          toast({ title: "Link copied!" });
+                        }
+                      }}
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </Button>
                     {/* Message button */}
                     <Button
                       variant="ghost"
@@ -848,7 +874,9 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                   )}
                 </div>
 
-                {/* Action arrow */}
+                {/* Friends at venue badge */}
+                {user && <FriendsAtVenue venueId={venue.venue_id} userId={user.id} />}
+
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground">
                   <ChevronRight className="h-5 w-5" />
                 </div>

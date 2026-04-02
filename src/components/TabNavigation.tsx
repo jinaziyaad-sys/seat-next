@@ -1,25 +1,28 @@
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Home, UtensilsCrossed, Users, User } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface TabNavigationProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
 }
 
-const tabs = [
-  { id: "home", label: "Home", icon: Home },
-  { id: "food-ready", label: "Food", icon: UtensilsCrossed },
-  { id: "table-ready", label: "Table", icon: Users },
-  { id: "profile", label: "Profile", icon: User },
+const tabKeys = [
+  { id: "home", labelKey: "nav.home", icon: Home },
+  { id: "food-ready", labelKey: "nav.food", icon: UtensilsCrossed },
+  { id: "table-ready", labelKey: "nav.table", icon: Users },
+  { id: "profile", labelKey: "nav.profile", icon: User },
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
+  const { t } = useTranslation();
   return (
     <Card className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl border-0 bg-card shadow-floating">
       <nav className="flex items-center justify-around p-4" role="tablist" aria-label="Main navigation">
-        {tabs.map((tab) => {
+        {tabKeys.map((tab) => {
           const Icon = tab.icon;
+          const label = t(tab.labelKey);
           const isActive = activeTab === tab.id || (activeTab === "explore" && tab.id === "home");
           
           return (
@@ -27,7 +30,7 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
               key={tab.id}
               role="tab"
               aria-selected={isActive}
-              aria-label={tab.label}
+              aria-label={label}
               data-tour={`nav-${tab.id === 'food-ready' ? 'food' : tab.id === 'table-ready' ? 'table' : tab.id}`}
               onClick={() => onTabChange(tab.id)}
               className={cn(
@@ -46,7 +49,7 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
                   isActive && "scale-110"
                 )} 
               />
-              <span className="text-xs font-medium">{tab.label}</span>
+              <span className="text-xs font-medium">{label}</span>
             </button>
           );
         })}

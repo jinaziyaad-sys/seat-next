@@ -3,7 +3,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, User, Shield, LogOut, Palette, Sparkles, Loader2 } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ArrowLeft, User, Shield, LogOut, Palette, Sparkles, Loader2, Globe } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
@@ -23,6 +25,7 @@ interface UserProfile {
 }
 
 export function ProfileSection({ onBack }: { onBack: () => void }) {
+  const { t, i18n } = useTranslation();
   const [profile, setProfile] = useState<UserProfile>({
     full_name: "",
     email: "",
@@ -105,7 +108,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
   };
 
   if (loading) {
-    return <div className="p-6">Loading...</div>;
+    return <div className="p-6">{t("common.loading")}</div>;
   }
 
   if (!user) {
@@ -283,19 +286,55 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
         </CardContent>
       </Card>
 
-      {/* Appearance Section */}
+      {/* Language Section */}
       <Card className="shadow-card">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <Palette size={24} />
-            <CardTitle>Appearance</CardTitle>
+            <Globe size={24} />
+            <CardTitle>{t("profile.language")}</CardTitle>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">Theme</p>
-              <p className="text-sm text-muted-foreground">Choose your preferred color scheme</p>
+              <p className="font-medium">{t("profile.language")}</p>
+              <p className="text-sm text-muted-foreground">{t("profile.languageDesc")}</p>
+            </div>
+            <Select
+              value={i18n.language?.startsWith('af') ? 'af' : 'en'}
+              onValueChange={async (lang) => {
+                i18n.changeLanguage(lang);
+                localStorage.setItem('readyup-language', lang);
+                if (user) {
+                  await supabase.from('profiles').update({ preferred_language: lang } as any).eq('id', user.id);
+                }
+              }}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en">English</SelectItem>
+                <SelectItem value="af">Afrikaans</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Appearance Section */}
+      <Card className="shadow-card">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Palette size={24} />
+            <CardTitle>{t("profile.appearance")}</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium">{t("profile.theme")}</p>
+              <p className="text-sm text-muted-foreground">{t("profile.themeDesc")}</p>
             </div>
             <ThemeToggle />
           </div>

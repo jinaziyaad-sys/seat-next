@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,9 @@ interface VenueSettings {
 export default function WaitlistJoin() {
   const { venueId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const groupId = searchParams.get('group');
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [venue, setVenue] = useState<{ name: string; address?: string } | null>(null);
   const [venueSettings, setVenueSettings] = useState<VenueSettings | null>(null);
@@ -56,8 +60,8 @@ export default function WaitlistJoin() {
 
       if (error || !data) {
         toast({
-          title: "Error",
-          description: "Venue not found",
+          title: t("waitlistJoin.error"),
+          description: t("waitlistJoin.venueNotFound"),
           variant: "destructive",
         });
         navigate("/");
@@ -100,8 +104,8 @@ export default function WaitlistJoin() {
   const handleJoinWaitlist = async () => {
     if (!customerName.trim()) {
       toast({
-        title: "Name Required",
-        description: "Please enter your name",
+        title: t("waitlistJoin.nameRequired"),
+        description: t("waitlistJoin.nameRequiredDesc"),
         variant: "destructive",
       });
       return;
@@ -119,7 +123,8 @@ export default function WaitlistJoin() {
         preferences: selectedPreferences.length > 0 ? selectedPreferences : null,
         status: "waiting",
         eta: new Date(Date.now() + 20 * 60000).toISOString(),
-      })
+        group_id: groupId || null,
+      } as any)
       .select()
       .single();
 
@@ -127,16 +132,16 @@ export default function WaitlistJoin() {
 
     if (error || !data) {
       toast({
-        title: "Error",
-        description: "Could not join waitlist. Please try again.",
+        title: t("waitlistJoin.error"),
+        description: t("waitlistJoin.couldNotJoin"),
         variant: "destructive",
       });
       return;
     }
 
     toast({
-      title: "Added to Waitlist!",
-      description: "You'll be notified when your table is ready.",
+      title: t("waitlistJoin.added"),
+      description: t("waitlistJoin.addedDesc"),
     });
 
     // Navigate to patron app to track the waitlist
@@ -156,7 +161,7 @@ export default function WaitlistJoin() {
       <Card className="w-full max-w-md shadow-card">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold text-primary">
-            Join Waitlist
+            {t("waitlistJoin.title")}
           </CardTitle>
           <p className="text-lg font-semibold">{venue?.name}</p>
           {venue?.address && (
@@ -168,10 +173,10 @@ export default function WaitlistJoin() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="name">Name *</Label>
+            <Label htmlFor="name">{t("waitlistJoin.name")} *</Label>
             <Input
               id="name"
-              placeholder="Your name"
+              placeholder={t("waitlistJoin.namePlaceholder")}
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               required
@@ -179,18 +184,18 @@ export default function WaitlistJoin() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number (Optional)</Label>
+            <Label htmlFor="phone">{t("waitlistJoin.phone")}</Label>
             <Input
               id="phone"
               type="tel"
-              placeholder="+1 (555) 123-4567"
+              placeholder={t("waitlistJoin.phonePlaceholder")}
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
             />
           </div>
 
           <div className="space-y-3">
-            <Label>Party Size</Label>
+            <Label>{t("waitlistJoin.partySize")}</Label>
             <div className="flex items-center justify-center gap-4">
               <Button
                 variant="outline"
@@ -217,7 +222,7 @@ export default function WaitlistJoin() {
 
           {availablePreferences.length > 0 && (
             <div className="space-y-3">
-              <Label>Seating Preferences (Optional)</Label>
+              <Label>{t("waitlistJoin.seatingPrefs")}</Label>
               <div className="space-y-2">
                 {availablePreferences.map((pref) => (
                   <div key={pref.id} className="flex items-center space-x-2">
@@ -246,15 +251,15 @@ export default function WaitlistJoin() {
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 animate-spin" size={16} />
-                Joining...
+                {t("waitlistJoin.joining")}
               </>
             ) : (
-              "Join Waitlist"
+              t("waitlistJoin.joinButton")
             )}
           </Button>
 
           <p className="text-xs text-center text-muted-foreground">
-            You'll be able to track your position in real-time
+            {t("waitlistJoin.trackPosition")}
           </p>
         </CardContent>
       </Card>
