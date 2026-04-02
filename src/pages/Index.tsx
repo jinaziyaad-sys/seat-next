@@ -1072,7 +1072,7 @@ const Index = () => {
                                 {entry.confidence && (
                                   <div className="text-[10px] text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-1">
                                     <Badge variant={entry.confidence === 'high' ? 'default' : entry.confidence === 'medium' ? 'secondary' : 'outline'} className="h-4 text-[9px] px-1">
-                                      {entry.confidence === 'high' ? 'High Confidence' : entry.confidence === 'medium' ? 'Medium' : 'Estimate'}
+                                      {entry.confidence === 'high' ? t("status.highConfidence") : entry.confidence === 'medium' ? t("status.medium") : t("status.estimate")}
                                     </Badge>
                                     <span>
                                       {entry.confidence === 'high' 
