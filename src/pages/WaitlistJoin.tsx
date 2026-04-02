@@ -104,8 +104,8 @@ export default function WaitlistJoin() {
   const handleJoinWaitlist = async () => {
     if (!customerName.trim()) {
       toast({
-        title: "Name Required",
-        description: "Please enter your name",
+        title: t("waitlistJoin.nameRequired"),
+        description: t("waitlistJoin.nameRequiredDesc"),
         variant: "destructive",
       });
       return;
