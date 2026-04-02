@@ -4,11 +4,13 @@ import { cn } from "@/lib/utils";
 import { replayQueue, getQueue } from "@/utils/offlineQueue";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 export function OfflineIndicator() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [showReconnected, setShowReconnected] = useState(false);
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   useEffect(() => {
     const handleOffline = () => setIsOffline(true);
@@ -22,8 +24,8 @@ export function OfflineIndicator() {
         const synced = await replayQueue(supabase);
         if (synced > 0) {
           toast({
-            title: "Back online",
-            description: `Synced ${synced} pending action${synced > 1 ? 's' : ''}`,
+            title: t("offline.backOnline"),
+            description: t("offline.synced", { count: synced }),
           });
         }
         setTimeout(() => setShowReconnected(false), 3000);
@@ -55,12 +57,12 @@ export function OfflineIndicator() {
       {isOffline ? (
         <>
           <WifiOff className="h-4 w-4" />
-          You're offline — some features may be unavailable
+          {t("offline.banner")}
         </>
       ) : (
         <>
           <Wifi className="h-4 w-4" />
-          Back online
+          {t("offline.backOnline")}
         </>
       )}
     </div>

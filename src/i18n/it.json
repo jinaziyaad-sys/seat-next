@@ -1,0 +1,33 @@
+{
+  "nav": { "home": "Home", "food": "Cibo", "table": "Tavolo", "profile": "Profilo" },
+  "home": {
+    "welcome": "Bentornato", "signIn": "Accedi per Iniziare", "signInDescription": "Traccia i tuoi ordini e prenotazioni tavolo",
+    "signInButton": "Accedi", "signInOrUp": "Accedi o Registrati", "signInTrack": "Accedi per tracciare i tuoi ordini e prenotazioni",
+    "activeTracking": "Tracciamento Attivo", "noActive": "Nessun ordine attivo o voce nella lista d'attesa",
+    "explore": "Esplora Locali", "order": "Ordine", "waitlist": "Lista d'Attesa", "table": "Tavolo",
+    "dismiss": "Ignora", "rate": "Valuta", "clear": "Cancella", "inviteFriends": "Invita Amici", "share": "Condividi",
+    "foodReady": "Cibo Pronto", "trackOrderStatus": "Traccia lo stato del tuo ordine",
+    "tableReady": "Tavolo Pronto", "joinWaitlist": "Unisciti alla lista d'attesa",
+    "reservation": "Prenotazione", "reservationFor": "Prenotazione per {{size}}", "partyOf": "Gruppo di {{size}}",
+    "demoMode": "(Modalità Demo)", "noFeatures": "Nessuna funzionalità disponibile al momento.",
+    "orderReadyToast": "Ordine Pronto!", "orderReadyDesc": "L'ordine #{{number}} è pronto per il ritiro!",
+    "tableReadyToast": "Tavolo Pronto!", "tableReadyDesc": "Il tuo tavolo per {{size}} è pronto!",
+    "yourOrderReady": "Il tuo Ordine è Pronto!", "orderReadySub": "Ordine #{{number}} da {{venue}}",
+    "yourTableReady": "Il tuo Tavolo è Pronto!", "tableReadySub": "Gruppo di {{size}} da {{venue}}",
+    "viewOrder": "Vedi Ordine", "getSeated": "Sono Qui - Sedersi",
+    "orderRejected": "Ordine Rifiutato", "orderRejectedDesc": "L'ordine #{{number}} è stato contrassegnato come non valido dalla cucina.",
+    "tableReleased": "Tavolo Rilasciato", "tableReleasedDesc": "Il tuo tavolo è stato rilasciato perché non sei arrivato in tempo.",
+    "arrivingSoon": "Arrivi entro {{minutes}} min? Registrati ora!", "mayBeReleased": "La prenotazione potrebbe essere rilasciata in qualsiasi momento",
+    "minLate": "{{minutes}} min in ritardo", "cancelledBy": "Annullato da {{by}}", "noShowReleased": "Tavolo rilasciato - non arrivato in tempo",
+    "today": "Oggi", "tomorrow": "Domani"
+  },
+  "status": { "ready": "Pronto", "preparing": "In preparazione", "verifying": "Verifica", "cancelled": "Annullato", "collected": "Ritirato", "placed": "Effettuato", "waiting": "In attesa", "seated": "Seduto", "overdue": "In ritardo", "reserved": "Prenotato", "highConfidence": "Alta Fiducia", "medium": "Media", "estimate": "Stima", "basedOnHistory": "Basato su dati storici", "someHistory": "Alcuni dati storici", "venueDefault": "Tempo predefinito del locale", "you": "te", "system": "sistema", "venue": "locale" },
+  "waitlistJoin": { "title": "Unisciti alla Lista d'Attesa", "name": "Nome", "namePlaceholder": "Il tuo nome", "nameRequired": "Nome Richiesto", "nameRequiredDesc": "Inserisci il tuo nome", "phone": "Numero di Telefono (Opzionale)", "phonePlaceholder": "+39 333 123 4567", "partySize": "Dimensione Gruppo", "seatingPrefs": "Preferenze di Posto (Opzionale)", "joinButton": "Unisciti alla Lista d'Attesa", "joining": "Iscrizione...", "added": "Aggiunto alla Lista d'Attesa!", "addedDesc": "Sarai avvisato quando il tuo tavolo sarà pronto.", "trackPosition": "Potrai monitorare la tua posizione in tempo reale", "error": "Errore", "venueNotFound": "Locale non trovato", "couldNotJoin": "Impossibile unirsi alla lista d'attesa. Riprova." },
+  "food": { "title": "Cibo Pronto", "scanOrSearch": "Scansiona o cerca il tuo locale", "orderNumber": "Numero Ordine", "submit": "Traccia Ordine", "tracking": "Tracciamento Ordine", "placed": "Ordine Effettuato", "inPrep": "In Preparazione", "ready": "Pronto per il Ritiro", "collected": "Ritirato" },
+  "tableReady": { "title": "Tavolo Pronto", "joinWaitlist": "Unisciti alla Lista d'Attesa", "makeReservation": "Prenota", "waiting": "In attesa", "ready": "Il tuo Tavolo è Pronto!", "seated": "Seduto", "confirmArrival": "Sono Qui", "partySize": "Dimensione Gruppo", "position": "Posizione" },
+  "profile": { "title": "Profilo", "personalInfo": "Informazioni Personali", "fullName": "Nome Completo", "email": "E-mail", "phone": "Numero di Telefono", "save": "Salva Modifiche", "edit": "Modifica", "cancel": "Annulla", "security": "Sicurezza", "password": "Password", "resetPassword": "Reimposta la password del tuo account", "appearance": "Aspetto", "theme": "Tema", "themeDesc": "Scegli il tuo schema di colori preferito", "language": "Lingua", "languageDesc": "Scegli la tua lingua preferita", "signOut": "Esci", "signInRequired": "Accedi per vedere il tuo profilo", "signInButton": "Accedi", "friends": "Amici", "noFriends": "Nessun amico ancora", "addFriend": "Aggiungi Amico", "pending": "In sospeso", "accepted": "Accettato", "yearInReview": "Il tuo Anno in Rassegna", "previewRecap": "Anteprima Riepilogo", "emailCannotChange": "L'e-mail non può essere modificata", "profileUpdated": "Profilo aggiornato con successo", "namePlaceholder": "Il tuo nome", "emailPlaceholder": "tua.email@esempio.com", "phonePlaceholder": "+39 333 123 4567" },
+  "explore": { "title": "Esplora Locali", "personalised": "Personalizzato per te", "discover": "Scopri ristoranti vicini", "shareVenue": "Scopri {{name}} su ReadyUp!", "noVenues": "Nessun locale trovato" },
+  "rating": { "title": "Valuta la tua Esperienza", "subtitle": "Com'è stata la tua esperienza da {{venue}}?", "feedback": "Feedback Aggiuntivo (Opzionale)", "feedbackPlaceholder": "Condividi più dettagli sulla tua esperienza...", "skip": "Salta", "submit": "Invia Valutazione", "submitting": "Invio...", "thanks": "Grazie!", "thanksDesc": "La tua valutazione è stata inviata.", "shareExperience": "Condividi la tua esperienza" },
+  "offline": { "banner": "Sei offline — alcune funzionalità potrebbero non essere disponibili", "backOnline": "Di nuovo online", "synced": "Sincronizzate {{count}} azioni in sospeso" },
+  "common": { "loading": "Caricamento...", "error": "Errore", "success": "Successo", "cancel": "Annulla", "confirm": "Conferma", "close": "Chiudi", "back": "Indietro", "next": "Avanti", "retry": "Riprova", "min": "min", "at": "alle" }
+}

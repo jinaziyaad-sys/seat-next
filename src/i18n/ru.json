@@ -1,0 +1,33 @@
+{
+  "nav": { "home": "Главная", "food": "Еда", "table": "Стол", "profile": "Профиль" },
+  "home": {
+    "welcome": "С возвращением", "signIn": "Войдите, чтобы начать", "signInDescription": "Отслеживайте заказы и бронирование столов",
+    "signInButton": "Войти", "signInOrUp": "Войти или Зарегистрироваться", "signInTrack": "Войдите, чтобы отслеживать заказы и бронирования",
+    "activeTracking": "Активное отслеживание", "noActive": "Нет активных заказов или записей в очереди",
+    "explore": "Исследовать заведения", "order": "Заказ", "waitlist": "Очередь", "table": "Стол",
+    "dismiss": "Скрыть", "rate": "Оценить", "clear": "Очистить", "inviteFriends": "Пригласить друзей", "share": "Поделиться",
+    "foodReady": "Еда готова", "trackOrderStatus": "Отслеживайте статус заказа",
+    "tableReady": "Стол готов", "joinWaitlist": "Встать в очередь",
+    "reservation": "Бронирование", "reservationFor": "Бронирование на {{size}}", "partyOf": "Группа из {{size}}",
+    "demoMode": "(Демо-режим)", "noFeatures": "В настоящее время нет доступных функций.",
+    "orderReadyToast": "Заказ готов!", "orderReadyDesc": "Заказ #{{number}} готов к получению!",
+    "tableReadyToast": "Стол готов!", "tableReadyDesc": "Ваш стол на {{size}} готов!",
+    "yourOrderReady": "Ваш заказ готов!", "orderReadySub": "Заказ #{{number}} в {{venue}}",
+    "yourTableReady": "Ваш стол готов!", "tableReadySub": "Группа из {{size}} в {{venue}}",
+    "viewOrder": "Просмотр заказа", "getSeated": "Я здесь - Сесть",
+    "orderRejected": "Заказ отклонён", "orderRejectedDesc": "Заказ #{{number}} отмечен кухней как недействительный. Нажмите на заказ для повтора.",
+    "tableReleased": "Стол освобождён", "tableReleasedDesc": "Ваш стол был освобождён, так как вы не пришли вовремя.",
+    "arrivingSoon": "Прибудете через {{minutes}} мин? Зарегистрируйтесь сейчас!", "mayBeReleased": "Бронирование может быть отменено в любой момент",
+    "minLate": "Опоздание {{minutes}} мин", "cancelledBy": "Отменено {{by}}", "noShowReleased": "Стол освобождён - не пришли вовремя",
+    "today": "Сегодня", "tomorrow": "Завтра"
+  },
+  "status": { "ready": "Готов", "preparing": "Готовится", "verifying": "Проверка", "cancelled": "Отменён", "collected": "Получен", "placed": "Оформлен", "waiting": "Ожидание", "seated": "Сидит", "overdue": "Просрочен", "reserved": "Забронирован", "highConfidence": "Высокая точность", "medium": "Средняя", "estimate": "Оценка", "basedOnHistory": "На основе исторических данных", "someHistory": "Некоторые исторические данные", "venueDefault": "Время по умолчанию", "you": "вами", "system": "системой", "venue": "заведением" },
+  "waitlistJoin": { "title": "Встать в очередь", "name": "Имя", "namePlaceholder": "Ваше имя", "nameRequired": "Имя обязательно", "nameRequiredDesc": "Пожалуйста, введите ваше имя", "phone": "Номер телефона (необязательно)", "phonePlaceholder": "+7 900 123 4567", "partySize": "Размер группы", "seatingPrefs": "Предпочтения по местам (необязательно)", "joinButton": "Встать в очередь", "joining": "Присоединение...", "added": "Добавлено в очередь!", "addedDesc": "Вы получите уведомление, когда стол будет готов.", "trackPosition": "Вы сможете отслеживать свою позицию в реальном времени", "error": "Ошибка", "venueNotFound": "Заведение не найдено", "couldNotJoin": "Не удалось встать в очередь. Пожалуйста, попробуйте снова." },
+  "food": { "title": "Еда готова", "scanOrSearch": "Отсканируйте или найдите заведение", "orderNumber": "Номер заказа", "submit": "Отследить заказ", "tracking": "Отслеживание заказа", "placed": "Заказ оформлен", "inPrep": "Готовится", "ready": "Готов к получению", "collected": "Получен" },
+  "tableReady": { "title": "Стол готов", "joinWaitlist": "Встать в очередь", "makeReservation": "Забронировать", "waiting": "Ожидание", "ready": "Ваш стол готов!", "seated": "Сидит", "confirmArrival": "Я здесь", "partySize": "Размер группы", "position": "Позиция" },
+  "profile": { "title": "Профиль", "personalInfo": "Личная информация", "fullName": "Полное имя", "email": "Эл. почта", "phone": "Номер телефона", "save": "Сохранить изменения", "edit": "Редактировать", "cancel": "Отмена", "security": "Безопасность", "password": "Пароль", "resetPassword": "Сбросить пароль аккаунта", "appearance": "Внешний вид", "theme": "Тема", "themeDesc": "Выберите предпочтительную цветовую схему", "language": "Язык", "languageDesc": "Выберите предпочтительный язык", "signOut": "Выйти", "signInRequired": "Войдите, чтобы увидеть профиль", "signInButton": "Войти", "friends": "Друзья", "noFriends": "Пока нет друзей", "addFriend": "Добавить друга", "pending": "Ожидает", "accepted": "Принято", "yearInReview": "Ваш год в обзоре", "previewRecap": "Предпросмотр итогов", "emailCannotChange": "Эл. почту нельзя изменить", "profileUpdated": "Профиль успешно обновлён", "namePlaceholder": "Ваше имя", "emailPlaceholder": "your.email@example.com", "phonePlaceholder": "+7 900 123 4567" },
+  "explore": { "title": "Исследовать заведения", "personalised": "Персонализировано для вас", "discover": "Найдите рестораны поблизости", "shareVenue": "Посмотрите {{name}} на ReadyUp!", "noVenues": "Заведения не найдены" },
+  "rating": { "title": "Оцените ваш опыт", "subtitle": "Как прошёл ваш визит в {{venue}}?", "feedback": "Дополнительный отзыв (необязательно)", "feedbackPlaceholder": "Поделитесь подробностями...", "skip": "Пропустить", "submit": "Отправить оценку", "submitting": "Отправка...", "thanks": "Спасибо!", "thanksDesc": "Ваша оценка отправлена.", "shareExperience": "Поделитесь опытом" },
+  "offline": { "banner": "Вы офлайн — некоторые функции могут быть недоступны", "backOnline": "Снова онлайн", "synced": "Синхронизировано {{count}} ожидающих действий" },
+  "common": { "loading": "Загрузка...", "error": "Ошибка", "success": "Успех", "cancel": "Отмена", "confirm": "Подтвердить", "close": "Закрыть", "back": "Назад", "next": "Далее", "retry": "Повторить", "min": "мин", "at": "в" }
+}

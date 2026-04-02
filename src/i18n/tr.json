@@ -1,0 +1,33 @@
+{
+  "nav": { "home": "Ana Sayfa", "food": "Yemek", "table": "Masa", "profile": "Profil" },
+  "home": {
+    "welcome": "Tekrar hoş geldiniz", "signIn": "Başlamak için Giriş Yapın", "signInDescription": "Siparişlerinizi ve masa rezervasyonlarınızı takip edin",
+    "signInButton": "Giriş Yap", "signInOrUp": "Giriş Yap veya Kaydol", "signInTrack": "Siparişlerinizi ve rezervasyonlarınızı takip etmek için giriş yapın",
+    "activeTracking": "Aktif Takip", "noActive": "Aktif sipariş veya bekleme listesi girişi yok",
+    "explore": "Mekanları Keşfet", "order": "Sipariş", "waitlist": "Bekleme Listesi", "table": "Masa",
+    "dismiss": "Kapat", "rate": "Değerlendir", "clear": "Temizle", "inviteFriends": "Arkadaşları Davet Et", "share": "Paylaş",
+    "foodReady": "Yemek Hazır", "trackOrderStatus": "Sipariş durumunuzu takip edin",
+    "tableReady": "Masa Hazır", "joinWaitlist": "Bekleme listesine katıl",
+    "reservation": "Rezervasyon", "reservationFor": "{{size}} kişilik Rezervasyon", "partyOf": "{{size}} kişi",
+    "demoMode": "(Demo Modu)", "noFeatures": "Şu anda kullanılabilir özellik yok.",
+    "orderReadyToast": "Sipariş Hazır!", "orderReadyDesc": "Sipariş #{{number}} teslim almaya hazır!",
+    "tableReadyToast": "Masa Hazır!", "tableReadyDesc": "{{size}} kişilik masanız hazır!",
+    "yourOrderReady": "Siparişiniz Hazır!", "orderReadySub": "Sipariş #{{number}} {{venue}}'de",
+    "yourTableReady": "Masanız Hazır!", "tableReadySub": "{{size}} kişi {{venue}}'de",
+    "viewOrder": "Siparişi Görüntüle", "getSeated": "Buradayım - Otur",
+    "orderRejected": "Sipariş Reddedildi", "orderRejectedDesc": "Sipariş #{{number}} mutfak tarafından geçersiz olarak işaretlendi.",
+    "tableReleased": "Masa Serbest Bırakıldı", "tableReleasedDesc": "Zamanında gelmediğiniz için masanız serbest bırakıldı.",
+    "arrivingSoon": "{{minutes}} dk içinde mi geliyorsunuz? Şimdi giriş yapın!", "mayBeReleased": "Rezervasyon her an serbest bırakılabilir",
+    "minLate": "{{minutes}} dk geç", "cancelledBy": "{{by}} tarafından iptal edildi", "noShowReleased": "Masa serbest bırakıldı - zamanında gelmedi",
+    "today": "Bugün", "tomorrow": "Yarın"
+  },
+  "status": { "ready": "Hazır", "preparing": "Hazırlanıyor", "verifying": "Doğrulanıyor", "cancelled": "İptal Edildi", "collected": "Alındı", "placed": "Verildi", "waiting": "Bekliyor", "seated": "Oturdu", "overdue": "Gecikmiş", "reserved": "Rezerve", "highConfidence": "Yüksek Güven", "medium": "Orta", "estimate": "Tahmin", "basedOnHistory": "Geçmiş verilere dayalı", "someHistory": "Bazı geçmiş veriler", "venueDefault": "Mekan varsayılan süresi", "you": "siz", "system": "sistem", "venue": "mekan" },
+  "waitlistJoin": { "title": "Bekleme Listesine Katıl", "name": "İsim", "namePlaceholder": "İsminiz", "nameRequired": "İsim Gerekli", "nameRequiredDesc": "Lütfen isminizi girin", "phone": "Telefon Numarası (İsteğe bağlı)", "phonePlaceholder": "+90 532 123 4567", "partySize": "Grup Büyüklüğü", "seatingPrefs": "Oturma Tercihleri (İsteğe bağlı)", "joinButton": "Bekleme Listesine Katıl", "joining": "Katılınıyor...", "added": "Bekleme Listesine Eklendi!", "addedDesc": "Masanız hazır olduğunda bilgilendirileceksiniz.", "trackPosition": "Pozisyonunuzu gerçek zamanlı takip edebileceksiniz", "error": "Hata", "venueNotFound": "Mekan bulunamadı", "couldNotJoin": "Bekleme listesine katılınamadı. Lütfen tekrar deneyin." },
+  "food": { "title": "Yemek Hazır", "scanOrSearch": "Mekanınızı tarayın veya arayın", "orderNumber": "Sipariş Numarası", "submit": "Siparişi Takip Et", "tracking": "Sipariş Takibi", "placed": "Sipariş Verildi", "inPrep": "Hazırlanıyor", "ready": "Teslim Almaya Hazır", "collected": "Alındı" },
+  "tableReady": { "title": "Masa Hazır", "joinWaitlist": "Bekleme Listesine Katıl", "makeReservation": "Rezervasyon Yap", "waiting": "Bekliyor", "ready": "Masanız Hazır!", "seated": "Oturdu", "confirmArrival": "Buradayım", "partySize": "Grup Büyüklüğü", "position": "Pozisyon" },
+  "profile": { "title": "Profil", "personalInfo": "Kişisel Bilgiler", "fullName": "Tam İsim", "email": "E-posta", "phone": "Telefon Numarası", "save": "Değişiklikleri Kaydet", "edit": "Düzenle", "cancel": "İptal", "security": "Güvenlik", "password": "Şifre", "resetPassword": "Hesap şifrenizi sıfırlayın", "appearance": "Görünüm", "theme": "Tema", "themeDesc": "Tercih ettiğiniz renk şemasını seçin", "language": "Dil", "languageDesc": "Tercih ettiğiniz dili seçin", "signOut": "Çıkış Yap", "signInRequired": "Profilinizi görmek için giriş yapın", "signInButton": "Giriş Yap", "friends": "Arkadaşlar", "noFriends": "Henüz arkadaş yok", "addFriend": "Arkadaş Ekle", "pending": "Beklemede", "accepted": "Kabul Edildi", "yearInReview": "Yıllık Özet", "previewRecap": "Özet Önizleme", "emailCannotChange": "E-posta değiştirilemez", "profileUpdated": "Profil başarıyla güncellendi", "namePlaceholder": "İsminiz", "emailPlaceholder": "your.email@example.com", "phonePlaceholder": "+90 532 123 4567" },
+  "explore": { "title": "Mekanları Keşfet", "personalised": "Size özel", "discover": "Yakındaki restoranları keşfedin", "shareVenue": "ReadyUp'ta {{name}}'e göz atın!", "noVenues": "Mekan bulunamadı" },
+  "rating": { "title": "Deneyiminizi Değerlendirin", "subtitle": "{{venue}}'deki deneyiminiz nasıldı?", "feedback": "Ek Geri Bildirim (İsteğe bağlı)", "feedbackPlaceholder": "Deneyiminiz hakkında daha fazla ayrıntı paylaşın...", "skip": "Atla", "submit": "Değerlendirme Gönder", "submitting": "Gönderiliyor...", "thanks": "Teşekkürler!", "thanksDesc": "Değerlendirmeniz gönderildi.", "shareExperience": "Deneyiminizi paylaşın" },
+  "offline": { "banner": "Çevrimdışısınız — bazı özellikler kullanılamayabilir", "backOnline": "Tekrar çevrimiçi", "synced": "{{count}} bekleyen işlem senkronize edildi" },
+  "common": { "loading": "Yükleniyor...", "error": "Hata", "success": "Başarılı", "cancel": "İptal", "confirm": "Onayla", "close": "Kapat", "back": "Geri", "next": "İleri", "retry": "Tekrar Dene", "min": "dk", "at": "saat" }
+}

@@ -1,0 +1,33 @@
+{
+  "nav": { "home": "홈", "food": "음식", "table": "테이블", "profile": "프로필" },
+  "home": {
+    "welcome": "다시 오신 것을 환영합니다", "signIn": "시작하려면 로그인하세요", "signInDescription": "주문 및 테이블 예약을 추적하세요",
+    "signInButton": "로그인", "signInOrUp": "로그인 또는 가입", "signInTrack": "주문 및 예약을 추적하려면 로그인하세요",
+    "activeTracking": "실시간 추적", "noActive": "활성 주문이나 대기 목록이 없습니다",
+    "explore": "장소 탐색", "order": "주문", "waitlist": "대기 목록", "table": "테이블",
+    "dismiss": "닫기", "rate": "평가", "clear": "삭제", "inviteFriends": "친구 초대", "share": "공유",
+    "foodReady": "음식 준비 완료", "trackOrderStatus": "주문 상태 추적",
+    "tableReady": "테이블 준비 완료", "joinWaitlist": "대기 목록 참여",
+    "reservation": "예약", "reservationFor": "{{size}}명 예약", "partyOf": "{{size}}명",
+    "demoMode": "(데모 모드)", "noFeatures": "현재 이용 가능한 기능이 없습니다.",
+    "orderReadyToast": "주문 준비 완료!", "orderReadyDesc": "주문 #{{number}} 픽업 준비가 되었습니다!",
+    "tableReadyToast": "테이블 준비 완료!", "tableReadyDesc": "{{size}}명 테이블이 준비되었습니다!",
+    "yourOrderReady": "주문이 준비되었습니다!", "orderReadySub": "주문 #{{number}} {{venue}}에서",
+    "yourTableReady": "테이블이 준비되었습니다!", "tableReadySub": "{{size}}명 {{venue}}에서",
+    "viewOrder": "주문 보기", "getSeated": "도착했습니다 - 착석",
+    "orderRejected": "주문 거부", "orderRejectedDesc": "주문 #{{number}}이 주방에 의해 무효 처리되었습니다. 주문을 탭하여 재시도하세요.",
+    "tableReleased": "테이블 해제", "tableReleasedDesc": "시간 내에 도착하지 않아 테이블이 해제되었습니다.",
+    "arrivingSoon": "{{minutes}}분 내 도착? 지금 체크인하세요!", "mayBeReleased": "예약이 언제든 해제될 수 있습니다",
+    "minLate": "{{minutes}}분 지연", "cancelledBy": "{{by}}에 의해 취소", "noShowReleased": "테이블 해제 - 시간 내 미도착",
+    "today": "오늘", "tomorrow": "내일"
+  },
+  "status": { "ready": "준비됨", "preparing": "준비 중", "verifying": "확인 중", "cancelled": "취소됨", "collected": "수령됨", "placed": "주문됨", "waiting": "대기 중", "seated": "착석", "overdue": "지연", "reserved": "예약됨", "highConfidence": "높은 신뢰도", "medium": "보통", "estimate": "추정", "basedOnHistory": "과거 데이터 기반", "someHistory": "일부 과거 데이터", "venueDefault": "매장 기본 시간", "you": "귀하", "system": "시스템", "venue": "매장" },
+  "waitlistJoin": { "title": "대기 목록 참여", "name": "이름", "namePlaceholder": "이름", "nameRequired": "이름 필요", "nameRequiredDesc": "이름을 입력해주세요", "phone": "전화번호 (선택)", "phonePlaceholder": "+82 10 1234 5678", "partySize": "인원수", "seatingPrefs": "좌석 선호 (선택)", "joinButton": "대기 목록 참여", "joining": "참여 중...", "added": "대기 목록에 추가되었습니다!", "addedDesc": "테이블이 준비되면 알려드립니다.", "trackPosition": "실시간으로 순서를 확인할 수 있습니다", "error": "오류", "venueNotFound": "장소를 찾을 수 없습니다", "couldNotJoin": "대기 목록에 참여할 수 없습니다. 다시 시도해주세요." },
+  "food": { "title": "음식 준비 완료", "scanOrSearch": "스캔하거나 장소를 검색하세요", "orderNumber": "주문 번호", "submit": "주문 추적", "tracking": "주문 추적", "placed": "주문됨", "inPrep": "준비 중", "ready": "픽업 가능", "collected": "수령됨" },
+  "tableReady": { "title": "테이블 준비 완료", "joinWaitlist": "대기 목록 참여", "makeReservation": "예약하기", "waiting": "대기 중", "ready": "테이블이 준비되었습니다!", "seated": "착석", "confirmArrival": "도착했습니다", "partySize": "인원수", "position": "순서" },
+  "profile": { "title": "프로필", "personalInfo": "개인 정보", "fullName": "전체 이름", "email": "이메일", "phone": "전화번호", "save": "변경 저장", "edit": "편집", "cancel": "취소", "security": "보안", "password": "비밀번호", "resetPassword": "계정 비밀번호 재설정", "appearance": "외관", "theme": "테마", "themeDesc": "선호하는 색상 구성표 선택", "language": "언어", "languageDesc": "선호하는 언어 선택", "signOut": "로그아웃", "signInRequired": "프로필을 보려면 로그인하세요", "signInButton": "로그인", "friends": "친구", "noFriends": "아직 친구가 없습니다", "addFriend": "친구 추가", "pending": "대기 중", "accepted": "수락됨", "yearInReview": "연간 리뷰", "previewRecap": "요약 미리보기", "emailCannotChange": "이메일은 변경할 수 없습니다", "profileUpdated": "프로필이 업데이트되었습니다", "namePlaceholder": "이름", "emailPlaceholder": "your.email@example.com", "phonePlaceholder": "+82 10 1234 5678" },
+  "explore": { "title": "장소 탐색", "personalised": "맞춤 추천", "discover": "근처 레스토랑 찾기", "shareVenue": "ReadyUp에서 {{name}}을 확인하세요!", "noVenues": "장소를 찾을 수 없습니다" },
+  "rating": { "title": "경험 평가", "subtitle": "{{venue}}에서의 경험은 어떠셨나요?", "feedback": "추가 피드백 (선택)", "feedbackPlaceholder": "경험에 대한 자세한 내용을 공유하세요...", "skip": "건너뛰기", "submit": "평가 제출", "submitting": "제출 중...", "thanks": "감사합니다!", "thanksDesc": "평가가 제출되었습니다.", "shareExperience": "경험 공유" },
+  "offline": { "banner": "오프라인입니다 — 일부 기능을 사용할 수 없을 수 있습니다", "backOnline": "온라인 복귀", "synced": "{{count}}개의 보류 작업이 동기화되었습니다" },
+  "common": { "loading": "로딩 중...", "error": "오류", "success": "성공", "cancel": "취소", "confirm": "확인", "close": "닫기", "back": "뒤로", "next": "다음", "retry": "재시도", "min": "분", "at": "에" }
+}

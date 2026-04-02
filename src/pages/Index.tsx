@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { FoodReadyFlow } from "@/components/FoodReadyFlow";
 import { TableReadyFlow } from "@/components/TableReadyFlow";
 import { ProfileSection } from "@/components/ProfileSection";
@@ -62,6 +63,7 @@ const DEMO_WAITLIST = {
 };
 
 const Index = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("home");
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -292,8 +294,8 @@ const Index = () => {
               // Play food ready sound (repeats 3x every 10 seconds until collected)
               playFoodReadySound(payload.new.id);
               toast({
-                title: "🎉 Order Ready!",
-                description: `Order #${payload.new.order_number} is ready for pickup!`,
+                title: "🎉 " + t("home.orderReadyToast"),
+                description: t("home.orderReadyDesc", { number: payload.new.order_number }),
               });
             }
             
@@ -306,8 +308,8 @@ const Index = () => {
             // Check if order was rejected
             if (payload.new.status === 'rejected') {
               toast({
-                title: "Order Rejected",
-                description: `Order #${payload.new.order_number} was marked as invalid by the kitchen. Tap the order to retry.`,
+                title: t("home.orderRejected"),
+                description: t("home.orderRejectedDesc", { number: payload.new.order_number }),
                 variant: "destructive",
               });
             }
@@ -369,8 +371,8 @@ const Index = () => {
               // Play table ready sound (repeats 2x every 25 seconds until seated/cancelled)
               playTableReadySound(payload.new.id);
               toast({
-                title: "🎉 Table Ready!",
-                description: `Your table for ${payload.new.party_size} is ready!`,
+                title: "🎉 " + t("home.tableReadyToast"),
+                description: t("home.tableReadyDesc", { size: payload.new.party_size }),
               });
             }
             
@@ -385,8 +387,8 @@ const Index = () => {
                 payload.new.cancelled_by === 'system' &&
                 payload.old?.status === 'ready') {
               toast({
-                title: "⏰ Table Released",
-                description: "Your table was released as you didn't arrive in time. You can join the waitlist again if needed.",
+                title: "⏰ " + t("home.tableReleased"),
+                description: t("home.tableReleasedDesc"),
                 variant: "destructive",
               });
             }
@@ -477,8 +479,8 @@ const Index = () => {
       celebrationShownForIds.current.add(readyOrder.id);
       setCelebrationData({
         type: 'food-ready',
-        title: 'Your Order is Ready!',
-        subtitle: `Order #${readyOrder.order_number} at ${readyOrder.venues?.name || 'the restaurant'}`,
+        title: t("home.yourOrderReady"),
+        subtitle: t("home.orderReadySub", { number: readyOrder.order_number, venue: readyOrder.venues?.name || '' }),
         item: readyOrder,
       });
       setShowCelebration(true);
@@ -495,8 +497,8 @@ const Index = () => {
       celebrationShownForIds.current.add(readyEntry.id);
       setCelebrationData({
         type: 'table-ready',
-        title: 'Your Table is Ready!',
-        subtitle: `Party of ${readyEntry.party_size} at ${readyEntry.venues?.name || 'the restaurant'}`,
+        title: t("home.yourTableReady"),
+        subtitle: t("home.tableReadySub", { size: readyEntry.party_size, venue: readyEntry.venues?.name || '' }),
         item: readyEntry,
       });
       setShowCelebration(true);
@@ -601,7 +603,7 @@ const Index = () => {
           type={celebrationData.type}
           title={celebrationData.title}
           subtitle={celebrationData.subtitle}
-          actionLabel={celebrationData.type === 'food-ready' ? 'View Order' : "I'm Here - Get Seated"}
+          actionLabel={celebrationData.type === 'food-ready' ? t("home.viewOrder") : t("home.getSeated")}
           onAction={() => {
             setShowCelebration(false);
             setSelectedOrder(celebrationData.item);
@@ -707,8 +709,8 @@ const Index = () => {
       {(user || isDemoMode) && (isLoadingTracking || activeOrders.length > 0 || activeWaitlist.length > 0 || isDemoMode) && (
         <div className="p-6 space-y-4" data-tour="active-tracking">
           <h2 className="text-xl font-bold">
-            Active Tracking
-            {isDemoMode && <span className="ml-2 text-xs font-normal text-primary">(Demo Mode)</span>}
+            {t("home.activeTracking")}
+            {isDemoMode && <span className="ml-2 text-xs font-normal text-primary">{t("home.demoMode")}</span>}
           </h2>
           
           {/* Loading Skeleton */}
@@ -813,13 +815,13 @@ const Index = () => {
                       />
                       <div>
                         <span className="inline-block text-xs font-bold uppercase tracking-wider text-white bg-primary px-2 py-0.5 rounded mb-1">
-                          Order
+                          {t("home.order")}
                         </span>
                         <h3 className="font-semibold">{order.venues?.name}</h3>
                         <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">Order #{order.order_number}</p>
                         {order.status === 'rejected' && (
                           <p className="text-xs text-destructive mt-1">
-                            Cancelled by {order.cancelled_by === 'patron' ? 'you' : order.cancelled_by === 'system' ? 'system' : 'venue'}
+                            {t("home.cancelledBy", { by: order.cancelled_by === 'patron' ? t("status.you") : order.cancelled_by === 'system' ? t("status.system") : t("status.venue") })}
                           </p>
                         )}
                         {order.eta && (order.status === 'placed' || order.status === 'in_prep') && (
@@ -833,14 +835,14 @@ const Index = () => {
                             {order.confidence && (
                               <div className="text-[10px] text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-1">
                                 <Badge variant={order.confidence === 'high' ? 'default' : order.confidence === 'medium' ? 'secondary' : 'outline'} className="h-4 text-[9px] px-1">
-                                  {order.confidence === 'high' ? 'High Confidence' : order.confidence === 'medium' ? 'Medium' : 'Estimate'}
+                                  {order.confidence === 'high' ? t("status.highConfidence") : order.confidence === 'medium' ? t("status.medium") : t("status.estimate")}
                                 </Badge>
                                 <span>
                                   {order.confidence === 'high' 
-                                    ? 'Based on historical data' 
+                                    ? t("status.basedOnHistory")
                                     : order.confidence === 'medium' 
-                                    ? 'Some historical data' 
-                                    : 'Venue default time'}
+                                    ? t("status.someHistory")
+                                    : t("status.venueDefault")}
                                 </span>
                               </div>
                             )}
@@ -879,12 +881,12 @@ const Index = () => {
                         order.status === 'collected' ? 'default' :
                         'secondary'
                       } className={order.status === 'awaiting_verification' ? 'border-orange-500 text-orange-600 dark:text-orange-400' : ''}>
-                        {order.status === 'ready' ? 'Ready' : 
-                         order.status === 'in_prep' ? 'Preparing' : 
-                         order.status === 'awaiting_verification' ? 'Verifying' :
-                         order.status === 'rejected' ? 'Cancelled' :
-                         order.status === 'collected' ? 'Collected' :
-                         'Placed'}
+                        {order.status === 'ready' ? t("status.ready") : 
+                         order.status === 'in_prep' ? t("status.preparing") : 
+                         order.status === 'awaiting_verification' ? t("status.verifying") :
+                         order.status === 'rejected' ? t("status.cancelled") :
+                         order.status === 'collected' ? t("status.collected") :
+                         t("status.placed")}
                       </Badge>
                       {shouldRate && (
                         <Button
@@ -902,7 +904,7 @@ const Index = () => {
                           }}
                           className="bg-success hover:bg-success/90"
                         >
-                          Rate
+                          {t("home.rate")}
                         </Button>
                       )}
                       {shouldClear && (
@@ -914,7 +916,7 @@ const Index = () => {
                             handleDismissOrder(order.id);
                           }}
                         >
-                          Clear
+                          {t("home.clear")}
                         </Button>
                       )}
                     </div>
@@ -997,7 +999,7 @@ const Index = () => {
                             ? "bg-purple-600 text-white" 
                             : "bg-secondary text-secondary-foreground"
                         )}>
-                          {isReservation ? 'Reservation' : 'Waitlist'}
+                          {isReservation ? t("home.reservation") : t("home.waitlist")}
                         </span>
                         <h3 className="font-semibold">{entry.venues?.name}</h3>
                         {entry.customer_name && (
@@ -1006,7 +1008,7 @@ const Index = () => {
                         {isReservation && reservationTime ? (
                           <>
                             <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-                              Reservation for {entry.party_size}
+                              {t("home.reservationFor", { size: entry.party_size })}
                             </p>
                             <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors mt-1">
                               <CalendarIcon size={12} />
@@ -1021,7 +1023,7 @@ const Index = () => {
                                 {format(reservationTime, 'HH:mm')}
                                 {isOverdue ? (
                                   <span className="text-amber-600 dark:text-amber-400 font-medium">
-                                    {' • '}{minutesLate} min late
+                                    {' • '}{t("home.minLate", { minutes: minutesLate })}
                                   </span>
                                 ) : isUpcomingTime ? (
                                   <>
@@ -1036,27 +1038,27 @@ const Index = () => {
                               <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mt-1">
                                 <AlertTriangle size={12} />
                                 <span>
-                                  Arriving within {minutesUntilRelease} min? Check in now!
+                                  {t("home.arrivingSoon", { minutes: minutesUntilRelease })}
                                 </span>
                               </div>
                             )}
                             {isOverdue && minutesUntilRelease === 0 && (
                               <div className="flex items-center gap-1 text-xs text-destructive mt-1">
                                 <AlertTriangle size={12} />
-                                <span>Reservation may be released any moment</span>
+                                <span>{t("home.mayBeReleased")}</span>
                               </div>
                             )}
                           </>
                         ) : (
                           <>
                             <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-                              Party of {entry.party_size}{entry.position ? ` • #${entry.position}` : ''}
+                              {t("home.partyOf", { size: entry.party_size })}{entry.position ? ` • #${entry.position}` : ''}
                             </p>
                         {(entry.status === 'cancelled' || entry.status === 'no_show') && (
                           <p className="text-xs text-destructive mt-1">
                             {entry.status === 'no_show' 
-                              ? "Table released - didn't arrive in time" 
-                              : `Cancelled by ${entry.cancelled_by === 'patron' ? 'you' : entry.cancelled_by === 'system' ? 'system' : 'venue'}`}
+                              ? t("home.noShowReleased")
+                              : t("home.cancelledBy", { by: entry.cancelled_by === 'patron' ? t("status.you") : entry.cancelled_by === 'system' ? t("status.system") : t("status.venue") })}
                           </p>
                         )}
                             {entry.eta && entry.status === 'waiting' && (
@@ -1070,14 +1072,14 @@ const Index = () => {
                                 {entry.confidence && (
                                   <div className="text-[10px] text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-1">
                                     <Badge variant={entry.confidence === 'high' ? 'default' : entry.confidence === 'medium' ? 'secondary' : 'outline'} className="h-4 text-[9px] px-1">
-                                      {entry.confidence === 'high' ? 'High Confidence' : entry.confidence === 'medium' ? 'Medium' : 'Estimate'}
+                                      {entry.confidence === 'high' ? t("status.highConfidence") : entry.confidence === 'medium' ? t("status.medium") : t("status.estimate")}
                                     </Badge>
                                     <span>
                                       {entry.confidence === 'high' 
-                                        ? 'Based on historical data' 
+                                        ? t("status.basedOnHistory")
                                         : entry.confidence === 'medium' 
-                                        ? 'Some historical data' 
-                                        : 'Venue default time'}
+                                        ? t("status.someHistory")
+                                        : t("status.venueDefault")}
                                     </span>
                                   </div>
                                 )}
@@ -1123,12 +1125,12 @@ const Index = () => {
                           isOverdue && "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10"
                         )}
                       >
-                        {isOverdue ? 'Overdue' : 
-                         isReservation ? 'Reserved' : 
-                         entry.status === 'ready' ? 'Ready' : 
-                         entry.status === 'cancelled' ? 'Cancelled' :
-                         entry.status === 'seated' ? 'Seated' :
-                         'Waiting'}
+                        {isOverdue ? t("status.overdue") : 
+                         isReservation ? t("status.reserved") : 
+                         entry.status === 'ready' ? t("status.ready") : 
+                         entry.status === 'cancelled' ? t("status.cancelled") :
+                         entry.status === 'seated' ? t("status.seated") :
+                         t("status.waiting")}
                       </Badge>
                       {shouldRate && (
                         <Button
@@ -1146,7 +1148,7 @@ const Index = () => {
                           }}
                           className="bg-success hover:bg-success/90"
                         >
-                          Rate
+                          {t("home.rate")}
                         </Button>
                       )}
                       {shouldClear && (
@@ -1158,7 +1160,7 @@ const Index = () => {
                             handleDismissWaitlist(entry.id);
                           }}
                         >
-                          Dismiss
+                          {t("home.dismiss")}
                         </Button>
                       )}
                     </div>
@@ -1176,12 +1178,12 @@ const Index = () => {
           <Card className="shadow-card border-2 border-primary/20">
             <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
               <div>
-                <h3 className="font-semibold">Sign In</h3>
+                <h3 className="font-semibold">{t("home.signInButton")}</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Sign in to track your orders and reservations
+                  {t("home.signInTrack")}
                 </p>
                 <Button onClick={() => navigate("/auth")} className="w-full">
-                  Sign In or Sign Up
+                  {t("home.signInOrUp")}
                 </Button>
               </div>
             </CardContent>
@@ -1200,8 +1202,8 @@ const Index = () => {
                   <UtensilsCrossed size={28} />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Food Ready</h3>
-                  <p className="text-sm text-muted-foreground">Track your order status</p>
+                  <h3 className="font-semibold">{t("home.foodReady")}</h3>
+                  <p className="text-sm text-muted-foreground">{t("home.trackOrderStatus")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -1218,8 +1220,8 @@ const Index = () => {
                   <Users size={28} />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Table Ready</h3>
-                  <p className="text-sm text-muted-foreground">Join a waitlist</p>
+                  <h3 className="font-semibold">{t("home.tableReady")}</h3>
+                  <p className="text-sm text-muted-foreground">{t("home.joinWaitlist")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -1228,7 +1230,7 @@ const Index = () => {
           
           {!features.food_ordering_enabled && !features.waitlist_enabled && (
             <div className="col-span-2 text-center py-8 text-muted-foreground">
-              <p>No features are currently available.</p>
+              <p>{t("home.noFeatures")}</p>
             </div>
           )}
         </div>
