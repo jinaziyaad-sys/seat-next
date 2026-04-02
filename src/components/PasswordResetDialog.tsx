@@ -229,10 +229,10 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
 
             <div className="flex gap-3">
               <Button type="button" variant="outline" onClick={handleClose} className="flex-1">
-                Cancel
+                {t("common.cancel")}
               </Button>
               <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? "Sending..." : "Send Reset Link"}
+                {loading ? t("passwordReset.sending") : t("passwordReset.sendResetLink")}
               </Button>
             </div>
 
