@@ -273,7 +273,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
               {recapLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Loading...
+                  {t("common.loading")}
                 </>
               ) : (
                 <>
