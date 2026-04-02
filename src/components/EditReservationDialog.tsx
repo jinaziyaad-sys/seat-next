@@ -350,7 +350,7 @@ export function EditReservationDialog({
                 <SelectContent>
                   {Array.from({ length: 12 }, (_, i) => i + 1).map((size) => (
                     <SelectItem key={size} value={size.toString()}>
-                      {size} {size === 1 ? "Guest" : "Guests"}
+                      {size} {size === 1 ? t("editReservation.guest") : t("editReservation.guests")}
                     </SelectItem>
                   ))}
                 </SelectContent>
