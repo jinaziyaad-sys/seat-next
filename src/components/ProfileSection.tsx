@@ -181,7 +181,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
             <Input
               id="email"
               type="email"
-              placeholder="your.email@example.com"
+              placeholder={t("profile.emailPlaceholder")}
               value={profile.email}
               disabled
             />
