@@ -413,7 +413,7 @@ export function EditReservationDialog({
 
             {/* Seating Preference */}
             <div className="space-y-2">
-              <Label>Seating Preference</Label>
+              <Label>{t("editReservation.seatingPreference")}</Label>
               <ToggleGroup 
                 type="single" 
                 value={seatingPreference}
@@ -421,13 +421,13 @@ export function EditReservationDialog({
                 className="justify-start"
               >
                 <ToggleGroupItem value="indoor" variant="outline">
-                  Indoor
+                  {t("editReservation.indoor")}
                 </ToggleGroupItem>
                 <ToggleGroupItem value="outdoor" variant="outline">
-                  Outdoor
+                  {t("editReservation.outdoor")}
                 </ToggleGroupItem>
                 <ToggleGroupItem value="no-preference" variant="outline">
-                  No Preference
+                  {t("editReservation.noPreference")}
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
