@@ -173,10 +173,10 @@ export default function WaitlistJoin() {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="space-y-2">
-            <Label htmlFor="name">Name *</Label>
+            <Label htmlFor="name">{t("waitlistJoin.name")} *</Label>
             <Input
               id="name"
-              placeholder="Your name"
+              placeholder={t("waitlistJoin.namePlaceholder")}
               value={customerName}
               onChange={(e) => setCustomerName(e.target.value)}
               required
