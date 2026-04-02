@@ -290,7 +290,7 @@ export function PhonePromptDialog({
               className="w-full" 
               disabled={loading || otpCode.length !== 6}
             >
-              {loading ? "Verifying..." : "Verify Phone"}
+              {loading ? t("phone.verifying") : t("phone.verifyPhoneBtn")}
             </Button>
 
             <Button 
