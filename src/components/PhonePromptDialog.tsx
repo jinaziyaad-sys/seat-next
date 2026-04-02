@@ -323,7 +323,7 @@ export function PhonePromptDialog({
                 disabled={loading}
                 className="flex-1"
               >
-                Skip Verification
+                {t("phone.skipVerification")}
               </Button>
             </div>
           </div>
