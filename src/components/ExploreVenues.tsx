@@ -637,7 +637,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
 
         {/* Filters */}
         <div className="px-4 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
-          {FILTER_OPTIONS.map((filter) => {
+          {FILTER_OPTION_IDS.map((filter) => {
             const isActive = activeFilters.includes(filter.id);
             return (
               <button
