@@ -30,7 +30,7 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
               key={tab.id}
               role="tab"
               aria-selected={isActive}
-              aria-label={tab.label}
+              aria-label={label}
               data-tour={`nav-${tab.id === 'food-ready' ? 'food' : tab.id === 'table-ready' ? 'table' : tab.id}`}
               onClick={() => onTabChange(tab.id)}
               className={cn(
