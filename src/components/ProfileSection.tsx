@@ -278,7 +278,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  Preview Recap
+                  {t("profile.previewRecap")}
                 </>
               )}
             </Button>
