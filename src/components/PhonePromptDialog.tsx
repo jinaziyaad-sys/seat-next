@@ -315,7 +315,7 @@ export function PhonePromptDialog({
                 disabled={loading}
                 className="flex-1"
               >
-                Change Number
+                {t("phone.changeNumber")}
               </Button>
               <Button 
                 variant="outline" 
