@@ -391,7 +391,7 @@ export function EditReservationDialog({
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                Time
+                {t("editReservation.time")}
               </Label>
               <Select 
                 value={reservationTime} 
