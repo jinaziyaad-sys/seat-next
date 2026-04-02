@@ -46,8 +46,8 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
 
       setEmailSent(true);
       toast({
-        title: "Reset Email Sent ✅",
-        description: "Check your email for the password reset link.",
+        title: t("passwordReset.emailSentSuccess"),
+        description: t("passwordReset.emailSentDesc"),
       });
     } catch (error: any) {
       toast({
