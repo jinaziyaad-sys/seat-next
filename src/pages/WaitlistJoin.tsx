@@ -31,6 +31,9 @@ interface VenueSettings {
 export default function WaitlistJoin() {
   const { venueId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const groupId = searchParams.get('group');
+  const { t } = useTranslation();
   const { toast } = useToast();
   const [venue, setVenue] = useState<{ name: string; address?: string } | null>(null);
   const [venueSettings, setVenueSettings] = useState<VenueSettings | null>(null);
