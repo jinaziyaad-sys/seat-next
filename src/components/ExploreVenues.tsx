@@ -717,17 +717,17 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
             <MapPin className="h-10 w-10 text-muted-foreground mx-auto" />
             <p className="text-muted-foreground font-medium">
               {customLocation
-                ? `No venues found near ${customLocation.label}`
+                ? t("explore.noVenuesNear", { location: customLocation.label })
                 : recommendations.length === 0
-                  ? "No venues found in this area"
-                  : "No venues match your filters"}
+                  ? t("explore.noVenuesArea")
+                  : t("explore.noVenuesMatch")}
             </p>
             <p className="text-sm text-muted-foreground">
               {customLocation
-                ? "Try a different location or increase your search radius"
+                ? t("explore.tryDifferentLocation")
                 : recommendations.length === 0
-                  ? "Try increasing your search radius"
-                  : "Try adjusting your filters"}
+                  ? t("explore.tryIncreaseRadius")
+                  : t("explore.tryAdjustFilters")}
             </p>
             {activeFilters.length > 0 && (
               <Button 
