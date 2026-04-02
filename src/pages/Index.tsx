@@ -479,8 +479,8 @@ const Index = () => {
       celebrationShownForIds.current.add(readyOrder.id);
       setCelebrationData({
         type: 'food-ready',
-        title: 'Your Order is Ready!',
-        subtitle: `Order #${readyOrder.order_number} at ${readyOrder.venues?.name || 'the restaurant'}`,
+        title: t("home.yourOrderReady"),
+        subtitle: t("home.orderReadySub", { number: readyOrder.order_number, venue: readyOrder.venues?.name || '' }),
         item: readyOrder,
       });
       setShowCelebration(true);
