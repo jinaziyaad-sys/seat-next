@@ -665,13 +665,13 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
             <CardContent className="p-4 flex items-center gap-3">
               <Sparkles className="h-8 w-8 text-primary" />
               <div className="flex-1">
-                <p className="font-medium text-sm">Get personalized recommendations</p>
+                <p className="font-medium text-sm">{t("explore.getPersonalized")}</p>
                 <p className="text-xs text-muted-foreground">
-                  Sign in and set your dining preferences
+                  {t("explore.signInSetPrefs")}
                 </p>
               </div>
               <Button size="sm" variant="default">
-                Sign In
+                {t("common.signIn")}
               </Button>
             </CardContent>
           </Card>
