@@ -189,7 +189,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
           </div>
           
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number</Label>
+            <Label htmlFor="phone">{t("profile.phone")}</Label>
             <Input
               id="phone"
               type="tel"
