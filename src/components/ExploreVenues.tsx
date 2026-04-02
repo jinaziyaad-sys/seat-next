@@ -864,10 +864,10 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                     </Badge>
                   ))}
                   {venue.dietary_certifications?.halaal && (
-                    <Badge variant="outline" className="text-xs">🕌 Halaal</Badge>
+                    <Badge variant="outline" className="text-xs">🕌 {t("explore.halaal")}</Badge>
                   )}
                   {venue.dietary_certifications?.vegetarian_friendly && (
-                    <Badge variant="outline" className="text-xs">🥬 Veg-friendly</Badge>
+                    <Badge variant="outline" className="text-xs">🥬 {t("explore.vegFriendly")}</Badge>
                   )}
                   {venue.dietary_certifications?.vegan_options && (
                     <Badge variant="outline" className="text-xs">🌱 Vegan options</Badge>
