@@ -177,8 +177,8 @@ export function PatronNotificationSettings() {
           
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="mealtime">🍽️ Mealtime reminders</Label>
-              <p className="text-xs text-muted-foreground">Get nudges around lunch and dinner time</p>
+              <Label htmlFor="mealtime">🍽️ {t("notifications.mealtimeReminders")}</Label>
+              <p className="text-xs text-muted-foreground">{t("notifications.mealtimeDesc")}</p>
             </div>
             <Switch
               id="mealtime"
