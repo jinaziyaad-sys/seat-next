@@ -44,6 +44,7 @@ export const RatingDialog = ({
       setHoveredRating(0);
       setFeedback("");
       setIsSubmitting(false);
+      setSubmitted(false);
     }
   }, [open]);
 
