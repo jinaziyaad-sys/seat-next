@@ -52,7 +52,8 @@
     "cancelledBy": "Cancelled by {{by}}",
     "noShowReleased": "Table released - didn't arrive in time",
     "today": "Today",
-    "tomorrow": "Tomorrow"
+    "tomorrow": "Tomorrow",
+    "inviteFriendsText": "Join me on the waitlist at {{venue}}!"
   },
   "status": {
     "ready": "Ready",

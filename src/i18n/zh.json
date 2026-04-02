@@ -52,7 +52,8 @@
     "cancelledBy": "由{{by}}取消",
     "noShowReleased": "餐桌已释放 - 未按时到达",
     "today": "今天",
-    "tomorrow": "明天"
+    "tomorrow": "明天",
+    "inviteFriendsText": "Join me on the waitlist at {{venue}}!"
   },
   "status": {
     "ready": "就绪",

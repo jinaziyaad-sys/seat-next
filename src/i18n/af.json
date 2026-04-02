@@ -52,7 +52,8 @@
     "cancelledBy": "Gekanselleer deur {{by}}",
     "noShowReleased": "Tafel vrygestel - het nie betyds opgedaag nie",
     "today": "Vandag",
-    "tomorrow": "Môre"
+    "tomorrow": "Môre",
+    "inviteFriendsText": "Join me on the waitlist at {{venue}}!"
   },
   "status": {
     "ready": "Gereed",

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { VenueLogo } from "@/components/VenueLogo";
-import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon, AlertTriangle, Info, X, Wrench, MessageSquare } from "lucide-react";
+import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon, AlertTriangle, Info, X, Wrench, MessageSquare, Share2 } from "lucide-react";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -1090,6 +1090,28 @@ const Index = () => {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
+                      {/* Invite Friends button - only for active waiting entries */}
+                      {entry.status === 'waiting' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title={t("home.inviteFriends")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const url = `${window.location.origin}/waitlist/${entry.venue_id}?group=${entry.id}`;
+                            const text = t("home.inviteFriendsText", { venue: entry.venues?.name || '' });
+                            if (navigator.share) {
+                              navigator.share({ title: entry.venues?.name || '', text, url }).catch(() => {});
+                            } else {
+                              navigator.clipboard.writeText(`${text} ${url}`);
+                              toast({ title: t("explore.linkCopied") });
+                            }
+                          }}
+                        >
+                          <Share2 className="h-4 w-4" />
+                        </Button>
+                      )}
                       {/* Message button */}
                       <Button
                         variant="ghost"
