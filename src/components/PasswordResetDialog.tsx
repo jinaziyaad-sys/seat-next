@@ -132,10 +132,9 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
             <Alert className="border-green-500 bg-green-50 dark:bg-green-950/30">
               <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
               <AlertDescription className="text-green-900 dark:text-green-100">
-                <p className="font-semibold mb-2">Reset link sent to {email}</p>
+                <p className="font-semibold mb-2">{t("passwordReset.resetLinkSent", { email })}</p>
                 <p className="text-sm">
-                  Click the link in your email to reset your password. The link will redirect you
-                  back to this site where you can set a new password.
+                  {t("passwordReset.clickLink")}
                 </p>
               </AlertDescription>
             </Alert>
