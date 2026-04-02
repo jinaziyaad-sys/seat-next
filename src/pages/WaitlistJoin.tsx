@@ -123,7 +123,8 @@ export default function WaitlistJoin() {
         preferences: selectedPreferences.length > 0 ? selectedPreferences : null,
         status: "waiting",
         eta: new Date(Date.now() + 20 * 60000).toISOString(),
-      })
+        group_id: groupId || null,
+      } as any)
       .select()
       .single();
 
