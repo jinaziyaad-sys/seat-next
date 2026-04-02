@@ -195,7 +195,7 @@ export default function WaitlistJoin() {
           </div>
 
           <div className="space-y-3">
-            <Label>Party Size</Label>
+            <Label>{t("waitlistJoin.partySize")}</Label>
             <div className="flex items-center justify-center gap-4">
               <Button
                 variant="outline"
