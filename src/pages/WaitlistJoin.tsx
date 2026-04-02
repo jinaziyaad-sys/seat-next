@@ -140,8 +140,8 @@ export default function WaitlistJoin() {
     }
 
     toast({
-      title: "Added to Waitlist!",
-      description: "You'll be notified when your table is ready.",
+      title: t("waitlistJoin.added"),
+      description: t("waitlistJoin.addedDesc"),
     });
 
     // Navigate to patron app to track the waitlist
