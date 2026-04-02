@@ -191,10 +191,10 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
 
             <div className="flex gap-3">
               <Button type="button" variant="outline" onClick={() => setShowAdminHelpForm(false)} className="flex-1">
-                Back
+                {t("common.back")}
               </Button>
               <Button type="submit" disabled={loading} className="flex-1">
-                {loading ? "Submitting..." : "Submit Request"}
+                {loading ? t("passwordReset.submit") : t("passwordReset.submitRequest")}
               </Button>
             </div>
           </form>
