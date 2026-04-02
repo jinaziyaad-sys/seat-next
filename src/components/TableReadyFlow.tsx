@@ -1723,7 +1723,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="text-2xl font-bold">Table Ready</h1>
+          <h1 className="text-2xl font-bold">{t("tableReady.title")}</h1>
         </div>
 
         <div className="grid grid-cols-2 gap-4">
