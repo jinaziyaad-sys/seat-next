@@ -232,8 +232,8 @@ export function EditReservationDialog({
 
         if (tableError) {
           toast({
-            title: "Error Checking Availability",
-            description: "Unable to verify table availability. Please try again.",
+            title: t("editReservation.errorCheckingAvailability"),
+            description: t("editReservation.unableToVerify"),
             variant: "destructive",
           });
           setIsLoading(false);
