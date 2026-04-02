@@ -651,7 +651,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                 )}
               >
                 <span>{filter.icon}</span>
-                <span>{filter.label}</span>
+                <span>{t(filter.labelKey)}</span>
               </button>
             );
           })}
