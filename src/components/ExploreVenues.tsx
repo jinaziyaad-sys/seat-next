@@ -734,7 +734,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                 variant="link" 
                 onClick={() => setActiveFilters([])}
               >
-                Clear filters
+                {t("explore.clearFilters")}
               </Button>
             )}
             {searchRadius < 100 && recommendations.length === 0 && (
