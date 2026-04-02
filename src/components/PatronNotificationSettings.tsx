@@ -190,8 +190,8 @@ export function PatronNotificationSettings() {
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="favorite">⚡ Favorite venue alerts</Label>
-              <p className="text-xs text-muted-foreground">Know when your favorites have short waits</p>
+              <Label htmlFor="favorite">⚡ {t("notifications.favoriteAlerts")}</Label>
+              <p className="text-xs text-muted-foreground">{t("notifications.favoriteDesc")}</p>
             </div>
             <Switch
               id="favorite"
