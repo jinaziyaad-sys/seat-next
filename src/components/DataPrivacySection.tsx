@@ -28,6 +28,7 @@ interface DataRequest {
 }
 
 export function DataPrivacySection() {
+  const { t } = useTranslation();
   const [requests, setRequests] = useState<DataRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
