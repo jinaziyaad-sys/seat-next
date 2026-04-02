@@ -1220,8 +1220,8 @@ const Index = () => {
                   <Users size={28} />
                 </div>
                 <div>
-                  <h3 className="font-semibold">Table Ready</h3>
-                  <p className="text-sm text-muted-foreground">Join a waitlist</p>
+                  <h3 className="font-semibold">{t("home.tableReady")}</h3>
+                  <p className="text-sm text-muted-foreground">{t("home.joinWaitlist")}</p>
                 </div>
               </CardContent>
             </Card>
