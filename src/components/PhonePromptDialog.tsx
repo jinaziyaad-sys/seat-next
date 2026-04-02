@@ -152,8 +152,8 @@ export function PhonePromptDialog({
 
       if (data.success) {
         toast({
-          title: "Code Sent!",
-          description: "New verification code sent to your phone.",
+          title: t("phone.codeSent"),
+          description: t("phone.newCodeSent"),
         });
         
         setResendCooldown(60);
