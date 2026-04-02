@@ -122,8 +122,8 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
         </div>
         <Card className="shadow-card">
           <CardContent className="p-6 text-center">
-            <p className="mb-4">Please sign in to view your profile</p>
-            <Button onClick={() => navigate("/auth")}>Sign In</Button>
+            <p className="mb-4">{t("profile.signInRequired")}</p>
+            <Button onClick={() => navigate("/auth")}>{t("profile.signInButton")}</Button>
           </CardContent>
         </Card>
       </div>
