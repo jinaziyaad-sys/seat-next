@@ -150,9 +150,9 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
             <Alert className="border-blue-500 bg-blue-50 dark:bg-blue-950/30">
               <Check className="h-4 w-4 text-blue-600 dark:text-blue-400" />
               <AlertDescription className="text-blue-900 dark:text-blue-100">
-                <p className="font-semibold mb-2">Request submitted for {email}</p>
+                <p className="font-semibold mb-2">{t("passwordReset.requestSubmittedFor", { email })}</p>
                 <p className="text-sm">
-                  An administrator will review your request and contact you directly with a new password.
+                  {t("passwordReset.adminWillContact")}
                 </p>
               </AlertDescription>
             </Alert>
