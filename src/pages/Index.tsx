@@ -1300,7 +1300,7 @@ const Index = () => {
           venueName={cardMessengerContext.venueName}
         />
       )}
-    </div>
+    </main>
   );
 };
 
