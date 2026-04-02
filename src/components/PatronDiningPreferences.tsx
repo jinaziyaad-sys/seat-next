@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +43,7 @@ interface DiningPreferences {
 }
 
 export function PatronDiningPreferences() {
+  const { t } = useTranslation();
   const [preferences, setPreferences] = useState<DiningPreferences | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -168,7 +170,7 @@ export function PatronDiningPreferences() {
       <CardHeader>
         <div className="flex items-center gap-3">
           <Utensils size={24} />
-          <CardTitle>Dining Preferences</CardTitle>
+          <CardTitle>{t("dining.title")}</CardTitle>
         </div>
         <p className="text-sm text-muted-foreground">
           Set your preferences to get personalized venue recommendations
@@ -179,7 +181,7 @@ export function PatronDiningPreferences() {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Leaf className="h-4 w-4 text-success" />
-            <Label className="text-base font-medium">Dietary Requirements</Label>
+            <Label className="text-base font-medium">{t("dining.dietary")}</Label>
           </div>
           <div className="flex flex-wrap gap-2">
             {DIETARY_OPTIONS.map((option) => {
@@ -237,7 +239,7 @@ export function PatronDiningPreferences() {
         <div className="space-y-4">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-primary" />
-            <Label className="text-base font-medium">Maximum Wait Time</Label>
+            <Label className="text-base font-medium">{t("dining.maxWait")}</Label>
           </div>
           <div className="space-y-3">
             <Slider
@@ -267,10 +269,10 @@ export function PatronDiningPreferences() {
             {saving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Saving...
+                {t("dining.saving")}
               </>
             ) : (
-              "Save Preferences"
+              t("dining.savePreferences")
             )}
           </Button>
         )}

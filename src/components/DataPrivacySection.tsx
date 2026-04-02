@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +28,7 @@ interface DataRequest {
 }
 
 export function DataPrivacySection() {
+  const { t } = useTranslation();
   const [requests, setRequests] = useState<DataRequest[]>([]);
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -86,13 +88,12 @@ export function DataPrivacySection() {
       <CardHeader>
         <div className="flex items-center gap-3">
           <Shield size={24} />
-          <CardTitle>Data &amp; Privacy</CardTitle>
+          <CardTitle>{t("privacy.title")}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          In accordance with POPIA (Protection of Personal Information Act), you have the right to access, 
-          export, and request deletion of your personal data.
+          {t("privacy.description")}
         </p>
 
         <div className="flex flex-col sm:flex-row gap-3">
@@ -100,22 +101,20 @@ export function DataPrivacySection() {
             <AlertDialogTrigger asChild>
               <Button variant="destructive" className="gap-2" disabled={loading}>
                 <Trash2 className="h-4 w-4" />
-                Request Account Deletion
+                {t("privacy.requestDeletion")}
               </Button>
             </AlertDialogTrigger>
             <AlertDialogContent>
               <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogTitle>{t("privacy.deleteConfirmTitle")}</AlertDialogTitle>
                 <AlertDialogDescription>
-                  This will submit a request to permanently delete your account and all associated data.
-                  An admin will review and process this within 30 days as required by POPIA. 
-                  This action cannot be undone once processed.
+                  {t("privacy.deleteConfirmDesc")}
                 </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
                 <AlertDialogAction onClick={handleDeletionRequest}>
-                  Yes, Request Deletion
+                  {t("privacy.yesDelete")}
                 </AlertDialogAction>
               </AlertDialogFooter>
             </AlertDialogContent>
@@ -128,12 +127,12 @@ export function DataPrivacySection() {
           onClick={() => navigate("/privacy")}
         >
           <ExternalLink className="h-3 w-3" />
-          View Privacy Policy
+          {t("privacy.viewPrivacyPolicy")}
         </Button>
 
         {requests.length > 0 && (
           <div className="mt-4 space-y-2">
-            <p className="text-sm font-medium">Recent Requests</p>
+            <p className="text-sm font-medium">{t("privacy.recentRequests")}</p>
             {requests.map((req) => (
               <div key={req.id} className="flex items-center justify-between text-sm border rounded-lg p-3">
                 <div>

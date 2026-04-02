@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -33,6 +34,7 @@ const defaultPreferences: NotificationPreferences = {
 };
 
 export function PatronNotificationSettings() {
+  const { t } = useTranslation();
   const [preferences, setPreferences] = useState<NotificationPreferences>(defaultPreferences);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -133,28 +135,28 @@ export function PatronNotificationSettings() {
       <CardHeader>
         <div className="flex items-center gap-3">
           <Bell size={24} />
-          <CardTitle>Notifications</CardTitle>
+          <CardTitle>{t("notifications.title")}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Notification Status */}
         <div className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
           <div className="flex items-center gap-2">
-            <span className="text-sm font-medium">Browser notifications</span>
+            <span className="text-sm font-medium">{t("notifications.browserNotifications")}</span>
             {notificationPermission === 'granted' ? (
               <Badge variant="default" className="gap-1 bg-green-500/20 text-green-700 dark:text-green-400 hover:bg-green-500/20">
                 <CheckCircle size={12} />
-                Enabled
+                {t("notifications.enabled")}
               </Badge>
             ) : notificationPermission === 'denied' ? (
               <Badge variant="destructive" className="gap-1">
                 <XCircle size={12} />
-                Blocked
+                {t("notifications.blocked")}
               </Badge>
             ) : (
               <Badge variant="secondary" className="gap-1">
                 <HelpCircle size={12} />
-                Not set
+                {t("notifications.notSet")}
               </Badge>
             )}
           </div>
@@ -164,19 +166,19 @@ export function PatronNotificationSettings() {
               variant="outline"
               onClick={() => setShowUnblockDialog(true)}
             >
-              How to enable
+              {t("notifications.howToEnable")}
             </Button>
           )}
         </div>
 
         {/* Nudge Types */}
         <div className="space-y-4">
-          <h3 className="text-sm font-medium text-muted-foreground">Reminders</h3>
+          <h3 className="text-sm font-medium text-muted-foreground">{t("notifications.reminders")}</h3>
           
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="mealtime">🍽️ Mealtime reminders</Label>
-              <p className="text-xs text-muted-foreground">Get nudges around lunch and dinner time</p>
+              <Label htmlFor="mealtime">🍽️ {t("notifications.mealtimeReminders")}</Label>
+              <p className="text-xs text-muted-foreground">{t("notifications.mealtimeDesc")}</p>
             </div>
             <Switch
               id="mealtime"
@@ -188,8 +190,8 @@ export function PatronNotificationSettings() {
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="favorite">⚡ Favorite venue alerts</Label>
-              <p className="text-xs text-muted-foreground">Know when your favorites have short waits</p>
+              <Label htmlFor="favorite">⚡ {t("notifications.favoriteAlerts")}</Label>
+              <p className="text-xs text-muted-foreground">{t("notifications.favoriteDesc")}</p>
             </div>
             <Switch
               id="favorite"
@@ -201,8 +203,8 @@ export function PatronNotificationSettings() {
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="weekend">📅 Weekend planning</Label>
-              <p className="text-xs text-muted-foreground">Friday reminders to book ahead</p>
+              <Label htmlFor="weekend">📅 {t("notifications.weekendPlanning")}</Label>
+              <p className="text-xs text-muted-foreground">{t("notifications.weekendDesc")}</p>
             </div>
             <Switch
               id="weekend"
@@ -214,8 +216,8 @@ export function PatronNotificationSettings() {
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="reengagement">💬 Check-in messages</Label>
-              <p className="text-xs text-muted-foreground">Occasional nudges if you haven't visited</p>
+              <Label htmlFor="reengagement">💬 {t("notifications.reengagement")}</Label>
+              <p className="text-xs text-muted-foreground">{t("notifications.reengagementDesc")}</p>
             </div>
             <Switch
               id="reengagement"
@@ -230,7 +232,7 @@ export function PatronNotificationSettings() {
         <div className="space-y-3 pt-2 border-t">
           <div className="flex items-center gap-2">
             <Clock size={16} className="text-muted-foreground" />
-            <h3 className="text-sm font-medium text-muted-foreground">Frequency</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">{t("notifications.frequency")}</h3>
           </div>
           
           <Select
@@ -255,9 +257,9 @@ export function PatronNotificationSettings() {
         <div className="space-y-3 pt-2 border-t">
           <div className="flex items-center gap-2">
             <Moon size={16} className="text-muted-foreground" />
-            <h3 className="text-sm font-medium text-muted-foreground">Quiet Hours</h3>
+            <h3 className="text-sm font-medium text-muted-foreground">{t("notifications.quietHours")}</h3>
           </div>
-          <p className="text-xs text-muted-foreground">No notifications between these hours</p>
+          <p className="text-xs text-muted-foreground">{t("notifications.quietHoursDesc")}</p>
           
           <div className="flex items-center gap-4">
             <div className="flex-1 space-y-1">

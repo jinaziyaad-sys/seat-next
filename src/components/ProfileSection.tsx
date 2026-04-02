@@ -95,8 +95,8 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
       });
     } else {
       toast({
-        title: "Success",
-        description: "Profile updated successfully",
+        title: t("common.success"),
+        description: t("profile.profileUpdated"),
       });
       setIsEditing(false);
     }
@@ -250,8 +250,8 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">Preview your {new Date().getFullYear()} recap</p>
-              <p className="text-sm text-muted-foreground">See your activity highlights (test mode)</p>
+              <p className="font-medium">{t("profile.previewRecap").replace("Recap", new Date().getFullYear().toString())}</p>
+              <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
             </div>
             <Button
               variant="outline"
@@ -273,12 +273,12 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
               {recapLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Loading...
+                  {t("common.loading")}
                 </>
               ) : (
                 <>
                   <Sparkles className="w-4 h-4" />
-                  Preview Recap
+                  {t("profile.previewRecap")}
                 </>
               )}
             </Button>
