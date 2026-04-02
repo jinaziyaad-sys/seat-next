@@ -52,7 +52,8 @@
     "cancelledBy": "Storniert von {{by}}",
     "noShowReleased": "Tisch freigegeben - nicht rechtzeitig erschienen",
     "today": "Heute",
-    "tomorrow": "Morgen"
+    "tomorrow": "Morgen",
+    "inviteFriendsText": "Join me on the waitlist at {{venue}}!"
   },
   "status": {
     "ready": "Bereit",

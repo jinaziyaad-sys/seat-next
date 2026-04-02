@@ -52,7 +52,8 @@
     "cancelledBy": "{{by}}によりキャンセル",
     "noShowReleased": "テーブル解放 - 時間内に到着しませんでした",
     "today": "今日",
-    "tomorrow": "明日"
+    "tomorrow": "明日",
+    "inviteFriendsText": "Join me on the waitlist at {{venue}}!"
   },
   "status": {
     "ready": "準備完了",

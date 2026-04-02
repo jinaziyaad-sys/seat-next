@@ -52,7 +52,8 @@
     "cancelledBy": "Cancelado por {{by}}",
     "noShowReleased": "Mesa liberada - no llegó a tiempo",
     "today": "Hoy",
-    "tomorrow": "Mañana"
+    "tomorrow": "Mañana",
+    "inviteFriendsText": "Join me on the waitlist at {{venue}}!"
   },
   "status": {
     "ready": "Listo",
