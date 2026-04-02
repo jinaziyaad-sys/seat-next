@@ -743,7 +743,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                 size="sm"
                 onClick={() => handleRadiusChange(100)}
               >
-                Expand to 100km
+                {t("explore.expandTo", { radius: 100 })}
               </Button>
             )}
           </div>
