@@ -181,7 +181,7 @@ export function PatronDiningPreferences() {
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <Leaf className="h-4 w-4 text-success" />
-            <Label className="text-base font-medium">Dietary Requirements</Label>
+            <Label className="text-base font-medium">{t("dining.dietary")}</Label>
           </div>
           <div className="flex flex-wrap gap-2">
             {DIETARY_OPTIONS.map((option) => {
