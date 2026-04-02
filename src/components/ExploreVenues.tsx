@@ -792,7 +792,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                           }).catch(() => {});
                         } else {
                           navigator.clipboard.writeText(url);
-                          toast({ title: "Link copied!" });
+                          toast({ title: t("explore.linkCopied") });
                         }
                       }}
                     >
