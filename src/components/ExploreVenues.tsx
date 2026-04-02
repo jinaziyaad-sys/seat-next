@@ -776,6 +776,28 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
+                    {/* Share button */}
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const url = `${window.location.origin}/waitlist/${venue.venue_id}`;
+                        if (navigator.share) {
+                          navigator.share({
+                            title: venue.name,
+                            text: t("explore.shareVenue", { name: venue.name }),
+                            url,
+                          }).catch(() => {});
+                        } else {
+                          navigator.clipboard.writeText(url);
+                          toast({ title: "Link copied!" });
+                        }
+                      }}
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </Button>
                     {/* Message button */}
                     <Button
                       variant="ghost"
