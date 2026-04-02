@@ -135,7 +135,7 @@ export function PatronNotificationSettings() {
       <CardHeader>
         <div className="flex items-center gap-3">
           <Bell size={24} />
-          <CardTitle>Notifications</CardTitle>
+          <CardTitle>{t("notifications.title")}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
