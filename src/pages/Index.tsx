@@ -1160,7 +1160,7 @@ const Index = () => {
                             handleDismissWaitlist(entry.id);
                           }}
                         >
-                          Dismiss
+                          {t("home.dismiss")}
                         </Button>
                       )}
                     </div>
