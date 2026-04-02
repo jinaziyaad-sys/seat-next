@@ -184,11 +184,11 @@ export default function WaitlistJoin() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="phone">Phone Number (Optional)</Label>
+            <Label htmlFor="phone">{t("waitlistJoin.phone")}</Label>
             <Input
               id="phone"
               type="tel"
-              placeholder="+1 (555) 123-4567"
+              placeholder={t("waitlistJoin.phonePlaceholder")}
               value={customerPhone}
               onChange={(e) => setCustomerPhone(e.target.value)}
             />
