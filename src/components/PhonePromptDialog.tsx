@@ -66,8 +66,8 @@ export function PhonePromptDialog({
 
       if (data.success) {
         toast({
-          title: "Code Sent!",
-          description: "Verification code sent to your phone.",
+          title: t("phone.codeSent"),
+          description: t("phone.codeSentDesc"),
         });
         setVerificationStep("verify");
         
