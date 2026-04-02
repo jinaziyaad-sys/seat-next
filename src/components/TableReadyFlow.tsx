@@ -1740,8 +1740,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 <Users size={28} />
               </div>
               <div>
-                <h3 className="font-semibold">Waitlist</h3>
-                <p className="text-sm text-muted-foreground">Get seated today</p>
+                <h3 className="font-semibold">{t("tableReady.joinWaitlist")}</h3>
+                <p className="text-sm text-muted-foreground">{t("tableReady.waiting")}</p>
               </div>
             </CardContent>
           </Card>
