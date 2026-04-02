@@ -904,7 +904,7 @@ const Index = () => {
                           }}
                           className="bg-success hover:bg-success/90"
                         >
-                          Rate
+                          {t("home.rate")}
                         </Button>
                       )}
                       {shouldClear && (
