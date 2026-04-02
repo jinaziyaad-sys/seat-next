@@ -34,6 +34,7 @@ const defaultPreferences: NotificationPreferences = {
 };
 
 export function PatronNotificationSettings() {
+  const { t } = useTranslation();
   const [preferences, setPreferences] = useState<NotificationPreferences>(defaultPreferences);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
