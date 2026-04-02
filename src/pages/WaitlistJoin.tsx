@@ -132,8 +132,8 @@ export default function WaitlistJoin() {
 
     if (error || !data) {
       toast({
-        title: "Error",
-        description: "Could not join waitlist. Please try again.",
+        title: t("waitlistJoin.error"),
+        description: t("waitlistJoin.couldNotJoin"),
         variant: "destructive",
       });
       return;
