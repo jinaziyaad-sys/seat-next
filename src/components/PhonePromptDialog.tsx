@@ -273,7 +273,7 @@ export function PhonePromptDialog({
             </div>
             
             <div>
-              <Label htmlFor="otp-prompt">Verification Code</Label>
+              <Label htmlFor="otp-prompt">{t("phone.verificationCode")}</Label>
               <Input
                 id="otp-prompt"
                 type="text"
