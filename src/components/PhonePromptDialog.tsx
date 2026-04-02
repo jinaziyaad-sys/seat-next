@@ -260,7 +260,7 @@ export function PhonePromptDialog({
                 disabled={loading}
                 className="w-full"
               >
-                Skip for Now
+                {t("phone.skipForNow")}
               </Button>
             </div>
           </div>
