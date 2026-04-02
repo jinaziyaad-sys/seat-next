@@ -1125,12 +1125,12 @@ const Index = () => {
                           isOverdue && "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10"
                         )}
                       >
-                        {isOverdue ? 'Overdue' : 
-                         isReservation ? 'Reserved' : 
-                         entry.status === 'ready' ? 'Ready' : 
-                         entry.status === 'cancelled' ? 'Cancelled' :
-                         entry.status === 'seated' ? 'Seated' :
-                         'Waiting'}
+                        {isOverdue ? t("status.overdue") : 
+                         isReservation ? t("status.reserved") : 
+                         entry.status === 'ready' ? t("status.ready") : 
+                         entry.status === 'cancelled' ? t("status.cancelled") :
+                         entry.status === 'seated' ? t("status.seated") :
+                         t("status.waiting")}
                       </Badge>
                       {shouldRate && (
                         <Button
