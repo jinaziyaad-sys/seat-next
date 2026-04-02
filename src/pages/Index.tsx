@@ -999,7 +999,7 @@ const Index = () => {
                             ? "bg-purple-600 text-white" 
                             : "bg-secondary text-secondary-foreground"
                         )}>
-                          {isReservation ? 'Reservation' : 'Waitlist'}
+                          {isReservation ? t("home.reservation") : t("home.waitlist")}
                         </span>
                         <h3 className="font-semibold">{entry.venues?.name}</h3>
                         {entry.customer_name && (
