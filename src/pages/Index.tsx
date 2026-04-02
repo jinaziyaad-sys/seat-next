@@ -839,10 +839,10 @@ const Index = () => {
                                 </Badge>
                                 <span>
                                   {order.confidence === 'high' 
-                                    ? 'Based on historical data' 
+                                    ? t("status.basedOnHistory")
                                     : order.confidence === 'medium' 
-                                    ? 'Some historical data' 
-                                    : 'Venue default time'}
+                                    ? t("status.someHistory")
+                                    : t("status.venueDefault")}
                                 </span>
                               </div>
                             )}
