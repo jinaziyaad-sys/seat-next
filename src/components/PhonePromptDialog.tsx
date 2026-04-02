@@ -183,8 +183,8 @@ export function PhonePromptDialog({
     onComplete();
     onOpenChange(false);
     toast({
-      title: "Skipped",
-      description: "You can add your phone number later in your profile.",
+      title: t("phone.skipped"),
+      description: t("phone.skippedDesc"),
     });
   };
 
