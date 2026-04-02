@@ -104,8 +104,8 @@ export const RatingDialog = ({
 
         if (existingRating) {
           toast({
-            title: "Already Rated",
-            description: "You've already rated this experience.",
+            title: t("rating.alreadyRated"),
+            description: t("rating.alreadyRatedDesc"),
           });
           onComplete();
           return;
