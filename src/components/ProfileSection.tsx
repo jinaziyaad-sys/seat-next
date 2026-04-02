@@ -185,7 +185,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
               value={profile.email}
               disabled
             />
-            <p className="text-xs text-muted-foreground">Email cannot be changed</p>
+            <p className="text-xs text-muted-foreground">{t("profile.emailCannotChange")}</p>
           </div>
           
           <div className="space-y-2">
