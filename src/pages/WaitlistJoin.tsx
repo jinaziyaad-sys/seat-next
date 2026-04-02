@@ -251,10 +251,10 @@ export default function WaitlistJoin() {
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 animate-spin" size={16} />
-                Joining...
+                {t("waitlistJoin.joining")}
               </>
             ) : (
-              "Join Waitlist"
+              t("waitlistJoin.joinButton")
             )}
           </Button>
 
