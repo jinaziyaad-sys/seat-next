@@ -116,8 +116,8 @@ export function PhonePromptDialog({
 
       if (data.verified) {
         toast({
-          title: "Phone Verified! ✅",
-          description: "Your phone number has been verified successfully.",
+          title: t("phone.phoneVerified"),
+          description: t("phone.phoneVerifiedDesc"),
         });
         onComplete();
         onOpenChange(false);
