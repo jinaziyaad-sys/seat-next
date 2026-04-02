@@ -591,7 +591,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
               <Navigation className="h-4 w-4 text-primary shrink-0" />
               {customLocation ? (
                 <>
-                  <span className="text-muted-foreground">Searching in:</span>
+                  <span className="text-muted-foreground">{t("explore.searchingIn")}</span>
                   <span className="font-medium truncate">{customLocation.label}</span>
                   <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setShowLocationSearch(true)}>
                     <Pencil className="h-3 w-3 mr-1" />
