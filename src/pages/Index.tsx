@@ -63,6 +63,7 @@ const DEMO_WAITLIST = {
 };
 
 const Index = () => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState("home");
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);

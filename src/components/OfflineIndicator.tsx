@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { replayQueue, getQueue } from "@/utils/offlineQueue";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useTranslation } from "react-i18next";
 
 export function OfflineIndicator() {
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
