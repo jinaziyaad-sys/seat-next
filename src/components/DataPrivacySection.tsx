@@ -88,7 +88,7 @@ export function DataPrivacySection() {
       <CardHeader>
         <div className="flex items-center gap-3">
           <Shield size={24} />
-          <CardTitle>Data &amp; Privacy</CardTitle>
+          <CardTitle>{t("privacy.title")}</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
