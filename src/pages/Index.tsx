@@ -1023,7 +1023,7 @@ const Index = () => {
                                 {format(reservationTime, 'HH:mm')}
                                 {isOverdue ? (
                                   <span className="text-amber-600 dark:text-amber-400 font-medium">
-                                    {' • '}{minutesLate} min late
+                                    {' • '}{t("home.minLate", { minutes: minutesLate })}
                                   </span>
                                 ) : isUpcomingTime ? (
                                   <>
