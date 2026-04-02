@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -50,6 +51,7 @@ export function EditReservationDialog({
   onSuccess,
 }: EditReservationDialogProps) {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [partySize, setPartySize] = useState(entry.party_size);
   const [reservationDate, setReservationDate] = useState<Date | undefined>(
@@ -230,8 +232,8 @@ export function EditReservationDialog({
 
         if (tableError) {
           toast({
-            title: "Error Checking Availability",
-            description: "Unable to verify table availability. Please try again.",
+            title: t("editReservation.errorCheckingAvailability"),
+            description: t("editReservation.unableToVerify"),
             variant: "destructive",
           });
           setIsLoading(false);
@@ -240,8 +242,8 @@ export function EditReservationDialog({
 
         if (!tableResult?.available) {
           toast({
-            title: "Time Slot Unavailable",
-            description: tableResult?.reason || "No tables available for this party size at the selected time.",
+            title: t("editReservation.timeSlotUnavailable"),
+            description: tableResult?.reason || t("editReservation.noTablesAvailable"),
             variant: "destructive",
           });
           setIsLoading(false);
@@ -251,8 +253,8 @@ export function EditReservationDialog({
         // Handle multi-table case - for now, show error and require cancel/rebook
         if (tableResult?.tables && tableResult.tables.length > 1) {
           toast({
-            title: "Multiple Tables Required",
-            description: "This party size requires multiple tables. Please cancel and create a new reservation.",
+            title: t("editReservation.multipleTablesRequired"),
+            description: t("editReservation.multipleTablesDesc"),
             variant: "destructive",
           });
           setIsLoading(false);
@@ -291,8 +293,8 @@ export function EditReservationDialog({
       }
 
       toast({
-        title: "Reservation Updated",
-        description: "Your changes have been saved.",
+        title: t("editReservation.reservationUpdated"),
+        description: t("editReservation.changesSaved"),
       });
 
       onSuccess({
@@ -307,8 +309,8 @@ export function EditReservationDialog({
     } catch (err) {
       console.error("Error updating reservation:", err);
       toast({
-        title: "Update Failed",
-        description: "Unable to save changes. Please try again.",
+        title: t("editReservation.updateFailed"),
+        description: t("editReservation.unableToSave"),
         variant: "destructive",
       });
     } finally {
@@ -320,7 +322,7 @@ export function EditReservationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Reservation</DialogTitle>
+          <DialogTitle>{t("editReservation.title")}</DialogTitle>
           <DialogDescription>
             {entry.venue}
           </DialogDescription>
@@ -330,8 +332,7 @@ export function EditReservationDialog({
           <div className="flex items-center gap-3 p-4 bg-destructive/10 rounded-lg">
             <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0" />
             <p className="text-sm text-destructive">
-              Changes cannot be made within 2 hours of your reservation time. 
-              Please contact the restaurant directly.
+              {t("editReservation.cannotEdit")}
             </p>
           </div>
         ) : (
@@ -340,7 +341,7 @@ export function EditReservationDialog({
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Party Size
+                {t("editReservation.partySize")}
               </Label>
               <Select value={partySize.toString()} onValueChange={(v) => setPartySize(parseInt(v))}>
                 <SelectTrigger>
@@ -349,7 +350,7 @@ export function EditReservationDialog({
                 <SelectContent>
                   {Array.from({ length: 12 }, (_, i) => i + 1).map((size) => (
                     <SelectItem key={size} value={size.toString()}>
-                      {size} {size === 1 ? "Guest" : "Guests"}
+                      {size} {size === 1 ? t("editReservation.guest") : t("editReservation.guests")}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -360,7 +361,7 @@ export function EditReservationDialog({
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <CalendarIcon className="h-4 w-4" />
-                Date
+                {t("editReservation.date")}
               </Label>
               <Popover>
                 <PopoverTrigger asChild>
@@ -371,7 +372,7 @@ export function EditReservationDialog({
                       !reservationDate && "text-muted-foreground"
                     )}
                   >
-                    {reservationDate ? format(reservationDate, "PPP") : "Select date"}
+                    {reservationDate ? format(reservationDate, "PPP") : t("editReservation.selectDate")}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0" align="start">
@@ -390,7 +391,7 @@ export function EditReservationDialog({
             <div className="space-y-2">
               <Label className="flex items-center gap-2">
                 <Clock className="h-4 w-4" />
-                Time
+                {t("editReservation.time")}
               </Label>
               <Select 
                 value={reservationTime} 
@@ -398,7 +399,7 @@ export function EditReservationDialog({
                 disabled={isLoadingTimes || availableTimes.length === 0}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={isLoadingTimes ? "Loading times..." : "Select time"} />
+                  <SelectValue placeholder={isLoadingTimes ? t("editReservation.loadingTimes") : t("editReservation.selectTime")} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableTimes.map((time) => (
@@ -412,7 +413,7 @@ export function EditReservationDialog({
 
             {/* Seating Preference */}
             <div className="space-y-2">
-              <Label>Seating Preference</Label>
+              <Label>{t("editReservation.seatingPreference")}</Label>
               <ToggleGroup 
                 type="single" 
                 value={seatingPreference}
@@ -420,24 +421,24 @@ export function EditReservationDialog({
                 className="justify-start"
               >
                 <ToggleGroupItem value="indoor" variant="outline">
-                  Indoor
+                  {t("editReservation.indoor")}
                 </ToggleGroupItem>
                 <ToggleGroupItem value="outdoor" variant="outline">
-                  Outdoor
+                  {t("editReservation.outdoor")}
                 </ToggleGroupItem>
                 <ToggleGroupItem value="no-preference" variant="outline">
-                  No Preference
+                  {t("editReservation.noPreference")}
                 </ToggleGroupItem>
               </ToggleGroup>
             </div>
 
             {/* Special Requests */}
             <div className="space-y-2">
-              <Label>Special Requests (Optional)</Label>
+              <Label>{t("editReservation.specialRequests")}</Label>
               <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
-                placeholder="Any special requests or notes..."
+                placeholder={t("editReservation.specialRequestsPlaceholder")}
                 className="resize-none"
                 maxLength={500}
               />
@@ -450,11 +451,11 @@ export function EditReservationDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+            {t("common.cancel")}
           </Button>
           <Button onClick={handleSave} disabled={!canEdit || isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Changes
+            {t("profile.save")}
           </Button>
         </DialogFooter>
       </DialogContent>

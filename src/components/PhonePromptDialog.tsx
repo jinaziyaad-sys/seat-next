@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -32,14 +33,15 @@ export function PhonePromptDialog({
   const [otpCode, setOtpCode] = useState("");
   const [resendCooldown, setResendCooldown] = useState(0);
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const handleSubmitPhone = async () => {
     // Validate phone format
     const phoneRegex = /^\+?[1-9]\d{1,14}$/;
     if (!phoneRegex.test(phone.replace(/[\s-]/g, ''))) {
       toast({
-        title: "Invalid Phone",
-        description: "Please enter a valid phone number with country code (e.g., +27823077786).",
+        title: t("phone.invalidPhone"),
+        description: t("phone.invalidPhoneDesc"),
         variant: "destructive",
       });
       return;
@@ -64,8 +66,8 @@ export function PhonePromptDialog({
 
       if (data.success) {
         toast({
-          title: "Code Sent!",
-          description: "Verification code sent to your phone.",
+          title: t("phone.codeSent"),
+          description: t("phone.codeSentDesc"),
         });
         setVerificationStep("verify");
         
@@ -85,8 +87,8 @@ export function PhonePromptDialog({
       }
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to update phone number",
+        title: t("common.error"),
+        description: error.message || t("phone.failedUpdate"),
         variant: "destructive",
       });
     } finally {
@@ -97,8 +99,8 @@ export function PhonePromptDialog({
   const handleVerifyOTP = async () => {
     if (!otpCode || otpCode.length !== 6) {
       toast({
-        title: "Invalid Code",
-        description: "Please enter a 6-digit verification code",
+        title: t("phone.invalidCode"),
+        description: t("phone.invalidCodeDesc"),
         variant: "destructive",
       });
       return;
@@ -114,22 +116,22 @@ export function PhonePromptDialog({
 
       if (data.verified) {
         toast({
-          title: "Phone Verified! ✅",
-          description: "Your phone number has been verified successfully.",
+          title: t("phone.phoneVerified"),
+          description: t("phone.phoneVerifiedDesc"),
         });
         onComplete();
         onOpenChange(false);
       } else {
         toast({
-          title: "Verification Failed",
-          description: data.message || "Invalid verification code",
+          title: t("phone.verificationFailed"),
+          description: data.message || t("phone.failedVerify"),
           variant: "destructive",
         });
       }
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to verify code",
+        title: t("common.error"),
+        description: error.message || t("phone.failedVerify"),
         variant: "destructive",
       });
     } finally {
@@ -150,8 +152,8 @@ export function PhonePromptDialog({
 
       if (data.success) {
         toast({
-          title: "Code Sent!",
-          description: "New verification code sent to your phone.",
+          title: t("phone.codeSent"),
+          description: t("phone.newCodeSent"),
         });
         
         setResendCooldown(60);
@@ -167,8 +169,8 @@ export function PhonePromptDialog({
       }
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: "Failed to resend code",
+        title: t("common.error"),
+        description: t("phone.failedResend"),
         variant: "destructive",
       });
     } finally {
@@ -181,8 +183,8 @@ export function PhonePromptDialog({
     onComplete();
     onOpenChange(false);
     toast({
-      title: "Skipped",
-      description: "You can add your phone number later in your profile.",
+      title: t("phone.skipped"),
+      description: t("phone.skippedDesc"),
     });
   };
 
@@ -200,13 +202,13 @@ export function PhonePromptDialog({
       onComplete();
       onOpenChange(false);
       toast({
-        title: "Phone Saved",
-        description: "Your phone number has been saved. You can verify it later.",
+        title: t("phone.phoneSaved"),
+        description: t("phone.phoneSavedDesc"),
       });
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "Failed to save phone number",
+        title: t("common.error"),
+        description: error.message || t("phone.failedSave"),
         variant: "destructive",
       });
     } finally {
@@ -220,26 +222,26 @@ export function PhonePromptDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Phone className="h-5 w-5" />
-            Complete Your Profile
+            {t("phone.completeProfile")}
           </DialogTitle>
           <DialogDescription>
-            Add your phone number to receive SMS notifications when your table or order is ready.
+            {t("phone.addPhoneDesc")}
           </DialogDescription>
         </DialogHeader>
 
         {verificationStep === "input" ? (
           <div className="space-y-4">
             <div>
-              <Label htmlFor="phone-prompt">Phone Number (with country code)</Label>
+              <Label htmlFor="phone-prompt">{t("phone.phoneLabel")}</Label>
               <Input
                 id="phone-prompt"
                 type="tel"
-                placeholder="+1234567890"
+                placeholder={t("phone.phonePlaceholder")}
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Include country code (e.g., +1 for US, +44 for UK)
+                {t("phone.countryCodeHint")}
               </p>
             </div>
 
@@ -249,7 +251,7 @@ export function PhonePromptDialog({
                 disabled={loading || !phone}
                 className="w-full"
               >
-                {loading ? "Sending Code..." : "Verify Phone Number"}
+                {loading ? t("phone.sendingCode") : t("phone.verifyPhone")}
               </Button>
               
               <Button 
@@ -258,7 +260,7 @@ export function PhonePromptDialog({
                 disabled={loading}
                 className="w-full"
               >
-                Skip for Now
+                {t("phone.skipForNow")}
               </Button>
             </div>
           </div>
@@ -266,12 +268,12 @@ export function PhonePromptDialog({
           <div className="space-y-4">
             <div className="text-center space-y-2">
               <p className="text-sm text-muted-foreground">
-                We sent a 6-digit code to {phone}
+                {t("phone.weSentCode", { phone })}
               </p>
             </div>
             
             <div>
-              <Label htmlFor="otp-prompt">Verification Code</Label>
+              <Label htmlFor="otp-prompt">{t("phone.verificationCode")}</Label>
               <Input
                 id="otp-prompt"
                 type="text"
@@ -288,7 +290,7 @@ export function PhonePromptDialog({
               className="w-full" 
               disabled={loading || otpCode.length !== 6}
             >
-              {loading ? "Verifying..." : "Verify Phone"}
+              {loading ? t("phone.verifying") : t("phone.verifyPhoneBtn")}
             </Button>
 
             <Button 
@@ -298,8 +300,8 @@ export function PhonePromptDialog({
               disabled={loading || resendCooldown > 0}
             >
               {resendCooldown > 0 
-                ? `Resend Code (${resendCooldown}s)` 
-                : "Resend Code"
+                ? t("phone.resendCodeCountdown", { seconds: resendCooldown })
+                : t("phone.resendCode")
               }
             </Button>
 
@@ -313,7 +315,7 @@ export function PhonePromptDialog({
                 disabled={loading}
                 className="flex-1"
               >
-                Change Number
+                {t("phone.changeNumber")}
               </Button>
               <Button 
                 variant="outline" 
@@ -321,7 +323,7 @@ export function PhonePromptDialog({
                 disabled={loading}
                 className="flex-1"
               >
-                Skip Verification
+                {t("phone.skipVerification")}
               </Button>
             </div>
           </div>

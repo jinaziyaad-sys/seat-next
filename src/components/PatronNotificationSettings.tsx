@@ -101,16 +101,16 @@ export function PatronNotificationSettings() {
     if (error) {
       console.error('Error saving preferences:', error);
       toast({
-        title: "Error",
-        description: "Failed to save notification preferences",
+        title: t("common.error"),
+        description: t("notifications.failedSave"),
         variant: "destructive",
       });
       // Revert on error
       setPreferences(preferences);
     } else {
       toast({
-        title: "Saved",
-        description: "Notification preferences updated",
+        title: t("notifications.saved"),
+        description: t("notifications.preferencesUpdated"),
       });
     }
     setSaving(false);

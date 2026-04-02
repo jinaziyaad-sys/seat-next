@@ -55,8 +55,8 @@ export const RatingDialog = ({
   const handleSubmit = async () => {
     if (rating === 0) {
       toast({
-        title: "Rating Required",
-        description: "Please select a star rating before submitting.",
+        title: t("rating.ratingRequired"),
+        description: t("rating.ratingRequiredDesc"),
         variant: "destructive"
       });
       return;
@@ -75,8 +75,8 @@ export const RatingDialog = ({
 
         if (existingRating) {
           toast({
-            title: "Already Rated",
-            description: "You've already rated this experience.",
+            title: t("rating.alreadyRated"),
+            description: t("rating.alreadyRatedDesc"),
           });
           onComplete();
           return;
@@ -104,8 +104,8 @@ export const RatingDialog = ({
 
         if (existingRating) {
           toast({
-            title: "Already Rated",
-            description: "You've already rated this experience.",
+            title: t("rating.alreadyRated"),
+            description: t("rating.alreadyRatedDesc"),
           });
           onComplete();
           return;
@@ -134,8 +134,8 @@ export const RatingDialog = ({
     } catch (error: any) {
       console.error("Error submitting rating:", error);
       toast({
-        title: "Error",
-        description: error.message || "Failed to submit rating. Please try again.",
+        title: t("common.error"),
+        description: error.message || t("rating.failedSubmit"),
         variant: "destructive"
       });
       setIsSubmitting(false);
@@ -149,7 +149,7 @@ export const RatingDialog = ({
       navigator.share({ title: venueName, text, url }).catch(() => {});
     } else {
       navigator.clipboard.writeText(`${text} ${url}`);
-      toast({ title: "Link copied!" });
+      toast({ title: t("explore.linkCopied") });
     }
   };
 

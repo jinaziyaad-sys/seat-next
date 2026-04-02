@@ -63,11 +63,11 @@ export function DataPrivacySection() {
         if (error) throw error;
         return true;
       },
-      () => toast({ title: "Please wait", description: "You can only submit one request at a time", variant: "destructive" })
+      () => toast({ title: t("privacy.pleaseWait"), description: t("privacy.oneRequestAtTime"), variant: "destructive" })
     );
 
     if (result) {
-      toast({ title: "Deletion Requested", description: "Your account deletion request has been submitted. An admin will review it within 30 days." });
+      toast({ title: t("privacy.deletionRequested"), description: t("privacy.deletionRequestedDesc") });
       fetchRequests();
     }
     setLoading(false);

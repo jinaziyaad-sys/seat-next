@@ -60,11 +60,11 @@ interface LocationSuggestion {
   precision?: string;
 }
 
-const FILTER_OPTIONS = [
-  { id: "halaal", label: "Halaal", icon: "🕌" },
-  { id: "vegetarian", label: "Vegetarian", icon: "🥬" },
-  { id: "vegan", label: "Vegan", icon: "🌱" },
-  { id: "short_wait", label: "Short Wait", icon: "⚡" },
+const FILTER_OPTION_IDS = [
+  { id: "halaal", labelKey: "explore.halaal", icon: "🕌" },
+  { id: "vegetarian", labelKey: "explore.vegetarian", icon: "🥬" },
+  { id: "vegan", labelKey: "explore.vegan", icon: "🌱" },
+  { id: "short_wait", labelKey: "explore.shortWait", icon: "⚡" },
 ];
 
 const RADIUS_OPTIONS = [10, 25, 50, 100];
@@ -251,8 +251,8 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
       if (error || !data?.valid) {
         setLocationSuggestions([]);
         toast({
-          title: "Location not found",
-          description: "Try a different city or address",
+          title: t("explore.locationNotFound"),
+          description: t("explore.locationNotFoundDesc"),
           variant: "destructive",
         });
       } else {
@@ -293,8 +293,8 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
       if (error) {
         console.error("Error fetching recommendations:", error);
         toast({
-          title: "Error",
-          description: "Failed to load recommendations",
+          title: t("common.error"),
+          description: t("explore.failedRecommendations"),
           variant: "destructive",
         });
       } else {
@@ -481,11 +481,11 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
 
   const getBusynessLabel = (busyness: string) => {
     switch (busyness) {
-      case "quiet": return "Not busy";
-      case "moderate": return "Moderately busy";
-      case "busy": return "Busy";
-      case "very_busy": return "Very busy";
-      default: return "Unknown";
+      case "quiet": return t("explore.notBusy");
+      case "moderate": return t("explore.moderatelyBusy");
+      case "busy": return t("explore.busy");
+      case "very_busy": return t("explore.veryBusy");
+      default: return t("explore.unknown");
     }
   };
 
@@ -498,9 +498,9 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div className="flex-1">
-            <h1 className="text-xl font-bold">Explore Venues</h1>
+            <h1 className="text-xl font-bold">{t("explore.title")}</h1>
             <p className="text-sm text-muted-foreground">
-              {user ? "Personalized for you" : "Discover nearby restaurants"}
+              {user ? t("explore.personalised") : t("explore.discover")}
             </p>
           </div>
           <Button 
@@ -518,7 +518,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search by name or cuisine..."
+              placeholder={t("explore.searchPlaceholder")}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-9"
@@ -534,7 +534,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                 <div className="relative flex-1">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input
-                    placeholder="Search a city or address..."
+                    placeholder={t("explore.locationPlaceholder")}
                     value={locationQuery}
                     onChange={(e) => setLocationQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleLocationSearch()}
@@ -581,7 +581,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                   ))
               ) : locationQuery.trim().length >= 2 && !searchingLocation && locationSearchDone ? (
                   <div className="px-3 py-4 text-sm text-muted-foreground">
-                    No locations found. Try a nearby city, suburb, or full address.
+                    {t("explore.noLocationsFound")}
                   </div>
                 ) : null}
               </div>
@@ -591,11 +591,11 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
               <Navigation className="h-4 w-4 text-primary shrink-0" />
               {customLocation ? (
                 <>
-                  <span className="text-muted-foreground">Searching in:</span>
+                  <span className="text-muted-foreground">{t("explore.searchingIn")}</span>
                   <span className="font-medium truncate">{customLocation.label}</span>
                   <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setShowLocationSearch(true)}>
                     <Pencil className="h-3 w-3 mr-1" />
-                    Change
+                    {t("explore.change")}
                   </Button>
                   <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={clearCustomLocation}>
                     <X className="h-3 w-3" />
@@ -604,11 +604,11 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
               ) : (
                 <>
                   <span className="text-muted-foreground">
-                    {userLocation ? "Using your location" : "Location unavailable"}
+                    {userLocation ? t("explore.usingLocation") : t("explore.locationUnavailable")}
                   </span>
                   <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setShowLocationSearch(true)}>
                     <Pencil className="h-3 w-3 mr-1" />
-                    Change
+                    {t("explore.change")}
                   </Button>
                 </>
               )}
@@ -617,7 +617,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
 
           {/* Radius chips */}
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Radius:</span>
+            <span className="text-xs text-muted-foreground">{t("explore.radius")}</span>
             {RADIUS_OPTIONS.map((r) => (
               <button
                 key={r}
@@ -637,7 +637,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
 
         {/* Filters */}
         <div className="px-4 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
-          {FILTER_OPTIONS.map((filter) => {
+          {FILTER_OPTION_IDS.map((filter) => {
             const isActive = activeFilters.includes(filter.id);
             return (
               <button
@@ -651,7 +651,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                 )}
               >
                 <span>{filter.icon}</span>
-                <span>{filter.label}</span>
+                <span>{t(filter.labelKey)}</span>
               </button>
             );
           })}
@@ -665,13 +665,13 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
             <CardContent className="p-4 flex items-center gap-3">
               <Sparkles className="h-8 w-8 text-primary" />
               <div className="flex-1">
-                <p className="font-medium text-sm">Get personalized recommendations</p>
+                <p className="font-medium text-sm">{t("explore.getPersonalized")}</p>
                 <p className="text-xs text-muted-foreground">
-                  Sign in and set your dining preferences
+                  {t("explore.signInSetPrefs")}
                 </p>
               </div>
               <Button size="sm" variant="default">
-                Sign In
+                {t("common.signIn")}
               </Button>
             </CardContent>
           </Card>
@@ -688,7 +688,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
         {user && !loading && recommendations.length > 0 && (
           <div className="flex items-center gap-2 mb-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium">For You</span>
+            <span className="text-sm font-medium">{t("explore.forYou")}</span>
           </div>
         )}
 
@@ -717,24 +717,24 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
             <MapPin className="h-10 w-10 text-muted-foreground mx-auto" />
             <p className="text-muted-foreground font-medium">
               {customLocation
-                ? `No venues found near ${customLocation.label}`
+                ? t("explore.noVenuesNear", { location: customLocation.label })
                 : recommendations.length === 0
-                  ? "No venues found in this area"
-                  : "No venues match your filters"}
+                  ? t("explore.noVenuesArea")
+                  : t("explore.noVenuesMatch")}
             </p>
             <p className="text-sm text-muted-foreground">
               {customLocation
-                ? "Try a different location or increase your search radius"
+                ? t("explore.tryDifferentLocation")
                 : recommendations.length === 0
-                  ? "Try increasing your search radius"
-                  : "Try adjusting your filters"}
+                  ? t("explore.tryIncreaseRadius")
+                  : t("explore.tryAdjustFilters")}
             </p>
             {activeFilters.length > 0 && (
               <Button 
                 variant="link" 
                 onClick={() => setActiveFilters([])}
               >
-                Clear filters
+                {t("explore.clearFilters")}
               </Button>
             )}
             {searchRadius < 100 && recommendations.length === 0 && (
@@ -743,7 +743,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                 size="sm"
                 onClick={() => handleRadiusChange(100)}
               >
-                Expand to 100km
+                {t("explore.expandTo", { radius: 100 })}
               </Button>
             )}
           </div>
@@ -792,7 +792,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                           }).catch(() => {});
                         } else {
                           navigator.clipboard.writeText(url);
-                          toast({ title: "Link copied!" });
+                          toast({ title: t("explore.linkCopied") });
                         }
                       }}
                     >
@@ -822,7 +822,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                           venue.match_score < 60 && "bg-muted text-muted-foreground"
                         )}
                       >
-                        {venue.match_score}% Match
+                        {t("explore.match", { score: venue.match_score })}
                       </Badge>
                     )}
                   </div>
@@ -864,13 +864,13 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                     </Badge>
                   ))}
                   {venue.dietary_certifications?.halaal && (
-                    <Badge variant="outline" className="text-xs">🕌 Halaal</Badge>
+                    <Badge variant="outline" className="text-xs">🕌 {t("explore.halaal")}</Badge>
                   )}
                   {venue.dietary_certifications?.vegetarian_friendly && (
-                    <Badge variant="outline" className="text-xs">🥬 Veg-friendly</Badge>
+                    <Badge variant="outline" className="text-xs">🥬 {t("explore.vegFriendly")}</Badge>
                   )}
                   {venue.dietary_certifications?.vegan_options && (
-                    <Badge variant="outline" className="text-xs">🌱 Vegan options</Badge>
+                    <Badge variant="outline" className="text-xs">🌱 {t("explore.veganOptions")}</Badge>
                   )}
                 </div>
 

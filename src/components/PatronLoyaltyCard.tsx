@@ -8,6 +8,7 @@ import { Gift, Stamp, Star, ChevronRight, Loader2, Copy, Check, Trophy, Sparkles
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { useTranslation } from "react-i18next";
 
 interface LoyaltyCardData {
   venue_id: string;
@@ -24,7 +25,6 @@ interface LoyaltyCardData {
   next_reward_name: string | null;
   next_reward_description: string | null;
   next_reward_threshold: number | null;
-  // New loyalty features
   tier_name: string | null;
   tier_color: string | null;
   tier_perks: string[];
@@ -45,6 +45,7 @@ interface PatronLoyaltyCardProps {
 }
 
 export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCardProps) => {
+  const { t } = useTranslation();
   const [cards, setCards] = useState<LoyaltyCardData[]>([]);
   const [loading, setLoading] = useState(true);
   const [expandedCard, setExpandedCard] = useState<string | null>(null);
@@ -61,7 +62,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
     e.stopPropagation();
     await navigator.clipboard.writeText(code);
     setCopiedCode(code);
-    toast.success("Code copied!");
+    toast.success(t("loyalty.codeCopied"));
     setTimeout(() => setCopiedCode(null), 2000);
   };
 
@@ -70,14 +71,14 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
     setClaimingVenue(venueId);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { toast.error("Please sign in"); return; }
+      if (!session) { toast.error(t("loyalty.pleaseSignIn")); return; }
       const { data, error } = await supabase.functions.invoke('claim-loyalty-reward', { body: { venue_id: venueId } });
       if (error) throw error;
       if (data?.error) { toast.error(data.error); return; }
-      toast.success(`🎉 Reward claimed: ${data.reward_name}! Code: ${data.code}`);
+      toast.success(t("loyalty.rewardClaimed", { reward: data.reward_name, code: data.code }));
       await fetchLoyaltyData();
     } catch (err: any) {
-      toast.error(err.message || "Failed to claim reward");
+      toast.error(err.message || t("loyalty.failedClaimReward"));
     } finally { setClaimingVenue(null); }
   };
 
@@ -88,11 +89,11 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
       if (!user) return;
       const code = Math.random().toString(36).substring(2, 8).toUpperCase();
       await supabase.from("referral_codes").insert({ user_id: user.id, venue_id: venueId, code });
-      toast.success("Referral code generated!");
+      toast.success(t("loyalty.referralGenerated"));
       await fetchLoyaltyData();
     } catch (err: any) {
-      if (err.message?.includes("duplicate")) toast.info("You already have a referral code");
-      else toast.error("Failed to generate code");
+      if (err.message?.includes("duplicate")) toast.info(t("loyalty.alreadyHaveReferral"));
+      else toast.error(t("loyalty.failedGenerateCode"));
     }
   };
 
@@ -106,11 +107,11 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
       });
       if (error) throw error;
       if (data?.error) { toast.error(data.error); return; }
-      toast.success(`🎉 ${data.message || "Referral applied!"}`);
+      toast.success(`🎉 ${data.message || t("loyalty.referralApplied")}`);
       setReferralInput("");
       await fetchLoyaltyData();
     } catch (err: any) {
-      toast.error(err.message || "Failed to apply referral code");
+      toast.error(err.message || t("loyalty.failedApplyReferral"));
     } finally { setSubmittingReferral(null); }
   };
 
@@ -124,7 +125,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
     } else {
       await navigator.clipboard.writeText(message);
       setCopiedCode(code);
-      toast.success("Referral message copied!");
+      toast.success(t("loyalty.referralCopied"));
       setTimeout(() => setCopiedCode(null), 2000);
     }
   };
@@ -170,7 +171,6 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
         codesMap.get(c.venue_id)!.push(c);
       });
 
-      // Build tier map: tierId -> tier
       const tierMap = new Map(tiersRes.data?.map(t => [t.id, t]) || []);
       const tierStatusMap = new Map(tierStatusRes.data?.map(ts => [ts.venue_id, ts]) || []);
       const cashbackMap = new Map(cashbackRes.data?.map(cb => [cb.venue_id, cb]) || []);
@@ -192,19 +192,13 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
           if (!venue || !program) return null;
           const reward = rewardsMap.get(program.id);
 
-          // Tier info
           const tierStatus = tierStatusMap.get(l.venue_id);
           const tier = tierStatus?.current_tier_id ? tierMap.get(tierStatus.current_tier_id) : null;
-
-          // Cashback
           const cb = cashbackMap.get(l.venue_id);
           const cbConfig = cashbackConfigMap.get(l.venue_id);
-
-          // Referral
           const ref = referralMap.get(l.venue_id);
           const refConfig = referralConfigMap.get(l.venue_id);
 
-          // Challenges
           const venueChallenges = challengesByVenue.get(l.venue_id) || [];
           const activeChallenges = venueChallenges
             .filter(ch => !ch.end_date || new Date(ch.end_date) > new Date())
@@ -258,7 +252,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
     return (
       <div className="flex items-center gap-2 text-muted-foreground py-2">
         <Loader2 className="h-4 w-4 animate-spin" />
-        <span className="text-sm">Loading loyalty...</span>
+        <span className="text-sm">{t("loyalty.loadingLoyalty")}</span>
       </div>
     );
   }
@@ -270,10 +264,10 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
         <CardContent className="p-6">
           <div className="flex items-center gap-3 mb-2">
             <Gift className="h-5 w-5 text-primary" />
-            <h3 className="font-semibold">Loyalty Cards</h3>
+            <h3 className="font-semibold">{t("loyalty.loyaltyCards")}</h3>
           </div>
           <p className="text-sm text-muted-foreground">
-            Visit participating restaurants to start earning stamps or points toward rewards!
+            {t("loyalty.visitToEarn")}
           </p>
         </CardContent>
       </Card>
@@ -285,7 +279,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
       {!compact && (
         <div className="flex items-center gap-2">
           <Gift className="h-5 w-5 text-primary" />
-          <h3 className="font-semibold">Your Loyalty Cards</h3>
+          <h3 className="font-semibold">{t("loyalty.yourLoyaltyCards")}</h3>
         </div>
       )}
 
@@ -312,7 +306,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-semibold text-sm truncate">{card.venue_name}</p>
                     {!card.admin_enabled && (
-                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">Paused</Badge>
+                      <Badge variant="secondary" className="text-[10px] px-1.5 py-0">{t("loyalty.paused")}</Badge>
                     )}
                     {card.tier_name && (
                       <Badge className="text-[10px] px-1.5 py-0" style={{ backgroundColor: card.tier_color || '#FFD700', color: '#000' }}>
@@ -322,7 +316,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
                     )}
                     {hasRewards && (
                       <Badge variant="default" className="text-[10px] px-1.5 py-0 bg-primary animate-pulse">
-                        <Gift className="h-3 w-3 mr-0.5" /> Reward Ready!
+                        <Gift className="h-3 w-3 mr-0.5" /> {t("loyalty.rewardReady")}
                       </Badge>
                     )}
                   </div>
@@ -337,8 +331,10 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
                         ))}
                       </div>
                       <p className="text-xs text-muted-foreground mt-1">
-                        {card.stamps_count}/{card.stamp_threshold} stamps
-                        {card.next_reward_name ? ` · ${card.stamp_threshold - card.stamps_count} more for ${card.next_reward_name}` : " · Keep collecting!"}
+                        {card.stamps_count}/{card.stamp_threshold} {t("loyalty.stamps")}
+                        {card.next_reward_name
+                          ? ` · ${t("loyalty.moreForReward", { count: card.stamp_threshold - card.stamps_count, reward: card.next_reward_name })}`
+                          : ` · ${t("loyalty.keepCollecting")}`}
                       </p>
                     </div>
                   ) : (
@@ -346,28 +342,27 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
                       <div className="flex items-center gap-2">
                         <Star className="h-4 w-4 text-amber-500" />
                         <span className="font-bold text-lg">{card.points_balance}</span>
-                        <span className="text-xs text-muted-foreground">points</span>
+                        <span className="text-xs text-muted-foreground">{t("loyalty.points")}</span>
                       </div>
                       {card.next_reward_name && card.next_reward_threshold && (
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {card.next_reward_threshold - card.points_balance > 0
-                            ? `${card.next_reward_threshold - card.points_balance} more for ${card.next_reward_name}`
-                            : `Ready to claim: ${card.next_reward_name}!`}
+                            ? t("loyalty.moreForReward", { count: card.next_reward_threshold - card.points_balance, reward: card.next_reward_name })
+                            : t("loyalty.readyToClaim", { reward: card.next_reward_name })}
                         </p>
                       )}
                     </div>
                   )}
 
-                  {/* Compact extras line */}
                   {(card.cashback_active && card.cashback_balance > 0) && (
                     <p className="text-xs text-green-600 mt-0.5 flex items-center gap-1">
-                      <Percent className="h-3 w-3" /> R{card.cashback_balance.toFixed(2)} credit available
+                      <Percent className="h-3 w-3" /> {t("loyalty.creditAvailable", { amount: card.cashback_balance.toFixed(2) })}
                     </p>
                   )}
                 </div>
                 {canClaim && (
                   <button onClick={(e) => claimReward(card.venue_id, e)} disabled={claimingVenue === card.venue_id} className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 transition-colors animate-pulse shrink-0">
-                    {claimingVenue === card.venue_id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Claim!
+                    {claimingVenue === card.venue_id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} {t("loyalty.claim")}
                   </button>
                 )}
                 <ChevronRight className={cn("h-4 w-4 text-muted-foreground transition-transform", expandedCard === card.venue_id && "rotate-90")} />
@@ -376,31 +371,29 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
               {/* Expanded section */}
               {expandedCard === card.venue_id && (
                 <div className="mt-3 pt-3 border-t space-y-3">
-                  {/* Active reward codes */}
                   {hasRewards && (
                     <div className="space-y-2">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase">Your Rewards</p>
-                      <p className="text-xs text-muted-foreground">Tell the staff your code when ordering to redeem your reward.</p>
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">{t("loyalty.yourRewards")}</p>
+                      <p className="text-xs text-muted-foreground">{t("loyalty.tellStaff")}</p>
                       {card.active_codes.map((code, i) => (
                         <div key={i} className="flex items-center justify-between bg-primary/10 rounded-lg p-2.5">
                           <div>
-                            <p className="text-sm font-medium">{code.reward_name || "Reward"}</p>
+                            <p className="text-sm font-medium">{code.reward_name || t("loyalty.reward")}</p>
                             <code className="text-xs font-mono text-primary font-bold">{code.code}</code>
                           </div>
                           <button onClick={(e) => copyCode(code.code, e)} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-                            {copiedCode === code.code ? <><Check className="h-3 w-3" /> Copied</> : <><Copy className="h-3 w-3" /> Copy</>}
+                            {copiedCode === code.code ? <><Check className="h-3 w-3" /> {t("loyalty.copied")}</> : <><Copy className="h-3 w-3" /> {t("loyalty.copy")}</>}
                           </button>
                         </div>
                       ))}
                     </div>
                   )}
 
-                  {/* Progress toward next reward */}
                   {card.next_reward_name && !hasRewards && (
                     <div className="space-y-1.5">
                       <div className="flex items-center gap-1.5">
                         <Trophy className="h-3.5 w-3.5 text-primary" />
-                        <p className="text-xs font-semibold">Next Reward: {card.next_reward_name}</p>
+                        <p className="text-xs font-semibold">{t("loyalty.nextRewardLabel", { name: card.next_reward_name })}</p>
                       </div>
                       {card.next_reward_description && <p className="text-xs text-muted-foreground">{card.next_reward_description}</p>}
                       {card.program_type === "stamp_card" ? (
@@ -411,12 +404,11 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
                     </div>
                   )}
 
-                  {/* VIP Tier perks */}
                   {card.tier_name && card.tier_perks.length > 0 && (
                     <div className="space-y-1">
                       <p className="text-xs font-semibold flex items-center gap-1">
                         <Crown className="h-3 w-3" style={{ color: card.tier_color || '#FFD700' }} />
-                        {card.tier_name} Perks
+                        {t("loyalty.perks", { tier: card.tier_name })}
                       </p>
                       <div className="flex flex-wrap gap-1">
                         {card.tier_perks.map((perk, i) => (
@@ -426,53 +418,51 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
                     </div>
                   )}
 
-                  {/* Referral code */}
                   {card.referral_active && (
                     <div className="space-y-2">
                       <p className="text-xs font-semibold flex items-center gap-1">
-                        <Users className="h-3 w-3 text-primary" /> Refer a Friend
+                        <Users className="h-3 w-3 text-primary" /> {t("loyalty.referAFriend")}
                       </p>
                       {card.referral_config_referrer_reward && (
                         <p className="text-[11px] text-muted-foreground">
-                          You get <span className="font-semibold text-foreground">{card.referral_config_referrer_reward}</span>, they get <span className="font-semibold text-foreground">{card.referral_config_referee_reward}</span> when they use your code.
+                          {t("loyalty.youGet")} <span className="font-semibold text-foreground">{card.referral_config_referrer_reward}</span>, {t("loyalty.theyGet")} <span className="font-semibold text-foreground">{card.referral_config_referee_reward}</span> {t("loyalty.whenUseCode")}
                         </p>
                       )}
                       {card.referral_code ? (
                         <div className="bg-primary/10 rounded-lg p-2.5 space-y-2">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-xs text-muted-foreground">Your code:</p>
+                              <p className="text-xs text-muted-foreground">{t("loyalty.yourCode")}</p>
                               <code className="text-sm font-mono font-bold text-primary">{card.referral_code}</code>
-                              <p className="text-[10px] text-muted-foreground">{card.referral_uses} referral{card.referral_uses !== 1 ? 's' : ''} made</p>
+                              <p className="text-[10px] text-muted-foreground">{t("loyalty.referralsMade", { count: card.referral_uses })}</p>
                             </div>
                             <div className="flex gap-1.5">
                               <button onClick={(e) => copyCode(card.referral_code!, e)} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors">
-                                {copiedCode === card.referral_code ? <><Check className="h-3 w-3" /> Copied</> : <><Copy className="h-3 w-3" /> Copy</>}
+                                {copiedCode === card.referral_code ? <><Check className="h-3 w-3" /> {t("loyalty.copied")}</> : <><Copy className="h-3 w-3" /> {t("loyalty.copy")}</>}
                               </button>
                               <button onClick={(e) => shareReferralCode(card.referral_code!, card.venue_name, card.referral_config_referee_reward, e)} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-                                <Share2 className="h-3 w-3" /> Share
+                                <Share2 className="h-3 w-3" /> {t("common.share")}
                               </button>
                             </div>
                           </div>
                         </div>
                       ) : (
                         <button onClick={(e) => generateReferralCode(card.venue_id, e)} className="text-xs px-3 py-1.5 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-                          Get Referral Code
+                          {t("loyalty.getReferralCode")}
                         </button>
                       )}
 
-                      {/* Enter a referral code */}
                       {card.referral_already_used ? (
                         <div className="flex items-center gap-1.5 text-xs text-green-600 bg-green-500/10 rounded-lg p-2">
                           <CheckCircle2 className="h-3.5 w-3.5" />
-                          <span>Referral applied for this venue</span>
+                          <span>{t("loyalty.referralAppliedVenue")}</span>
                         </div>
                       ) : (
                         <div className="space-y-1.5">
-                          <p className="text-[11px] text-muted-foreground">Have a friend's referral code?</p>
+                          <p className="text-[11px] text-muted-foreground">{t("loyalty.haveReferralCode")}</p>
                           <div className="flex gap-1.5">
                             <Input
-                              placeholder="Enter code"
+                              placeholder={t("loyalty.enterCode")}
                               value={referralInput}
                               onChange={(e) => setReferralInput(e.target.value.toUpperCase())}
                               onClick={(e) => e.stopPropagation()}
@@ -484,7 +474,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
                               disabled={!referralInput.trim() || submittingReferral === card.venue_id}
                               className="shrink-0 flex items-center gap-1 text-xs px-3 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
                             >
-                              {submittingReferral === card.venue_id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Apply"}
+                              {submittingReferral === card.venue_id ? <Loader2 className="h-3 w-3 animate-spin" /> : t("loyalty.apply")}
                             </button>
                           </div>
                         </div>
@@ -492,30 +482,30 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
                     </div>
                   )}
 
-                  {/* Active challenges */}
                   {card.active_challenges.length > 0 && (
                     <div className="space-y-2">
                       <p className="text-xs font-semibold flex items-center gap-1">
-                        <Target className="h-3 w-3 text-orange-500" /> Active Challenges
+                        <Target className="h-3 w-3 text-orange-500" /> {t("loyalty.activeChallenges")}
                       </p>
                       {card.active_challenges.map((ch, i) => (
                         <div key={i} className="bg-orange-500/10 rounded-lg p-2 space-y-1">
                           <div className="flex items-center justify-between">
                             <p className="text-xs font-medium">{ch.title}</p>
-                            {ch.completed && <Badge className="text-[10px] bg-green-500">✓ Done</Badge>}
+                            {ch.completed && <Badge className="text-[10px] bg-green-500">{t("loyalty.done")}</Badge>}
                           </div>
                           <Progress value={(ch.current_progress / ch.goal_value) * 100} className="h-1.5" />
                           <p className="text-[10px] text-muted-foreground">
-                            {ch.current_progress}/{ch.goal_value} · Reward: {ch.reward_name}
+                            {ch.current_progress}/{ch.goal_value} · {t("loyalty.rewardLabel", { name: ch.reward_name })}
                           </p>
                         </div>
                       ))}
                     </div>
                   )}
 
-                  {/* Lifetime stats */}
                   <p className="text-[11px] text-muted-foreground">
-                    Lifetime: {card.program_type === "stamp_card" ? `${card.lifetime_stamps} stamps earned` : `${card.lifetime_points} points earned`}
+                    {card.program_type === "stamp_card"
+                      ? t("loyalty.lifetimeStamps", { count: card.lifetime_stamps })
+                      : t("loyalty.lifetimePoints", { count: card.lifetime_points })}
                   </p>
                 </div>
               )}

@@ -7,12 +7,14 @@ import { initializePushNotifications, areNotificationsSupported, getNotification
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { UnblockNotificationsDialog } from "@/components/notifications/UnblockNotificationsDialog";
+import { useTranslation } from "react-i18next";
 
 interface NotificationPromptProps {
   onDismiss?: () => void;
 }
 
 export function NotificationPrompt({ onDismiss }: NotificationPromptProps) {
+  const { t } = useTranslation();
   const [visible, setVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isBlocked, setIsBlocked] = useState(false);
@@ -24,62 +26,40 @@ export function NotificationPrompt({ onDismiss }: NotificationPromptProps) {
   }, []);
 
   const checkShouldShow = async () => {
-    // Don't show if notifications aren't supported
     if (!areNotificationsSupported()) return;
-    
     const permission = getNotificationPermission();
-    
-    // If already granted, don't show
     if (permission === 'granted') return;
-    
-    // If denied/blocked, we'll show a different UI
     if (permission === 'denied') {
       setIsBlocked(true);
     }
-
-    // Check if user is logged in
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-
-    // Check if user has dismissed this prompt before
     const dismissed = localStorage.getItem('notificationPromptDismissed');
     if (dismissed) {
       const dismissedDate = new Date(dismissed);
       const daysSinceDismissed = (Date.now() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
-      // Show again after 7 days
       if (daysSinceDismissed < 7) return;
     }
-
-    // If blocked, still show the prompt but with blocked UI
-    // If default, show normal prompt
-    // Don't check preferences if blocked - we want to show the prompt regardless
     if (permission !== 'denied') {
       const { data: prefs } = await supabase
         .from('patron_notification_preferences')
         .select('id')
         .eq('user_id', user.id)
         .single();
-
       if (prefs) return;
     }
-
     setVisible(true);
   };
 
   const handleEnable = async () => {
-    // If already blocked, show unblock dialog instead
     if (isBlocked) {
       setShowUnblockDialog(true);
       return;
     }
-    
     setLoading(true);
-    
     try {
       const success = await initializePushNotifications('');
-      
       if (success) {
-        // Create default notification preferences
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
           await supabase
@@ -92,32 +72,29 @@ export function NotificationPrompt({ onDismiss }: NotificationPromptProps) {
               weekend_planning_nudges: true,
             }, { onConflict: 'user_id' });
         }
-        
         toast({
-          title: "Notifications enabled! 🎉",
-          description: "You'll get helpful reminders and alerts",
+          title: t("notifications.enabledSuccess"),
+          description: t("notifications.enabledDesc"),
         });
         setVisible(false);
         onDismiss?.();
       } else {
-        // Check if it's now blocked
         if (getNotificationPermission() === 'denied') {
           setIsBlocked(true);
           toast({
-            title: "Notifications blocked",
-            description: "Click 'How to enable' for instructions",
+            title: t("notifications.blockedTitle"),
+            description: t("notifications.blockedDesc"),
           });
         } else {
           toast({
-            title: "Notifications not enabled",
-            description: "You can try again anytime",
+            title: t("notifications.notEnabled"),
+            description: t("notifications.notEnabledDesc"),
           });
         }
       }
     } catch (error) {
       console.error('Error enabling notifications:', error);
     }
-    
     setLoading(false);
   };
 
@@ -151,16 +128,16 @@ export function NotificationPrompt({ onDismiss }: NotificationPromptProps) {
             <div className="flex-1 space-y-2">
               {isBlocked ? (
                 <>
-                  <p className="font-medium text-sm">Notifications are blocked</p>
+                  <p className="font-medium text-sm">{t("notifications.areBlocked")}</p>
                   <p className="text-xs text-muted-foreground">
-                    Your browser is blocking notifications. Update your settings to receive alerts.
+                    {t("notifications.browserBlocking")}
                   </p>
                 </>
               ) : (
                 <>
-                  <p className="font-medium text-sm">Never miss when your food is ready!</p>
+                  <p className="font-medium text-sm">{t("notifications.neverMiss")}</p>
                   <p className="text-xs text-muted-foreground">
-                    Get notified when your order or table is ready, plus helpful reminders
+                    {t("notifications.getNotified")}
                   </p>
                 </>
               )}
@@ -171,7 +148,7 @@ export function NotificationPrompt({ onDismiss }: NotificationPromptProps) {
                     size="sm" 
                     onClick={() => setShowUnblockDialog(true)}
                   >
-                    How to enable
+                    {t("notifications.howToEnable")}
                   </Button>
                 ) : (
                   <Button 
@@ -179,7 +156,7 @@ export function NotificationPrompt({ onDismiss }: NotificationPromptProps) {
                     onClick={handleEnable}
                     disabled={loading}
                   >
-                    {loading ? "Enabling..." : "Enable notifications"}
+                    {loading ? t("notifications.enabling") : t("notifications.enableNotifications")}
                   </Button>
                 )}
                 <Button 
@@ -187,7 +164,7 @@ export function NotificationPrompt({ onDismiss }: NotificationPromptProps) {
                   variant="ghost"
                   onClick={handleDismiss}
                 >
-                  Not now
+                  {t("notifications.notNow")}
                 </Button>
               </div>
             </div>
