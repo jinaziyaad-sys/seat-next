@@ -166,7 +166,7 @@ export function PatronNotificationSettings() {
               variant="outline"
               onClick={() => setShowUnblockDialog(true)}
             >
-              How to enable
+              {t("notifications.howToEnable")}
             </Button>
           )}
         </div>
