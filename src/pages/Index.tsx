@@ -815,7 +815,7 @@ const Index = () => {
                       />
                       <div>
                         <span className="inline-block text-xs font-bold uppercase tracking-wider text-white bg-primary px-2 py-0.5 rounded mb-1">
-                          Order
+                          {t("home.order")}
                         </span>
                         <h3 className="font-semibold">{order.venues?.name}</h3>
                         <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">Order #{order.order_number}</p>
