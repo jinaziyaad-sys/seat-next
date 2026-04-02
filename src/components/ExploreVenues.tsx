@@ -21,13 +21,15 @@ import {
   MessageSquare,
   Navigation,
   Pencil,
-  X
+  X,
+  Share2
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { PatronBusynessIndicator } from "@/components/PatronBusynessIndicator";
 import { Messenger } from "@/components/Messenger";
 import { PromoBanner } from "@/components/PromoBanner";
+import { FriendsAtVenue } from "@/components/FriendsAtVenue";
 import { cn } from "@/lib/utils";
 
 interface VenueRecommendation {
