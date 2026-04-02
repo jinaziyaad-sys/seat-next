@@ -31,6 +31,7 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
   const [adminHelpRequested, setAdminHelpRequested] = useState(false);
   const [showAdminHelpForm, setShowAdminHelpForm] = useState(false);
   const { toast } = useToast();
+  const { t } = useTranslation();
 
   const handleSendResetEmail = async (e: React.FormEvent) => {
     e.preventDefault();
