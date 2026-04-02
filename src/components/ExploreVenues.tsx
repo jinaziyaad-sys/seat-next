@@ -822,7 +822,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                           venue.match_score < 60 && "bg-muted text-muted-foreground"
                         )}
                       >
-                        {venue.match_score}% Match
+                        {t("explore.match", { score: venue.match_score })}
                       </Badge>
                     )}
                   </div>
