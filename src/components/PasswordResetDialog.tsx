@@ -185,7 +185,7 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
             <Alert>
               <HelpCircle className="h-4 w-4" />
               <AlertDescription className="text-sm">
-                Your request will be sent to an administrator who will contact you directly with a new password.
+                {t("passwordReset.adminHelpInfo")}
               </AlertDescription>
             </Alert>
 
