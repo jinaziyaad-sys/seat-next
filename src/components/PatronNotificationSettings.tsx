@@ -203,8 +203,8 @@ export function PatronNotificationSettings() {
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="weekend">📅 Weekend planning</Label>
-              <p className="text-xs text-muted-foreground">Friday reminders to book ahead</p>
+              <Label htmlFor="weekend">📅 {t("notifications.weekendPlanning")}</Label>
+              <p className="text-xs text-muted-foreground">{t("notifications.weekendDesc")}</p>
             </div>
             <Switch
               id="weekend"
