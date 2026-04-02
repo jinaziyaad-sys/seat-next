@@ -250,8 +250,8 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="font-medium">Preview your {new Date().getFullYear()} recap</p>
-              <p className="text-sm text-muted-foreground">See your activity highlights (test mode)</p>
+              <p className="font-medium">{t("profile.previewRecap").replace("Recap", new Date().getFullYear().toString())}</p>
+              <p className="text-sm text-muted-foreground">{t("common.loading")}</p>
             </div>
             <Button
               variant="outline"
