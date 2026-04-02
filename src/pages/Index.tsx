@@ -1178,12 +1178,12 @@ const Index = () => {
           <Card className="shadow-card border-2 border-primary/20">
             <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
               <div>
-                <h3 className="font-semibold">Sign In</h3>
+                <h3 className="font-semibold">{t("home.signInButton")}</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  Sign in to track your orders and reservations
+                  {t("home.signInTrack")}
                 </p>
                 <Button onClick={() => navigate("/auth")} className="w-full">
-                  Sign In or Sign Up
+                  {t("home.signInOrUp")}
                 </Button>
               </div>
             </CardContent>
