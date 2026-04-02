@@ -371,8 +371,8 @@ const Index = () => {
               // Play table ready sound (repeats 2x every 25 seconds until seated/cancelled)
               playTableReadySound(payload.new.id);
               toast({
-                title: "🎉 Table Ready!",
-                description: `Your table for ${payload.new.party_size} is ready!`,
+                title: "🎉 " + t("home.tableReadyToast"),
+                description: t("home.tableReadyDesc", { size: payload.new.party_size }),
               });
             }
             
