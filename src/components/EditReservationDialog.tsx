@@ -322,7 +322,7 @@ export function EditReservationDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Edit Reservation</DialogTitle>
+          <DialogTitle>{t("editReservation.title")}</DialogTitle>
           <DialogDescription>
             {entry.venue}
           </DialogDescription>
