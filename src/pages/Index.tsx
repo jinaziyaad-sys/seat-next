@@ -821,7 +821,7 @@ const Index = () => {
                         <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">Order #{order.order_number}</p>
                         {order.status === 'rejected' && (
                           <p className="text-xs text-destructive mt-1">
-                            Cancelled by {order.cancelled_by === 'patron' ? 'you' : order.cancelled_by === 'system' ? 'system' : 'venue'}
+                            {t("home.cancelledBy", { by: order.cancelled_by === 'patron' ? t("status.you") : order.cancelled_by === 'system' ? t("status.system") : t("status.venue") })}
                           </p>
                         )}
                         {order.eta && (order.status === 'placed' || order.status === 'in_prep') && (
