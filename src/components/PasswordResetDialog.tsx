@@ -240,7 +240,7 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
             <div className="border-t pt-4 mt-4">
               <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
                 <AlertCircle className="h-4 w-4" />
-                <span>Having trouble receiving emails?</span>
+                <span>{t("passwordReset.troubleReceiving")}</span>
               </div>
               <Button 
                 type="button" 
