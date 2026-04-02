@@ -1008,7 +1008,7 @@ const Index = () => {
                         {isReservation && reservationTime ? (
                           <>
                             <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
-                              Reservation for {entry.party_size}
+                              {t("home.reservationFor", { size: entry.party_size })}
                             </p>
                             <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors mt-1">
                               <CalendarIcon size={12} />
