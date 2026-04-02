@@ -399,7 +399,7 @@ export function EditReservationDialog({
                 disabled={isLoadingTimes || availableTimes.length === 0}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder={isLoadingTimes ? "Loading times..." : "Select time"} />
+                  <SelectValue placeholder={isLoadingTimes ? t("editReservation.loadingTimes") : t("editReservation.selectTime")} />
                 </SelectTrigger>
                 <SelectContent>
                   {availableTimes.map((time) => (
