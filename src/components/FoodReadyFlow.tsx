@@ -837,7 +837,7 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
           <Button variant="ghost" size="sm" onClick={onBack}>
             <ArrowLeft size={20} />
           </Button>
-          <h1 className="text-2xl font-bold">Food Ready</h1>
+          <h1 className="text-2xl font-bold">{t("food.title")}</h1>
         </div>
 
 
