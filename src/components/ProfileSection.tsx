@@ -193,7 +193,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
             <Input
               id="phone"
               type="tel"
-              placeholder="+1 (555) 123-4567"
+              placeholder={t("profile.phonePlaceholder")}
               value={profile.phone}
               onChange={(e) => updateProfile("phone", e.target.value)}
               disabled={!isEditing}
