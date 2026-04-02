@@ -216,8 +216,8 @@ export function PatronNotificationSettings() {
 
           <div className="flex items-center justify-between">
             <div className="space-y-0.5">
-              <Label htmlFor="reengagement">💬 Check-in messages</Label>
-              <p className="text-xs text-muted-foreground">Occasional nudges if you haven't visited</p>
+              <Label htmlFor="reengagement">💬 {t("notifications.reengagement")}</Label>
+              <p className="text-xs text-muted-foreground">{t("notifications.reengagementDesc")}</p>
             </div>
             <Switch
               id="reengagement"
