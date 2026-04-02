@@ -150,7 +150,7 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <User size={24} />
-              <CardTitle>Personal Information</CardTitle>
+              <CardTitle>{t("profile.personalInfo")}</CardTitle>
             </div>
             <div className="flex gap-2">
               <Button
