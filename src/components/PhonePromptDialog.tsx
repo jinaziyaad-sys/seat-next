@@ -222,10 +222,10 @@ export function PhonePromptDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Phone className="h-5 w-5" />
-            Complete Your Profile
+            {t("phone.completeProfile")}
           </DialogTitle>
           <DialogDescription>
-            Add your phone number to receive SMS notifications when your table or order is ready.
+            {t("phone.addPhoneDesc")}
           </DialogDescription>
         </DialogHeader>
 
