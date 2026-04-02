@@ -268,7 +268,7 @@ export function PhonePromptDialog({
           <div className="space-y-4">
             <div className="text-center space-y-2">
               <p className="text-sm text-muted-foreground">
-                We sent a 6-digit code to {phone}
+                {t("phone.weSentCode", { phone })}
               </p>
             </div>
             
