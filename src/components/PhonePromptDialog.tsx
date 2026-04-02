@@ -251,7 +251,7 @@ export function PhonePromptDialog({
                 disabled={loading || !phone}
                 className="w-full"
               >
-                {loading ? "Sending Code..." : "Verify Phone Number"}
+                {loading ? t("phone.sendingCode") : t("phone.verifyPhone")}
               </Button>
               
               <Button 
