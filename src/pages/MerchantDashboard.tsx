@@ -501,7 +501,7 @@ const MerchantDashboard = () => {
 
       <div className="max-w-7xl mx-auto p-6">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className={`grid w-full`} style={{ gridTemplateColumns: `repeat(${getTabCount()}, minmax(0, 1fr))` }}>
+          <TabsList className="flex w-full overflow-x-auto h-auto p-1 bg-muted/50">
             {hasKitchenBoard && (
               <TabsTrigger value="kitchen" data-tour="tab-kitchen" className="flex items-center gap-2">
                 <ChefHat size={16} />
