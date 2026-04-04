@@ -925,7 +925,11 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
-                            <span className="font-semibold">{primaryReservation.customer_name}</span>
+                            <span className="font-semibold">{primaryReservation.customer_name}
+                              {(primaryReservation as any).user_id && voucherCounts.get((primaryReservation as any).user_id) ? (
+                                <span className="ml-1.5 inline-flex items-center gap-0.5 text-xs text-primary"><Ticket className="h-3 w-3" />{voucherCounts.get((primaryReservation as any).user_id)}</span>
+                              ) : null}
+                            </span>
                             {isMultiTable && tableNames && (
                               <span className="text-xs text-muted-foreground">{tableNames}</span>
                             )}
