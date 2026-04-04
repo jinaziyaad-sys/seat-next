@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Gift, Copy, Check, Loader2, Clock, Ticket } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { VenueLogo } from "@/components/VenueLogo";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
@@ -32,6 +31,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
   const [venues, setVenues] = useState<VenueStampData[]>([]);
   const [selectedVenue, setSelectedVenue] = useState<VenueStampData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeInnerTab, setActiveInnerTab] = useState<"stamps" | "vouchers">("stamps");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   useEffect(() => {
@@ -127,7 +127,9 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
             venue_logo: venue.logo_url,
             stamps_count: l.stamps_count,
             stamp_threshold: program.stamp_threshold || 10,
-            can_claim: canClaim,
+            next_reward_name: reward?.name || null,
+            next_reward_description: reward?.description || null,
+            active_codes: codes,
             program_id: program.id,
           };
         })
@@ -136,26 +138,6 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
       setVenues(stampVenues);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleClaim = async (venueId: string) => {
-    setClaiming(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('claim-loyalty-reward', {
-        body: { venue_id: venueId },
-      });
-      if (error) throw error;
-      if (data?.error) { toast.error(data.error); return; }
-      toast.success(t("loyalty.rewardClaimed", { reward: data.reward_name, code: data.code }));
-      await fetchData();
-      // Update selected venue
-      setSelectedVenue(prev => prev ? { ...prev, can_claim: false } : null);
-      setActiveInnerTab("vouchers");
-    } catch (err: any) {
-      toast.error(err.message || t("loyalty.failedClaimReward"));
-    } finally {
-      setClaiming(false);
     }
   };
 
@@ -218,14 +200,9 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
                       size="xl"
                       className={cn(
                         "ring-2 ring-border group-hover:ring-primary transition-all",
-                        (v.can_claim || v.active_codes.length > 0) && "ring-primary shadow-[0_0_12px_hsl(var(--primary)/0.3)]"
+                        v.active_codes.length > 0 && "ring-primary shadow-[0_0_12px_hsl(var(--primary)/0.3)]"
                       )}
                     />
-                    {v.can_claim && (
-                      <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                        <Gift className="h-3 w-3 text-primary-foreground" />
-                      </span>
-                    )}
                     {v.active_codes.length > 0 && (
                       <span className="absolute -bottom-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-accent text-accent-foreground flex items-center justify-center gap-0.5">
                         <Ticket className="h-2.5 w-2.5" />
@@ -252,7 +229,6 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
   if (!selectedVenue) return null;
 
   const remaining = selectedVenue.stamp_threshold - selectedVenue.stamps_count;
-  // Refresh selected venue from latest data
   const currentVenue = venues.find(v => v.venue_id === selectedVenue.venue_id) || selectedVenue;
 
   return (
@@ -352,35 +328,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
                   {t("loyalty.moreForReward", { count: remaining, reward: currentVenue.next_reward_name })}
                 </p>
               )}
-              {currentVenue.next_reward_name && remaining <= 0 && (
-                <p className="text-sm text-primary font-medium">
-                  {t("loyalty.readyToClaim", { reward: currentVenue.next_reward_name })}
-                </p>
-              )}
             </div>
-
-            {/* Claim Button */}
-            {currentVenue.can_claim && (
-              <motion.div
-                initial={{ scale: 0.9, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="flex justify-center"
-              >
-                <Button
-                  size="lg"
-                  onClick={() => handleClaim(currentVenue.venue_id)}
-                  disabled={claiming}
-                  className="rounded-full px-8 animate-pulse shadow-[0_0_20px_hsl(var(--primary)/0.4)]"
-                >
-                  {claiming ? (
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                  ) : (
-                    <Sparkles className="h-5 w-5 mr-2" />
-                  )}
-                  {t("loyalty.claim")}
-                </Button>
-              </motion.div>
-            )}
 
             {/* Next Reward Info */}
             {currentVenue.next_reward_name && (
