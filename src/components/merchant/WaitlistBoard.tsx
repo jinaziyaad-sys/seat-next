@@ -1072,7 +1072,12 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
           )}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{entry.customer_name}</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-1.5">
+                  {entry.customer_name}
+                  {(entry as any).user_id && voucherCounts.get((entry as any).user_id) ? (
+                    <span className="inline-flex items-center gap-0.5 text-xs text-primary font-normal"><Ticket className="h-3 w-3" />{voucherCounts.get((entry as any).user_id)}</span>
+                  ) : null}
+                </CardTitle>
                 <div className="flex flex-col gap-1 items-end">
                   <Badge className={`${getStatusColor(entry.status)} text-white`}>
                     {entry.status === "waiting" ? `#${entry.position || '?'}` : entry.status.replace("_", " ").toUpperCase()}
