@@ -250,7 +250,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
     fetchVoucherCounts();
   }, [waitlist, todaysReservations, venueId]);
 
-
+  const confirmSeating = async (entryId: string) => {
     const { error } = await supabase
       .from("waitlist_entries")
       .update({ 
