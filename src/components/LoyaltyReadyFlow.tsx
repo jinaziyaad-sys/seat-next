@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Gift, Copy, Check, Loader2, Sparkles } from "lucide-react";
+import { ArrowLeft, Gift, Copy, Check, Loader2, Sparkles, Clock } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -18,7 +18,7 @@ interface VenueStampData {
   stamp_threshold: number;
   next_reward_name: string | null;
   next_reward_description: string | null;
-  active_codes: { code: string; reward_name: string | null }[];
+  active_codes: { code: string; reward_name: string | null; image_url: string | null; expires_at: string | null }[];
   can_claim: boolean;
   program_id: string;
 }
@@ -58,16 +58,22 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
       const [venuesRes, programsRes, codesRes, rewardsRes] = await Promise.all([
         supabase.from("venues").select("id, name, logo_url").in("id", venueIds),
         supabase.from("loyalty_programs").select("*").in("venue_id", venueIds).eq("is_active", true).eq("type", "stamp_card"),
-        supabase.from("discount_codes").select("code, reward_name, venue_id").eq("user_id", user.id).eq("status", "active"),
+        supabase.from("discount_codes").select("code, reward_name, venue_id, reward_id, expires_at").eq("user_id", user.id).eq("status", "active"),
         supabase.from("loyalty_rewards").select("*").in("venue_id", venueIds).eq("is_active", true),
       ]);
 
       const venueMap = new Map(venuesRes.data?.map(v => [v.id, v]) || []);
       const programMap = new Map(programsRes.data?.map(p => [p.venue_id, p]) || []);
-      const codesMap = new Map<string, { code: string; reward_name: string | null }[]>();
+      const codesMap = new Map<string, { code: string; reward_name: string | null; image_url: string | null; expires_at: string | null }[]>();
       codesRes.data?.forEach(c => {
         if (!codesMap.has(c.venue_id)) codesMap.set(c.venue_id, []);
-        codesMap.get(c.venue_id)!.push(c);
+        const reward = rewardsRes.data?.find(r => r.id === (c as any).reward_id);
+        codesMap.get(c.venue_id)!.push({
+          code: c.code,
+          reward_name: c.reward_name,
+          image_url: (reward as any)?.image_url || null,
+          expires_at: (c as any).expires_at || null,
+        });
       });
       const rewardsMap = new Map<string, any>();
       rewardsRes.data?.forEach(r => {
@@ -374,29 +380,42 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
             ) : (
               currentVenue.active_codes.map((vc) => (
                 <Card key={vc.code} className="overflow-hidden">
-                  <CardContent className="p-4 flex items-center justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm">{vc.reward_name || t("loyalty.reward")}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {t("loyalty.tellStaff")}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <code className="bg-muted px-3 py-1.5 rounded-md text-sm font-mono font-bold tracking-wider">
-                        {vc.code}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0"
-                        onClick={() => copyCode(vc.code)}
-                      >
-                        {copiedCode === vc.code ? (
-                          <Check className="h-4 w-4 text-primary" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
+                  <CardContent className="p-0">
+                    {vc.image_url && (
+                      <img src={vc.image_url} alt={vc.reward_name || ''} className="w-full h-32 object-cover" />
+                    )}
+                    <div className="p-4 flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm">{vc.reward_name || t("loyalty.reward")}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {t("loyalty.tellStaff")}
+                        </p>
+                        {vc.expires_at && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Clock className="h-3 w-3 text-muted-foreground" />
+                            <p className="text-xs text-muted-foreground">
+                              {t("loyalty.expiresOn", { date: new Date(vc.expires_at).toLocaleDateString() })}
+                            </p>
+                          </div>
                         )}
-                      </Button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <code className="bg-muted px-3 py-1.5 rounded-md text-sm font-mono font-bold tracking-wider">
+                          {vc.code}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0"
+                          onClick={() => copyCode(vc.code)}
+                        >
+                          {copiedCode === vc.code ? (
+                            <Check className="h-4 w-4 text-primary" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>

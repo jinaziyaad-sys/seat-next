@@ -333,6 +333,7 @@
     "tellStaff": "Tell the staff your code when ordering to redeem your reward.",
     "reward": "Reward",
     "copied": "Copied",
+    "expiresOn": "Expires {{date}}",
     "copy": "Copy",
     "nextRewardLabel": "Next Reward: {{name}}",
     "perks": "{{tier}} Perks",

@@ -117,6 +117,11 @@ Deno.serve(async (req) => {
       .toUpperCase()
       .slice(0, 8);
 
+    // Calculate expiry date from voucher_validity_days
+    const validityDays = reward.voucher_validity_days || 30;
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + validityDays);
+
     // Insert discount code
     await admin.from('discount_codes').insert({
       venue_id,
@@ -124,6 +129,7 @@ Deno.serve(async (req) => {
       code,
       reward_id: reward.id,
       reward_name: reward.name,
+      expires_at: expiresAt.toISOString(),
     });
 
     // Reset balance
