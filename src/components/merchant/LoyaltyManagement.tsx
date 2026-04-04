@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Gift, Search, CheckCircle, Loader2, Settings } from "lucide-react";
+import { Gift, Search, CheckCircle, Loader2, Settings, ChevronRight } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { LoyaltySettings } from "./LoyaltySettings";
@@ -93,22 +93,24 @@ export const LoyaltyManagement = ({ venueId }: LoyaltyManagementProps) => {
   const redeemedCodes = filteredCodes.filter(c => c.status === "redeemed");
 
   return (
-    <div className="space-y-4">
-      {/* Header matching other merchant tabs */}
-      <div className="flex items-center justify-between">
+    <div className="space-y-6">
+      {/* Program Settings Button - prominent, matching other tab patterns */}
+      <Button
+        variant="outline"
+        className="w-full justify-between h-auto py-4 px-5"
+        onClick={() => setSettingsOpen(true)}
+      >
         <div className="flex items-center gap-3">
-          <Gift className="h-5 w-5 text-primary" />
-          <div>
-            <h2 className="text-lg font-semibold">Loyalty & Vouchers</h2>
-            <p className="text-sm text-muted-foreground">
-              {activeCodes.length} active · {redeemedCodes.length} redeemed
+          <Settings className="h-5 w-5 text-muted-foreground" />
+          <div className="text-left">
+            <p className="font-medium">Program Settings</p>
+            <p className="text-sm text-muted-foreground font-normal">
+              Configure stamp thresholds, rewards, and voucher details
             </p>
           </div>
         </div>
-        <Button variant="outline" size="icon" onClick={() => setSettingsOpen(true)}>
-          <Settings className="h-4 w-4" />
-        </Button>
-      </div>
+        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+      </Button>
 
       {/* Search */}
       <div className="relative">
@@ -119,6 +121,19 @@ export const LoyaltyManagement = ({ venueId }: LoyaltyManagementProps) => {
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10"
         />
+      </div>
+
+      {/* Stats row */}
+      <div className="flex items-center gap-4 text-sm text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <Gift className="h-4 w-4 text-primary" />
+          <span>{activeCodes.length} active</span>
+        </div>
+        <span>·</span>
+        <div className="flex items-center gap-1.5">
+          <CheckCircle className="h-4 w-4 text-green-500" />
+          <span>{redeemedCodes.length} redeemed</span>
+        </div>
       </div>
 
       {loading ? (
