@@ -581,8 +581,9 @@ const Index = () => {
 
   if (activeTab === "profile") {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pb-24">
         <ProfileSection onBack={() => setActiveTab("home")} />
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
     );
   }
