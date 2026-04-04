@@ -590,8 +590,9 @@ const Index = () => {
 
   if (activeTab === "loyalty") {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pb-24">
         <LoyaltyReadyFlow onBack={() => setActiveTab("home")} />
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
     );
   }
