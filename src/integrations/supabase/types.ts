@@ -2349,6 +2349,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      process_stamp_card_redemption: {
+        Args: { p_program_id: string; p_user_id: string; p_venue_id: string }
+        Returns: undefined
+      }
       update_customer_days_since_visit: { Args: never; Returns: undefined }
     }
     Enums: {
