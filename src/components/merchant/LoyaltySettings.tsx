@@ -213,6 +213,8 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
         }
       }
       toast({ title: "Loyalty program saved successfully" });
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2000);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally { setSaving(false); }
