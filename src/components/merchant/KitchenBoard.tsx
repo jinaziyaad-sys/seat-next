@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Clock, Plus, AlertTriangle } from "lucide-react";
+import { Clock, Plus, AlertTriangle, Ticket } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeSupabaseFunctionWithTimeout } from "@/utils/invokeWithTimeout";
@@ -47,6 +47,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   const [cancelReason, setCancelReason] = useState("");
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
   const [extensionOrderId, setExtensionOrderId] = useState<string>("");
+  const [voucherCounts, setVoucherCounts] = useState<Map<string, number>>(new Map());
   const { toast } = useToast();
   
   // Track warning phases for each order (to avoid duplicate warnings)
@@ -256,6 +257,24 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
       supabase.removeChannel(channel);
     };
   }, [venueId, showRejected, toast]);
+
+  // Fetch voucher counts for patrons
+  useEffect(() => {
+    const fetchVoucherCounts = async () => {
+      const userIds = [...new Set(orders.map(o => o.user_id).filter(Boolean))] as string[];
+      if (userIds.length === 0) { setVoucherCounts(new Map()); return; }
+      const { data } = await supabase
+        .from('discount_codes')
+        .select('user_id')
+        .eq('venue_id', venueId)
+        .eq('status', 'active')
+        .in('user_id', userIds);
+      const counts = new Map<string, number>();
+      data?.forEach(d => counts.set(d.user_id, (counts.get(d.user_id) || 0) + 1));
+      setVoucherCounts(counts);
+    };
+    fetchVoucherCounts();
+  }, [orders, venueId]);
 
   const updateOrderStatus = async (orderId: string, newStatus: Order["status"]) => {
     // Clear warning phase when status changes away from prep states
@@ -925,8 +944,11 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
               </div>
 
               {order.customer_name && (
-                <div className="p-2 bg-muted rounded text-sm">
+                <div className="p-2 bg-muted rounded text-sm flex items-center gap-1.5">
                   <strong>Customer:</strong> {order.customer_name}
+                  {order.user_id && voucherCounts.get(order.user_id) ? (
+                    <span className="inline-flex items-center gap-0.5 text-xs text-primary ml-auto"><Ticket className="h-3 w-3" />{voucherCounts.get(order.user_id)}</span>
+                  ) : null}
                 </div>
               )}
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Gift, Copy, Check, Loader2, Sparkles, Clock } from "lucide-react";
+import { ArrowLeft, Gift, Copy, Check, Loader2, Sparkles, Clock, Ticket } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -193,9 +193,15 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
                         (v.can_claim || v.active_codes.length > 0) && "ring-primary shadow-[0_0_12px_hsl(var(--primary)/0.3)]"
                       )}
                     />
-                    {(v.can_claim || v.active_codes.length > 0) && (
+                    {v.can_claim && (
                       <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
                         <Gift className="h-3 w-3 text-primary-foreground" />
+                      </span>
+                    )}
+                    {v.active_codes.length > 0 && (
+                      <span className="absolute -bottom-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-accent text-accent-foreground flex items-center justify-center gap-0.5">
+                        <Ticket className="h-2.5 w-2.5" />
+                        <span className="text-[9px] font-bold">{v.active_codes.length}</span>
                       </span>
                     )}
                   </div>

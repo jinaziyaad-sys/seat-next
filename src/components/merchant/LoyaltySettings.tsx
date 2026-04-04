@@ -516,12 +516,7 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
                           </div>
 
                           <div className="flex gap-3 flex-wrap">
-                            {programType === "stamp_card" ? (
-                              <div className="space-y-1">
-                                <Label className="text-xs">Stamps required</Label>
-                                <Input type="number" min="1" value={reward.stamps_required || ""} onChange={(e) => updateReward(index, "stamps_required", parseInt(e.target.value) || null)} className="w-24" />
-                              </div>
-                            ) : (
+                            {programType !== "stamp_card" && (
                               <div className="space-y-1">
                                 <Label className="text-xs">Points required</Label>
                                 <Input type="number" min="1" value={reward.points_required || ""} onChange={(e) => updateReward(index, "points_required", parseInt(e.target.value) || null)} className="w-24" />

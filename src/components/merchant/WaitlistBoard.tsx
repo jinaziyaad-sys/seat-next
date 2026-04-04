@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Clock, Users, Plus, MapPin, Calendar as CalendarIcon, AlertTriangle, Check } from "lucide-react";
+import { Clock, Users, Plus, MapPin, Calendar as CalendarIcon, AlertTriangle, Check, Ticket } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeSupabaseFunctionWithTimeout } from "@/utils/invokeWithTimeout";
@@ -28,6 +28,7 @@ interface WaitlistEntry {
   status: "waiting" | "ready" | "seated" | "cancelled" | "no_show";
   position: number | null;
   venue_id: string;
+  user_id?: string | null;
   awaiting_merchant_confirmation?: boolean;
   patron_delayed?: boolean;
   delayed_until?: string | null;
@@ -57,6 +58,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   const [noShowReason, setNoShowReason] = useState("");
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
   const [extensionEntryId, setExtensionEntryId] = useState<string>("");
+  const [voucherCounts, setVoucherCounts] = useState<Map<string, number>>(new Map());
   const { toast } = useToast();
 
   // Fetch table configuration and cancelled count
@@ -230,6 +232,23 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       supabase.removeChannel(channel);
     };
   }, [venueId, toast]);
+  // Fetch voucher counts for all patrons with user_ids
+  useEffect(() => {
+    const fetchVoucherCounts = async () => {
+      const userIds = [...new Set([...waitlist, ...todaysReservations].map(e => (e as any).user_id).filter(Boolean))];
+      if (userIds.length === 0) { setVoucherCounts(new Map()); return; }
+      const { data } = await supabase
+        .from('discount_codes')
+        .select('user_id')
+        .eq('venue_id', venueId)
+        .eq('status', 'active')
+        .in('user_id', userIds);
+      const counts = new Map<string, number>();
+      data?.forEach(d => counts.set(d.user_id, (counts.get(d.user_id) || 0) + 1));
+      setVoucherCounts(counts);
+    };
+    fetchVoucherCounts();
+  }, [waitlist, todaysReservations, venueId]);
 
   const confirmSeating = async (entryId: string) => {
     const { error } = await supabase
@@ -906,7 +925,11 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col gap-1">
-                            <span className="font-semibold">{primaryReservation.customer_name}</span>
+                            <span className="font-semibold">{primaryReservation.customer_name}
+                              {(primaryReservation as any).user_id && voucherCounts.get((primaryReservation as any).user_id) ? (
+                                <span className="ml-1.5 inline-flex items-center gap-0.5 text-xs text-primary"><Ticket className="h-3 w-3" />{voucherCounts.get((primaryReservation as any).user_id)}</span>
+                              ) : null}
+                            </span>
                             {isMultiTable && tableNames && (
                               <span className="text-xs text-muted-foreground">{tableNames}</span>
                             )}
@@ -1049,7 +1072,12 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
           )}>
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{entry.customer_name}</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-1.5">
+                  {entry.customer_name}
+                  {(entry as any).user_id && voucherCounts.get((entry as any).user_id) ? (
+                    <span className="inline-flex items-center gap-0.5 text-xs text-primary font-normal"><Ticket className="h-3 w-3" />{voucherCounts.get((entry as any).user_id)}</span>
+                  ) : null}
+                </CardTitle>
                 <div className="flex flex-col gap-1 items-end">
                   <Badge className={`${getStatusColor(entry.status)} text-white`}>
                     {entry.status === "waiting" ? `#${entry.position || '?'}` : entry.status.replace("_", " ").toUpperCase()}

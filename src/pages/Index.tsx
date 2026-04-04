@@ -1220,20 +1220,20 @@ const Index = () => {
           </Card>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           {features.food_ordering_enabled && (
             <Card 
               className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
               onClick={() => setActiveTab("food-ready")}
               data-tour="card-food"
             >
-              <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <UtensilsCrossed size={28} />
+              <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <UtensilsCrossed size={22} />
                 </div>
                 <div>
-                  <h3 className="font-semibold">{t("home.foodReady")}</h3>
-                  <p className="text-sm text-muted-foreground">{t("home.trackOrderStatus")}</p>
+                  <h3 className="font-semibold text-sm">{t("home.foodReady")}</h3>
+                  <p className="text-xs text-muted-foreground">{t("home.trackOrderStatus")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -1245,13 +1245,13 @@ const Index = () => {
               onClick={() => setActiveTab("table-ready")}
               data-tour="card-table"
             >
-              <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <Users size={28} />
+              <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <Users size={22} />
                 </div>
                 <div>
-                  <h3 className="font-semibold">{t("home.tableReady")}</h3>
-                  <p className="text-sm text-muted-foreground">{t("home.joinWaitlist")}</p>
+                  <h3 className="font-semibold text-sm">{t("home.tableReady")}</h3>
+                  <p className="text-xs text-muted-foreground">{t("home.joinWaitlist")}</p>
                 </div>
               </CardContent>
             </Card>
@@ -1261,13 +1261,13 @@ const Index = () => {
             className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
             onClick={() => setActiveTab("loyalty")}
           >
-            <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <Gift size={28} />
+            <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Gift size={22} />
               </div>
               <div>
-                <h3 className="font-semibold">{t("nav.loyalty")}</h3>
-                <p className="text-sm text-muted-foreground">{t("home.loyaltyDesc", "Stamps & rewards")}</p>
+                <h3 className="font-semibold text-sm">{t("nav.loyalty")}</h3>
+                <p className="text-xs text-muted-foreground">{t("home.loyaltyDesc", "Stamps & rewards")}</p>
               </div>
             </CardContent>
           </Card>
