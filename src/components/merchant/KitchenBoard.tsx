@@ -258,6 +258,24 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
     };
   }, [venueId, showRejected, toast]);
 
+  // Fetch voucher counts for patrons
+  useEffect(() => {
+    const fetchVoucherCounts = async () => {
+      const userIds = [...new Set(orders.map(o => o.user_id).filter(Boolean))] as string[];
+      if (userIds.length === 0) { setVoucherCounts(new Map()); return; }
+      const { data } = await supabase
+        .from('discount_codes')
+        .select('user_id')
+        .eq('venue_id', venueId)
+        .eq('status', 'active')
+        .in('user_id', userIds);
+      const counts = new Map<string, number>();
+      data?.forEach(d => counts.set(d.user_id, (counts.get(d.user_id) || 0) + 1));
+      setVoucherCounts(counts);
+    };
+    fetchVoucherCounts();
+  }, [orders, venueId]);
+
   const updateOrderStatus = async (orderId: string, newStatus: Order["status"]) => {
     // Clear warning phase when status changes away from prep states
     if (!['in_prep', 'placed'].includes(newStatus)) {
