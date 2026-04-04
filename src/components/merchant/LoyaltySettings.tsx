@@ -22,6 +22,8 @@ interface LoyaltyReward {
   points_required: number | null;
   reward_type: string;
   is_active: boolean;
+  image_url: string | null;
+  voucher_validity_days: number | null;
 }
 
 interface TierData {
