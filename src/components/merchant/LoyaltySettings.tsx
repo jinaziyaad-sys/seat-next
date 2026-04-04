@@ -198,14 +198,16 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
             name: reward.name, description: reward.description,
             stamps_required: reward.stamps_required, points_required: reward.points_required,
             reward_type: reward.reward_type, is_active: reward.is_active,
-          }).eq("id", reward.id);
+            image_url: reward.image_url, voucher_validity_days: reward.voucher_validity_days,
+          } as any).eq("id", reward.id);
         } else {
           const { data } = await supabase.from("loyalty_rewards").insert({
             venue_id: venueId, program_id: currentProgramId!,
             name: reward.name, description: reward.description,
             stamps_required: reward.stamps_required, points_required: reward.points_required,
             reward_type: reward.reward_type, is_active: reward.is_active,
-          }).select().single();
+            image_url: reward.image_url, voucher_validity_days: reward.voucher_validity_days,
+          } as any).select().single();
           if (data) reward.id = data.id;
         }
       }
