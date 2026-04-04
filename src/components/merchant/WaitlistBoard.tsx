@@ -58,6 +58,7 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
   const [noShowReason, setNoShowReason] = useState("");
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
   const [extensionEntryId, setExtensionEntryId] = useState<string>("");
+  const [voucherCounts, setVoucherCounts] = useState<Map<string, number>>(new Map());
   const { toast } = useToast();
 
   // Fetch table configuration and cancelled count
