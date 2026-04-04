@@ -232,8 +232,25 @@ export const WaitlistBoard = ({ venueId }: { venueId: string }) => {
       supabase.removeChannel(channel);
     };
   }, [venueId, toast]);
+  // Fetch voucher counts for all patrons with user_ids
+  useEffect(() => {
+    const fetchVoucherCounts = async () => {
+      const userIds = [...new Set([...waitlist, ...todaysReservations].map(e => (e as any).user_id).filter(Boolean))];
+      if (userIds.length === 0) { setVoucherCounts(new Map()); return; }
+      const { data } = await supabase
+        .from('discount_codes')
+        .select('user_id')
+        .eq('venue_id', venueId)
+        .eq('status', 'active')
+        .in('user_id', userIds);
+      const counts = new Map<string, number>();
+      data?.forEach(d => counts.set(d.user_id, (counts.get(d.user_id) || 0) + 1));
+      setVoucherCounts(counts);
+    };
+    fetchVoucherCounts();
+  }, [waitlist, todaysReservations, venueId]);
 
-  const confirmSeating = async (entryId: string) => {
+
     const { error } = await supabase
       .from("waitlist_entries")
       .update({ 
