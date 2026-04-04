@@ -1,38 +1,36 @@
 
 
-# Fix Merchant Loyalty Tab & Patron Stamp Updates
+# Fix: Loyalty Tab Sitting on a Second Row
 
-## Three Issues
+## Problem
+The Loyalty tab overflows to a second row because `getTabCount()` returns 7 columns but there are actually 8 tabs rendered. The Floor Plan tab (rendered when `hasTableReady && admin`) is not counted.
 
-### 1. "Save Loyalty Program" button always shows even after saving
-The button in `LoyaltySettings.tsx` (line 541-544) always says "Save Loyalty Program" with no indication that the program is already saved. It should show "Update Loyalty Program" when editing an existing program, and provide feedback (e.g., change text to "Saved" briefly or disable after save).
+Additionally, with 8+ tabs on smaller screens, even the correct count could cause cramped or wrapped tabs.
 
-**Fix**: Change button label to "Update Loyalty Program" when `programId` exists. After successful save, briefly show a "Saved!" state for 2 seconds.
+## Fix
 
-### 2. Merchant Loyalty tab doesn't match other tabs
-The `LoyaltyManagement.tsx` component renders its own inner `Tabs` (Redeem Codes / Program Settings) which is a different structure from other merchant tabs like Kitchen, Waitlist, etc. The other tabs render a single focused board. The loyalty tab has a nested tab layout that feels out of place.
+**File: `src/pages/MerchantDashboard.tsx`**
 
-**Fix**: Restructure `LoyaltyManagement.tsx` to match the pattern of other merchant tabs:
-- Remove the inner Tabs wrapper
-- Show the "Redeem Codes" view as the main content (this is the operational view merchants use daily, like Kitchen/Waitlist boards)
-- Move "Program Settings" access to a settings gear icon button in the header that opens `LoyaltySettings` in a Sheet/Dialog
-- Add a proper header with title, stats summary, and the search bar — matching the Card-based layout used by KitchenBoard/WaitlistBoard
+Two changes:
 
-### 3. Patron stamp card not updating after order collected
-The `LoyaltyReadyFlow.tsx` only fetches data once on mount (`useEffect(() => { fetchData(); }, [])`). There's no real-time subscription or polling. When an order is collected and the DB trigger awards a stamp, the patron's UI won't reflect it until they navigate away and come back.
+1. **Fix `getTabCount`** — add Floor Plan to the count:
+   ```typescript
+   if (userRole?.role === "admin") {
+     if (hasTableReady) count++; // Floor Plan tab
+     count += 2; // Staff + Settings
+     ...
+   }
+   ```
 
-**Fix**: Add a Supabase real-time subscription on `patron_loyalty` filtered by the user's `user_id`. When a change is detected, re-fetch the data. This mirrors how KitchenBoard/WaitlistBoard use real-time subscriptions.
+2. **Make the TabsList horizontally scrollable** — replace the rigid `grid` layout with `flex` + `overflow-x-auto` so all tabs sit in one row regardless of count, and scroll on smaller screens:
+   ```tsx
+   <TabsList className="flex w-full overflow-x-auto">
+   ```
+   This removes the grid approach entirely, letting tabs naturally sit side-by-side in a single row with equal sizing via `flex-1` on each trigger. This is more robust than counting columns and matches how tab bars typically work with many items.
 
-## Files Changed
+### Technical Detail
+- Remove `getTabCount()` function entirely
+- Change `TabsList` from `grid` with inline `gridTemplateColumns` to `flex w-full overflow-x-auto`
+- Add `flex-1 min-w-fit` to each `TabsTrigger` className so they share space equally but don't truncate
 
-| File | Change |
-|---|---|
-| `src/components/merchant/LoyaltySettings.tsx` | Change save button to "Update" when program exists; add saved feedback state |
-| `src/components/merchant/LoyaltyManagement.tsx` | Restructure to match other merchant tabs — main board view with settings in a Sheet |
-| `src/components/LoyaltyReadyFlow.tsx` | Add real-time subscription on `patron_loyalty` to auto-refresh stamps |
-
-## Build Order
-1. Fix save button label and feedback in LoyaltySettings
-2. Restructure LoyaltyManagement to match merchant tab patterns
-3. Add real-time subscription to LoyaltyReadyFlow
-
+Single file change: `src/pages/MerchantDashboard.tsx`
