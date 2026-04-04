@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Gift, Plus, Trash2, Save, Loader2, Stamp, Star, AlertTriangle, Crown, Percent, Users, Target, Upload, Image } from "lucide-react";
+import { Gift, Plus, Trash2, Save, Loader2, Stamp, Star, AlertTriangle, Crown, Percent, Users, Target, Upload, Image, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -60,6 +60,7 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   const [programId, setProgramId] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [programType, setProgramType] = useState<"stamp_card" | "points">("stamp_card");
@@ -212,6 +213,8 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
         }
       }
       toast({ title: "Loyalty program saved successfully" });
+      setJustSaved(true);
+      setTimeout(() => setJustSaved(false), 2000);
     } catch (error: any) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally { setSaving(false); }
@@ -538,9 +541,15 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
                   </Card>
                 ))}
               </div>
-              <Button onClick={handleSave} disabled={saving} className="w-full">
-                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Save Loyalty Program
+              <Button onClick={handleSave} disabled={saving || justSaved} className="w-full">
+                {saving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : justSaved ? (
+                  <Check className="h-4 w-4 mr-2" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {justSaved ? "Saved!" : programId ? "Update Loyalty Program" : "Save Loyalty Program"}
               </Button>
             </CardContent>
           </Card>
