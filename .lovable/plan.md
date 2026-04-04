@@ -1,48 +1,43 @@
 
+# Fix: Loyalty stamps still stay at 0 after collection
 
-# Fix: Loyalty Stamps Not Being Awarded on Order Collection
+## What was confirmed
+- The order was really updated to `collected`.
+- The venue has an active stamp-card loyalty program with `earning_sources = ['order', 'waitlist']`.
+- The patron already has a `patron_loyalty` row for that venue.
+- No new `loyalty_transactions` row was created for the collected order.
+- That means the problem is in the backend loyalty-award path, not the patron screen refresh.
 
-## Root Cause
+## Plan
+1. **Harden the loyalty award triggers**
+   - Update `credit_loyalty_on_order()` and `credit_loyalty_on_waitlist()` in a new migration.
+   - Use a more reliable upsert/credit flow so the patron row is definitely created/updated before the transaction record is written.
+   - Keep per-order / per-waitlist dedup using `source_id` so one event can only award once.
+   - Add lightweight trigger logging so failed award paths become visible in Postgres logs during testing.
 
-The `credit_loyalty_on_order` trigger function has two anti-fraud checks that are blocking legitimate stamp awards:
+2. **Repair already-missed stamps**
+   - Add a reconciliation step in the migration that scans collected orders / seated waitlist entries with no matching loyalty transaction.
+   - Award the missing stamp once for each missed source.
+   - This will fix the order you just completed without double-crediting old records.
 
-1. **30-minute cooldown** (lines 18-26): If ANY `stamp_earned` transaction exists for the same user+venue within 30 minutes, the stamp is skipped. This means if a patron picks up 2 orders in a session, only the first one gets a stamp.
+3. **Clean up the threshold mismatch**
+   - The live data shows a reward row still carrying a different `stamps_required` value than the program threshold.
+   - Make the program `stamp_threshold` the single source of truth for stamp-card progress in the patron UI.
+   - Stop using per-reward `stamps_required` for stamp-card progress calculations so the loyalty screen cannot show broken values like `3/0`.
 
-2. **Kitchen flow check** (lines 13-16): `OLD.status NOT IN ('ready', 'in_prep')` — if orders were bulk-collected from a different status (e.g., directly from 'placed'), no stamp is awarded.
+4. **Verify end to end**
+   - Collect a fresh order.
+   - Confirm a `stamp_earned` transaction is created for that exact order ID.
+   - Confirm `patron_loyalty.stamps_count` increments immediately.
+   - Confirm the patron loyalty screen updates in realtime.
+   - Confirm re-updating the same order does not create a duplicate stamp.
 
-Additionally, there are **duplicate triggers** (`trg_credit_loyalty_on_order` and `trigger_credit_loyalty_on_order`) both calling the same function, which is harmless but messy.
+## Files / areas to update
+- `supabase/migrations/` — new migration for trigger hardening + reconciliation
+- `src/components/PatronLoyaltyCard.tsx` — use program threshold consistently
+- `src/components/LoyaltyReadyFlow.tsx` — use program threshold consistently
 
-## Fix
-
-**Migration to update `credit_loyalty_on_order` function:**
-
-1. **Change cooldown to per-order instead of per-venue** — check if this specific `order_id` already earned a stamp, not a blanket 30-minute window:
-   ```sql
-   IF EXISTS (
-     SELECT 1 FROM public.loyalty_transactions
-     WHERE source_id = NEW.id AND type = 'stamp_earned'
-   ) THEN RETURN NEW; END IF;
-   ```
-
-2. **Relax kitchen flow check** — allow any previous status that indicates the order was processed (not just `ready`/`in_prep`):
-   ```sql
-   IF OLD.status NOT IN ('ready', 'in_prep', 'placed') THEN
-     RETURN NEW;
-   END IF;
-   ```
-   Or remove it entirely since the per-order dedup already prevents double-crediting.
-
-3. **Drop duplicate trigger** — remove `trigger_credit_loyalty_on_order` since `trg_credit_loyalty_on_order` does the same thing.
-
-4. **Apply same fix to `credit_loyalty_on_waitlist`** — change its cooldown from time-based to per-entry dedup as well, and drop its duplicate trigger.
-
-## Technical Details
-
-| Change | File/Location |
-|---|---|
-| New migration SQL | `supabase/migrations/` (via migration tool) |
-
-The migration replaces both `credit_loyalty_on_order` and `credit_loyalty_on_waitlist` functions with per-source-id dedup instead of time-based cooldown, and drops duplicate triggers.
-
-No frontend changes needed — the patron's real-time subscription will pick up the new stamps automatically.
-
+## Expected result
+- New collected orders and seated visits reliably award stamps.
+- Missed stamps get repaired once.
+- Patron loyalty progress no longer shows inconsistent or broken stamp counts.
