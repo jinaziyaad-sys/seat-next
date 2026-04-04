@@ -18,7 +18,7 @@ interface VenueStampData {
   stamp_threshold: number;
   next_reward_name: string | null;
   next_reward_description: string | null;
-  active_codes: { code: string; reward_name: string | null }[];
+  active_codes: { code: string; reward_name: string | null; image_url: string | null; expires_at: string | null }[];
   can_claim: boolean;
   program_id: string;
 }
