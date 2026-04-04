@@ -565,15 +565,16 @@ const Index = () => {
 
   if (activeTab === "table-ready") {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pb-24">
         <TableReadyFlow 
           onBack={() => {
             setActiveTab("home");
             setSelectedOrder(null);
-            fetchActiveTracking(); // Refresh waitlist when returning home
+            fetchActiveTracking();
           }} 
           initialEntry={selectedOrder}
         />
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
     );
   }
