@@ -1,115 +1,97 @@
 
 
-# Batch 4: Social Features, i18n, Offline Support
+# Loyalty System Redesign: Stamp Cards with Visual Circles
 
-## 2. Social Features
+## What We're Building
 
-### 2A. Invite Friends to Waitlist
-- Add "Invite Friends" button on the waitlist tracking card (Index.tsx, when user has an active waitlist entry)
-- Uses Web Share API (`navigator.share`) to share a deep link: `/waitlist/{venueId}?group={entryId}`
-- On `WaitlistJoin.tsx`, detect `group` query param and link new entry to original via a `group_id` column on `waitlist_entries`
-- **Migration**: Add `group_id uuid` (nullable, self-referencing) to `waitlist_entries` so grouped parties can be tracked together
-- Merchant WaitlistBoard shows grouped entries with a visual indicator (e.g. chain icon)
+A fully redesigned loyalty experience with three layers:
 
-### 2B. Share Venue Experience
-- Add a "Share" button on venue cards in ExploreVenues and on the rating completion screen (RatingDialog)
-- Uses Web Share API with venue name, rating, and deep link to `/waitlist/{venueId}`
-- No database changes — purely client-side sharing
+1. **"Loyalty" tab in bottom nav** — a new 5th tab (Gift icon) alongside Home, Food Ready, Table Ready, Profile
+2. **Loyalty Hub page** — shows all venues the user has loyalty programs with, displayed as circular logos in a grid
+3. **Stamp Page per venue** — two inner tabs:
+   - **Stamps**: visual circle grid showing filled/unfilled stamps with animations
+   - **Vouchers**: list of earned discount codes/rewards
 
-### 2C. Friends at This Venue
-- **Migration**: New `patron_checkins` table (`user_id`, `venue_id`, `checked_in_at`, `expires_at`)
-- Auto-create a check-in when a patron joins a waitlist or places an order (DB trigger)
-- Auto-expire after 3 hours
-- On ExploreVenues venue cards: query `patron_checkins` for the current user's friends (uses a new `patron_connections` table: `user_id`, `friend_id`, `status`)
-- Show "2 friends here" badge on venue cards when matches found
-- **New component**: `FriendsAtVenue.tsx` — small avatar row shown on venue detail
+## User Flow
 
-### 2D. Friend Connections
-- **Migration**: `patron_connections` table (`id`, `user_id`, `friend_id`, `status` enum: pending/accepted/blocked, `created_at`)
-- RLS: users can read/write their own connections
-- Profile section: "Friends" sub-section to view connections and share invite link
-- Accept/decline flow via in-app notification or deep link
+```text
+Bottom Nav: [Home] [Food] [Table] [Loyalty] [Profile]
+                                     │
+                              Loyalty Hub
+                    ┌─────────────────────────────┐
+                    │  🔵 Restaurant A   🔵 Rest B │
+                    │  🔵 Restaurant C   🔵 Rest D │
+                    └─────────────────────────────┘
+                              │ tap logo
+                              ▼
+                    ┌─────────────────────────────┐
+                    │  ← Back    Restaurant A     │
+                    │  [Stamps]  [Vouchers]        │
+                    │                              │
+                    │   ◉ ◉ ◉ ◉ ○                 │
+                    │   ◉ ◉ ○ ○ ○                 │
+                    │   5/10 stamps                │
+                    │   Next: Free Coffee          │
+                    └─────────────────────────────┘
+```
 
----
+## Technical Plan
 
-## 3. Multi-Language (i18n)
+### 1. Update TabNavigation — add Loyalty tab
+- Add `{ id: "loyalty", labelKey: "nav.loyalty", icon: Gift }` to `tabKeys` array
+- Change grid from 4 to 5 columns
 
-### Approach
-- Use `react-i18next` with JSON translation files
-- Start with **English** (default) and **Afrikaans** as first additional language
-- Scope to patron-facing UI only (merchant/dev dashboards stay English)
+### 2. Create `LoyaltyReadyFlow.tsx` — the main loyalty component
+- Top-level component (same pattern as FoodReadyFlow/TableReadyFlow)
+- Props: `onBack: () => void`
+- **State machine**: `hub` view → `venue` view (selected venue)
+- Reuses the existing `fetchLoyaltyData` logic from PatronLoyaltyCard
 
-### Implementation
-- Install `react-i18next` and `i18next`
-- Create `src/i18n/` directory with `en.json`, `af.json` translation files
-- Initialize i18n in `main.tsx`
-- Add language switcher to ProfileSection (dropdown: English / Afrikaans)
-- Store preference in `profiles.preferred_language` column (new migration)
-- Wrap all patron-facing static strings in `t()` calls across:
-  - `TabNavigation`, `Index` (home tab text), `WaitlistJoin` (form labels/buttons)
-  - `FoodReadyFlow`, `TableReadyFlow` (status messages)
-  - `ExploreVenues` (filter labels, empty states)
-  - `ProfileSection` (section headers)
-- **Migration**: Add `preferred_language text default 'en'` to `profiles`
+#### Hub View (default)
+- Header with back arrow and "Loyalty" title
+- Grid of venue logos (circular, using VenueLogo component)
+- Each logo shows venue name below + a small badge if rewards are available
+- Tap a logo → transition to venue stamp page
 
-### Translation scope (Phase 1)
-- ~100 strings across patron pages
-- Navigation labels, button text, status messages, form labels, toasts
-- Dynamic content (venue names, menu items) stays untranslated
+#### Venue Stamp Page
+- Back arrow returns to hub
+- Venue name + logo at top
+- Two tabs: **Stamps** | **Vouchers**
 
----
+**Stamps tab:**
+- Large circle grid (5 per row) — each circle ~48px
+- Filled circles: primary color with animated checkmark/stamp icon
+- Unfilled circles: dashed border, muted
+- Below the grid: "5/10 stamps — 5 more for Free Coffee"
+- Claim button appears when threshold reached (animated pulse)
 
-## 4. Offline / Poor Connectivity
+**Vouchers tab:**
+- List of active discount codes (from `discount_codes` table)
+- Each voucher as a card: reward name, code (monospace), copy button
+- Empty state if no vouchers
 
-### 4A. Offline Detection & UI
-- **New component**: `src/components/OfflineIndicator.tsx`
-- Listens to `navigator.onLine` and `online`/`offline` events
-- Shows a persistent banner at top of screen: "You're offline — some features may be unavailable"
-- Auto-dismisses when connection returns
+### 3. Wire into Index.tsx
+- Add `if (activeTab === "loyalty")` block returning `<LoyaltyReadyFlow onBack={() => setActiveTab("home")} />`
+- Remove the inline `<PatronLoyaltyCard compact />` from the home tab (replaced by the dedicated tab)
 
-### 4B. Action Queue for Critical Mutations
-- **New utility**: `src/utils/offlineQueue.ts`
-- When offline, queue mutations (join waitlist, send message, place order) in `localStorage`
-- On reconnect, replay queued actions in order
-- Show toast: "Back online — syncing X pending actions..."
-- Wrap key Supabase calls in `Messenger.tsx`, `WaitlistJoin.tsx` with the queue
+### 4. Update i18n
+- Add `nav.loyalty` key and loyalty-specific strings to `en.json`
+- Sync all 24 language files
 
-### 4C. Cache Active Tracking Data
-- Already have Workbox `NetworkFirst` for Supabase API — this handles read caching
-- Add `StaleWhileRevalidate` strategy for venue data (logos, venue list) in `vite.config.ts`
-- Cache the user's active orders and waitlist entries in `localStorage` on each successful fetch in `Index.tsx`
-- Display cached data immediately on load, then update when network responds
-- Show subtle "Last updated X min ago" indicator when displaying cached data
-
----
-
-## Files Summary
+### Files Changed
 
 | File | Change |
-|------|--------|
-| New migration | `patron_connections`, `patron_checkins` tables; `group_id` on `waitlist_entries`; `preferred_language` on `profiles`; auto-checkin trigger |
-| `src/i18n/en.json` | New — English translations |
-| `src/i18n/af.json` | New — Afrikaans translations |
-| `src/i18n/index.ts` | New — i18next init |
-| `src/main.tsx` | Import i18n init |
-| `src/components/OfflineIndicator.tsx` | New — offline banner |
-| `src/utils/offlineQueue.ts` | New — localStorage action queue |
-| `src/components/FriendsAtVenue.tsx` | New — friends-at-venue badge |
-| `src/pages/Index.tsx` | Add share/invite button on waitlist card; cache tracking data; i18n `t()` calls |
-| `src/pages/WaitlistJoin.tsx` | Handle `group` param; i18n strings |
-| `src/components/ExploreVenues.tsx` | Share button; friends badge; i18n |
-| `src/components/RatingDialog.tsx` | Share after rating |
-| `src/components/TabNavigation.tsx` | i18n labels |
-| `src/components/ProfileSection.tsx` | Language switcher; friends section |
-| `src/components/FoodReadyFlow.tsx` | i18n status strings |
-| `src/components/TableReadyFlow.tsx` | i18n status strings |
-| `src/components/Messenger.tsx` | Offline queue wrapper |
-| `src/App.tsx` | Add OfflineIndicator |
-| `vite.config.ts` | Add StaleWhileRevalidate cache strategy for venue assets |
-| `package.json` | Add `react-i18next`, `i18next` |
+|---|---|
+| `src/components/TabNavigation.tsx` | Add 5th "Loyalty" tab |
+| `src/components/LoyaltyReadyFlow.tsx` | **New** — hub + stamp page + vouchers |
+| `src/pages/Index.tsx` | Add loyalty tab routing, remove inline PatronLoyaltyCard |
+| `src/i18n/en.json` + 24 others | Add nav.loyalty and stamp page strings |
 
-## Build Order
-1. Offline indicator + queue (foundational, improves resilience for everything else)
-2. i18n setup + language switcher + translate patron strings
-3. Social: share venue, invite to waitlist, friend connections, friends-at-venue
+### Design Details
+- Stamp circles use framer-motion `scale` + `fill` animations when earned
+- Filled stamps get a subtle glow effect (box-shadow with primary color)
+- Hub uses a 3-column grid of circular logos with venue names
+- Voucher cards use the existing glass-morphism card style
+- "Claim" button triggers the existing `claim-loyalty-reward` edge function
+- Only stamp_card programs shown (points programs filtered out per user request)
 
