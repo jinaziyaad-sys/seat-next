@@ -41,6 +41,42 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
     fetchData();
   }, []);
 
+  // Real-time subscription for stamp updates
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+
+    const setupRealtime = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      channel = supabase
+        .channel('loyalty-patron-updates')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'patron_loyalty',
+          filter: `user_id=eq.${user.id}`
+        }, () => {
+          fetchData();
+        })
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'discount_codes',
+          filter: `user_id=eq.${user.id}`
+        }, () => {
+          fetchData();
+        })
+        .subscribe();
+    };
+
+    setupRealtime();
+
+    return () => {
+      if (channel) supabase.removeChannel(channel);
+    };
+  }, []);
+
   const fetchData = async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setLoading(false); return; }
