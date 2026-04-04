@@ -60,6 +60,7 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [justSaved, setJustSaved] = useState(false);
   const [programId, setProgramId] = useState<string | null>(null);
   const [isActive, setIsActive] = useState(false);
   const [programType, setProgramType] = useState<"stamp_card" | "points">("stamp_card");
