@@ -1257,6 +1257,21 @@ const Index = () => {
             </Card>
           )}
 
+          <Card 
+            className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
+            onClick={() => setActiveTab("loyalty")}
+          >
+            <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Gift size={28} />
+              </div>
+              <div>
+                <h3 className="font-semibold">{t("nav.loyalty")}</h3>
+                <p className="text-sm text-muted-foreground">{t("home.loyaltyDesc", "Stamps & rewards")}</p>
+              </div>
+            </CardContent>
+          </Card>
+
           
           {!features.food_ordering_enabled && !features.waitlist_enabled && (
             <div className="col-span-2 text-center py-8 text-muted-foreground">
