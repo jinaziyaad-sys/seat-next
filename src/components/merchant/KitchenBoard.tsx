@@ -944,8 +944,11 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
               </div>
 
               {order.customer_name && (
-                <div className="p-2 bg-muted rounded text-sm">
+                <div className="p-2 bg-muted rounded text-sm flex items-center gap-1.5">
                   <strong>Customer:</strong> {order.customer_name}
+                  {order.user_id && voucherCounts.get(order.user_id) ? (
+                    <span className="inline-flex items-center gap-0.5 text-xs text-primary ml-auto"><Ticket className="h-3 w-3" />{voucherCounts.get(order.user_id)}</span>
+                  ) : null}
                 </div>
               )}
 
