@@ -367,19 +367,8 @@ const MerchantDashboard = () => {
   const hasKitchenBoard = hasFoodReady && features.kitchen_board_enabled;
   const hasAnalytics = features.analytics_enabled;
 
-  // Calculate available tabs count for grid layout
-  const getTabCount = () => {
-    let count = 0;
-    if (hasKitchenBoard) count++;
-    if (hasTableReady) count++; // Waitlist tab
-    if (hasReservations) count++; // Reservations tab
-    if (userRole?.role === "admin") {
-      count += 2; // Staff + Settings always visible for admin
-      if (loyaltyAdminEnabled) count++; // Loyalty tab
-      if (hasAnalytics) count++; // Reports tab
-    }
-    return Math.max(count, 1);
-  };
+  // Tab trigger class for consistent sizing
+  const tabTriggerClass = "flex items-center gap-2 flex-1 min-w-fit";
 
   // Set initial tab when service types are loaded
   useEffect(() => {
