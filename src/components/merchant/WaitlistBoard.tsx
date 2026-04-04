@@ -28,6 +28,7 @@ interface WaitlistEntry {
   status: "waiting" | "ready" | "seated" | "cancelled" | "no_show";
   position: number | null;
   venue_id: string;
+  user_id?: string | null;
   awaiting_merchant_confirmation?: boolean;
   patron_delayed?: boolean;
   delayed_until?: string | null;
