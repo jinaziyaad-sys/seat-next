@@ -58,7 +58,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
       const [venuesRes, programsRes, codesRes, rewardsRes] = await Promise.all([
         supabase.from("venues").select("id, name, logo_url").in("id", venueIds),
         supabase.from("loyalty_programs").select("*").in("venue_id", venueIds).eq("is_active", true).eq("type", "stamp_card"),
-        supabase.from("discount_codes").select("code, reward_name, venue_id").eq("user_id", user.id).eq("status", "active"),
+        supabase.from("discount_codes").select("code, reward_name, venue_id, reward_id, expires_at").eq("user_id", user.id).eq("status", "active"),
         supabase.from("loyalty_rewards").select("*").in("venue_id", venueIds).eq("is_active", true),
       ]);
 
