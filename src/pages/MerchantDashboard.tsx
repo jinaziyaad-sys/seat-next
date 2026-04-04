@@ -367,19 +367,8 @@ const MerchantDashboard = () => {
   const hasKitchenBoard = hasFoodReady && features.kitchen_board_enabled;
   const hasAnalytics = features.analytics_enabled;
 
-  // Calculate available tabs count for grid layout
-  const getTabCount = () => {
-    let count = 0;
-    if (hasKitchenBoard) count++;
-    if (hasTableReady) count++; // Waitlist tab
-    if (hasReservations) count++; // Reservations tab
-    if (userRole?.role === "admin") {
-      count += 2; // Staff + Settings always visible for admin
-      if (loyaltyAdminEnabled) count++; // Loyalty tab
-      if (hasAnalytics) count++; // Reports tab
-    }
-    return Math.max(count, 1);
-  };
+  // Tab trigger class for consistent sizing
+  const tabTriggerClass = "flex items-center gap-2 flex-1 min-w-fit";
 
   // Set initial tab when service types are loaded
   useEffect(() => {
@@ -512,9 +501,9 @@ const MerchantDashboard = () => {
 
       <div className="max-w-7xl mx-auto p-6">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className={`grid w-full`} style={{ gridTemplateColumns: `repeat(${getTabCount()}, minmax(0, 1fr))` }}>
+          <TabsList className="flex w-full overflow-x-auto h-auto p-1 bg-muted/50">
             {hasKitchenBoard && (
-              <TabsTrigger value="kitchen" data-tour="tab-kitchen" className="flex items-center gap-2">
+              <TabsTrigger value="kitchen" data-tour="tab-kitchen" className={tabTriggerClass}>
                 <ChefHat size={16} />
                 Kitchen Orders
                 {kitchenCount > 0 && (
@@ -528,7 +517,7 @@ const MerchantDashboard = () => {
               </TabsTrigger>
             )}
             {hasTableReady && (
-              <TabsTrigger value="waitlist" data-tour="tab-waitlist" className="flex items-center gap-2">
+              <TabsTrigger value="waitlist" data-tour="tab-waitlist" className={tabTriggerClass}>
                 <Users size={16} />
                 Waitlist
                 {waitlistCount > 0 && (
@@ -542,7 +531,7 @@ const MerchantDashboard = () => {
               </TabsTrigger>
             )}
             {hasReservations && (
-              <TabsTrigger value="reservations" data-tour="tab-reservations" className="flex items-center gap-2">
+              <TabsTrigger value="reservations" data-tour="tab-reservations" className={tabTriggerClass}>
                 <Calendar size={16} />
                 Reservations
                 {reservationCount > 0 && (
@@ -556,29 +545,29 @@ const MerchantDashboard = () => {
               </TabsTrigger>
             )}
             {hasTableReady && userRole.role === "admin" && (
-              <TabsTrigger value="floor-plan" className="flex items-center gap-2">
+              <TabsTrigger value="floor-plan" className={tabTriggerClass}>
                 <LayoutGrid size={16} />
                 Floor Plan
               </TabsTrigger>
             )}
             {userRole.role === "admin" && (
               <>
-                <TabsTrigger value="staff" data-tour="tab-staff" className="flex items-center gap-2">
+                <TabsTrigger value="staff" data-tour="tab-staff" className={tabTriggerClass}>
                   <Users size={16} />
                   Staff
                 </TabsTrigger>
-                <TabsTrigger value="settings" data-tour="tab-settings" className="flex items-center gap-2">
+                <TabsTrigger value="settings" data-tour="tab-settings" className={tabTriggerClass}>
                   <Settings size={16} />
                   Settings
                 </TabsTrigger>
                 {hasAnalytics && (
-                  <TabsTrigger value="reports" data-tour="tab-reports" className="flex items-center gap-2">
+                  <TabsTrigger value="reports" data-tour="tab-reports" className={tabTriggerClass}>
                     <BarChart3 size={16} />
                     Reports
                   </TabsTrigger>
                 )}
                 {loyaltyAdminEnabled && (
-                  <TabsTrigger value="loyalty" className="flex items-center gap-2">
+                  <TabsTrigger value="loyalty" className={tabTriggerClass}>
                     <Gift size={16} />
                     Loyalty
                   </TabsTrigger>
