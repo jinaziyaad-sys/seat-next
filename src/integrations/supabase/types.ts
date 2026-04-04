@@ -260,6 +260,7 @@ export type Database = {
         Row: {
           code: string
           created_at: string
+          expires_at: string | null
           id: string
           redeemed_at: string | null
           redeemed_by_staff_id: string | null
@@ -272,6 +273,7 @@ export type Database = {
         Insert: {
           code: string
           created_at?: string
+          expires_at?: string | null
           id?: string
           redeemed_at?: string | null
           redeemed_by_staff_id?: string | null
@@ -284,6 +286,7 @@ export type Database = {
         Update: {
           code?: string
           created_at?: string
+          expires_at?: string | null
           id?: string
           redeemed_at?: string | null
           redeemed_by_staff_id?: string | null
@@ -492,6 +495,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          image_url: string | null
           is_active: boolean
           name: string
           points_required: number | null
@@ -500,11 +504,13 @@ export type Database = {
           stamps_required: number | null
           updated_at: string
           venue_id: string
+          voucher_validity_days: number | null
         }
         Insert: {
           created_at?: string
           description?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           name: string
           points_required?: number | null
@@ -513,11 +519,13 @@ export type Database = {
           stamps_required?: number | null
           updated_at?: string
           venue_id: string
+          voucher_validity_days?: number | null
         }
         Update: {
           created_at?: string
           description?: string | null
           id?: string
+          image_url?: string | null
           is_active?: boolean
           name?: string
           points_required?: number | null
@@ -526,6 +534,7 @@ export type Database = {
           stamps_required?: number | null
           updated_at?: string
           venue_id?: string
+          voucher_validity_days?: number | null
         }
         Relationships: [
           {
