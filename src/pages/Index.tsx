@@ -1245,13 +1245,13 @@ const Index = () => {
               onClick={() => setActiveTab("table-ready")}
               data-tour="card-table"
             >
-              <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
-                <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <Users size={28} />
+              <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                  <Users size={22} />
                 </div>
                 <div>
-                  <h3 className="font-semibold">{t("home.tableReady")}</h3>
-                  <p className="text-sm text-muted-foreground">{t("home.joinWaitlist")}</p>
+                  <h3 className="font-semibold text-sm">{t("home.tableReady")}</h3>
+                  <p className="text-xs text-muted-foreground">{t("home.joinWaitlist")}</p>
                 </div>
               </CardContent>
             </Card>
