@@ -10,7 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import { Gift, Plus, Trash2, Save, Loader2, Stamp, Star, AlertTriangle, Crown, Percent, Users, Target } from "lucide-react";
+import { Gift, Plus, Trash2, Save, Loader2, Stamp, Star, AlertTriangle, Crown, Percent, Users, Target, Upload, Image } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
