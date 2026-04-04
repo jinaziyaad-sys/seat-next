@@ -380,29 +380,42 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
             ) : (
               currentVenue.active_codes.map((vc) => (
                 <Card key={vc.code} className="overflow-hidden">
-                  <CardContent className="p-4 flex items-center justify-between gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm">{vc.reward_name || t("loyalty.reward")}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {t("loyalty.tellStaff")}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <code className="bg-muted px-3 py-1.5 rounded-md text-sm font-mono font-bold tracking-wider">
-                        {vc.code}
-                      </code>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 shrink-0"
-                        onClick={() => copyCode(vc.code)}
-                      >
-                        {copiedCode === vc.code ? (
-                          <Check className="h-4 w-4 text-primary" />
-                        ) : (
-                          <Copy className="h-4 w-4" />
+                  <CardContent className="p-0">
+                    {vc.image_url && (
+                      <img src={vc.image_url} alt={vc.reward_name || ''} className="w-full h-32 object-cover" />
+                    )}
+                    <div className="p-4 flex items-center justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold text-sm">{vc.reward_name || t("loyalty.reward")}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {t("loyalty.tellStaff")}
+                        </p>
+                        {vc.expires_at && (
+                          <div className="flex items-center gap-1 mt-1">
+                            <Clock className="h-3 w-3 text-muted-foreground" />
+                            <p className="text-xs text-muted-foreground">
+                              {t("loyalty.expiresOn", { date: new Date(vc.expires_at).toLocaleDateString() })}
+                            </p>
+                          </div>
                         )}
-                      </Button>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <code className="bg-muted px-3 py-1.5 rounded-md text-sm font-mono font-bold tracking-wider">
+                          {vc.code}
+                        </code>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 shrink-0"
+                          onClick={() => copyCode(vc.code)}
+                        >
+                          {copiedCode === vc.code ? (
+                            <Check className="h-4 w-4 text-primary" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
