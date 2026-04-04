@@ -312,6 +312,7 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
       stamps_required: programType === "stamp_card" ? parseInt(stampThreshold) : null,
       points_required: programType === "points" ? 50 : null,
       reward_type: "discount_code", is_active: true,
+      image_url: null, voucher_validity_days: 30,
     }]);
   };
 
