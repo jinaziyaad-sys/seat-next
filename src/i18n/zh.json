@@ -3,7 +3,8 @@
     "home": "首页",
     "food": "美食",
     "table": "餐桌",
-    "profile": "个人资料"
+    "profile": "个人资料",
+    "loyalty": "Loyalty"
   },
   "home": {
     "welcome": "欢迎回来",
@@ -450,5 +451,16 @@
     "noResults": "No results found",
     "signIn": "Sign In",
     "share": "Share"
+  },
+  "loyaltyFlow": {
+    "title": "Loyalty",
+    "noPrograms": "No Loyalty Programs",
+    "noProgramsDesc": "Visit participating restaurants to start earning stamps toward rewards!",
+    "hubSubtitle": "Tap a restaurant to view your stamp card",
+    "stamps": "Stamps",
+    "vouchers": "Vouchers",
+    "nextReward": "Next Reward",
+    "noVouchers": "No Vouchers Yet",
+    "noVouchersDesc": "Complete your stamp card to earn vouchers"
   }
 }
