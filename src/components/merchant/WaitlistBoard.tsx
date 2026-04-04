@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Clock, Users, Plus, MapPin, Calendar as CalendarIcon, AlertTriangle, Check } from "lucide-react";
+import { Clock, Users, Plus, MapPin, Calendar as CalendarIcon, AlertTriangle, Check, Ticket } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeSupabaseFunctionWithTimeout } from "@/utils/invokeWithTimeout";
