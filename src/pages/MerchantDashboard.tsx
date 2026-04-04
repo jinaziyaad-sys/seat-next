@@ -503,7 +503,7 @@ const MerchantDashboard = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="flex w-full overflow-x-auto h-auto p-1 bg-muted/50">
             {hasKitchenBoard && (
-              <TabsTrigger value="kitchen" data-tour="tab-kitchen" className="flex items-center gap-2">
+              <TabsTrigger value="kitchen" data-tour="tab-kitchen" className={tabTriggerClass}>
                 <ChefHat size={16} />
                 Kitchen Orders
                 {kitchenCount > 0 && (
@@ -517,7 +517,7 @@ const MerchantDashboard = () => {
               </TabsTrigger>
             )}
             {hasTableReady && (
-              <TabsTrigger value="waitlist" data-tour="tab-waitlist" className="flex items-center gap-2">
+              <TabsTrigger value="waitlist" data-tour="tab-waitlist" className={tabTriggerClass}>
                 <Users size={16} />
                 Waitlist
                 {waitlistCount > 0 && (
@@ -531,7 +531,7 @@ const MerchantDashboard = () => {
               </TabsTrigger>
             )}
             {hasReservations && (
-              <TabsTrigger value="reservations" data-tour="tab-reservations" className="flex items-center gap-2">
+              <TabsTrigger value="reservations" data-tour="tab-reservations" className={tabTriggerClass}>
                 <Calendar size={16} />
                 Reservations
                 {reservationCount > 0 && (
@@ -545,29 +545,29 @@ const MerchantDashboard = () => {
               </TabsTrigger>
             )}
             {hasTableReady && userRole.role === "admin" && (
-              <TabsTrigger value="floor-plan" className="flex items-center gap-2">
+              <TabsTrigger value="floor-plan" className={tabTriggerClass}>
                 <LayoutGrid size={16} />
                 Floor Plan
               </TabsTrigger>
             )}
             {userRole.role === "admin" && (
               <>
-                <TabsTrigger value="staff" data-tour="tab-staff" className="flex items-center gap-2">
+                <TabsTrigger value="staff" data-tour="tab-staff" className={tabTriggerClass}>
                   <Users size={16} />
                   Staff
                 </TabsTrigger>
-                <TabsTrigger value="settings" data-tour="tab-settings" className="flex items-center gap-2">
+                <TabsTrigger value="settings" data-tour="tab-settings" className={tabTriggerClass}>
                   <Settings size={16} />
                   Settings
                 </TabsTrigger>
                 {hasAnalytics && (
-                  <TabsTrigger value="reports" data-tour="tab-reports" className="flex items-center gap-2">
+                  <TabsTrigger value="reports" data-tour="tab-reports" className={tabTriggerClass}>
                     <BarChart3 size={16} />
                     Reports
                   </TabsTrigger>
                 )}
                 {loyaltyAdminEnabled && (
-                  <TabsTrigger value="loyalty" className="flex items-center gap-2">
+                  <TabsTrigger value="loyalty" className={tabTriggerClass}>
                     <Gift size={16} />
                     Loyalty
                   </TabsTrigger>
