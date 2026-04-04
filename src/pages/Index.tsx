@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { VenueLogo } from "@/components/VenueLogo";
-import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon, AlertTriangle, Info, X, Wrench, MessageSquare, Share2 } from "lucide-react";
+import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon, AlertTriangle, Info, X, Wrench, MessageSquare, Share2, Gift } from "lucide-react";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +27,7 @@ import { PromoBanner } from "@/components/PromoBanner";
 import { PatronLoyaltyCard } from "@/components/PatronLoyaltyCard";
 import { LoyaltyReadyFlow } from "@/components/LoyaltyReadyFlow";
 import { PhonePromptDialog } from "@/components/PhonePromptDialog";
+import { TabNavigation } from "@/components/TabNavigation";
 import { ActiveTrackingListSkeleton } from "@/components/ui/skeleton-card";
 import { useMultipleUnreadMessages } from "@/hooks/useUnreadMessages";
 import {
@@ -548,46 +549,50 @@ const Index = () => {
 
   if (activeTab === "food-ready") {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pb-24">
         <FoodReadyFlow 
           onBack={() => {
             setActiveTab("home");
             setSelectedOrder(null);
-            fetchActiveTracking(); // Refresh orders when returning home
+            fetchActiveTracking();
           }} 
           initialOrder={selectedOrder}
         />
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
     );
   }
 
   if (activeTab === "table-ready") {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pb-24">
         <TableReadyFlow 
           onBack={() => {
             setActiveTab("home");
             setSelectedOrder(null);
-            fetchActiveTracking(); // Refresh waitlist when returning home
+            fetchActiveTracking();
           }} 
           initialEntry={selectedOrder}
         />
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
     );
   }
 
   if (activeTab === "profile") {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pb-24">
         <ProfileSection onBack={() => setActiveTab("home")} />
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
     );
   }
 
   if (activeTab === "loyalty") {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pb-24">
         <LoyaltyReadyFlow onBack={() => setActiveTab("home")} />
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
     );
   }
@@ -604,7 +609,7 @@ const Index = () => {
   };
 
   return (
-    <main id="main-content" className="min-h-screen bg-background" role="main">
+    <main id="main-content" className="min-h-screen bg-background pb-24" role="main">
       {/* Celebration Overlay for Ready Items */}
       {celebrationData && (
         <CelebrationOverlay
@@ -1252,6 +1257,21 @@ const Index = () => {
             </Card>
           )}
 
+          <Card 
+            className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
+            onClick={() => setActiveTab("loyalty")}
+          >
+            <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
+                <Gift size={28} />
+              </div>
+              <div>
+                <h3 className="font-semibold">{t("nav.loyalty")}</h3>
+                <p className="text-sm text-muted-foreground">{t("home.loyaltyDesc", "Stamps & rewards")}</p>
+              </div>
+            </CardContent>
+          </Card>
+
           
           {!features.food_ordering_enabled && !features.waitlist_enabled && (
             <div className="col-span-2 text-center py-8 text-muted-foreground">
@@ -1327,6 +1347,7 @@ const Index = () => {
           venueName={cardMessengerContext.venueName}
         />
       )}
+      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
     </main>
   );
 };
