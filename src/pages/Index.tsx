@@ -609,7 +609,7 @@ const Index = () => {
   };
 
   return (
-    <main id="main-content" className="min-h-screen bg-background" role="main">
+    <main id="main-content" className="min-h-screen bg-background pb-24" role="main">
       {/* Celebration Overlay for Ready Items */}
       {celebrationData && (
         <CelebrationOverlay
