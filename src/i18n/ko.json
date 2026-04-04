@@ -3,7 +3,8 @@
     "home": "홈",
     "food": "음식",
     "table": "테이블",
-    "profile": "프로필"
+    "profile": "프로필",
+    "loyalty": "Loyalty"
   },
   "home": {
     "welcome": "Welcome back",
@@ -450,5 +451,16 @@
     "noResults": "No results found",
     "signIn": "Sign In",
     "share": "Share"
+  },
+  "loyaltyFlow": {
+    "title": "Loyalty",
+    "noPrograms": "No Loyalty Programs",
+    "noProgramsDesc": "Visit participating restaurants to start earning stamps toward rewards!",
+    "hubSubtitle": "Tap a restaurant to view your stamp card",
+    "stamps": "Stamps",
+    "vouchers": "Vouchers",
+    "nextReward": "Next Reward",
+    "noVouchers": "No Vouchers Yet",
+    "noVouchersDesc": "Complete your stamp card to earn vouchers"
   }
 }

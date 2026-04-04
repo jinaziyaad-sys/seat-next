@@ -1,0 +1,410 @@
+import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { motion, AnimatePresence } from "framer-motion";
+import { ArrowLeft, Gift, Copy, Check, Loader2, Sparkles } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { VenueLogo } from "@/components/VenueLogo";
+import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
+import { toast } from "sonner";
+
+interface VenueStampData {
+  venue_id: string;
+  venue_name: string;
+  venue_logo: string | null;
+  stamps_count: number;
+  stamp_threshold: number;
+  next_reward_name: string | null;
+  next_reward_description: string | null;
+  active_codes: { code: string; reward_name: string | null }[];
+  can_claim: boolean;
+  program_id: string;
+}
+
+interface LoyaltyReadyFlowProps {
+  onBack: () => void;
+}
+
+export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
+  const { t } = useTranslation();
+  const [view, setView] = useState<"hub" | "venue">("hub");
+  const [venues, setVenues] = useState<VenueStampData[]>([]);
+  const [selectedVenue, setSelectedVenue] = useState<VenueStampData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [activeInnerTab, setActiveInnerTab] = useState<"stamps" | "vouchers">("stamps");
+  const [copiedCode, setCopiedCode] = useState<string | null>(null);
+  const [claiming, setClaiming] = useState(false);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setLoading(false); return; }
+
+    try {
+      const { data: loyaltyData } = await supabase
+        .from("patron_loyalty")
+        .select("*")
+        .eq("user_id", user.id);
+
+      if (!loyaltyData?.length) { setLoading(false); return; }
+
+      const venueIds = loyaltyData.map(l => l.venue_id);
+
+      const [venuesRes, programsRes, codesRes, rewardsRes] = await Promise.all([
+        supabase.from("venues").select("id, name, logo_url").in("id", venueIds),
+        supabase.from("loyalty_programs").select("*").in("venue_id", venueIds).eq("is_active", true).eq("type", "stamp_card"),
+        supabase.from("discount_codes").select("code, reward_name, venue_id").eq("user_id", user.id).eq("status", "active"),
+        supabase.from("loyalty_rewards").select("*").in("venue_id", venueIds).eq("is_active", true),
+      ]);
+
+      const venueMap = new Map(venuesRes.data?.map(v => [v.id, v]) || []);
+      const programMap = new Map(programsRes.data?.map(p => [p.venue_id, p]) || []);
+      const codesMap = new Map<string, { code: string; reward_name: string | null }[]>();
+      codesRes.data?.forEach(c => {
+        if (!codesMap.has(c.venue_id)) codesMap.set(c.venue_id, []);
+        codesMap.get(c.venue_id)!.push(c);
+      });
+      const rewardsMap = new Map<string, any>();
+      rewardsRes.data?.forEach(r => {
+        if (!rewardsMap.has(r.program_id)) rewardsMap.set(r.program_id, r);
+      });
+
+      const stampVenues: VenueStampData[] = loyaltyData
+        .map(l => {
+          const venue = venueMap.get(l.venue_id);
+          const program = programMap.get(l.venue_id);
+          if (!venue || !program) return null;
+          const reward = rewardsMap.get(program.id);
+          const codes = codesMap.get(l.venue_id) || [];
+          const threshold = program.stamp_threshold || 10;
+          const canClaim = codes.length === 0 && l.stamps_count >= threshold;
+
+          return {
+            venue_id: l.venue_id,
+            venue_name: venue.name,
+            venue_logo: venue.logo_url,
+            stamps_count: l.stamps_count,
+            stamp_threshold: threshold,
+            next_reward_name: reward?.name || null,
+            next_reward_description: reward?.description || null,
+            active_codes: codes,
+            can_claim: canClaim,
+            program_id: program.id,
+          };
+        })
+        .filter(Boolean) as VenueStampData[];
+
+      setVenues(stampVenues);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleClaim = async (venueId: string) => {
+    setClaiming(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('claim-loyalty-reward', {
+        body: { venue_id: venueId },
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+      toast.success(t("loyalty.rewardClaimed", { reward: data.reward_name, code: data.code }));
+      await fetchData();
+      // Update selected venue
+      setSelectedVenue(prev => prev ? { ...prev, can_claim: false } : null);
+      setActiveInnerTab("vouchers");
+    } catch (err: any) {
+      toast.error(err.message || t("loyalty.failedClaimReward"));
+    } finally {
+      setClaiming(false);
+    }
+  };
+
+  const copyCode = async (code: string) => {
+    await navigator.clipboard.writeText(code);
+    setCopiedCode(code);
+    toast.success(t("loyalty.codeCopied"));
+    setTimeout(() => setCopiedCode(null), 2000);
+  };
+
+  const selectVenue = (v: VenueStampData) => {
+    setSelectedVenue(v);
+    setActiveInnerTab("stamps");
+    setView("venue");
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Hub View
+  if (view === "hub") {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b px-4 py-3 flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={onBack}>
+            <ArrowLeft className="h-5 w-5" />
+          </Button>
+          <Gift className="h-5 w-5 text-primary" />
+          <h1 className="text-lg font-bold">{t("loyaltyFlow.title")}</h1>
+        </div>
+
+        {venues.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 px-6 text-center">
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <Gift className="h-8 w-8 text-primary" />
+            </div>
+            <h2 className="text-lg font-semibold mb-2">{t("loyaltyFlow.noPrograms")}</h2>
+            <p className="text-sm text-muted-foreground">{t("loyaltyFlow.noProgramsDesc")}</p>
+          </div>
+        ) : (
+          <div className="p-6">
+            <p className="text-sm text-muted-foreground mb-4">{t("loyaltyFlow.hubSubtitle")}</p>
+            <div className="grid grid-cols-3 gap-6">
+              {venues.map((v) => (
+                <motion.button
+                  key={v.venue_id}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => selectVenue(v)}
+                  className="flex flex-col items-center gap-2 group"
+                >
+                  <div className="relative">
+                    <VenueLogo
+                      logoUrl={v.venue_logo}
+                      name={v.venue_name}
+                      size="xl"
+                      className={cn(
+                        "ring-2 ring-border group-hover:ring-primary transition-all",
+                        (v.can_claim || v.active_codes.length > 0) && "ring-primary shadow-[0_0_12px_hsl(var(--primary)/0.3)]"
+                      )}
+                    />
+                    {(v.can_claim || v.active_codes.length > 0) && (
+                      <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                        <Gift className="h-3 w-3 text-primary-foreground" />
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-xs font-medium text-center leading-tight line-clamp-2">
+                    {v.venue_name}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {v.stamps_count}/{v.stamp_threshold}
+                  </span>
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Venue Stamp Page
+  if (!selectedVenue) return null;
+
+  const remaining = selectedVenue.stamp_threshold - selectedVenue.stamps_count;
+  // Refresh selected venue from latest data
+  const currentVenue = venues.find(v => v.venue_id === selectedVenue.venue_id) || selectedVenue;
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <div className="sticky top-0 z-10 bg-background/95 backdrop-blur-sm border-b px-4 py-3 flex items-center gap-3">
+        <Button variant="ghost" size="icon" onClick={() => setView("hub")}>
+          <ArrowLeft className="h-5 w-5" />
+        </Button>
+        <VenueLogo logoUrl={currentVenue.venue_logo} name={currentVenue.venue_name} size="sm" />
+        <h1 className="text-lg font-bold truncate">{currentVenue.venue_name}</h1>
+      </div>
+
+      {/* Inner Tabs */}
+      <div className="flex border-b">
+        <button
+          onClick={() => setActiveInnerTab("stamps")}
+          className={cn(
+            "flex-1 py-3 text-sm font-medium text-center transition-colors border-b-2",
+            activeInnerTab === "stamps"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {t("loyaltyFlow.stamps")}
+        </button>
+        <button
+          onClick={() => setActiveInnerTab("vouchers")}
+          className={cn(
+            "flex-1 py-3 text-sm font-medium text-center transition-colors border-b-2 relative",
+            activeInnerTab === "vouchers"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {t("loyaltyFlow.vouchers")}
+          {currentVenue.active_codes.length > 0 && (
+            <span className="ml-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">
+              {currentVenue.active_codes.length}
+            </span>
+          )}
+        </button>
+      </div>
+
+      <AnimatePresence mode="wait">
+        {activeInnerTab === "stamps" ? (
+          <motion.div
+            key="stamps"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="p-6 space-y-6"
+          >
+            {/* Stamp Grid */}
+            <div className="flex flex-wrap gap-3 justify-center">
+              {Array.from({ length: currentVenue.stamp_threshold }).map((_, i) => {
+                const isFilled = i < currentVenue.stamps_count;
+                return (
+                  <motion.div
+                    key={i}
+                    initial={isFilled ? { scale: 0 } : { scale: 1 }}
+                    animate={{ scale: 1 }}
+                    transition={{
+                      type: "spring",
+                      damping: 12,
+                      stiffness: 200,
+                      delay: isFilled ? i * 0.05 : 0,
+                    }}
+                    className={cn(
+                      "w-12 h-12 rounded-full flex items-center justify-center transition-all",
+                      isFilled
+                        ? "bg-primary text-primary-foreground shadow-[0_0_12px_hsl(var(--primary)/0.4)]"
+                        : "border-2 border-dashed border-muted-foreground/30"
+                    )}
+                  >
+                    {isFilled && (
+                      <motion.div
+                        initial={{ scale: 0 }}
+                        animate={{ scale: 1 }}
+                        transition={{ delay: i * 0.05 + 0.2 }}
+                      >
+                        <Check className="h-5 w-5" />
+                      </motion.div>
+                    )}
+                  </motion.div>
+                );
+              })}
+            </div>
+
+            {/* Progress Text */}
+            <div className="text-center space-y-1">
+              <p className="text-lg font-bold">
+                {currentVenue.stamps_count}/{currentVenue.stamp_threshold} {t("loyalty.stamps")}
+              </p>
+              {currentVenue.next_reward_name && remaining > 0 && (
+                <p className="text-sm text-muted-foreground">
+                  {t("loyalty.moreForReward", { count: remaining, reward: currentVenue.next_reward_name })}
+                </p>
+              )}
+              {currentVenue.next_reward_name && remaining <= 0 && (
+                <p className="text-sm text-primary font-medium">
+                  {t("loyalty.readyToClaim", { reward: currentVenue.next_reward_name })}
+                </p>
+              )}
+            </div>
+
+            {/* Claim Button */}
+            {currentVenue.can_claim && (
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="flex justify-center"
+              >
+                <Button
+                  size="lg"
+                  onClick={() => handleClaim(currentVenue.venue_id)}
+                  disabled={claiming}
+                  className="rounded-full px-8 animate-pulse shadow-[0_0_20px_hsl(var(--primary)/0.4)]"
+                >
+                  {claiming ? (
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  ) : (
+                    <Sparkles className="h-5 w-5 mr-2" />
+                  )}
+                  {t("loyalty.claim")}
+                </Button>
+              </motion.div>
+            )}
+
+            {/* Next Reward Info */}
+            {currentVenue.next_reward_name && (
+              <Card className="bg-muted/50">
+                <CardContent className="p-4 text-center">
+                  <p className="text-xs text-muted-foreground mb-1">{t("loyaltyFlow.nextReward")}</p>
+                  <p className="font-semibold">{currentVenue.next_reward_name}</p>
+                  {currentVenue.next_reward_description && (
+                    <p className="text-xs text-muted-foreground mt-1">{currentVenue.next_reward_description}</p>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+          </motion.div>
+        ) : (
+          <motion.div
+            key="vouchers"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="p-6 space-y-3"
+          >
+            {currentVenue.active_codes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
+                  <Gift className="h-7 w-7 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium">{t("loyaltyFlow.noVouchers")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("loyaltyFlow.noVouchersDesc")}</p>
+              </div>
+            ) : (
+              currentVenue.active_codes.map((vc) => (
+                <Card key={vc.code} className="overflow-hidden">
+                  <CardContent className="p-4 flex items-center justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm">{vc.reward_name || t("loyalty.reward")}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {t("loyalty.tellStaff")}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <code className="bg-muted px-3 py-1.5 rounded-md text-sm font-mono font-bold tracking-wider">
+                        {vc.code}
+                      </code>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 shrink-0"
+                        onClick={() => copyCode(vc.code)}
+                      >
+                        {copiedCode === vc.code ? (
+                          <Check className="h-4 w-4 text-primary" />
+                        ) : (
+                          <Copy className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
