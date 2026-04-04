@@ -476,7 +476,46 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
                         <div className="flex-1 space-y-3">
                           <Input placeholder="Reward name (e.g., Free Dessert)" value={reward.name} onChange={(e) => updateReward(index, "name", e.target.value)} />
                           <Input placeholder="Description" value={reward.description} onChange={(e) => updateReward(index, "description", e.target.value)} />
-                          <div className="flex gap-3">
+                          
+                          {/* Reward Image Upload */}
+                          <div className="space-y-2">
+                            <Label className="text-xs">Reward Image</Label>
+                            {reward.image_url ? (
+                              <div className="relative inline-block">
+                                <img src={reward.image_url} alt={reward.name} className="h-20 w-20 rounded-lg object-cover border" />
+                                <Button
+                                  variant="destructive"
+                                  size="icon"
+                                  className="absolute -top-2 -right-2 h-6 w-6"
+                                  onClick={() => updateReward(index, "image_url", null)}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <label className="flex items-center gap-2 cursor-pointer p-3 border border-dashed rounded-lg hover:bg-muted/50 transition-colors">
+                                <Upload className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-xs text-muted-foreground">Upload image</span>
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (!file) return;
+                                    const ext = file.name.split('.').pop();
+                                    const path = `${venueId}/${Date.now()}.${ext}`;
+                                    const { error } = await supabase.storage.from('reward-images').upload(path, file);
+                                    if (error) { toast({ title: "Upload failed", description: error.message, variant: "destructive" }); return; }
+                                    const { data: urlData } = supabase.storage.from('reward-images').getPublicUrl(path);
+                                    updateReward(index, "image_url", urlData.publicUrl);
+                                  }}
+                                />
+                              </label>
+                            )}
+                          </div>
+
+                          <div className="flex gap-3 flex-wrap">
                             {programType === "stamp_card" ? (
                               <div className="space-y-1">
                                 <Label className="text-xs">Stamps required</Label>
@@ -488,6 +527,10 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
                                 <Input type="number" min="1" value={reward.points_required || ""} onChange={(e) => updateReward(index, "points_required", parseInt(e.target.value) || null)} className="w-24" />
                               </div>
                             )}
+                            <div className="space-y-1">
+                              <Label className="text-xs">Voucher valid (days)</Label>
+                              <Input type="number" min="1" max="365" value={reward.voucher_validity_days || 30} onChange={(e) => updateReward(index, "voucher_validity_days", parseInt(e.target.value) || 30)} className="w-24" />
+                            </div>
                             <div className="space-y-1">
                               <Label className="text-xs">Active</Label>
                               <div className="pt-1"><Switch checked={reward.is_active} onCheckedChange={(v) => updateReward(index, "is_active", v)} /></div>
