@@ -549,15 +549,16 @@ const Index = () => {
 
   if (activeTab === "food-ready") {
     return (
-      <div className="min-h-screen bg-background">
+      <div className="min-h-screen bg-background pb-24">
         <FoodReadyFlow 
           onBack={() => {
             setActiveTab("home");
             setSelectedOrder(null);
-            fetchActiveTracking(); // Refresh orders when returning home
+            fetchActiveTracking();
           }} 
           initialOrder={selectedOrder}
         />
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
       </div>
     );
   }
