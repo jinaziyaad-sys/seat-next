@@ -32,9 +32,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
   const [venues, setVenues] = useState<VenueStampData[]>([]);
   const [selectedVenue, setSelectedVenue] = useState<VenueStampData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [activeInnerTab, setActiveInnerTab] = useState<"stamps" | "vouchers">("stamps");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
-  const [claiming, setClaiming] = useState(false);
 
   useEffect(() => {
     fetchData();
