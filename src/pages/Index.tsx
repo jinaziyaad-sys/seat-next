@@ -584,6 +584,14 @@ const Index = () => {
     );
   }
 
+  if (activeTab === "loyalty") {
+    return (
+      <div className="min-h-screen bg-background">
+        <LoyaltyReadyFlow onBack={() => setActiveTab("home")} />
+      </div>
+    );
+  }
+
 
   // Get announcement icon based on type
   const getAnnouncementIcon = (type: string) => {
