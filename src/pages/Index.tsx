@@ -1220,7 +1220,7 @@ const Index = () => {
           </Card>
         )}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-3">
           {features.food_ordering_enabled && (
             <Card 
               className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
