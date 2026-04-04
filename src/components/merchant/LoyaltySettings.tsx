@@ -539,9 +539,15 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
                   </Card>
                 ))}
               </div>
-              <Button onClick={handleSave} disabled={saving} className="w-full">
-                {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-                Save Loyalty Program
+              <Button onClick={handleSave} disabled={saving || justSaved} className="w-full">
+                {saving ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : justSaved ? (
+                  <Check className="h-4 w-4 mr-2" />
+                ) : (
+                  <Save className="h-4 w-4 mr-2" />
+                )}
+                {justSaved ? "Saved!" : programId ? "Update Loyalty Program" : "Save Loyalty Program"}
               </Button>
             </CardContent>
           </Card>
