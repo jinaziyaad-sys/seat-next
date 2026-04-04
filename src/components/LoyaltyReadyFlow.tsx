@@ -126,10 +126,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
             venue_name: venue.name,
             venue_logo: venue.logo_url,
             stamps_count: l.stamps_count,
-            stamp_threshold: threshold,
-            next_reward_name: reward?.name || null,
-            next_reward_description: reward?.description || null,
-            active_codes: codes,
+            stamp_threshold: program.stamp_threshold || 10,
             can_claim: canClaim,
             program_id: program.id,
           };
