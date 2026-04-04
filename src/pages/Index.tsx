@@ -1347,6 +1347,8 @@ const Index = () => {
           venueName={cardMessengerContext.venueName}
         />
       )}
+      )}
+      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
     </main>
   );
 };
