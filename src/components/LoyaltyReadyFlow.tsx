@@ -120,8 +120,6 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
           if (!venue || !program) return null;
           const reward = rewardsMap.get(program.id);
           const codes = codesMap.get(l.venue_id) || [];
-          const threshold = program.stamp_threshold || 10;
-          const canClaim = codes.length === 0 && l.stamps_count >= threshold;
 
           return {
             venue_id: l.venue_id,
