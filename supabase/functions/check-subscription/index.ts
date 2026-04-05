@@ -174,7 +174,7 @@ serve(async (req) => {
         }
 
         // Check if any subscription is already claimed by another venue
-        const sub = subscriptions.data[0];
+        const sub = activeSubs[0];
         const { data: claimedVenue } = await supabaseClient
           .from("merchant_subscriptions")
           .select("venue_id")
