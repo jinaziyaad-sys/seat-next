@@ -236,7 +236,7 @@ serve(async (req) => {
       try {
         const sub = await stripe.subscriptions.retrieve(existingSub.stripe_subscription_id);
         
-        if (sub.status === 'active') {
+        if (sub.status === 'active' || sub.status === 'trialing') {
           const productIds = sub.items.data.map((item: any) => 
             typeof item.price.product === 'string' ? item.price.product : item.price.product?.id
           ).filter(Boolean);
