@@ -86,6 +86,81 @@ export type Database = {
         }
         Relationships: []
       }
+      billing_invoices: {
+        Row: {
+          amount: number
+          created_at: string
+          currency: string
+          due_date: string | null
+          id: string
+          invoice_number: string
+          line_items: Json
+          notes: string | null
+          paid_at: string | null
+          payfast_reference: string | null
+          period_end: string | null
+          period_start: string | null
+          sent_at: string | null
+          status: string
+          stripe_invoice_id: string | null
+          subscription_id: string | null
+          venue_id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          due_date?: string | null
+          id?: string
+          invoice_number: string
+          line_items?: Json
+          notes?: string | null
+          paid_at?: string | null
+          payfast_reference?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          sent_at?: string | null
+          status?: string
+          stripe_invoice_id?: string | null
+          subscription_id?: string | null
+          venue_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          currency?: string
+          due_date?: string | null
+          id?: string
+          invoice_number?: string
+          line_items?: Json
+          notes?: string | null
+          paid_at?: string | null
+          payfast_reference?: string | null
+          period_end?: string | null
+          period_start?: string | null
+          sent_at?: string | null
+          status?: string
+          stripe_invoice_id?: string | null
+          subscription_id?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_invoices_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_invoices_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_analytics: {
         Row: {
           avg_rating_given: number | null
@@ -255,6 +330,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      dev_pricing_overrides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          custom_annual_price: number | null
+          custom_monthly_price: number | null
+          discount_percent: number | null
+          expires_at: string | null
+          id: string
+          override_type: string
+          reason: string | null
+          venue_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          custom_annual_price?: number | null
+          custom_monthly_price?: number | null
+          discount_percent?: number | null
+          expires_at?: string | null
+          id?: string
+          override_type: string
+          reason?: string | null
+          venue_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          custom_annual_price?: number | null
+          custom_monthly_price?: number | null
+          discount_percent?: number | null
+          expires_at?: string | null
+          id?: string
+          override_type?: string
+          reason?: string | null
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dev_pricing_overrides_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       discount_codes: {
         Row: {
@@ -659,6 +781,72 @@ export type Database = {
             foreignKeyName: "loyalty_transactions_venue_id_fkey"
             columns: ["venue_id"]
             isOneToOne: false
+            referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      merchant_subscriptions: {
+        Row: {
+          billing_cycle: string
+          cancelled_at: string | null
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          payfast_subscription_id: string | null
+          plan_id: string
+          status: string
+          stripe_customer_id: string | null
+          stripe_subscription_id: string | null
+          trial_ends_at: string | null
+          updated_at: string
+          venue_id: string
+        }
+        Insert: {
+          billing_cycle?: string
+          cancelled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          payfast_subscription_id?: string | null
+          plan_id: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+          venue_id: string
+        }
+        Update: {
+          billing_cycle?: string
+          cancelled_at?: string | null
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          payfast_subscription_id?: string | null
+          plan_id?: string
+          status?: string
+          stripe_customer_id?: string | null
+          stripe_subscription_id?: string | null
+          trial_ends_at?: string | null
+          updated_at?: string
+          venue_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_subscriptions_venue_id_fkey"
+            columns: ["venue_id"]
+            isOneToOne: true
             referencedRelation: "venues"
             referencedColumns: ["id"]
           },
@@ -1637,6 +1825,36 @@ export type Database = {
           },
         ]
       }
+      promo_pricing_rules: {
+        Row: {
+          base_price_per_day: number
+          created_at: string
+          id: string
+          is_active: boolean
+          placement_multipliers: Json
+          reach_tiers: Json
+          updated_at: string
+        }
+        Insert: {
+          base_price_per_day?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          placement_multipliers?: Json
+          reach_tiers?: Json
+          updated_at?: string
+        }
+        Update: {
+          base_price_per_day?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          placement_multipliers?: Json
+          reach_tiers?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       referral_codes: {
         Row: {
           code: string
@@ -1724,6 +1942,114 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      subscription_addon_assignments: {
+        Row: {
+          addon_id: string
+          created_at: string
+          id: string
+          subscription_id: string
+        }
+        Insert: {
+          addon_id: string
+          created_at?: string
+          id?: string
+          subscription_id: string
+        }
+        Update: {
+          addon_id?: string
+          created_at?: string
+          id?: string
+          subscription_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "subscription_addon_assignments_addon_id_fkey"
+            columns: ["addon_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_addons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "subscription_addon_assignments_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      subscription_addons: {
+        Row: {
+          annual_price: number
+          created_at: string
+          feature_key: string
+          id: string
+          is_active: boolean
+          monthly_price: number
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          annual_price?: number
+          created_at?: string
+          feature_key: string
+          id?: string
+          is_active?: boolean
+          monthly_price?: number
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          annual_price?: number
+          created_at?: string
+          feature_key?: string
+          id?: string
+          is_active?: boolean
+          monthly_price?: number
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      subscription_plans: {
+        Row: {
+          annual_price: number
+          created_at: string
+          description: string | null
+          id: string
+          included_features: Json
+          is_active: boolean
+          monthly_price: number
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          annual_price?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          included_features?: Json
+          is_active?: boolean
+          monthly_price?: number
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          annual_price?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          included_features?: Json
+          is_active?: boolean
+          monthly_price?: number
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {
