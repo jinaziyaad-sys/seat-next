@@ -23,15 +23,21 @@ export const SUBSCRIPTION_TIERS: Record<string, {
     annual_price_id: 'price_1TIscHRrnmiHUS0Lt8fOF8aP',
     name: 'Pro',
   },
+  enterprise: {
+    product_id: 'prod_UHQwZRXj29yoYZ',
+    price_id: 'price_1TIs4JRrnmiHUS0LYSuWZptR',
+    annual_product_id: 'prod_UHTdy0VRFEXVQe',
+    annual_price_id: 'price_1TIufsRrnmiHUS0LTTWh2jVo',
+    name: 'Enterprise',
+  },
 };
 
-// All product IDs that map to each tier (monthly + annual + legacy)
+// All product IDs that map to each tier (monthly + annual)
 export const TIER_PRODUCT_IDS: Record<string, string[]> = {
   starter: ['prod_UHQvy6yev2Z4FJ', 'prod_UHRVRONaVJns9q'],
-  pro: ['prod_UHQvBPLpLypA0e', 'prod_UHRVAz3q59g5Vm', 'prod_UHQwZRXj29yoYZ'], // includes legacy Enterprise
+  pro: ['prod_UHQvBPLpLypA0e', 'prod_UHRVAz3q59g5Vm'],
+  enterprise: ['prod_UHQwZRXj29yoYZ', 'prod_UHTdy0VRFEXVQe'],
 };
-
-// Add-ons removed — features are tier-based only
 
 export interface SubscriptionState {
   loading: boolean;
@@ -43,7 +49,6 @@ export interface SubscriptionState {
   subscriptionEnd: string | null;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
-  // Feature entitlements derived from subscription
   hasFeature: (feature: string) => boolean;
 }
 
@@ -60,16 +65,22 @@ function getEntitledFeatures(productIds: string[]): Set<string> {
   const features = new Set<string>();
   const isStarter = TIER_PRODUCT_IDS.starter.some(id => productIds.includes(id));
   const isPro = TIER_PRODUCT_IDS.pro.some(id => productIds.includes(id));
+  const isEnterprise = TIER_PRODUCT_IDS.enterprise.some(id => productIds.includes(id));
 
-  if (isStarter || isPro) {
+  // Starter: core features
+  if (isStarter || isPro || isEnterprise) {
     features.add('food_ordering');
     features.add('waitlist');
     features.add('reservations');
     features.add('kitchen_board');
   }
-  if (isPro) {
-    features.add('loyalty');
+  // Pro: + analytics
+  if (isPro || isEnterprise) {
     features.add('analytics');
+  }
+  // Enterprise: + loyalty
+  if (isEnterprise) {
+    features.add('loyalty');
   }
 
   return features;
@@ -124,7 +135,6 @@ export function useMerchantSubscription(): SubscriptionState {
 
   useEffect(() => {
     checkSubscription();
-    // Auto-refresh every 60 seconds
     const interval = setInterval(checkSubscription, 60000);
     return () => clearInterval(interval);
   }, [checkSubscription]);
