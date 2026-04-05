@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import MerchantAuth from "./pages/MerchantAuth";
 import MerchantDashboard from "./pages/MerchantDashboard";
+import MerchantSignup from "./pages/MerchantSignup";
 import DevAuth from "./pages/DevAuth";
 import DevDashboard from "./pages/DevDashboard";
 
