@@ -1,24 +1,13 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMerchantAuth } from "@/hooks/useAuth";
-import { useMerchantSubscription, SUBSCRIPTION_TIERS } from "@/hooks/useMerchantSubscription";
+import { useMerchantSubscription } from "@/hooks/useMerchantSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CreditCard, ExternalLink, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Loader2, ArrowUpCircle, ArrowDownCircle, Receipt } from "lucide-react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+import { CreditCard, ExternalLink, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Loader2, Receipt, Settings } from "lucide-react";
 import { toast } from "sonner";
 
 interface Invoice {
@@ -37,36 +26,25 @@ export default function MerchantBilling() {
   const subscription = useMerchantSubscription(userRole?.venue_id);
   const navigate = useNavigate();
   const [portalLoading, setPortalLoading] = useState(false);
-  const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
 
   useEffect(() => {
     const fetchInvoices = async () => {
-      if (!user) return;
-      // Get venue_id from user_roles
-      const { data: role } = await supabase
-        .from("user_roles")
-        .select("venue_id")
-        .eq("user_id", user.id)
-        .limit(1)
-        .maybeSingle();
-
-      if (role?.venue_id) {
-        const { data } = await supabase
-          .from("billing_invoices")
-          .select("id, invoice_number, amount, currency, status, period_start, period_end, created_at")
-          .eq("venue_id", role.venue_id)
-          .order("created_at", { ascending: false })
-          .limit(20);
-        setInvoices((data as Invoice[]) || []);
-      }
+      if (!user || !userRole?.venue_id) return;
+      const { data } = await supabase
+        .from("billing_invoices")
+        .select("id, invoice_number, amount, currency, status, period_start, period_end, created_at")
+        .eq("venue_id", userRole.venue_id)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      setInvoices((data as Invoice[]) || []);
       setInvoicesLoading(false);
     };
     if (!authLoading && user) fetchInvoices();
-  }, [user, authLoading]);
+  }, [user, authLoading, userRole?.venue_id]);
 
-  const handleManagePayment = async () => {
+  const handleOpenPortal = async () => {
     setPortalLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("customer-portal");
@@ -76,23 +54,6 @@ export default function MerchantBilling() {
       toast.error("Failed to open billing portal: " + (err.message || "Unknown error"));
     } finally {
       setPortalLoading(false);
-    }
-  };
-
-  const handleChangePlan = async (newPriceId: string, planName: string) => {
-    setUpgradeLoading(newPriceId);
-    try {
-      const { data, error } = await supabase.functions.invoke("update-subscription", {
-        body: { newPriceId },
-      });
-      if (error) throw error;
-      toast.success(`Switched to ${planName} plan. Changes take effect immediately.`);
-      // Refresh after a moment
-      setTimeout(() => window.location.reload(), 2000);
-    } catch (err: any) {
-      toast.error("Failed to change plan: " + (err.message || "Unknown error"));
-    } finally {
-      setUpgradeLoading(null);
     }
   };
 
@@ -115,21 +76,6 @@ export default function MerchantBilling() {
 
   const currentStatus = statusConfig[subscription.status] || statusConfig.none;
   const StatusIcon = currentStatus.icon;
-
-  // Determine current tier for upgrade/downgrade buttons
-  const currentTierKey = subscription.tierName?.toLowerCase() || null;
-  const TIER_ORDER = ['starter', 'pro', 'enterprise'];
-  const currentTierIndex = currentTierKey ? TIER_ORDER.indexOf(currentTierKey) : -1;
-  
-  // Build available plan change options (tiers above and below current)
-  const availableChanges = TIER_ORDER
-    .filter(t => t !== currentTierKey && SUBSCRIPTION_TIERS[t])
-    .map(t => ({
-      key: t,
-      name: SUBSCRIPTION_TIERS[t].name,
-      priceId: SUBSCRIPTION_TIERS[t].price_id,
-      isUpgrade: TIER_ORDER.indexOf(t) > currentTierIndex,
-    }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -187,24 +133,23 @@ export default function MerchantBilling() {
               {!subscription.subscribed && (
                 <Button onClick={() => navigate("/merchant/signup")}>Choose a Plan</Button>
               )}
-              {subscription.subscribed && availableChanges.length > 0 && availableChanges.map(change => (
-                <Button
-                  key={change.key}
-                  variant={change.isUpgrade ? "default" : "outline"}
-                  onClick={() => handleChangePlan(change.priceId, change.name)}
-                  disabled={!!upgradeLoading}
-                >
-                  {upgradeLoading === change.priceId ? (
+              {subscription.subscribed && (
+                <Button onClick={handleOpenPortal} disabled={portalLoading}>
+                  {portalLoading ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : change.isUpgrade ? (
-                    <ArrowUpCircle className="h-4 w-4 mr-2" />
                   ) : (
-                    <ArrowDownCircle className="h-4 w-4 mr-2" />
+                    <Settings className="h-4 w-4 mr-2" />
                   )}
-                  {change.isUpgrade ? `Upgrade to ${change.name}` : `Switch to ${change.name}`}
+                  Change Plan
                 </Button>
-              ))}
+              )}
             </div>
+
+            {subscription.subscribed && (
+              <p className="text-xs text-muted-foreground">
+                Upgrades are prorated immediately. Downgrades take effect at the end of your current billing period.
+              </p>
+            )}
           </CardContent>
         </Card>
 
@@ -219,7 +164,7 @@ export default function MerchantBilling() {
               <CardDescription>Update your card or payment details via Stripe</CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={handleManagePayment} disabled={portalLoading} variant="outline">
+              <Button onClick={handleOpenPortal} disabled={portalLoading} variant="outline">
                 {portalLoading ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
@@ -288,7 +233,7 @@ export default function MerchantBilling() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={handleManagePayment} disabled={portalLoading} variant="destructive">
+              <Button onClick={handleOpenPortal} disabled={portalLoading} variant="destructive">
                 {portalLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                 Update Payment Method
               </Button>
@@ -296,44 +241,25 @@ export default function MerchantBilling() {
           </Card>
         )}
 
-        {/* Cancel Subscription */}
+        {/* Cancel via Portal */}
         {subscription.subscribed && (
           <Card>
             <CardHeader>
               <CardTitle>Cancel Subscription</CardTitle>
               <CardDescription>
-                Cancel your subscription. You'll retain access until the end of your current billing period.
+                Cancel your subscription via the billing portal. You'll retain access until the end of your current billing period.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button variant="outline" className="text-destructive border-destructive hover:bg-destructive/10">
-                    Cancel Subscription
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Cancel your subscription?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      You'll lose access to your dashboard features at the end of your current billing period
-                      {subscription.subscriptionEnd && (
-                        <> on <strong>{new Date(subscription.subscriptionEnd).toLocaleDateString()}</strong></>
-                      )}
-                      . You can resubscribe at any time.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Keep Subscription</AlertDialogCancel>
-                    <AlertDialogAction
-                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                      onClick={handleManagePayment}
-                    >
-                      Proceed to Cancel
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
+              <Button
+                variant="outline"
+                className="text-destructive border-destructive hover:bg-destructive/10"
+                onClick={handleOpenPortal}
+                disabled={portalLoading}
+              >
+                {portalLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                Manage Cancellation
+              </Button>
             </CardContent>
           </Card>
         )}
