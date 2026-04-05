@@ -17,6 +17,7 @@ import DevDashboard from "./pages/DevDashboard";
 
 import WaitlistJoin from "./pages/WaitlistJoin";
 import Privacy from "./pages/Privacy";
+import MerchantBilling from "./pages/MerchantBilling";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="/merchant/auth" element={<MerchantAuth />} />
             <Route path="/merchant/signup" element={<MerchantSignup />} />
             <Route path="/merchant/dashboard" element={<MerchantDashboard />} />
+            <Route path="/merchant/billing" element={<MerchantBilling />} />
             
             {/* Developer App Routes */}
             <Route path="/dev/auth" element={<DevAuth />} />

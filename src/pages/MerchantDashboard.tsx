@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMerchantAuth } from "@/hooks/useAuth";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
+import { useMerchantSubscription } from "@/hooks/useMerchantSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { KitchenBoard } from "@/components/merchant/KitchenBoard";
@@ -40,6 +41,7 @@ import {
 const MerchantDashboard = () => {
   const { user, userRole, allVenueRoles, switchVenue, loading } = useMerchantAuth();
   const { features, announcement } = usePlatformConfig();
+  const subscription = useMerchantSubscription();
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   
   // Helper function for announcement icon
@@ -415,6 +417,42 @@ const MerchantDashboard = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  // Subscription paywall
+  if (!subscription.loading && !subscription.subscribed && subscription.status !== 'active') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="max-w-md text-center space-y-6 p-8">
+          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+            <Lock size={32} className="text-muted-foreground" />
+          </div>
+          <h1 className="text-2xl font-bold">
+            {subscription.status === 'past_due' ? 'Payment Overdue' : 'Subscribe to Get Started'}
+          </h1>
+          <p className="text-muted-foreground">
+            {subscription.status === 'past_due'
+              ? 'Your subscription payment failed. Please update your payment method to regain access.'
+              : 'Choose a plan to access your merchant dashboard and start managing your venue.'}
+          </p>
+          <div className="flex flex-col gap-3">
+            {subscription.status === 'past_due' ? (
+              <Button onClick={() => navigate("/merchant/billing")} size="lg">
+                Update Payment Method
+              </Button>
+            ) : (
+              <Button onClick={() => navigate("/merchant/signup")} size="lg">
+                View Plans & Subscribe
+              </Button>
+            )}
+            <Button variant="outline" onClick={handleLogout}>
+              <LogOut size={16} className="mr-2" />
+              Logout
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
