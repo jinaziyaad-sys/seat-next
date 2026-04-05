@@ -20,20 +20,7 @@ export const SUBSCRIPTION_TIERS: Record<string, { product_id: string; price_id: 
   },
 };
 
-export const SUBSCRIPTION_ADDONS: Record<string, { product_id: string; price_id: string; name: string; feature_key: string }> = {
-  loyalty: {
-    product_id: 'prod_UHQwZfr3NXcScv',
-    price_id: 'price_1TIs4eRrnmiHUS0LkGfSjlMG',
-    name: 'Loyalty',
-    feature_key: 'loyalty',
-  },
-  analytics: {
-    product_id: 'prod_UHQwrdpvnbDzPC',
-    price_id: 'price_1TIs4wRrnmiHUS0LgQq3lYxL',
-    name: 'Analytics',
-    feature_key: 'analytics',
-  },
-};
+// Add-ons removed — features are tier-based only
 
 export interface SubscriptionState {
   loading: boolean;
