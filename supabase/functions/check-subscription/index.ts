@@ -291,8 +291,9 @@ async function syncSubscriptionToDb(
 }
 
 function determinePlanId(productIds: string[]): string {
-  if (productIds.includes('prod_UHQwZRXj29yoYZ')) return 'enterprise';
-  if (productIds.includes('prod_UHQvBPLpLypA0e')) return 'pro';
-  if (productIds.includes('prod_UHQvy6yev2Z4FJ')) return 'starter';
+  // Pro (monthly or annual)
+  if (productIds.includes('prod_UHQvBPLpLypA0e') || productIds.includes('prod_UHRVAz3q59g5Vm')) return 'pro';
+  // Starter (monthly or annual)
+  if (productIds.includes('prod_UHQvy6yev2Z4FJ') || productIds.includes('prod_UHRVRONaVJns9q')) return 'starter';
   return 'starter';
 }
