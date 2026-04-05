@@ -1,0 +1,165 @@
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+// Stripe product/price mapping
+export const SUBSCRIPTION_TIERS = {
+  starter: {
+    product_id: 'prod_UHQvy6yev2Z4FJ',
+    price_id: 'price_1TIs3WRrnmiHUS0LBQ9DkJlO',
+    name: 'Starter',
+  },
+  pro: {
+    product_id: 'prod_UHQvBPLpLypA0e',
+    price_id: 'price_1TIs3pRrnmiHUS0LaAn8xvUy',
+    name: 'Pro',
+  },
+  enterprise: {
+    product_id: 'prod_UHQwZRXj29yoYZ',
+    price_id: 'price_1TIs4JRrnmiHUS0LYSuWZptR',
+    name: 'Enterprise',
+  },
+} as const;
+
+export const SUBSCRIPTION_ADDONS = {
+  loyalty: {
+    product_id: 'prod_UHQwZfr3NXcScv',
+    price_id: 'price_1TIs4eRrnmiHUS0LkGfSjlMG',
+    name: 'Loyalty',
+    feature_key: 'loyalty',
+  },
+  analytics: {
+    product_id: 'prod_UHQwrdpvnbDzPC',
+    price_id: 'price_1TIs4wRrnmiHUS0LgQq3lYxL',
+    name: 'Analytics',
+    feature_key: 'analytics',
+  },
+} as const;
+
+export interface SubscriptionState {
+  loading: boolean;
+  subscribed: boolean;
+  status: 'none' | 'trial' | 'active' | 'past_due' | 'cancelled' | 'locked';
+  tierName: string | null;
+  productIds: string[];
+  priceIds: string[];
+  subscriptionEnd: string | null;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  // Feature entitlements derived from subscription
+  hasFeature: (feature: string) => boolean;
+}
+
+function getTierFromProducts(productIds: string[]): string | null {
+  for (const [key, tier] of Object.entries(SUBSCRIPTION_TIERS)) {
+    if (productIds.includes(tier.product_id)) return tier.name;
+  }
+  return null;
+}
+
+function getEntitledFeatures(productIds: string[]): Set<string> {
+  const features = new Set<string>();
+  
+  // Check tier
+  if (productIds.includes(SUBSCRIPTION_TIERS.starter.product_id)) {
+    features.add('food_ordering');
+    features.add('waitlist');
+    features.add('reservations');
+  }
+  if (productIds.includes(SUBSCRIPTION_TIERS.pro.product_id)) {
+    features.add('food_ordering');
+    features.add('waitlist');
+    features.add('reservations');
+    features.add('loyalty');
+    features.add('analytics');
+  }
+  if (productIds.includes(SUBSCRIPTION_TIERS.enterprise.product_id)) {
+    features.add('food_ordering');
+    features.add('waitlist');
+    features.add('reservations');
+    features.add('loyalty');
+    features.add('analytics');
+    features.add('kitchen_board');
+  }
+  
+  // Check add-ons
+  if (productIds.includes(SUBSCRIPTION_ADDONS.loyalty.product_id)) {
+    features.add('loyalty');
+  }
+  if (productIds.includes(SUBSCRIPTION_ADDONS.analytics.product_id)) {
+    features.add('analytics');
+  }
+  
+  return features;
+}
+
+export function useMerchantSubscription(): SubscriptionState {
+  const [loading, setLoading] = useState(true);
+  const [subscribed, setSubscribed] = useState(false);
+  const [status, setStatus] = useState<SubscriptionState['status']>('none');
+  const [tierName, setTierName] = useState<string | null>(null);
+  const [productIds, setProductIds] = useState<string[]>([]);
+  const [priceIds, setPriceIds] = useState<string[]>([]);
+  const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
+  const [stripeCustomerId, setStripeCustomerId] = useState<string | null>(null);
+  const [stripeSubscriptionId, setStripeSubscriptionId] = useState<string | null>(null);
+  const [entitledFeatures, setEntitledFeatures] = useState<Set<string>>(new Set());
+
+  const checkSubscription = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.functions.invoke('check-subscription');
+      if (error) {
+        console.error('Error checking subscription:', error);
+        setLoading(false);
+        return;
+      }
+
+      if (data.subscribed) {
+        setSubscribed(true);
+        setStatus(data.status || 'active');
+        setProductIds(data.product_ids || []);
+        setPriceIds(data.price_ids || []);
+        setSubscriptionEnd(data.subscription_end);
+        setStripeCustomerId(data.stripe_customer_id);
+        setStripeSubscriptionId(data.stripe_subscription_id);
+        setTierName(getTierFromProducts(data.product_ids || []));
+        setEntitledFeatures(getEntitledFeatures(data.product_ids || []));
+      } else {
+        setSubscribed(false);
+        setStatus(data.status === 'past_due' ? 'past_due' : 'none');
+        setProductIds([]);
+        setPriceIds([]);
+        setSubscriptionEnd(null);
+        setTierName(null);
+        setEntitledFeatures(new Set());
+      }
+    } catch (err) {
+      console.error('Error checking subscription:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    checkSubscription();
+    // Auto-refresh every 60 seconds
+    const interval = setInterval(checkSubscription, 60000);
+    return () => clearInterval(interval);
+  }, [checkSubscription]);
+
+  const hasFeature = useCallback((feature: string) => {
+    return entitledFeatures.has(feature);
+  }, [entitledFeatures]);
+
+  return {
+    loading,
+    subscribed,
+    status,
+    tierName,
+    productIds,
+    priceIds,
+    subscriptionEnd,
+    stripeCustomerId,
+    stripeSubscriptionId,
+    hasFeature,
+  };
+}
