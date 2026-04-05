@@ -96,10 +96,9 @@ export default function MerchantSignup() {
     checkUser();
   }, []);
 
-  const tierMap: Record<string, { product_id: string; price_id: string; name: string }> = {
-    'Starter': SUBSCRIPTION_TIERS.starter,
-    'Pro': SUBSCRIPTION_TIERS.pro,
-    'Enterprise': SUBSCRIPTION_TIERS.enterprise,
+  const tierMap: Record<string, { monthly_price_id: string; annual_price_id: string }> = {
+    'Starter': { monthly_price_id: SUBSCRIPTION_TIERS.starter.price_id, annual_price_id: SUBSCRIPTION_TIERS.starter.annual_price_id },
+    'Pro': { monthly_price_id: SUBSCRIPTION_TIERS.pro.price_id, annual_price_id: SUBSCRIPTION_TIERS.pro.annual_price_id },
   };
 
   const handleRegister = async (e: React.FormEvent) => {
