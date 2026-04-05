@@ -4,6 +4,7 @@
     "food": "Food",
     "table": "Table",
     "loyalty": "Loyalty",
+    "activity": "Activity",
     "profile": "Profile"
   },
   "loyaltyFlow": {
@@ -65,7 +66,15 @@
     "cancelledBy": "Cancelled by {{by}}",
     "noShowReleased": "Table released - didn't arrive in time",
     "today": "Today",
-    "tomorrow": "Tomorrow"
+    "tomorrow": "Tomorrow",
+    "rewardsReady": "Rewards Ready",
+    "rewardsReadyDesc": "Stamps & rewards",
+    "viewAllTracking": "View All",
+    "activeItems": "Active",
+    "needsAttention": "Needs Attention",
+    "noActiveItems": "No active orders or waitlist entries",
+    "ordersCount": "{{count}} order(s)",
+    "waitlistCount": "{{count}} on waitlist"
   },
   "status": {
     "ready": "Ready",
