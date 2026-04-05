@@ -25,10 +25,10 @@ export const SUBSCRIPTION_TIERS: Record<string, {
   },
 };
 
-// All product IDs that map to each tier (monthly + annual)
+// All product IDs that map to each tier (monthly + annual + legacy)
 export const TIER_PRODUCT_IDS: Record<string, string[]> = {
   starter: ['prod_UHQvy6yev2Z4FJ', 'prod_UHRVRONaVJns9q'],
-  pro: ['prod_UHQvBPLpLypA0e', 'prod_UHRVAz3q59g5Vm'],
+  pro: ['prod_UHQvBPLpLypA0e', 'prod_UHRVAz3q59g5Vm', 'prod_UHQwZRXj29yoYZ'], // includes legacy Enterprise
 };
 
 // Add-ons removed — features are tier-based only
