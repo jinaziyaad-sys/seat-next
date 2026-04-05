@@ -140,14 +140,10 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
   }, [venueId]);
 
   useEffect(() => {
-    if (!venueId) {
-      setLoading(false);
-      return;
-    }
     checkSubscription();
     const interval = setInterval(checkSubscription, 60000);
     return () => clearInterval(interval);
-  }, [checkSubscription, venueId]);
+  }, [checkSubscription]);
 
   const hasFeature = useCallback((feature: string) => {
     return entitledFeatures.has(feature);
