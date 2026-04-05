@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { VenueLogo } from "@/components/VenueLogo";
-import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon, AlertTriangle, Info, X, Wrench, MessageSquare, Share2, Gift, ClipboardList } from "lucide-react";
+import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon, AlertTriangle, Info, X, Wrench, MessageSquare, Share2, Gift } from "lucide-react";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -597,348 +597,6 @@ const Index = () => {
     );
   }
 
-  // Split items into active vs needs-attention
-  const activeStatuses = ['awaiting_verification', 'placed', 'in_prep', 'ready', 'waiting'];
-  const attentionStatuses = ['collected', 'seated', 'rejected', 'cancelled', 'no_show'];
-  
-  const activeItems = [
-    ...activeOrders.filter(o => activeStatuses.includes(o.status)).map(o => ({ ...o, _type: 'order' as const })),
-    ...activeWaitlist.filter(w => activeStatuses.includes(w.status)).map(w => ({ ...w, _type: 'waitlist' as const })),
-  ];
-  const attentionItems = [
-    ...activeOrders.filter(o => attentionStatuses.includes(o.status)).map(o => ({ ...o, _type: 'order' as const })),
-    ...activeWaitlist.filter(w => attentionStatuses.includes(w.status)).map(w => ({ ...w, _type: 'waitlist' as const })),
-  ];
-
-  // Helper to render a full tracking card (reused in tracking tab and summary)
-  const renderTrackingCard = (item: any, compact = false) => {
-    if (item._type === 'order') {
-      const order = item;
-      const shouldRate = order.status === 'collected';
-      const shouldClear = order.status === 'rejected';
-      return (
-        <Card 
-          key={order.id} 
-          className={cn(
-            "group shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01]",
-            order.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
-            order.status === 'rejected' && "bg-destructive/10 border-destructive",
-            order.status === 'collected' && "bg-success/10 border-success"
-          )}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div 
-                className="flex items-center gap-3 flex-1"
-                onClick={() => {
-                  setSelectedOrder(order);
-                  setActiveTab("food-ready");
-                }}
-              >
-                <VenueLogo 
-                  logoUrl={order.venues?.logo_url} 
-                  name={order.venues?.name || ''} 
-                  size={compact ? "md" : "lg"}
-                  className={cn(
-                    order.status === 'ready' ? "ring-2 ring-success" : 
-                    order.status === 'rejected' ? "ring-2 ring-destructive" :
-                    order.status === 'collected' ? "ring-2 ring-success" : ""
-                  )}
-                />
-                <div>
-                  <span className="inline-block text-xs font-bold uppercase tracking-wider text-white bg-primary px-2 py-0.5 rounded mb-1">
-                    {t("home.order")}
-                  </span>
-                  <h3 className="font-semibold">{order.venues?.name}</h3>
-                  <p className="text-sm text-muted-foreground">Order #{order.order_number}</p>
-                  {!compact && order.status === 'rejected' && (
-                    <p className="text-xs text-destructive mt-1">
-                      {t("home.cancelledBy", { by: order.cancelled_by === 'patron' ? t("status.you") : order.cancelled_by === 'system' ? t("status.system") : t("status.venue") })}
-                    </p>
-                  )}
-                  {!compact && order.eta && (order.status === 'placed' || order.status === 'in_prep') && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                      <Clock size={12} />
-                      <span>
-                        {Math.ceil((new Date(order.eta).getTime() - new Date().getTime()) / (1000 * 60))} min • ETA {new Date(order.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {!compact && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 relative"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setCardMessengerContext({ type: 'order', id: order.id, venueName: order.venues?.name || 'Restaurant' });
-                      setCardMessengerOpen(true);
-                    }}
-                  >
-                    <MessageSquare className="h-4 w-4" />
-                    {unreadCounts[order.id] > 0 && (
-                      <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-medium">
-                        {unreadCounts[order.id] > 9 ? '9+' : unreadCounts[order.id]}
-                      </span>
-                    )}
-                  </Button>
-                )}
-                <Badge variant={
-                  order.status === 'ready' ? 'default' : 
-                  order.status === 'in_prep' ? 'default' : 
-                  order.status === 'awaiting_verification' ? 'outline' :
-                  order.status === 'rejected' ? 'destructive' :
-                  order.status === 'collected' ? 'default' :
-                  'secondary'
-                } className={order.status === 'awaiting_verification' ? 'border-orange-500 text-orange-600 dark:text-orange-400' : ''}>
-                  {order.status === 'ready' ? t("status.ready") : 
-                   order.status === 'in_prep' ? t("status.preparing") : 
-                   order.status === 'awaiting_verification' ? t("status.verifying") :
-                   order.status === 'rejected' ? t("status.cancelled") :
-                   order.status === 'collected' ? t("status.collected") :
-                   t("status.placed")}
-                </Badge>
-                {!compact && shouldRate && (
-                  <Button variant="default" size="sm" onClick={(e) => {
-                    e.stopPropagation();
-                    setRatingItem({ type: 'order', id: order.id, venueId: order.venue_id, venueName: order.venues?.name || '' });
-                    setRatingDialogOpen(true);
-                  }} className="bg-success hover:bg-success/90">{t("home.rate")}</Button>
-                )}
-                {!compact && shouldClear && (
-                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleDismissOrder(order.id); }}>{t("home.clear")}</Button>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    } else {
-      const entry = item;
-      const isReservation = entry.reservation_type === 'reservation';
-      const reservationTime = entry.reservation_time ? new Date(entry.reservation_time) : null;
-      const now = new Date();
-      const isUpcomingTime = reservationTime && reservationTime > now;
-      const isToday = reservationTime && reservationTime.toDateString() === now.toDateString();
-      const isOverdue = isReservation && entry.status === 'waiting' && reservationTime && reservationTime < now;
-      const minutesLate = isOverdue && reservationTime ? Math.floor((now.getTime() - reservationTime.getTime()) / 60000) : 0;
-      const autoNoShowMinutes = (entry.venues?.settings as any)?.auto_no_show_time || 15;
-      const minutesUntilRelease = isOverdue ? Math.max(0, autoNoShowMinutes - minutesLate) : null;
-      const shouldRate = entry.status === 'seated';
-      const shouldClear = entry.status === 'cancelled' || entry.status === 'no_show';
-
-      return (
-        <Card 
-          key={entry.id} 
-          className={cn(
-            "group shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01]",
-            entry.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
-            (entry.status === 'cancelled' || entry.status === 'no_show') && "bg-destructive/10 border-destructive",
-            entry.status === 'seated' && "bg-success/10 border-success",
-            isOverdue && "bg-amber-500/10 border-amber-500 dark:bg-amber-900/20"
-          )}
-        >
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <div 
-                className="flex items-center gap-3 flex-1"
-                onClick={() => { setSelectedOrder(entry); setActiveTab("table-ready"); }}
-              >
-                <VenueLogo 
-                  logoUrl={entry.venues?.logo_url} 
-                  name={entry.venues?.name || ''} 
-                  size={compact ? "md" : "lg"}
-                  className={cn(
-                    entry.status === 'ready' ? "ring-2 ring-success" : 
-                    (entry.status === 'cancelled' || entry.status === 'no_show') ? "ring-2 ring-destructive" :
-                    entry.status === 'seated' ? "ring-2 ring-success" :
-                    isOverdue ? "ring-2 ring-amber-500" : ""
-                  )}
-                />
-                <div>
-                  <span className={cn(
-                    "inline-block text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded mb-1",
-                    isReservation ? "bg-purple-600 text-white" : "bg-secondary text-secondary-foreground"
-                  )}>
-                    {isReservation ? t("home.reservation") : t("home.waitlist")}
-                  </span>
-                  <h3 className="font-semibold">{entry.venues?.name}</h3>
-                  {!compact && entry.customer_name && (
-                    <p className="text-xs font-medium text-primary">{entry.customer_name}</p>
-                  )}
-                  {isReservation && reservationTime ? (
-                    <p className="text-sm text-muted-foreground">
-                      {t("home.reservationFor", { size: entry.party_size })}
-                      {!compact && (
-                        <span className="text-xs ml-1">
-                          {isTomorrow(reservationTime) ? t("home.tomorrow") : isToday ? t("home.today") : format(reservationTime, 'MMM d')}
-                          {' '}{format(reservationTime, 'HH:mm')}
-                        </span>
-                      )}
-                    </p>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">
-                      {t("home.partyOf", { size: entry.party_size })}{entry.position ? ` • #${entry.position}` : ''}
-                    </p>
-                  )}
-                  {!compact && isOverdue && minutesUntilRelease !== null && minutesUntilRelease > 0 && (
-                    <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mt-1">
-                      <AlertTriangle size={12} />
-                      <span>{t("home.arrivingSoon", { minutes: minutesUntilRelease })}</span>
-                    </div>
-                  )}
-                  {!compact && entry.eta && entry.status === 'waiting' && !isReservation && (
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                      <Clock size={12} />
-                      <span>{formatTimeUntil(new Date(entry.eta))} • ETA {new Date(entry.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}</span>
-                    </div>
-                  )}
-                  {!compact && (entry.status === 'cancelled' || entry.status === 'no_show') && (
-                    <p className="text-xs text-destructive mt-1">
-                      {entry.status === 'no_show' 
-                        ? t("home.noShowReleased")
-                        : t("home.cancelledBy", { by: entry.cancelled_by === 'patron' ? t("status.you") : entry.cancelled_by === 'system' ? t("status.system") : t("status.venue") })}
-                    </p>
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                {!compact && entry.status === 'waiting' && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8" title={t("home.inviteFriends")} onClick={(e) => {
-                    e.stopPropagation();
-                    const url = `${window.location.origin}/waitlist/${entry.venue_id}?group=${entry.id}`;
-                    const text = t("home.inviteFriendsText", { venue: entry.venues?.name || '' });
-                    if (navigator.share) { navigator.share({ title: entry.venues?.name || '', text, url }).catch(() => {}); }
-                    else { navigator.clipboard.writeText(`${text} ${url}`); toast({ title: t("explore.linkCopied") }); }
-                  }}><Share2 className="h-4 w-4" /></Button>
-                )}
-                {!compact && (
-                  <Button variant="ghost" size="icon" className="h-8 w-8 relative" onClick={(e) => {
-                    e.stopPropagation();
-                    setCardMessengerContext({ type: 'waitlist', id: entry.id, venueName: entry.venues?.name || 'Restaurant' });
-                    setCardMessengerOpen(true);
-                  }}>
-                    <MessageSquare className="h-4 w-4" />
-                    {unreadCounts[entry.id] > 0 && (
-                      <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-medium">
-                        {unreadCounts[entry.id] > 9 ? '9+' : unreadCounts[entry.id]}
-                      </span>
-                    )}
-                  </Button>
-                )}
-                <Badge 
-                  variant={
-                    isOverdue ? 'outline' :
-                    isReservation ? 'outline' : 
-                    entry.status === 'ready' ? 'default' : 
-                    entry.status === 'cancelled' ? 'destructive' :
-                    entry.status === 'seated' ? 'default' : 'secondary'
-                  }
-                  className={cn(isOverdue && "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10")}
-                >
-                  {isOverdue ? t("status.overdue") : 
-                   isReservation ? t("status.reserved") : 
-                   entry.status === 'ready' ? t("status.ready") : 
-                   entry.status === 'cancelled' ? t("status.cancelled") :
-                   entry.status === 'seated' ? t("status.seated") : t("status.waiting")}
-                </Badge>
-                {!compact && shouldRate && (
-                  <Button variant="default" size="sm" onClick={(e) => {
-                    e.stopPropagation();
-                    setRatingItem({ type: 'waitlist', id: entry.id, venueId: entry.venue_id, venueName: entry.venues?.name || '' });
-                    setRatingDialogOpen(true);
-                  }} className="bg-success hover:bg-success/90">{t("home.rate")}</Button>
-                )}
-                {!compact && shouldClear && (
-                  <Button variant="ghost" size="sm" onClick={(e) => { e.stopPropagation(); handleDismissWaitlist(entry.id); }}>{t("home.dismiss")}</Button>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      );
-    }
-  };
-
-  // Full tracking tab
-  if (activeTab === "tracking") {
-    return (
-      <div className="min-h-screen bg-background pb-24">
-        <div className="p-6 space-y-6">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => setActiveTab("home")}>
-              <X className="h-5 w-5" />
-            </Button>
-            <h1 className="text-2xl font-bold">{t("nav.activity")}</h1>
-          </div>
-
-          {/* Active Section */}
-          <div className="space-y-3">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <ClipboardList className="h-5 w-5 text-primary" />
-              {t("home.activeItems")}
-              {activeItems.length > 0 && (
-                <Badge variant="default" className="ml-1">{activeItems.length}</Badge>
-              )}
-            </h2>
-            {activeItems.length === 0 ? (
-              <Card className="border-dashed">
-                <CardContent className="p-6 text-center text-muted-foreground">
-                  {t("home.noActiveItems")}
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="space-y-3">
-                {activeItems.map(item => renderTrackingCard(item))}
-              </div>
-            )}
-          </div>
-
-          {/* Needs Attention Section */}
-          {attentionItems.length > 0 && (
-            <div className="space-y-3">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <AlertTriangle className="h-5 w-5 text-amber-500" />
-                {t("home.needsAttention")}
-                <Badge variant="secondary">{attentionItems.length}</Badge>
-              </h2>
-              <div className="space-y-3">
-                {attentionItems.map(item => renderTrackingCard(item))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Rating Dialog */}
-        <RatingDialog
-          open={ratingDialogOpen}
-          onOpenChange={setRatingDialogOpen}
-          type={ratingItem?.type || 'order'}
-          itemId={ratingItem?.id || ''}
-          venueId={ratingItem?.venueId || ''}
-          venueName={ratingItem?.venueName || ''}
-          userId={user?.id || null}
-          onComplete={() => { if (ratingItem) handleRatingComplete(ratingItem.id, ratingItem.type); }}
-        />
-        {cardMessengerContext && (
-          <Messenger
-            open={cardMessengerOpen}
-            onOpenChange={(open) => { setCardMessengerOpen(open); if (!open) setCardMessengerContext(null); }}
-            waitlistEntryId={cardMessengerContext.type === 'waitlist' ? cardMessengerContext.id : undefined}
-            orderId={cardMessengerContext.type === 'order' ? cardMessengerContext.id : undefined}
-            userType="patron"
-            userId={user?.id || ''}
-            venueName={cardMessengerContext.venueName}
-          />
-        )}
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
-    );
-  }
-
 
   // Get announcement icon based on type
   const getAnnouncementIcon = (type: string) => {
@@ -1055,44 +713,41 @@ const Index = () => {
       </div>
 
 
-      {/* Compact Active Tracking Summary */}
-      {(user || isDemoMode) && (isLoadingTracking || activeItems.length > 0 || attentionItems.length > 0 || isDemoMode) && (
-        <div className="p-6 space-y-3" data-tour="active-tracking">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">
-              {t("home.activeTracking")}
-              {isDemoMode && <span className="ml-2 text-xs font-normal text-primary">{t("home.demoMode")}</span>}
-            </h2>
-            {(activeItems.length > 3 || attentionItems.length > 0) && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setActiveTab("tracking")}
-                className="text-xs"
-              >
-                {t("home.viewAllTracking")} ({activeItems.length + attentionItems.length})
-              </Button>
-            )}
-          </div>
+      {/* Active Tracking Section - Show demo data during tour or real data */}
+      {(user || isDemoMode) && (isLoadingTracking || activeOrders.length > 0 || activeWaitlist.length > 0 || isDemoMode) && (
+        <div className="p-6 space-y-4" data-tour="active-tracking">
+          <h2 className="text-xl font-bold">
+            {t("home.activeTracking")}
+            {isDemoMode && <span className="ml-2 text-xs font-normal text-primary">{t("home.demoMode")}</span>}
+          </h2>
           
           {/* Loading Skeleton */}
-          {isLoadingTracking && activeItems.length === 0 && !isDemoMode && (
+          {isLoadingTracking && activeOrders.length === 0 && activeWaitlist.length === 0 && !isDemoMode && (
             <ActiveTrackingListSkeleton count={2} />
           )}
           
-          {/* Demo cards during tour */}
+          {/* Demo Order Card - only shown during tour */}
           {isDemoMode && activeOrders.length === 0 && (
-            <Card className="group shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01] border-dashed border-2 border-primary/30" data-tour="demo-order">
+            <Card 
+              className="group shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01] border-dashed border-2 border-primary/30"
+              data-tour="demo-order"
+            >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/10">
-                      <UtensilsCrossed className="w-5 h-5 text-primary" />
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center bg-primary/10">
+                      <UtensilsCrossed className="w-6 h-6 text-primary" />
                     </div>
                     <div>
-                      <span className="inline-block text-xs font-bold uppercase tracking-wider text-white bg-primary px-2 py-0.5 rounded mb-1">Order (Demo)</span>
-                      <h3 className="font-semibold text-sm">{DEMO_ORDER.venues?.name}</h3>
-                      <p className="text-xs text-muted-foreground">Order #{DEMO_ORDER.order_number}</p>
+                      <span className="inline-block text-xs font-bold uppercase tracking-wider text-white bg-primary px-2 py-0.5 rounded mb-1">
+                        Order (Demo)
+                      </span>
+                      <h3 className="font-semibold">{DEMO_ORDER.venues?.name}</h3>
+                      <p className="text-sm text-muted-foreground">Order #{DEMO_ORDER.order_number}</p>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                        <Clock size={12} />
+                        <span>15 min • ETA {new Date(DEMO_ORDER.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}</span>
+                      </div>
                     </div>
                   </div>
                   <Badge variant="default">Preparing</Badge>
@@ -1100,18 +755,29 @@ const Index = () => {
               </CardContent>
             </Card>
           )}
+          
+          {/* Demo Waitlist Card - only shown during tour */}
           {isDemoMode && activeWaitlist.length === 0 && (
-            <Card className="group shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01] border-dashed border-2 border-accent/30" data-tour="demo-waitlist">
+            <Card 
+              className="group shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01] border-dashed border-2 border-accent/30"
+              data-tour="demo-waitlist"
+            >
               <CardContent className="p-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3 flex-1">
-                    <div className="w-10 h-10 rounded-full flex items-center justify-center bg-accent/10">
-                      <Users className="w-5 h-5 text-accent" />
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center bg-accent/10">
+                      <Users className="w-6 h-6 text-accent" />
                     </div>
                     <div>
-                      <span className="inline-block text-xs font-bold uppercase tracking-wider bg-secondary text-secondary-foreground px-2 py-0.5 rounded mb-1">Waitlist (Demo)</span>
-                      <h3 className="font-semibold text-sm">{DEMO_WAITLIST.venues?.name}</h3>
-                      <p className="text-xs text-muted-foreground">Party of {DEMO_WAITLIST.party_size} • #{DEMO_WAITLIST.position}</p>
+                      <span className="inline-block text-xs font-bold uppercase tracking-wider bg-secondary text-secondary-foreground px-2 py-0.5 rounded mb-1">
+                        Waitlist (Demo)
+                      </span>
+                      <h3 className="font-semibold">{DEMO_WAITLIST.venues?.name}</h3>
+                      <p className="text-sm text-muted-foreground">Party of {DEMO_WAITLIST.party_size} • #{DEMO_WAITLIST.position}</p>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                        <Clock size={12} />
+                        <span>~25 min wait</span>
+                      </div>
                     </div>
                   </div>
                   <Badge variant="secondary">Waiting</Badge>
@@ -1120,20 +786,419 @@ const Index = () => {
             </Card>
           )}
           
-          {/* Show up to 3 active items as compact cards */}
-          {activeItems.slice(0, 3).map(item => renderTrackingCard(item, true))}
-          
-          {/* Attention nudge */}
-          {attentionItems.length > 0 && (
-            <Button 
-              variant="outline" 
-              className="w-full border-amber-500/50 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10"
-              onClick={() => setActiveTab("tracking")}
-            >
-              <AlertTriangle className="h-4 w-4 mr-2" />
-              {attentionItems.length} item(s) need your attention
-            </Button>
-          )}
+          {activeOrders.map((order) => {
+            const shouldRate = order.status === 'collected';
+            const shouldClear = order.status === 'rejected';
+            const canInteract = shouldRate || shouldClear;
+            
+            return (
+              <Card 
+                key={order.id} 
+                className={cn(
+                  "group shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01]",
+                  order.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
+                  order.status === 'rejected' && "bg-destructive/10 border-destructive",
+                  order.status === 'collected' && "bg-success/10 border-success"
+                )}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div 
+                      className="flex items-center gap-3 flex-1"
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setActiveTab("food-ready");
+                      }}
+                    >
+                      <VenueLogo 
+                        logoUrl={order.venues?.logo_url} 
+                        name={order.venues?.name || ''} 
+                        size="lg"
+                        className={cn(
+                          order.status === 'ready' ? "ring-2 ring-success" : 
+                          order.status === 'rejected' ? "ring-2 ring-destructive" :
+                          order.status === 'collected' ? "ring-2 ring-success" :
+                          ""
+                        )}
+                      />
+                      <div>
+                        <span className="inline-block text-xs font-bold uppercase tracking-wider text-white bg-primary px-2 py-0.5 rounded mb-1">
+                          {t("home.order")}
+                        </span>
+                        <h3 className="font-semibold">{order.venues?.name}</h3>
+                        <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">Order #{order.order_number}</p>
+                        {order.status === 'rejected' && (
+                          <p className="text-xs text-destructive mt-1">
+                            {t("home.cancelledBy", { by: order.cancelled_by === 'patron' ? t("status.you") : order.cancelled_by === 'system' ? t("status.system") : t("status.venue") })}
+                          </p>
+                        )}
+                        {order.eta && (order.status === 'placed' || order.status === 'in_prep') && (
+                          <div className="space-y-1 mt-1">
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+                              <Clock size={12} />
+                              <span>
+                                {Math.ceil((new Date(order.eta).getTime() - new Date().getTime()) / (1000 * 60))} min • ETA {new Date(order.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                              </span>
+                            </div>
+                            {order.confidence && (
+                              <div className="text-[10px] text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-1">
+                                <Badge variant={order.confidence === 'high' ? 'default' : order.confidence === 'medium' ? 'secondary' : 'outline'} className="h-4 text-[9px] px-1">
+                                  {order.confidence === 'high' ? t("status.highConfidence") : order.confidence === 'medium' ? t("status.medium") : t("status.estimate")}
+                                </Badge>
+                                <span>
+                                  {order.confidence === 'high' 
+                                    ? t("status.basedOnHistory")
+                                    : order.confidence === 'medium' 
+                                    ? t("status.someHistory")
+                                    : t("status.venueDefault")}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* Message button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 relative"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCardMessengerContext({
+                            type: 'order',
+                            id: order.id,
+                            venueName: order.venues?.name || 'Restaurant'
+                          });
+                          setCardMessengerOpen(true);
+                        }}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        {unreadCounts[order.id] > 0 && (
+                          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-medium">
+                            {unreadCounts[order.id] > 9 ? '9+' : unreadCounts[order.id]}
+                          </span>
+                        )}
+                      </Button>
+                      <Badge variant={
+                        order.status === 'ready' ? 'default' : 
+                        order.status === 'in_prep' ? 'default' : 
+                        order.status === 'awaiting_verification' ? 'outline' :
+                        order.status === 'rejected' ? 'destructive' :
+                        order.status === 'collected' ? 'default' :
+                        'secondary'
+                      } className={order.status === 'awaiting_verification' ? 'border-orange-500 text-orange-600 dark:text-orange-400' : ''}>
+                        {order.status === 'ready' ? t("status.ready") : 
+                         order.status === 'in_prep' ? t("status.preparing") : 
+                         order.status === 'awaiting_verification' ? t("status.verifying") :
+                         order.status === 'rejected' ? t("status.cancelled") :
+                         order.status === 'collected' ? t("status.collected") :
+                         t("status.placed")}
+                      </Badge>
+                      {shouldRate && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRatingItem({
+                              type: 'order',
+                              id: order.id,
+                              venueId: order.venue_id,
+                              venueName: order.venues?.name || ''
+                            });
+                            setRatingDialogOpen(true);
+                          }}
+                          className="bg-success hover:bg-success/90"
+                        >
+                          {t("home.rate")}
+                        </Button>
+                      )}
+                      {shouldClear && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDismissOrder(order.id);
+                          }}
+                        >
+                          {t("home.clear")}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
+
+          {activeWaitlist.map((entry) => {
+            // A reservation is any entry with reservation_type === 'reservation', regardless of time
+            const isReservation = entry.reservation_type === 'reservation';
+            const reservationTime = entry.reservation_time ? new Date(entry.reservation_time) : null;
+            const now = new Date();
+            
+            // Check if reservation time is still upcoming (for countdown display purposes)
+            const isUpcomingTime = reservationTime && reservationTime > now;
+            
+            const isToday = reservationTime && 
+              reservationTime.toDateString() === now.toDateString();
+
+            // Overdue detection: reservation is past its time and still waiting
+            const isOverdue = isReservation && 
+              entry.status === 'waiting' && 
+              reservationTime && 
+              reservationTime < now;
+
+            // Calculate how late (in minutes)
+            const minutesLate = isOverdue && reservationTime
+              ? Math.floor((now.getTime() - reservationTime.getTime()) / 60000) 
+              : 0;
+
+            // Get venue's auto_no_show_time setting (default 15)
+            const autoNoShowMinutes = (entry.venues?.settings as any)?.auto_no_show_time || 15;
+
+            // Time remaining before auto-cancel
+            const minutesUntilRelease = isOverdue ? Math.max(0, autoNoShowMinutes - minutesLate) : null;
+
+            const shouldRate = entry.status === 'seated';
+            // Include 'no_show' so patron can dismiss auto-cancelled entries
+            const shouldClear = entry.status === 'cancelled' || entry.status === 'no_show';
+            const canInteract = shouldRate; // Removed shouldClear - allow clicking cancelled to view details
+
+            return (
+              <Card 
+                key={entry.id} 
+                className={cn(
+                  "group shadow-card transition-all cursor-pointer hover:shadow-floating hover:scale-[1.01]",
+                  entry.status === 'ready' && "bg-success/10 border-success animate-pulse-success",
+                  (entry.status === 'cancelled' || entry.status === 'no_show') && "bg-destructive/10 border-destructive",
+                  entry.status === 'seated' && "bg-success/10 border-success",
+                  isOverdue && "bg-amber-500/10 border-amber-500 dark:bg-amber-900/20"
+                )}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-center justify-between">
+                    <div 
+                      className="flex items-center gap-3 flex-1"
+                      onClick={() => {
+                        setSelectedOrder(entry);
+                        setActiveTab("table-ready");
+                      }}
+                    >
+                      <VenueLogo 
+                        logoUrl={entry.venues?.logo_url} 
+                        name={entry.venues?.name || ''} 
+                        size="lg"
+                        className={cn(
+                          entry.status === 'ready' ? "ring-2 ring-success" : 
+                          (entry.status === 'cancelled' || entry.status === 'no_show') ? "ring-2 ring-destructive" :
+                          entry.status === 'seated' ? "ring-2 ring-success" :
+                          isOverdue ? "ring-2 ring-amber-500" :
+                          ""
+                        )}
+                      />
+                      <div>
+                        <span className={cn(
+                          "inline-block text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded mb-1",
+                          isReservation 
+                            ? "bg-purple-600 text-white" 
+                            : "bg-secondary text-secondary-foreground"
+                        )}>
+                          {isReservation ? t("home.reservation") : t("home.waitlist")}
+                        </span>
+                        <h3 className="font-semibold">{entry.venues?.name}</h3>
+                        {entry.customer_name && (
+                          <p className="text-xs font-medium text-primary">{entry.customer_name}</p>
+                        )}
+                        {isReservation && reservationTime ? (
+                          <>
+                            <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                              {t("home.reservationFor", { size: entry.party_size })}
+                            </p>
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors mt-1">
+                              <CalendarIcon size={12} />
+                              <span>
+                                {isTomorrow(reservationTime) 
+                                  ? 'Tomorrow' 
+                                  : isToday 
+                                    ? 'Today' 
+                                    : format(reservationTime, 'MMM d')
+                                } 
+                                {' at '}
+                                {format(reservationTime, 'HH:mm')}
+                                {isOverdue ? (
+                                  <span className="text-amber-600 dark:text-amber-400 font-medium">
+                                    {' • '}{t("home.minLate", { minutes: minutesLate })}
+                                  </span>
+                                ) : isUpcomingTime ? (
+                                  <>
+                                    {' • '}
+                                    {formatTimeUntil(reservationTime)}
+                                  </>
+                                ) : null}
+                              </span>
+                            </div>
+                            {/* Auto-cancel warning for overdue reservations */}
+                            {isOverdue && minutesUntilRelease !== null && minutesUntilRelease > 0 && (
+                              <div className="flex items-center gap-1 text-xs text-amber-600 dark:text-amber-400 mt-1">
+                                <AlertTriangle size={12} />
+                                <span>
+                                  {t("home.arrivingSoon", { minutes: minutesUntilRelease })}
+                                </span>
+                              </div>
+                            )}
+                            {isOverdue && minutesUntilRelease === 0 && (
+                              <div className="flex items-center gap-1 text-xs text-destructive mt-1">
+                                <AlertTriangle size={12} />
+                                <span>{t("home.mayBeReleased")}</span>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                              {t("home.partyOf", { size: entry.party_size })}{entry.position ? ` • #${entry.position}` : ''}
+                            </p>
+                        {(entry.status === 'cancelled' || entry.status === 'no_show') && (
+                          <p className="text-xs text-destructive mt-1">
+                            {entry.status === 'no_show' 
+                              ? t("home.noShowReleased")
+                              : t("home.cancelledBy", { by: entry.cancelled_by === 'patron' ? t("status.you") : entry.cancelled_by === 'system' ? t("status.system") : t("status.venue") })}
+                          </p>
+                        )}
+                            {entry.eta && entry.status === 'waiting' && (
+                              <div className="space-y-1 mt-1">
+                                <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-foreground transition-colors">
+                                  <Clock size={12} />
+                                  <span>
+                                    {formatTimeUntil(new Date(entry.eta))} • ETA {new Date(entry.eta).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                                  </span>
+                                </div>
+                                {entry.confidence && (
+                                  <div className="text-[10px] text-muted-foreground group-hover:text-foreground transition-colors flex items-center gap-1">
+                                    <Badge variant={entry.confidence === 'high' ? 'default' : entry.confidence === 'medium' ? 'secondary' : 'outline'} className="h-4 text-[9px] px-1">
+                                      {entry.confidence === 'high' ? t("status.highConfidence") : entry.confidence === 'medium' ? t("status.medium") : t("status.estimate")}
+                                    </Badge>
+                                    <span>
+                                      {entry.confidence === 'high' 
+                                        ? t("status.basedOnHistory")
+                                        : entry.confidence === 'medium' 
+                                        ? t("status.someHistory")
+                                        : t("status.venueDefault")}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      {/* Invite Friends button - only for active waiting entries */}
+                      {entry.status === 'waiting' && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          title={t("home.inviteFriends")}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const url = `${window.location.origin}/waitlist/${entry.venue_id}?group=${entry.id}`;
+                            const text = t("home.inviteFriendsText", { venue: entry.venues?.name || '' });
+                            if (navigator.share) {
+                              navigator.share({ title: entry.venues?.name || '', text, url }).catch(() => {});
+                            } else {
+                              navigator.clipboard.writeText(`${text} ${url}`);
+                              toast({ title: t("explore.linkCopied") });
+                            }
+                          }}
+                        >
+                          <Share2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {/* Message button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 relative"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setCardMessengerContext({
+                            type: 'waitlist',
+                            id: entry.id,
+                            venueName: entry.venues?.name || 'Restaurant'
+                          });
+                          setCardMessengerOpen(true);
+                        }}
+                      >
+                        <MessageSquare className="h-4 w-4" />
+                        {unreadCounts[entry.id] > 0 && (
+                          <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-destructive text-[10px] text-white flex items-center justify-center font-medium">
+                            {unreadCounts[entry.id] > 9 ? '9+' : unreadCounts[entry.id]}
+                          </span>
+                        )}
+                      </Button>
+                      <Badge 
+                        variant={
+                          isOverdue ? 'outline' :
+                          isReservation ? 'outline' : 
+                          entry.status === 'ready' ? 'default' : 
+                          entry.status === 'cancelled' ? 'destructive' :
+                          entry.status === 'seated' ? 'default' :
+                          'secondary'
+                        }
+                        className={cn(
+                          isOverdue && "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10"
+                        )}
+                      >
+                        {isOverdue ? t("status.overdue") : 
+                         isReservation ? t("status.reserved") : 
+                         entry.status === 'ready' ? t("status.ready") : 
+                         entry.status === 'cancelled' ? t("status.cancelled") :
+                         entry.status === 'seated' ? t("status.seated") :
+                         t("status.waiting")}
+                      </Badge>
+                      {shouldRate && (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRatingItem({
+                              type: 'waitlist',
+                              id: entry.id,
+                              venueId: entry.venue_id,
+                              venueName: entry.venues?.name || ''
+                            });
+                            setRatingDialogOpen(true);
+                          }}
+                          className="bg-success hover:bg-success/90"
+                        >
+                          {t("home.rate")}
+                        </Button>
+                      )}
+                      {shouldClear && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDismissWaitlist(entry.id);
+                          }}
+                        >
+                          {t("home.dismiss")}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
 
@@ -1201,8 +1266,8 @@ const Index = () => {
                 <Gift size={22} />
               </div>
               <div>
-                <h3 className="font-semibold text-sm">{t("home.rewardsReady")}</h3>
-                <p className="text-xs text-muted-foreground">{t("home.rewardsReadyDesc")}</p>
+                <h3 className="font-semibold text-sm">{t("nav.loyalty")}</h3>
+                <p className="text-xs text-muted-foreground">{t("home.loyaltyDesc", "Stamps & rewards")}</p>
               </div>
             </CardContent>
           </Card>
