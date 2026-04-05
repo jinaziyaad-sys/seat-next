@@ -2,22 +2,33 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 // Stripe product/price mapping
-export const SUBSCRIPTION_TIERS: Record<string, { product_id: string; price_id: string; name: string }> = {
+export const SUBSCRIPTION_TIERS: Record<string, {
+  product_id: string;
+  price_id: string;
+  annual_product_id: string;
+  annual_price_id: string;
+  name: string;
+}> = {
   starter: {
     product_id: 'prod_UHQvy6yev2Z4FJ',
     price_id: 'price_1TIs3WRrnmiHUS0LBQ9DkJlO',
+    annual_product_id: 'prod_UHRVRONaVJns9q',
+    annual_price_id: 'price_1TIscARrnmiHUS0LYvmnYFDl',
     name: 'Starter',
   },
   pro: {
     product_id: 'prod_UHQvBPLpLypA0e',
     price_id: 'price_1TIs3pRrnmiHUS0LaAn8xvUy',
+    annual_product_id: 'prod_UHRVAz3q59g5Vm',
+    annual_price_id: 'price_1TIscHRrnmiHUS0Lt8fOF8aP',
     name: 'Pro',
   },
-  enterprise: {
-    product_id: 'prod_UHQwZRXj29yoYZ',
-    price_id: 'price_1TIs4JRrnmiHUS0LYSuWZptR',
-    name: 'Enterprise',
-  },
+};
+
+// All product IDs that map to each tier (monthly + annual)
+export const TIER_PRODUCT_IDS: Record<string, string[]> = {
+  starter: ['prod_UHQvy6yev2Z4FJ', 'prod_UHRVRONaVJns9q'],
+  pro: ['prod_UHQvBPLpLypA0e', 'prod_UHRVAz3q59g5Vm'],
 };
 
 // Add-ons removed — features are tier-based only
