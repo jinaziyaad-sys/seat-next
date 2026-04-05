@@ -17,6 +17,7 @@ import DevDashboard from "./pages/DevDashboard";
 
 import WaitlistJoin from "./pages/WaitlistJoin";
 import Privacy from "./pages/Privacy";
+import MerchantBilling from "./pages/MerchantBilling";
 
 const queryClient = new QueryClient();
 
