@@ -367,7 +367,10 @@ const MerchantDashboard = () => {
   const hasTableReady = venueServiceTypes.includes("table_ready") && features.waitlist_enabled;
   const hasReservations = hasTableReady && features.reservations_enabled;
   const hasKitchenBoard = hasFoodReady && features.kitchen_board_enabled;
-  const hasAnalytics = features.analytics_enabled;
+  const hasAnalytics = features.analytics_enabled && subscription.hasFeature('analytics');
+  const hasLoyalty = loyaltyAdminEnabled && subscription.hasFeature('loyalty');
+  const analyticsLocked = features.analytics_enabled && !subscription.hasFeature('analytics');
+  const loyaltyLocked = loyaltyAdminEnabled && !subscription.hasFeature('loyalty');
 
   // Tab trigger class for consistent sizing
   const tabTriggerClass = "flex items-center gap-2 flex-1 min-w-fit";
