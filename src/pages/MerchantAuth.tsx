@@ -240,9 +240,18 @@ export default function MerchantAuth() {
               </Button>
             )}
             
-            <p className="text-sm text-muted-foreground text-center mt-4">
-              Need access? Contact your venue administrator.
-            </p>
+            <div className="text-sm text-center mt-4 space-y-1">
+              <p className="text-muted-foreground">
+                Don't have an account?{' '}
+                <button
+                  type="button"
+                  className="text-primary hover:underline font-medium"
+                  onClick={() => navigate('/merchant/signup')}
+                >
+                  Sign up here
+                </button>
+              </p>
+            </div>
           </form>
         </CardContent>
       </Card>
