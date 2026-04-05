@@ -976,7 +976,7 @@ const Index = () => {
                 <Gift size={22} />
               </div>
               <div>
-                <h3 className="font-semibold text-sm">{t("nav.loyalty")}</h3>
+                <h3 className="font-semibold text-sm">{t("nav.rewardsReady")}</h3>
                 <p className="text-xs text-muted-foreground">{t("home.loyaltyDesc", "Stamps & rewards")}</p>
               </div>
             </CardContent>
