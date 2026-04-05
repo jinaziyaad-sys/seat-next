@@ -607,16 +607,18 @@ const MerchantDashboard = () => {
                   <Settings size={16} />
                   Settings
                 </TabsTrigger>
-                {hasAnalytics && (
+                {(hasAnalytics || analyticsLocked) && (
                   <TabsTrigger value="reports" data-tour="tab-reports" className={tabTriggerClass}>
                     <BarChart3 size={16} />
                     Reports
+                    {analyticsLocked && <Lock size={12} className="ml-1 text-muted-foreground" />}
                   </TabsTrigger>
                 )}
-                {loyaltyAdminEnabled && (
+                {(hasLoyalty || loyaltyLocked) && (
                   <TabsTrigger value="loyalty" className={tabTriggerClass}>
                     <Gift size={16} />
                     Loyalty
+                    {loyaltyLocked && <Lock size={12} className="ml-1 text-muted-foreground" />}
                   </TabsTrigger>
                 )}
               </>
