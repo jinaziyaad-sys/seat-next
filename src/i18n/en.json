@@ -3,8 +3,17 @@
     "home": "Home",
     "food": "Food",
     "table": "Table",
-    "loyalty": "Loyalty",
+    "rewardsReady": "Rewards",
+    "activity": "Activity",
     "profile": "Profile"
+  },
+  "activity": {
+    "title": "Activity",
+    "active": "Active",
+    "needsAttention": "Needs Attention",
+    "empty": "No activity right now",
+    "emptyDesc": "Your orders and waitlist entries will appear here",
+    "viewAll": "View all ({{count}})"
   },
   "loyaltyFlow": {
     "title": "Loyalty",
