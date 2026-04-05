@@ -1,19 +1,13 @@
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
-import { Home, UtensilsCrossed, Users, User, Gift } from "lucide-react";
-import { useTranslation } from "react-i18next";
-
-interface TabNavigationProps {
-  activeTab: string;
-  onTabChange: (tab: string) => void;
-}
+import { Home, UtensilsCrossed, Users, Gift, ClipboardList } from "lucide-react";
 
 const tabKeys = [
   { id: "home", labelKey: "nav.home", icon: Home },
   { id: "food-ready", labelKey: "nav.food", icon: UtensilsCrossed },
   { id: "table-ready", labelKey: "nav.table", icon: Users },
-  { id: "loyalty", labelKey: "nav.loyalty", icon: Gift },
-  { id: "profile", labelKey: "nav.profile", icon: User },
+  { id: "loyalty", labelKey: "nav.rewardsReady", icon: Gift },
+  { id: "activity", labelKey: "nav.activity", icon: ClipboardList },
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
