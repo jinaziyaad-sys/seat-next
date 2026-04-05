@@ -200,15 +200,18 @@ serve(async (req) => {
         const subscriptionEnd = safeTimestamp(sub.current_period_end);
         const subscriptionStart = safeTimestamp(sub.current_period_start);
         const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
+        const subStatus = sub.status === 'trialing' ? 'trial' : 'active';
+        const trialEnd = sub.trial_end ? safeTimestamp(sub.trial_end) : null;
 
         await syncSubscriptionToDb(supabaseClient, venueId, {
-          status: 'active',
+          status: subStatus,
           stripe_customer_id: customerId,
           stripe_subscription_id: sub.id,
           plan_id: determinePlanId(productIds),
           current_period_start: subscriptionStart,
           current_period_end: subscriptionEnd,
           billing_cycle: interval === 'year' ? 'annual' : 'monthly',
+          trial_ends_at: trialEnd,
         });
 
         logStep("Claimed subscription for venue", { venueId, subId: sub.id });
