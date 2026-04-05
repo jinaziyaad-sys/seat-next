@@ -1049,6 +1049,10 @@ export default function DevDashboard() {
               <Bell className="h-3 w-3" />
               Alerts
             </TabsTrigger>
+            <TabsTrigger value="billing" className="flex items-center gap-1">
+              <DollarSign className="h-3 w-3" />
+              Billing
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="venues" className="space-y-6">
