@@ -33,8 +33,8 @@ interface Invoice {
 }
 
 export default function MerchantBilling() {
-  const { user, loading: authLoading } = useMerchantAuth();
-  const subscription = useMerchantSubscription();
+  const { user, loading: authLoading, userRole } = useMerchantAuth();
+  const subscription = useMerchantSubscription(userRole?.venue_id);
   const navigate = useNavigate();
   const [portalLoading, setPortalLoading] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
