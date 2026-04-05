@@ -121,6 +121,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
         setProductIds(data.product_ids || []);
         setPriceIds(data.price_ids || []);
         setSubscriptionEnd(data.subscription_end);
+        setTrialEnd(data.trial_end || null);
         setStripeCustomerId(data.stripe_customer_id);
         setStripeSubscriptionId(data.stripe_subscription_id);
         setTierName(getTierFromProducts(data.product_ids || []));
@@ -131,6 +132,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
         setProductIds([]);
         setPriceIds([]);
         setSubscriptionEnd(null);
+        setTrialEnd(null);
         setTierName(null);
         setEntitledFeatures(new Set());
       }
