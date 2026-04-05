@@ -41,7 +41,7 @@ import {
 const MerchantDashboard = () => {
   const { user, userRole, allVenueRoles, switchVenue, loading } = useMerchantAuth();
   const { features, announcement } = usePlatformConfig();
-  const subscription = useMerchantSubscription();
+  const subscription = useMerchantSubscription(userRole?.venue_id);
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
   
   // Helper function for announcement icon

@@ -33,8 +33,8 @@ interface Invoice {
 }
 
 export default function MerchantBilling() {
-  const { user, loading: authLoading } = useMerchantAuth();
-  const subscription = useMerchantSubscription();
+  const { user, loading: authLoading, userRole } = useMerchantAuth();
+  const subscription = useMerchantSubscription(userRole?.venue_id);
   const navigate = useNavigate();
   const [portalLoading, setPortalLoading] = useState(false);
   const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
@@ -118,8 +118,18 @@ export default function MerchantBilling() {
 
   // Determine current tier for upgrade/downgrade buttons
   const currentTierKey = subscription.tierName?.toLowerCase() || null;
-  const otherTier = currentTierKey === 'starter' ? 'pro' : currentTierKey === 'pro' ? 'starter' : null;
-  const isUpgrade = currentTierKey === 'starter';
+  const TIER_ORDER = ['starter', 'pro', 'enterprise'];
+  const currentTierIndex = currentTierKey ? TIER_ORDER.indexOf(currentTierKey) : -1;
+  
+  // Build available plan change options (tiers above and below current)
+  const availableChanges = TIER_ORDER
+    .filter(t => t !== currentTierKey && SUBSCRIPTION_TIERS[t])
+    .map(t => ({
+      key: t,
+      name: SUBSCRIPTION_TIERS[t].name,
+      priceId: SUBSCRIPTION_TIERS[t].price_id,
+      isUpgrade: TIER_ORDER.indexOf(t) > currentTierIndex,
+    }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -177,25 +187,23 @@ export default function MerchantBilling() {
               {!subscription.subscribed && (
                 <Button onClick={() => navigate("/merchant/signup")}>Choose a Plan</Button>
               )}
-              {subscription.subscribed && otherTier && (
+              {subscription.subscribed && availableChanges.length > 0 && availableChanges.map(change => (
                 <Button
-                  variant={isUpgrade ? "default" : "outline"}
-                  onClick={() => handleChangePlan(
-                    SUBSCRIPTION_TIERS[otherTier].price_id,
-                    SUBSCRIPTION_TIERS[otherTier].name
-                  )}
+                  key={change.key}
+                  variant={change.isUpgrade ? "default" : "outline"}
+                  onClick={() => handleChangePlan(change.priceId, change.name)}
                   disabled={!!upgradeLoading}
                 >
-                  {upgradeLoading ? (
+                  {upgradeLoading === change.priceId ? (
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : isUpgrade ? (
+                  ) : change.isUpgrade ? (
                     <ArrowUpCircle className="h-4 w-4 mr-2" />
                   ) : (
                     <ArrowDownCircle className="h-4 w-4 mr-2" />
                   )}
-                  {isUpgrade ? "Upgrade to Pro" : "Switch to Starter"}
+                  {change.isUpgrade ? `Upgrade to ${change.name}` : `Switch to ${change.name}`}
                 </Button>
-              )}
+              ))}
             </div>
           </CardContent>
         </Card>

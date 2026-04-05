@@ -53,16 +53,37 @@ serve(async (req) => {
 
     logStep("User authenticated", { userId: user.id, email: user.email });
 
-    // Get the user's venue_id from user_roles
-    const { data: roleData } = await supabaseClient
-      .from("user_roles")
-      .select("venue_id")
-      .eq("user_id", user.id)
-      .limit(1)
-      .maybeSingle();
+    // Accept optional venueId from request body
+    let requestedVenueId: string | null = null;
+    try {
+      const body = await req.json();
+      requestedVenueId = body?.venueId || null;
+    } catch {
+      // No body or not JSON - that's fine
+    }
 
-    const venueId = roleData?.venue_id;
-    logStep("User venue", { venueId });
+    // Get the user's venue_id from user_roles (use requested venue or first)
+    let venueId: string | null = null;
+    if (requestedVenueId) {
+      // Verify user has access to this venue
+      const { data: roleData } = await supabaseClient
+        .from("user_roles")
+        .select("venue_id")
+        .eq("user_id", user.id)
+        .eq("venue_id", requestedVenueId)
+        .maybeSingle();
+      venueId = roleData?.venue_id || null;
+    }
+    if (!venueId) {
+      const { data: roleData } = await supabaseClient
+        .from("user_roles")
+        .select("venue_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+      venueId = roleData?.venue_id || null;
+    }
+    logStep("User venue", { venueId, requestedVenueId });
 
     // Check for dev pricing override first
     if (venueId) {
@@ -78,11 +99,10 @@ serve(async (req) => {
         let simulatedProductIds: string[] = [];
         if (override.override_type === 'free_starter') {
           simulatedProductIds = ['prod_UHQvy6yev2Z4FJ'];
-        } else if (override.override_type === 'free_pro' || override.override_type === 'free') {
+        } else if (override.override_type === 'free_pro') {
           simulatedProductIds = ['prod_UHQvBPLpLypA0e'];
-        } else if (override.override_type === 'free_enterprise') {
-          // Legacy: treat as Pro
-          simulatedProductIds = ['prod_UHQvBPLpLypA0e'];
+        } else if (override.override_type === 'free_enterprise' || override.override_type === 'free') {
+          simulatedProductIds = ['prod_UHQwZRXj29yoYZ'];
         }
 
         await syncSubscriptionToDb(supabaseClient, venueId, {
@@ -110,102 +130,169 @@ serve(async (req) => {
       }
     }
 
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    // Check if this venue already has a subscription record with a stripe_subscription_id
+    // This ensures per-venue subscription isolation
+    if (venueId) {
+      const { data: existingSub } = await supabaseClient
+        .from("merchant_subscriptions")
+        .select("stripe_subscription_id, stripe_customer_id, status")
+        .eq("venue_id", venueId)
+        .maybeSingle();
 
-    if (customers.data.length === 0) {
-      logStep("No Stripe customer found");
-      if (venueId) {
-        await syncSubscriptionToDb(supabaseClient, venueId, { status: 'none' });
-      }
-      return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
-    }
-
-    const customerId = customers.data[0].id;
-    logStep("Found customer", { customerId });
-
-    // Check active subscriptions
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "active",
-      limit: 10,
-    });
-
-    if (subscriptions.data.length === 0) {
-      // Check past_due
-      const pastDueSubs = await stripe.subscriptions.list({
-        customer: customerId,
-        status: "past_due",
-        limit: 1,
-      });
-
-      if (pastDueSubs.data.length > 0) {
-        logStep("Found past_due subscription");
-        if (venueId) {
-          await syncSubscriptionToDb(supabaseClient, venueId, {
-            status: 'past_due',
-            stripe_customer_id: customerId,
-            stripe_subscription_id: pastDueSubs.data[0].id,
+      // If this venue has NO subscription record or no stripe_subscription_id,
+      // check if the Stripe customer has a subscription and if it belongs to this venue
+      if (!existingSub?.stripe_subscription_id) {
+        // No subscription linked to this venue - check Stripe
+        const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+        const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+        
+        if (customers.data.length === 0) {
+          logStep("No Stripe customer found");
+          return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
           });
         }
-        return new Response(JSON.stringify({ 
-          subscribed: false, 
-          status: 'past_due',
+
+        const customerId = customers.data[0].id;
+        const subscriptions = await stripe.subscriptions.list({
+          customer: customerId,
+          status: "active",
+          limit: 10,
+        });
+
+        if (subscriptions.data.length === 0) {
+          logStep("No active Stripe subscription");
+          return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+
+        // Check if any subscription is already claimed by another venue
+        const sub = subscriptions.data[0];
+        const { data: claimedVenue } = await supabaseClient
+          .from("merchant_subscriptions")
+          .select("venue_id")
+          .eq("stripe_subscription_id", sub.id)
+          .maybeSingle();
+
+        if (claimedVenue && claimedVenue.venue_id !== venueId) {
+          // This Stripe subscription belongs to a different venue
+          logStep("Subscription belongs to different venue", { 
+            subVenue: claimedVenue.venue_id, currentVenue: venueId 
+          });
+          return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+
+        // Subscription is unclaimed or belongs to this venue - claim it
+        const productIds = sub.items.data.map((item: any) => 
+          typeof item.price.product === 'string' ? item.price.product : item.price.product?.id
+        ).filter(Boolean);
+        const priceIds = sub.items.data.map((item: any) => item.price.id);
+        const subscriptionEnd = safeTimestamp(sub.current_period_end);
+        const subscriptionStart = safeTimestamp(sub.current_period_start);
+        const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
+
+        await syncSubscriptionToDb(supabaseClient, venueId, {
+          status: 'active',
+          stripe_customer_id: customerId,
+          stripe_subscription_id: sub.id,
+          plan_id: determinePlanId(productIds),
+          current_period_start: subscriptionStart,
+          current_period_end: subscriptionEnd,
+          billing_cycle: interval === 'year' ? 'annual' : 'monthly',
+        });
+
+        logStep("Claimed subscription for venue", { venueId, subId: sub.id });
+
+        return new Response(JSON.stringify({
+          subscribed: true,
+          status: 'active',
+          product_ids: productIds,
+          price_ids: priceIds,
+          subscription_end: subscriptionEnd,
+          stripe_customer_id: customerId,
+          stripe_subscription_id: sub.id,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
         });
       }
 
-      logStep("No active subscription");
-      if (venueId) {
-        await syncSubscriptionToDb(supabaseClient, venueId, {
-          status: 'none',
-          stripe_customer_id: customerId,
+      // Venue has a linked stripe_subscription_id - verify it's still active
+      const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+      try {
+        const sub = await stripe.subscriptions.retrieve(existingSub.stripe_subscription_id);
+        
+        if (sub.status === 'active') {
+          const productIds = sub.items.data.map((item: any) => 
+            typeof item.price.product === 'string' ? item.price.product : item.price.product?.id
+          ).filter(Boolean);
+          const priceIds = sub.items.data.map((item: any) => item.price.id);
+          const subscriptionEnd = safeTimestamp(sub.current_period_end);
+          const subscriptionStart = safeTimestamp(sub.current_period_start);
+          const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
+
+          await syncSubscriptionToDb(supabaseClient, venueId, {
+            status: 'active',
+            stripe_customer_id: existingSub.stripe_customer_id,
+            stripe_subscription_id: sub.id,
+            plan_id: determinePlanId(productIds),
+            current_period_start: subscriptionStart,
+            current_period_end: subscriptionEnd,
+            billing_cycle: interval === 'year' ? 'annual' : 'monthly',
+          });
+
+          return new Response(JSON.stringify({
+            subscribed: true,
+            status: 'active',
+            product_ids: productIds,
+            price_ids: priceIds,
+            subscription_end: subscriptionEnd,
+            stripe_customer_id: existingSub.stripe_customer_id,
+            stripe_subscription_id: sub.id,
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        } else if (sub.status === 'past_due') {
+          await syncSubscriptionToDb(supabaseClient, venueId, {
+            status: 'past_due',
+            stripe_customer_id: existingSub.stripe_customer_id,
+            stripe_subscription_id: sub.id,
+          });
+          return new Response(JSON.stringify({ subscribed: false, status: 'past_due' }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        } else {
+          // Cancelled or other
+          await syncSubscriptionToDb(supabaseClient, venueId, {
+            status: 'none',
+            stripe_customer_id: existingSub.stripe_customer_id,
+          });
+          return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+      } catch (stripeErr) {
+        logStep("Error retrieving subscription from Stripe", { error: String(stripeErr) });
+        // Subscription might have been deleted
+        await syncSubscriptionToDb(supabaseClient, venueId, { status: 'none' });
+        return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
         });
       }
-      return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      });
     }
 
-    const subscription = subscriptions.data[0];
-    const productIds = subscription.items.data.map((item: any) => 
-      typeof item.price.product === 'string' ? item.price.product : item.price.product?.id
-    ).filter(Boolean);
-    const priceIds = subscription.items.data.map((item: any) => item.price.id);
-    const subscriptionEnd = safeTimestamp(subscription.current_period_end);
-    const subscriptionStart = safeTimestamp(subscription.current_period_start);
-
-    logStep("Active subscription found", { productIds, subscriptionEnd });
-
-    // Write-through to merchant_subscriptions
-    if (venueId) {
-      const interval = subscription.items?.data?.[0]?.price?.recurring?.interval;
-      await syncSubscriptionToDb(supabaseClient, venueId, {
-        status: 'active',
-        stripe_customer_id: customerId,
-        stripe_subscription_id: subscription.id,
-        plan_id: determinePlanId(productIds),
-        current_period_start: subscriptionStart,
-        current_period_end: subscriptionEnd,
-        billing_cycle: interval === 'year' ? 'annual' : 'monthly',
-      });
-    }
-
-    return new Response(JSON.stringify({
-      subscribed: true,
-      status: 'active',
-      product_ids: productIds,
-      price_ids: priceIds,
-      subscription_end: subscriptionEnd,
-      stripe_customer_id: customerId,
-      stripe_subscription_id: subscription.id,
-    }), {
+    // No venue found - can't check subscription
+    return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
     });
@@ -290,6 +377,8 @@ async function syncSubscriptionToDb(
 }
 
 function determinePlanId(productIds: string[]): string {
+  // Enterprise (monthly or annual)
+  if (productIds.includes('prod_UHQwZRXj29yoYZ') || productIds.includes('prod_UHTdy0VRFEXVQe')) return 'enterprise';
   // Pro (monthly or annual)
   if (productIds.includes('prod_UHQvBPLpLypA0e') || productIds.includes('prod_UHRVAz3q59g5Vm')) return 'pro';
   // Starter (monthly or annual)

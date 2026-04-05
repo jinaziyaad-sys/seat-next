@@ -1,0 +1,3 @@
+UPDATE subscription_plans SET included_features = '["food_ordering", "waitlist", "reservations", "kitchen_board"]'::jsonb WHERE name = 'Starter';
+UPDATE subscription_plans SET included_features = '["food_ordering", "waitlist", "reservations", "kitchen_board", "analytics"]'::jsonb WHERE name = 'Pro';
+UPDATE subscription_plans SET included_features = '["food_ordering", "waitlist", "reservations", "kitchen_board", "analytics", "loyalty"]'::jsonb WHERE name = 'Enterprise';
