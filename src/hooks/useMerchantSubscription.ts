@@ -47,6 +47,7 @@ export interface SubscriptionState {
   productIds: string[];
   priceIds: string[];
   subscriptionEnd: string | null;
+  trialEnd: string | null;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   hasFeature: (feature: string) => boolean;
