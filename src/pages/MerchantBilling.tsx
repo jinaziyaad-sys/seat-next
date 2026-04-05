@@ -67,7 +67,7 @@ export default function MerchantBilling() {
 
   const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: any }> = {
     active: { label: "Active", variant: "default", icon: CheckCircle2 },
-    trial: { label: "Trial", variant: "secondary", icon: CheckCircle2 },
+    trial: { label: "Free Trial", variant: "secondary", icon: CheckCircle2 },
     past_due: { label: "Past Due", variant: "destructive", icon: AlertTriangle },
     cancelled: { label: "Cancelled", variant: "outline", icon: XCircle },
     locked: { label: "Locked", variant: "destructive", icon: XCircle },
