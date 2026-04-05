@@ -336,7 +336,7 @@ export function BillingDashboard() {
                 <SelectContent>
                   <SelectItem value="free_starter">Free Starter</SelectItem>
                   <SelectItem value="free_pro">Free Pro</SelectItem>
-                  <SelectItem value="free">Free (Full Access)</SelectItem>
+                  <SelectItem value="free_enterprise">Free Enterprise</SelectItem>
                 </SelectContent>
               </Select>
             </div>
