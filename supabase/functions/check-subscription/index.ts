@@ -12,6 +12,19 @@ const logStep = (step: string, details?: any) => {
   console.log(`[CHECK-SUBSCRIPTION] ${step}${d}`);
 };
 
+function safeTimestamp(ts: any): string | null {
+  if (!ts) return null;
+  try {
+    const num = typeof ts === 'number' ? ts : Number(ts);
+    if (isNaN(num)) return null;
+    const d = new Date(num * 1000);
+    if (isNaN(d.getTime())) return null;
+    return d.toISOString();
+  } catch {
+    return null;
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -62,19 +75,17 @@ serve(async (req) => {
       if (override && (!override.expires_at || new Date(override.expires_at) > new Date())) {
         logStep("Found active pricing override", { type: override.override_type });
         
-        // Determine which product to simulate based on override
         let simulatedProductIds: string[] = [];
         if (override.override_type === 'free_starter') {
-          simulatedProductIds = ['prod_UHQvy6yev2Z4FJ']; // Starter
+          simulatedProductIds = ['prod_UHQvy6yev2Z4FJ'];
         } else if (override.override_type === 'free_pro') {
-          simulatedProductIds = ['prod_UHQvBPLpLypA0e']; // Pro
+          simulatedProductIds = ['prod_UHQvBPLpLypA0e'];
         } else if (override.override_type === 'free_enterprise') {
-          simulatedProductIds = ['prod_UHQwZRXj29yoYZ']; // Enterprise
+          simulatedProductIds = ['prod_UHQwZRXj29yoYZ'];
         } else if (override.override_type === 'free') {
-          simulatedProductIds = ['prod_UHQwZRXj29yoYZ']; // Default to Enterprise for free
+          simulatedProductIds = ['prod_UHQwZRXj29yoYZ'];
         }
 
-        // Sync to merchant_subscriptions
         await syncSubscriptionToDb(supabaseClient, venueId, {
           status: 'active',
           stripe_subscription_id: null,
@@ -108,7 +119,7 @@ serve(async (req) => {
       if (venueId) {
         await syncSubscriptionToDb(supabaseClient, venueId, { status: 'none' });
       }
-      return new Response(JSON.stringify({ subscribed: false }), {
+      return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
@@ -117,6 +128,7 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found customer", { customerId });
 
+    // Check active subscriptions
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
       status: "active",
@@ -124,6 +136,7 @@ serve(async (req) => {
     });
 
     if (subscriptions.data.length === 0) {
+      // Check past_due
       const pastDueSubs = await stripe.subscriptions.list({
         customer: customerId,
         status: "past_due",
@@ -142,7 +155,6 @@ serve(async (req) => {
         return new Response(JSON.stringify({ 
           subscribed: false, 
           status: 'past_due',
-          message: 'Your subscription payment is overdue. Please update your payment method.'
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
@@ -156,22 +168,25 @@ serve(async (req) => {
           stripe_customer_id: customerId,
         });
       }
-      return new Response(JSON.stringify({ subscribed: false }), {
+      return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
 
     const subscription = subscriptions.data[0];
-    const productIds = subscription.items.data.map((item: any) => item.price.product);
+    const productIds = subscription.items.data.map((item: any) => 
+      typeof item.price.product === 'string' ? item.price.product : item.price.product?.id
+    ).filter(Boolean);
     const priceIds = subscription.items.data.map((item: any) => item.price.id);
-    const subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
-    const subscriptionStart = new Date(subscription.current_period_start * 1000).toISOString();
+    const subscriptionEnd = safeTimestamp(subscription.current_period_end);
+    const subscriptionStart = safeTimestamp(subscription.current_period_start);
 
     logStep("Active subscription found", { productIds, subscriptionEnd });
 
     // Write-through to merchant_subscriptions
     if (venueId) {
+      const interval = subscription.items?.data?.[0]?.price?.recurring?.interval;
       await syncSubscriptionToDb(supabaseClient, venueId, {
         status: 'active',
         stripe_customer_id: customerId,
@@ -179,7 +194,7 @@ serve(async (req) => {
         plan_id: determinePlanId(productIds),
         current_period_start: subscriptionStart,
         current_period_end: subscriptionEnd,
-        billing_cycle: determineBillingCycle(subscription),
+        billing_cycle: interval === 'year' ? 'annual' : 'monthly',
       });
     }
 
@@ -205,7 +220,6 @@ serve(async (req) => {
   }
 });
 
-// Helper: sync subscription state to merchant_subscriptions table
 async function syncSubscriptionToDb(
   client: any,
   venueId: string,
@@ -220,10 +234,8 @@ async function syncSubscriptionToDb(
   }
 ) {
   try {
-    // Look up the plan_id from subscription_plans table
     let dbPlanId = data.plan_id;
     if (dbPlanId && !dbPlanId.match(/^[0-9a-f-]{36}$/)) {
-      // It's a tier name, look up the actual plan ID
       const { data: planData } = await client
         .from("subscription_plans")
         .select("id")
@@ -232,7 +244,6 @@ async function syncSubscriptionToDb(
         .maybeSingle();
       if (planData) dbPlanId = planData.id;
       else {
-        // Fallback: get any plan
         const { data: anyPlan } = await client
           .from("subscription_plans")
           .select("id")
@@ -255,7 +266,6 @@ async function syncSubscriptionToDb(
     if (data.current_period_end) upsertData.current_period_end = data.current_period_end;
     if (data.billing_cycle) upsertData.billing_cycle = data.billing_cycle;
 
-    // Check if record exists
     const { data: existing } = await client
       .from("merchant_subscriptions")
       .select("id")
@@ -285,9 +295,4 @@ function determinePlanId(productIds: string[]): string {
   if (productIds.includes('prod_UHQvBPLpLypA0e')) return 'pro';
   if (productIds.includes('prod_UHQvy6yev2Z4FJ')) return 'starter';
   return 'starter';
-}
-
-function determineBillingCycle(subscription: any): string {
-  const interval = subscription.items?.data?.[0]?.price?.recurring?.interval;
-  return interval === 'year' ? 'annual' : 'monthly';
 }
