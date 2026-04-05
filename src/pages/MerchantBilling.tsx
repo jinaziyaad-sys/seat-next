@@ -1,13 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMerchantAuth } from "@/hooks/useAuth";
-import { useMerchantSubscription } from "@/hooks/useMerchantSubscription";
+import { useMerchantSubscription, SUBSCRIPTION_TIERS } from "@/hooks/useMerchantSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CreditCard, ExternalLink, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { CreditCard, ExternalLink, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Loader2, ArrowUpCircle, ArrowDownCircle, Receipt } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,24 +21,78 @@ import {
 } from "@/components/ui/alert-dialog";
 import { toast } from "sonner";
 
+interface Invoice {
+  id: string;
+  invoice_number: string;
+  amount: number;
+  currency: string;
+  status: string;
+  period_start: string | null;
+  period_end: string | null;
+  created_at: string;
+}
+
 export default function MerchantBilling() {
   const { user, loading: authLoading } = useMerchantAuth();
   const subscription = useMerchantSubscription();
   const navigate = useNavigate();
   const [portalLoading, setPortalLoading] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchInvoices = async () => {
+      if (!user) return;
+      // Get venue_id from user_roles
+      const { data: role } = await supabase
+        .from("user_roles")
+        .select("venue_id")
+        .eq("user_id", user.id)
+        .limit(1)
+        .maybeSingle();
+
+      if (role?.venue_id) {
+        const { data } = await supabase
+          .from("billing_invoices")
+          .select("id, invoice_number, amount, currency, status, period_start, period_end, created_at")
+          .eq("venue_id", role.venue_id)
+          .order("created_at", { ascending: false })
+          .limit(20);
+        setInvoices((data as Invoice[]) || []);
+      }
+      setInvoicesLoading(false);
+    };
+    if (!authLoading && user) fetchInvoices();
+  }, [user, authLoading]);
 
   const handleManagePayment = async () => {
     setPortalLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("customer-portal");
       if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, "_blank");
-      }
+      if (data?.url) window.open(data.url, "_blank");
     } catch (err: any) {
       toast.error("Failed to open billing portal: " + (err.message || "Unknown error"));
     } finally {
       setPortalLoading(false);
+    }
+  };
+
+  const handleChangePlan = async (newPriceId: string, planName: string) => {
+    setUpgradeLoading(newPriceId);
+    try {
+      const { data, error } = await supabase.functions.invoke("update-subscription", {
+        body: { newPriceId },
+      });
+      if (error) throw error;
+      toast.success(`Switched to ${planName} plan. Changes take effect immediately.`);
+      // Refresh after a moment
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (err: any) {
+      toast.error("Failed to change plan: " + (err.message || "Unknown error"));
+    } finally {
+      setUpgradeLoading(null);
     }
   };
 
@@ -61,6 +115,11 @@ export default function MerchantBilling() {
 
   const currentStatus = statusConfig[subscription.status] || statusConfig.none;
   const StatusIcon = currentStatus.icon;
+
+  // Determine current tier for upgrade/downgrade buttons
+  const currentTierKey = subscription.tierName?.toLowerCase() || null;
+  const otherTier = currentTierKey === 'starter' ? 'pro' : currentTierKey === 'pro' ? 'starter' : null;
+  const isUpgrade = currentTierKey === 'starter';
 
   return (
     <div className="min-h-screen bg-background">
@@ -116,13 +175,25 @@ export default function MerchantBilling() {
 
             <div className="flex flex-wrap gap-3">
               {!subscription.subscribed && (
-                <Button onClick={() => navigate("/merchant/signup")}>
-                  Choose a Plan
-                </Button>
+                <Button onClick={() => navigate("/merchant/signup")}>Choose a Plan</Button>
               )}
-              {subscription.subscribed && (
-                <Button variant="outline" onClick={() => navigate("/merchant/signup")}>
-                  Change Plan
+              {subscription.subscribed && otherTier && (
+                <Button
+                  variant={isUpgrade ? "default" : "outline"}
+                  onClick={() => handleChangePlan(
+                    SUBSCRIPTION_TIERS[otherTier].price_id,
+                    SUBSCRIPTION_TIERS[otherTier].name
+                  )}
+                  disabled={!!upgradeLoading}
+                >
+                  {upgradeLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : isUpgrade ? (
+                    <ArrowUpCircle className="h-4 w-4 mr-2" />
+                  ) : (
+                    <ArrowDownCircle className="h-4 w-4 mr-2" />
+                  )}
+                  {isUpgrade ? "Upgrade to Pro" : "Switch to Starter"}
                 </Button>
               )}
             </div>
@@ -151,6 +222,50 @@ export default function MerchantBilling() {
             </CardContent>
           </Card>
         )}
+
+        {/* Invoice History */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Receipt className="h-5 w-5" />
+              Invoice History
+            </CardTitle>
+            <CardDescription>Your past invoices and payments</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {invoicesLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : invoices.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-4 text-center">No invoices yet</p>
+            ) : (
+              <div className="space-y-2">
+                {invoices.map((inv) => (
+                  <div key={inv.id} className="flex items-center justify-between p-3 rounded-lg border">
+                    <div>
+                      <p className="font-medium text-sm">{inv.invoice_number}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(inv.created_at).toLocaleDateString()}
+                        {inv.period_start && inv.period_end && (
+                          <> • {new Date(inv.period_start).toLocaleDateString()} – {new Date(inv.period_end).toLocaleDateString()}</>
+                        )}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-sm">
+                        R{(inv.amount / 100).toFixed(2)}
+                      </span>
+                      <Badge variant={inv.status === 'paid' ? 'default' : inv.status === 'overdue' ? 'destructive' : 'outline'}>
+                        {inv.status}
+                      </Badge>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Past Due Warning */}
         {subscription.status === "past_due" && (
