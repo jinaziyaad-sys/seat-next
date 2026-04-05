@@ -68,14 +68,7 @@ function getEntitledFeatures(productIds: string[]): Set<string> {
     features.add('kitchen_board');
   }
   
-  // Check add-ons
-  if (productIds.includes(SUBSCRIPTION_ADDONS.loyalty.product_id)) {
-    features.add('loyalty');
-  }
-  if (productIds.includes(SUBSCRIPTION_ADDONS.analytics.product_id)) {
-    features.add('analytics');
-  }
-  
+  // Check tier features only (no add-ons)
   return features;
 }
 
