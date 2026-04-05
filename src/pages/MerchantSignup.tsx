@@ -6,8 +6,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Check, Loader2, Sparkles, Shield, BarChart3, Gift } from 'lucide-react';
-import { SUBSCRIPTION_TIERS, SUBSCRIPTION_ADDONS } from '@/hooks/useMerchantSubscription';
+import { Check, Loader2, Sparkles, Shield } from 'lucide-react';
+import { SUBSCRIPTION_TIERS } from '@/hooks/useMerchantSubscription';
 import { useToast } from '@/hooks/use-toast';
 
 interface PlanFromDB {
@@ -20,13 +20,13 @@ interface PlanFromDB {
   sort_order: number;
 }
 
-const FEATURE_LABELS: Record<string, { label: string; icon: any }> = {
-  food_ordering: { label: 'Food Ready', icon: Check },
-  waitlist: { label: 'Table Ready (Waitlist)', icon: Check },
-  reservations: { label: 'Reservations', icon: Check },
-  loyalty: { label: 'Loyalty Program', icon: Gift },
-  analytics: { label: 'Analytics & Reports', icon: BarChart3 },
-  kitchen_board: { label: 'Kitchen Board', icon: Check },
+const FEATURE_LABELS: Record<string, string> = {
+  food_ordering: 'Food Ready',
+  waitlist: 'Table Ready (Waitlist)',
+  reservations: 'Reservations',
+  loyalty: 'Loyalty Program',
+  analytics: 'Analytics & Reports',
+  kitchen_board: 'Kitchen Board',
 };
 
 export default function MerchantSignup() {
@@ -34,9 +34,8 @@ export default function MerchantSignup() {
   const { toast } = useToast();
   const [plans, setPlans] = useState<PlanFromDB[]>([]);
   const [loading, setLoading] = useState(true);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
+  const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [isAnnual, setIsAnnual] = useState(false);
-  const [selectedAddons, setSelectedAddons] = useState<string[]>([]);
   const [user, setUser] = useState<any>(null);
 
   useEffect(() => {
@@ -59,7 +58,7 @@ export default function MerchantSignup() {
     checkUser();
   }, []);
 
-  const tierMap: Record<string, (typeof SUBSCRIPTION_TIERS)[keyof typeof SUBSCRIPTION_TIERS]> = {
+  const tierMap: Record<string, { product_id: string; price_id: string; name: string }> = {
     'Starter': SUBSCRIPTION_TIERS.starter,
     'Pro': SUBSCRIPTION_TIERS.pro,
     'Enterprise': SUBSCRIPTION_TIERS.enterprise,
@@ -71,21 +70,13 @@ export default function MerchantSignup() {
       return;
     }
 
-    setCheckoutLoading(true);
+    setCheckoutLoading(plan.id);
     try {
       const tier = tierMap[plan.name];
       if (!tier) throw new Error('Invalid plan');
 
-      const priceIds = [tier.price_id];
-      
-      // Add selected add-ons
-      selectedAddons.forEach(addonKey => {
-        const addon = SUBSCRIPTION_ADDONS[addonKey as keyof typeof SUBSCRIPTION_ADDONS];
-        if (addon) priceIds.push(addon.price_id);
-      });
-
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceIds },
+        body: { priceIds: [tier.price_id] },
       });
 
       if (error) throw error;
@@ -99,14 +90,8 @@ export default function MerchantSignup() {
         description: err.message || 'Failed to start checkout',
       });
     } finally {
-      setCheckoutLoading(false);
+      setCheckoutLoading(null);
     }
-  };
-
-  const toggleAddon = (key: string) => {
-    setSelectedAddons(prev =>
-      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
-    );
   };
 
   if (loading) {
@@ -126,7 +111,7 @@ export default function MerchantSignup() {
             Choose Your Plan
           </h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Power your venue with ReadyUp. Select the plan that fits your needs and add features as you grow.
+            Power your venue with ReadyUp. Select the plan that fits your needs.
           </p>
 
           {/* Billing toggle */}
@@ -138,14 +123,20 @@ export default function MerchantSignup() {
               <Badge variant="secondary" className="ml-2 text-xs">Save 17%</Badge>
             </Label>
           </div>
+
+          {/* Test mode notice */}
+          <p className="text-xs text-muted-foreground mt-4">
+            🧪 Test mode — Use card <code className="bg-muted px-1 rounded">4242 4242 4242 4242</code> with any future expiry and CVC.
+          </p>
         </div>
 
         {/* Plans grid */}
         <div className="grid md:grid-cols-3 gap-6 mb-12">
-          {plans.map((plan, idx) => {
+          {plans.map((plan) => {
             const price = isAnnual ? plan.annual_price / 12 : plan.monthly_price;
             const isPro = plan.name === 'Pro';
             const features = Array.isArray(plan.included_features) ? plan.included_features : [];
+            const isLoading = checkoutLoading === plan.id;
 
             return (
               <Card
@@ -175,15 +166,12 @@ export default function MerchantSignup() {
                   </div>
 
                   <ul className="space-y-3">
-                    {features.map((feature: string) => {
-                      const fl = FEATURE_LABELS[feature];
-                      return (
-                        <li key={feature} className="flex items-center gap-2 text-sm">
-                          <Check className="h-4 w-4 text-primary shrink-0" />
-                          {fl?.label || feature}
-                        </li>
-                      );
-                    })}
+                    {features.map((feature: string) => (
+                      <li key={feature} className="flex items-center gap-2 text-sm">
+                        <Check className="h-4 w-4 text-primary shrink-0" />
+                        {FEATURE_LABELS[feature] || feature}
+                      </li>
+                    ))}
                   </ul>
                 </CardContent>
                 <CardFooter>
@@ -191,9 +179,9 @@ export default function MerchantSignup() {
                     className="w-full"
                     variant={isPro ? 'default' : 'outline'}
                     onClick={() => handleSelectPlan(plan)}
-                    disabled={checkoutLoading}
+                    disabled={!!checkoutLoading}
                   >
-                    {checkoutLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Get Started'}
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Get Started'}
                   </Button>
                 </CardFooter>
               </Card>
@@ -201,40 +189,8 @@ export default function MerchantSignup() {
           })}
         </div>
 
-        {/* Add-ons section */}
-        <div className="max-w-2xl mx-auto">
-          <h2 className="text-2xl font-bold text-center mb-6">Optional Add-ons</h2>
-          <p className="text-center text-muted-foreground mb-6">
-            Enhance your plan with powerful add-ons. Available with any tier.
-          </p>
-
-          <div className="grid sm:grid-cols-2 gap-4">
-            {Object.entries(SUBSCRIPTION_ADDONS).map(([key, addon]) => {
-              const isSelected = selectedAddons.includes(key);
-              return (
-                <Card
-                  key={key}
-                  className={`cursor-pointer transition-all ${isSelected ? 'border-primary ring-1 ring-primary/30' : ''}`}
-                  onClick={() => toggleAddon(key)}
-                >
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {key === 'loyalty' ? <Gift className="h-5 w-5 text-primary" /> : <BarChart3 className="h-5 w-5 text-primary" />}
-                      <div>
-                        <p className="font-medium">{addon.name}</p>
-                        <p className="text-sm text-muted-foreground">R299/mo</p>
-                      </div>
-                    </div>
-                    <Switch checked={isSelected} onCheckedChange={() => toggleAddon(key)} />
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Security note */}
-        <div className="text-center mt-12 text-sm text-muted-foreground flex items-center justify-center gap-2">
+        <div className="text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
           <Shield className="h-4 w-4" />
           Secure payment powered by Stripe. Cancel anytime.
         </div>
