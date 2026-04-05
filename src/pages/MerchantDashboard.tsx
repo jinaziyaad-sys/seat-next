@@ -494,10 +494,19 @@ const MerchantDashboard = () => {
                 </span>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              {subscription.tierName && (
+                <Badge variant="secondary" className="text-xs">
+                  {subscription.tierName}
+                </Badge>
+              )}
               <SoundSnoozeButton data-tour="sound-snooze" />
               <ThemeToggle />
               <PasswordResetDialog />
+              <Button variant="outline" size="sm" onClick={() => navigate("/merchant/billing")}>
+                <CreditCard size={16} className="mr-2" />
+                Billing
+              </Button>
               <Button variant="outline" onClick={handleLogout}>
                 <LogOut size={16} className="mr-2" />
                 Logout
