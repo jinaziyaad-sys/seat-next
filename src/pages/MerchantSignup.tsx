@@ -328,7 +328,7 @@ export default function MerchantSignup() {
                     onClick={() => handleSelectPlan(plan)}
                     disabled={!!checkoutLoading}
                   >
-                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : user ? 'Subscribe Now' : 'Get Started'}
+                    {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : user ? 'Start 7-Day Free Trial' : 'Start Free Trial'}
                   </Button>
                 </CardFooter>
               </Card>

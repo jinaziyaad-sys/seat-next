@@ -47,6 +47,7 @@ export interface SubscriptionState {
   productIds: string[];
   priceIds: string[];
   subscriptionEnd: string | null;
+  trialEnd: string | null;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   hasFeature: (feature: string) => boolean;
@@ -98,6 +99,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
   const [productIds, setProductIds] = useState<string[]>([]);
   const [priceIds, setPriceIds] = useState<string[]>([]);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
+  const [trialEnd, setTrialEnd] = useState<string | null>(null);
   const [stripeCustomerId, setStripeCustomerId] = useState<string | null>(null);
   const [stripeSubscriptionId, setStripeSubscriptionId] = useState<string | null>(null);
   const [entitledFeatures, setEntitledFeatures] = useState<Set<string>>(new Set());
@@ -119,6 +121,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
         setProductIds(data.product_ids || []);
         setPriceIds(data.price_ids || []);
         setSubscriptionEnd(data.subscription_end);
+        setTrialEnd(data.trial_end || null);
         setStripeCustomerId(data.stripe_customer_id);
         setStripeSubscriptionId(data.stripe_subscription_id);
         setTierName(getTierFromProducts(data.product_ids || []));
@@ -129,6 +132,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
         setProductIds([]);
         setPriceIds([]);
         setSubscriptionEnd(null);
+        setTrialEnd(null);
         setTierName(null);
         setEntitledFeatures(new Set());
       }
@@ -157,6 +161,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
     productIds,
     priceIds,
     subscriptionEnd,
+    trialEnd,
     stripeCustomerId,
     stripeSubscriptionId,
     hasFeature,

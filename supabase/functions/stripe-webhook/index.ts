@@ -59,9 +59,14 @@ serve(async (req) => {
 
         if (sub) {
           const status = subscription.status === 'active' ? 'active'
+            : subscription.status === 'trialing' ? 'trial'
             : subscription.status === 'past_due' ? 'past_due'
             : subscription.status === 'canceled' ? 'cancelled'
             : 'inactive';
+
+          const trialEnd = subscription.trial_end 
+            ? new Date(subscription.trial_end * 1000).toISOString() 
+            : null;
 
           await supabase
             .from("merchant_subscriptions")
@@ -71,6 +76,7 @@ serve(async (req) => {
               current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
               current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
               cancelled_at: subscription.canceled_at ? new Date(subscription.canceled_at * 1000).toISOString() : null,
+              trial_ends_at: trialEnd,
               updated_at: new Date().toISOString(),
             })
             .eq("venue_id", sub.venue_id);

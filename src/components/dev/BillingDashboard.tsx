@@ -144,25 +144,22 @@ export function BillingDashboard() {
     if (!invoiceDialog) return;
     setInvoiceSaving(true);
     try {
-      const amount = Math.round(parseFloat(invoiceAmount) * 100);
+      const amount = parseFloat(invoiceAmount);
       if (isNaN(amount) || amount <= 0) throw new Error("Invalid amount");
 
-      const invoiceNumber = `INV-${Date.now().toString(36).toUpperCase()}`;
-
-      const { error } = await supabase.from("billing_invoices").insert({
-        venue_id: invoiceDialog.venueId,
-        invoice_number: invoiceNumber,
-        amount,
-        currency: "ZAR",
-        status: "draft",
-        notes: invoiceNotes || null,
-        line_items: [{ description: "Manual invoice", amount }],
-        period_start: new Date().toISOString(),
-        period_end: new Date(Date.now() + 30 * 86400000).toISOString(),
+      const { data, error } = await supabase.functions.invoke("create-invoice", {
+        body: {
+          venueId: invoiceDialog.venueId,
+          amountZar: amount,
+          description: invoiceNotes || "Monthly subscription fee",
+          notes: invoiceNotes || null,
+        },
       });
 
       if (error) throw error;
-      toast({ title: "Invoice created", description: `${invoiceNumber} for ${invoiceDialog.venueName}` });
+      if (data?.error) throw new Error(data.error);
+
+      toast({ title: "Invoice created & sent via Stripe", description: `${data.invoice_number} for ${invoiceDialog.venueName}` });
       setInvoiceDialog(null);
       setInvoiceAmount("");
       setInvoiceNotes("");

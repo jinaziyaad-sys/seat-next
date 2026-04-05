@@ -155,13 +155,17 @@ serve(async (req) => {
         }
 
         const customerId = customers.data[0].id;
+        // Check for active OR trialing subscriptions
         const subscriptions = await stripe.subscriptions.list({
           customer: customerId,
-          status: "active",
           limit: 10,
         });
 
-        if (subscriptions.data.length === 0) {
+        const activeSubs = subscriptions.data.filter(
+          (s: any) => s.status === 'active' || s.status === 'trialing'
+        );
+
+        if (activeSubs.length === 0) {
           logStep("No active Stripe subscription");
           return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -170,7 +174,7 @@ serve(async (req) => {
         }
 
         // Check if any subscription is already claimed by another venue
-        const sub = subscriptions.data[0];
+        const sub = activeSubs[0];
         const { data: claimedVenue } = await supabaseClient
           .from("merchant_subscriptions")
           .select("venue_id")
@@ -196,27 +200,31 @@ serve(async (req) => {
         const subscriptionEnd = safeTimestamp(sub.current_period_end);
         const subscriptionStart = safeTimestamp(sub.current_period_start);
         const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
+        const subStatus = sub.status === 'trialing' ? 'trial' : 'active';
+        const trialEnd = sub.trial_end ? safeTimestamp(sub.trial_end) : null;
 
         await syncSubscriptionToDb(supabaseClient, venueId, {
-          status: 'active',
+          status: subStatus,
           stripe_customer_id: customerId,
           stripe_subscription_id: sub.id,
           plan_id: determinePlanId(productIds),
           current_period_start: subscriptionStart,
           current_period_end: subscriptionEnd,
           billing_cycle: interval === 'year' ? 'annual' : 'monthly',
+          trial_ends_at: trialEnd,
         });
 
         logStep("Claimed subscription for venue", { venueId, subId: sub.id });
 
         return new Response(JSON.stringify({
           subscribed: true,
-          status: 'active',
+          status: subStatus,
           product_ids: productIds,
           price_ids: priceIds,
           subscription_end: subscriptionEnd,
           stripe_customer_id: customerId,
           stripe_subscription_id: sub.id,
+          trial_end: trialEnd,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
@@ -228,7 +236,7 @@ serve(async (req) => {
       try {
         const sub = await stripe.subscriptions.retrieve(existingSub.stripe_subscription_id);
         
-        if (sub.status === 'active') {
+        if (sub.status === 'active' || sub.status === 'trialing') {
           const productIds = sub.items.data.map((item: any) => 
             typeof item.price.product === 'string' ? item.price.product : item.price.product?.id
           ).filter(Boolean);
@@ -236,25 +244,29 @@ serve(async (req) => {
           const subscriptionEnd = safeTimestamp(sub.current_period_end);
           const subscriptionStart = safeTimestamp(sub.current_period_start);
           const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
+          const retrievedStatus = sub.status === 'trialing' ? 'trial' : 'active';
+          const trialEnd = sub.trial_end ? safeTimestamp(sub.trial_end) : null;
 
           await syncSubscriptionToDb(supabaseClient, venueId, {
-            status: 'active',
+            status: retrievedStatus,
             stripe_customer_id: existingSub.stripe_customer_id,
             stripe_subscription_id: sub.id,
             plan_id: determinePlanId(productIds),
             current_period_start: subscriptionStart,
             current_period_end: subscriptionEnd,
             billing_cycle: interval === 'year' ? 'annual' : 'monthly',
+            trial_ends_at: trialEnd,
           });
 
           return new Response(JSON.stringify({
             subscribed: true,
-            status: 'active',
+            status: retrievedStatus,
             product_ids: productIds,
             price_ids: priceIds,
             subscription_end: subscriptionEnd,
             stripe_customer_id: existingSub.stripe_customer_id,
             stripe_subscription_id: sub.id,
+            trial_end: trialEnd,
           }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 200,
@@ -317,6 +329,7 @@ async function syncSubscriptionToDb(
     current_period_start?: string | null;
     current_period_end?: string | null;
     billing_cycle?: string;
+    trial_ends_at?: string | null;
   }
 ) {
   try {
@@ -351,6 +364,7 @@ async function syncSubscriptionToDb(
     if (data.current_period_start) upsertData.current_period_start = data.current_period_start;
     if (data.current_period_end) upsertData.current_period_end = data.current_period_end;
     if (data.billing_cycle) upsertData.billing_cycle = data.billing_cycle;
+    if (data.trial_ends_at !== undefined) upsertData.trial_ends_at = data.trial_ends_at;
 
     const { data: existing } = await client
       .from("merchant_subscriptions")
