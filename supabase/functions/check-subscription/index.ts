@@ -244,25 +244,29 @@ serve(async (req) => {
           const subscriptionEnd = safeTimestamp(sub.current_period_end);
           const subscriptionStart = safeTimestamp(sub.current_period_start);
           const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
+          const retrievedStatus = sub.status === 'trialing' ? 'trial' : 'active';
+          const trialEnd = sub.trial_end ? safeTimestamp(sub.trial_end) : null;
 
           await syncSubscriptionToDb(supabaseClient, venueId, {
-            status: 'active',
+            status: retrievedStatus,
             stripe_customer_id: existingSub.stripe_customer_id,
             stripe_subscription_id: sub.id,
             plan_id: determinePlanId(productIds),
             current_period_start: subscriptionStart,
             current_period_end: subscriptionEnd,
             billing_cycle: interval === 'year' ? 'annual' : 'monthly',
+            trial_ends_at: trialEnd,
           });
 
           return new Response(JSON.stringify({
             subscribed: true,
-            status: 'active',
+            status: retrievedStatus,
             product_ids: productIds,
             price_ids: priceIds,
             subscription_end: subscriptionEnd,
             stripe_customer_id: existingSub.stripe_customer_id,
             stripe_subscription_id: sub.id,
+            trial_end: trialEnd,
           }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 200,
