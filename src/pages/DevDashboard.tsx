@@ -1887,6 +1887,10 @@ export default function DevDashboard() {
           <TabsContent value="alerts">
             <AlertRulesPanel />
           </TabsContent>
+
+          <TabsContent value="billing">
+            <BillingDashboard />
+          </TabsContent>
         </Tabs>
       </div>
 
