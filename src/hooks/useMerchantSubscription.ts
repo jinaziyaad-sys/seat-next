@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 // Stripe product/price mapping
-export const SUBSCRIPTION_TIERS = {
+export const SUBSCRIPTION_TIERS: Record<string, { product_id: string; price_id: string; name: string }> = {
   starter: {
     product_id: 'prod_UHQvy6yev2Z4FJ',
     price_id: 'price_1TIs3WRrnmiHUS0LBQ9DkJlO',
@@ -18,9 +18,9 @@ export const SUBSCRIPTION_TIERS = {
     price_id: 'price_1TIs4JRrnmiHUS0LYSuWZptR',
     name: 'Enterprise',
   },
-} as const;
+};
 
-export const SUBSCRIPTION_ADDONS = {
+export const SUBSCRIPTION_ADDONS: Record<string, { product_id: string; price_id: string; name: string; feature_key: string }> = {
   loyalty: {
     product_id: 'prod_UHQwZfr3NXcScv',
     price_id: 'price_1TIs4eRrnmiHUS0LkGfSjlMG',
@@ -33,7 +33,7 @@ export const SUBSCRIPTION_ADDONS = {
     name: 'Analytics',
     feature_key: 'analytics',
   },
-} as const;
+};
 
 export interface SubscriptionState {
   loading: boolean;
