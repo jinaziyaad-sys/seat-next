@@ -78,12 +78,11 @@ serve(async (req) => {
         let simulatedProductIds: string[] = [];
         if (override.override_type === 'free_starter') {
           simulatedProductIds = ['prod_UHQvy6yev2Z4FJ'];
-        } else if (override.override_type === 'free_pro') {
+        } else if (override.override_type === 'free_pro' || override.override_type === 'free') {
           simulatedProductIds = ['prod_UHQvBPLpLypA0e'];
         } else if (override.override_type === 'free_enterprise') {
-          simulatedProductIds = ['prod_UHQwZRXj29yoYZ'];
-        } else if (override.override_type === 'free') {
-          simulatedProductIds = ['prod_UHQwZRXj29yoYZ'];
+          // Legacy: treat as Pro
+          simulatedProductIds = ['prod_UHQvBPLpLypA0e'];
         }
 
         await syncSubscriptionToDb(supabaseClient, venueId, {
