@@ -4,6 +4,7 @@
     "food": "Food",
     "table": "Table",
     "loyalty": "Loyalty",
+    "activity": "Activity",
     "profile": "Profile"
   },
   "loyaltyFlow": {
