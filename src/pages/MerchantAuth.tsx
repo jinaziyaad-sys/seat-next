@@ -85,8 +85,8 @@ export default function MerchantAuth() {
   };
 
   const handleVenueSelect = (venueId: string) => {
-    // Store selected venue in sessionStorage so useAuth picks it up
-    sessionStorage.setItem("selectedVenueId", venueId);
+    // Store selected venue in localStorage so useAuth picks it up
+    localStorage.setItem("selectedVenueId", venueId);
     navigate("/merchant/dashboard");
   };
 
