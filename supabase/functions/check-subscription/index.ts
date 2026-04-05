@@ -218,12 +218,13 @@ serve(async (req) => {
 
         return new Response(JSON.stringify({
           subscribed: true,
-          status: 'active',
+          status: subStatus,
           product_ids: productIds,
           price_ids: priceIds,
           subscription_end: subscriptionEnd,
           stripe_customer_id: customerId,
           stripe_subscription_id: sub.id,
+          trial_end: trialEnd,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
