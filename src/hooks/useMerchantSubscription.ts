@@ -161,6 +161,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
     productIds,
     priceIds,
     subscriptionEnd,
+    trialEnd,
     stripeCustomerId,
     stripeSubscriptionId,
     hasFeature,
