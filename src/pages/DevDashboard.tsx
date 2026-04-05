@@ -34,6 +34,7 @@ import { AuditLogPanel } from "@/components/dev/AuditLogPanel";
 import { SystemHealthDashboard } from "@/components/dev/SystemHealthDashboard";
 import { AlertRulesPanel } from "@/components/dev/AlertRulesPanel";
 import { PromotionsManager } from "@/components/dev/PromotionsManager";
+import { BillingDashboard } from "@/components/dev/BillingDashboard";
 import { LocationMap } from "@/components/LocationMap";
 import { InteractiveLocationMap } from "@/components/InteractiveLocationMap";
 import {
