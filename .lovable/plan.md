@@ -1,69 +1,37 @@
+# Fix Billing Access, Remove Enterprise Tier, Enforce Feature Gating
+
+## Issues Identified
+
+1. **No billing link on merchant dashboard** — the `/merchant/billing` page exists but there's no navigation to it from the dashboard
+  &nbsp;
+2. **Features not actually gated by subscription** — the dashboard uses `usePlatformConfig` flags (dev-level) but never checks `subscription.hasFeature()`, so any subscribed merchant sees everything regardless of tier
+
+## Changes
 
 
-# Next Phase: Feature Gating + Merchant Billing Page
 
-The most impactful next steps are (A) enforcing subscriptions so the merchant dashboard actually requires a paid plan, and (B) giving merchants a way to manage their subscription after checkout.
+### 2. Add billing link to merchant dashboard
 
----
+`**src/pages/MerchantDashboard.tsx**`
 
-## Part A: Feature Gating & Lockout Overlay
+- Add a "Billing" button/link in the dashboard header (near the Logout button) that navigates to `/merchant/billing`
+- Show current plan badge (e.g. "Starter" or "Pro") from `subscription.tierName`
 
-### MerchantDashboard changes
-- Import `useMerchantSubscription` hook
-- If `status` is `none`, `locked`, or `cancelled`, render a full-screen paywall overlay instead of the dashboard
-  - Message: "Subscribe to access your dashboard"
-  - CTA button linking to `/merchant/signup`
-  - If `past_due`: show "Update your payment method" linking to Stripe portal
-- For individual tabs/features (loyalty, analytics, kitchen board), check `hasFeature()` and show upgrade prompts for locked features
+### 3. Enforce subscription-based feature gating
 
-### Database: `merchant_subscriptions` table
-- Create migration for `merchant_subscriptions` table to persist subscription state locally (venue_id, stripe_subscription_id, stripe_customer_id, status, plan tier, period dates)
-- This allows the dev dashboard to query subscriptions without hitting Stripe every time
-- Synced via `check-subscription` edge function (write-through on check)
+`**src/pages/MerchantDashboard.tsx**`
 
-## Part B: Merchant Billing Page
+- Change feature visibility to combine platform config AND subscription entitlements:
+  - `hasAnalytics` → also requires `subscription.hasFeature('analytics')`
+  - `hasLoyalty` (loyalty tab) → also requires `subscription.hasFeature('loyalty')`
+- For locked features, show an upgrade prompt card instead of hiding the tab entirely (so merchants know what they're missing)
+- Core features (kitchen, waitlist, reservations) remain visible for all subscribers
 
-### New page: `/merchant/billing`
-- Show current plan name, status, next billing date
-- "Change Plan" button -> redirects to `/merchant/signup` with current plan highlighted
-- "Manage Payment Method" button -> calls `customer-portal` edge function
-- "Cancel Subscription" section with confirmation dialog
-- Invoice history (once invoices table exists)
 
-### Route setup
-- Add `/merchant/billing` route in `App.tsx`
-- Add "Billing" link in merchant settings or dashboard nav
-
-## Part C: Dev Billing Dashboard (foundation)
-
-### New tab in DevDashboard: "Billing"
-- Sub-component: `src/components/dev/BillingDashboard.tsx`
-- Lists all venues with subscription status (queries `merchant_subscriptions` table)
-- Quick actions: manually activate/deactivate, apply free subscription override
-- Basic MRR calculation from active subscriptions
-
-### Database: `dev_pricing_overrides` table
-- Migration for overrides table (venue_id, override_type, reason, expires_at)
-- Dev can mark specific venues as "free" or apply discount
 
 ---
 
-## Files to create/modify
+&nbsp;
 
-| File | Action |
-|---|---|
-| New migration | `merchant_subscriptions` + `dev_pricing_overrides` tables with RLS |
-| `supabase/functions/check-subscription/index.ts` | Update to write-through subscription state to DB |
-| `src/pages/MerchantDashboard.tsx` | Add paywall overlay + per-feature gating |
-| `src/pages/MerchantBilling.tsx` | New billing management page |
-| `src/components/dev/BillingDashboard.tsx` | New dev billing tab |
-| `src/pages/DevDashboard.tsx` | Add Billing tab |
-| `src/App.tsx` | Add `/merchant/billing` route |
-
-## Build order
-1. Database migration (merchant_subscriptions, dev_pricing_overrides)
-2. Update check-subscription to sync to DB
-3. Feature gating on MerchantDashboard
-4. Merchant billing page
-5. Dev billing dashboard foundation
-
+1. Update `MerchantDashboard.tsx` — add billing link + enforce `hasFeature()` gating
+2. Update `MerchantBilling.tsx` if needed for tier display consistency
