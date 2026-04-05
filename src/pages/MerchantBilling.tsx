@@ -118,8 +118,18 @@ export default function MerchantBilling() {
 
   // Determine current tier for upgrade/downgrade buttons
   const currentTierKey = subscription.tierName?.toLowerCase() || null;
-  const otherTier = currentTierKey === 'starter' ? 'pro' : currentTierKey === 'pro' ? 'starter' : null;
-  const isUpgrade = currentTierKey === 'starter';
+  const TIER_ORDER = ['starter', 'pro', 'enterprise'];
+  const currentTierIndex = currentTierKey ? TIER_ORDER.indexOf(currentTierKey) : -1;
+  
+  // Build available plan change options (tiers above and below current)
+  const availableChanges = TIER_ORDER
+    .filter(t => t !== currentTierKey && SUBSCRIPTION_TIERS[t])
+    .map(t => ({
+      key: t,
+      name: SUBSCRIPTION_TIERS[t].name,
+      priceId: SUBSCRIPTION_TIERS[t].price_id,
+      isUpgrade: TIER_ORDER.indexOf(t) > currentTierIndex,
+    }));
 
   return (
     <div className="min-h-screen bg-background">
