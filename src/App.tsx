@@ -38,6 +38,7 @@ const App = () => (
             
             {/* Merchant App Routes */}
             <Route path="/merchant/auth" element={<MerchantAuth />} />
+            <Route path="/merchant/signup" element={<MerchantSignup />} />
             <Route path="/merchant/dashboard" element={<MerchantDashboard />} />
             
             {/* Developer App Routes */}
