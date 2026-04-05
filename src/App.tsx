@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import MerchantAuth from "./pages/MerchantAuth";
 import MerchantDashboard from "./pages/MerchantDashboard";
+import MerchantSignup from "./pages/MerchantSignup";
 import DevAuth from "./pages/DevAuth";
 import DevDashboard from "./pages/DevDashboard";
 
@@ -37,6 +38,7 @@ const App = () => (
             
             {/* Merchant App Routes */}
             <Route path="/merchant/auth" element={<MerchantAuth />} />
+            <Route path="/merchant/signup" element={<MerchantSignup />} />
             <Route path="/merchant/dashboard" element={<MerchantDashboard />} />
             
             {/* Developer App Routes */}
