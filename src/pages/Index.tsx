@@ -598,6 +598,72 @@ const Index = () => {
     );
   }
 
+  if (activeTab === "activity") {
+    return (
+      <div className="min-h-screen bg-background pb-24">
+        <ActivityFlow
+          onBack={() => setActiveTab("home")}
+          activeOrders={activeOrders}
+          activeWaitlist={activeWaitlist}
+          unreadCounts={unreadCounts}
+          onSelectOrder={(order) => {
+            setSelectedOrder(order);
+            setActiveTab("food-ready");
+          }}
+          onSelectWaitlist={(entry) => {
+            setSelectedOrder(entry);
+            setActiveTab("table-ready");
+          }}
+          onDismissOrder={handleDismissOrder}
+          onDismissWaitlist={handleDismissWaitlist}
+          onRateItem={(item) => {
+            setRatingItem(item);
+            setRatingDialogOpen(true);
+          }}
+          onOpenMessenger={(ctx) => {
+            setCardMessengerContext(ctx);
+            setCardMessengerOpen(true);
+          }}
+          onInviteFriends={(entry) => {
+            const url = `${window.location.origin}/waitlist/${entry.venue_id}?group=${entry.id}`;
+            const text = t("home.inviteFriendsText", { venue: entry.venues?.name || '' });
+            if (navigator.share) {
+              navigator.share({ title: entry.venues?.name || '', text, url }).catch(() => {});
+            } else {
+              navigator.clipboard.writeText(`${text} ${url}`);
+              toast({ title: t("explore.linkCopied") });
+            }
+          }}
+        />
+        {/* Rating Dialog */}
+        <RatingDialog
+          open={ratingDialogOpen}
+          onOpenChange={setRatingDialogOpen}
+          type={ratingItem?.type || 'order'}
+          itemId={ratingItem?.id || ''}
+          venueId={ratingItem?.venueId || ''}
+          venueName={ratingItem?.venueName || ''}
+          userId={user?.id || null}
+          onComplete={() => {
+            if (ratingItem) handleRatingComplete(ratingItem.id, ratingItem.type);
+          }}
+        />
+        {cardMessengerContext && (
+          <Messenger
+            open={cardMessengerOpen}
+            onOpenChange={(open) => { setCardMessengerOpen(open); if (!open) setCardMessengerContext(null); }}
+            waitlistEntryId={cardMessengerContext.type === 'waitlist' ? cardMessengerContext.id : undefined}
+            orderId={cardMessengerContext.type === 'order' ? cardMessengerContext.id : undefined}
+            userType="patron"
+            userId={user?.id || ''}
+            venueName={cardMessengerContext.venueName}
+          />
+        )}
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      </div>
+    );
+  }
+
 
   // Get announcement icon based on type
   const getAnnouncementIcon = (type: string) => {
