@@ -187,23 +187,12 @@ export default function MerchantBilling() {
               {!subscription.subscribed && (
                 <Button onClick={() => navigate("/merchant/signup")}>Choose a Plan</Button>
               )}
-              {subscription.subscribed && availableChanges.length > 0 && availableChanges.map(change => (
-                <Button
-                  key={change.key}
-                  variant={change.isUpgrade ? "default" : "outline"}
-                  onClick={() => handleChangePlan(change.priceId, change.name)}
-                  disabled={!!upgradeLoading}
-                >
-                  {upgradeLoading === change.priceId ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : change.isUpgrade ? (
-                    <ArrowUpCircle className="h-4 w-4 mr-2" />
-                  ) : (
-                    <ArrowDownCircle className="h-4 w-4 mr-2" />
-                  )}
-                  {change.isUpgrade ? `Upgrade to ${change.name}` : `Switch to ${change.name}`}
+              {subscription.subscribed && (
+                <Button variant="outline" onClick={() => navigate("/merchant/signup")}>
+                  <ArrowUpCircle className="h-4 w-4 mr-2" />
+                  Change Plan
                 </Button>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
