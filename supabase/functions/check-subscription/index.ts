@@ -155,13 +155,17 @@ serve(async (req) => {
         }
 
         const customerId = customers.data[0].id;
+        // Check for active OR trialing subscriptions
         const subscriptions = await stripe.subscriptions.list({
           customer: customerId,
-          status: "active",
           limit: 10,
         });
 
-        if (subscriptions.data.length === 0) {
+        const activeSubs = subscriptions.data.filter(
+          (s: any) => s.status === 'active' || s.status === 'trialing'
+        );
+
+        if (activeSubs.length === 0) {
           logStep("No active Stripe subscription");
           return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
