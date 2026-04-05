@@ -86,7 +86,11 @@ function getEntitledFeatures(productIds: string[]): Set<string> {
   return features;
 }
 
-export function useMerchantSubscription(): SubscriptionState {
+/**
+ * Pass venueId to scope subscription check to a specific venue.
+ * Without it, defaults to the user's first venue (legacy behavior).
+ */
+export function useMerchantSubscription(venueId?: string | null): SubscriptionState {
   const [loading, setLoading] = useState(true);
   const [subscribed, setSubscribed] = useState(false);
   const [status, setStatus] = useState<SubscriptionState['status']>('none');
@@ -100,7 +104,9 @@ export function useMerchantSubscription(): SubscriptionState {
 
   const checkSubscription = useCallback(async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('check-subscription');
+      const { data, error } = await supabase.functions.invoke('check-subscription', {
+        body: venueId ? { venueId } : undefined,
+      });
       if (error) {
         console.error('Error checking subscription:', error);
         setLoading(false);
@@ -131,7 +137,7 @@ export function useMerchantSubscription(): SubscriptionState {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [venueId]);
 
   useEffect(() => {
     checkSubscription();
