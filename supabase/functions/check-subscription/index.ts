@@ -364,6 +364,7 @@ async function syncSubscriptionToDb(
     if (data.current_period_start) upsertData.current_period_start = data.current_period_start;
     if (data.current_period_end) upsertData.current_period_end = data.current_period_end;
     if (data.billing_cycle) upsertData.billing_cycle = data.billing_cycle;
+    if (data.trial_ends_at !== undefined) upsertData.trial_ends_at = data.trial_ends_at;
 
     const { data: existing } = await client
       .from("merchant_subscriptions")

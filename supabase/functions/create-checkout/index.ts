@@ -60,6 +60,9 @@ serve(async (req) => {
       customer_email: customerId ? undefined : user.email,
       line_items: lineItems,
       mode: "subscription",
+      subscription_data: {
+        trial_period_days: 7,
+      },
       success_url: successUrl || `${req.headers.get("origin")}/merchant/dashboard?checkout=success`,
       cancel_url: cancelUrl || `${req.headers.get("origin")}/merchant/signup?checkout=cancelled`,
       metadata: {
