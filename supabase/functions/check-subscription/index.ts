@@ -329,6 +329,7 @@ async function syncSubscriptionToDb(
     current_period_start?: string | null;
     current_period_end?: string | null;
     billing_cycle?: string;
+    trial_ends_at?: string | null;
   }
 ) {
   try {
