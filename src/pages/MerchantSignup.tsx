@@ -160,8 +160,10 @@ export default function MerchantSignup() {
       const tier = tierMap[plan.name];
       if (!tier) throw new Error('Invalid plan');
 
+      const priceId = isAnnual ? tier.annual_price_id : tier.monthly_price_id;
+
       const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceIds: [tier.price_id] },
+        body: { priceIds: [priceId] },
       });
 
       if (error) throw error;
