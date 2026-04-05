@@ -18,7 +18,7 @@ import { SoundSnoozeButton } from "@/components/merchant/SoundSnoozeButton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar, AlertTriangle, Info, X, Wrench, Gift, LayoutGrid } from "lucide-react";
+import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar, AlertTriangle, Info, X, Wrench, Gift, LayoutGrid, CreditCard, ArrowUpCircle } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId, playPatronArrivedSound } from "@/utils/notificationSound";
@@ -367,7 +367,10 @@ const MerchantDashboard = () => {
   const hasTableReady = venueServiceTypes.includes("table_ready") && features.waitlist_enabled;
   const hasReservations = hasTableReady && features.reservations_enabled;
   const hasKitchenBoard = hasFoodReady && features.kitchen_board_enabled;
-  const hasAnalytics = features.analytics_enabled;
+  const hasAnalytics = features.analytics_enabled && subscription.hasFeature('analytics');
+  const hasLoyalty = loyaltyAdminEnabled && subscription.hasFeature('loyalty');
+  const analyticsLocked = features.analytics_enabled && !subscription.hasFeature('analytics');
+  const loyaltyLocked = loyaltyAdminEnabled && !subscription.hasFeature('loyalty');
 
   // Tab trigger class for consistent sizing
   const tabTriggerClass = "flex items-center gap-2 flex-1 min-w-fit";
@@ -494,10 +497,19 @@ const MerchantDashboard = () => {
                 </span>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
+              {subscription.tierName && (
+                <Badge variant="secondary" className="text-xs">
+                  {subscription.tierName}
+                </Badge>
+              )}
               <SoundSnoozeButton data-tour="sound-snooze" />
               <ThemeToggle />
               <PasswordResetDialog />
+              <Button variant="outline" size="sm" onClick={() => navigate("/merchant/billing")}>
+                <CreditCard size={16} className="mr-2" />
+                Billing
+              </Button>
               <Button variant="outline" onClick={handleLogout}>
                 <LogOut size={16} className="mr-2" />
                 Logout
@@ -598,16 +610,18 @@ const MerchantDashboard = () => {
                   <Settings size={16} />
                   Settings
                 </TabsTrigger>
-                {hasAnalytics && (
+                {(hasAnalytics || analyticsLocked) && (
                   <TabsTrigger value="reports" data-tour="tab-reports" className={tabTriggerClass}>
                     <BarChart3 size={16} />
                     Reports
+                    {analyticsLocked && <Lock size={12} className="ml-1 text-muted-foreground" />}
                   </TabsTrigger>
                 )}
-                {loyaltyAdminEnabled && (
+                {(hasLoyalty || loyaltyLocked) && (
                   <TabsTrigger value="loyalty" className={tabTriggerClass}>
                     <Gift size={16} />
                     Loyalty
+                    {loyaltyLocked && <Lock size={12} className="ml-1 text-muted-foreground" />}
                   </TabsTrigger>
                 )}
               </>
@@ -653,7 +667,7 @@ const MerchantDashboard = () => {
                 />
               </TabsContent>
 
-              {hasAnalytics && (
+              {hasAnalytics ? (
                 <TabsContent value="reports" data-tour="reports-content">
                   {venueData ? (
                     <MerchantReports venue={venueData} />
@@ -663,13 +677,43 @@ const MerchantDashboard = () => {
                     </div>
                   )}
                 </TabsContent>
-              )}
+              ) : analyticsLocked ? (
+                <TabsContent value="reports">
+                  <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                      <ArrowUpCircle className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold">Upgrade to Pro</h3>
+                    <p className="text-muted-foreground max-w-md">
+                      Analytics & Reports are available on the Pro plan. Upgrade to unlock detailed insights about your venue's performance.
+                    </p>
+                    <Button onClick={() => navigate("/merchant/signup")}>
+                      View Plans & Upgrade
+                    </Button>
+                  </div>
+                </TabsContent>
+              ) : null}
 
-              {loyaltyAdminEnabled && (
+              {hasLoyalty ? (
                 <TabsContent value="loyalty">
                   <LoyaltyManagement venueId={userRole.venue_id!} />
                 </TabsContent>
-              )}
+              ) : loyaltyLocked ? (
+                <TabsContent value="loyalty">
+                  <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
+                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                      <ArrowUpCircle className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <h3 className="text-lg font-semibold">Upgrade to Pro</h3>
+                    <p className="text-muted-foreground max-w-md">
+                      Loyalty programs are available on the Pro plan. Upgrade to create stamp cards, rewards, and keep customers coming back.
+                    </p>
+                    <Button onClick={() => navigate("/merchant/signup")}>
+                      View Plans & Upgrade
+                    </Button>
+                  </div>
+                </TabsContent>
+              ) : null}
             </>
           ) : (
             <>
