@@ -49,37 +49,29 @@ export interface SubscriptionState {
 
 function getTierFromProducts(productIds: string[]): string | null {
   for (const [key, tier] of Object.entries(SUBSCRIPTION_TIERS)) {
-    if (productIds.includes(tier.product_id)) return tier.name;
+    if (productIds.includes(tier.product_id) || productIds.includes(tier.annual_product_id)) {
+      return tier.name;
+    }
   }
   return null;
 }
 
 function getEntitledFeatures(productIds: string[]): Set<string> {
   const features = new Set<string>();
-  
-  // Check tier
-  if (productIds.includes(SUBSCRIPTION_TIERS.starter.product_id)) {
+  const isStarter = TIER_PRODUCT_IDS.starter.some(id => productIds.includes(id));
+  const isPro = TIER_PRODUCT_IDS.pro.some(id => productIds.includes(id));
+
+  if (isStarter || isPro) {
     features.add('food_ordering');
     features.add('waitlist');
     features.add('reservations');
-  }
-  if (productIds.includes(SUBSCRIPTION_TIERS.pro.product_id)) {
-    features.add('food_ordering');
-    features.add('waitlist');
-    features.add('reservations');
-    features.add('loyalty');
-    features.add('analytics');
-  }
-  if (productIds.includes(SUBSCRIPTION_TIERS.enterprise.product_id)) {
-    features.add('food_ordering');
-    features.add('waitlist');
-    features.add('reservations');
-    features.add('loyalty');
-    features.add('analytics');
     features.add('kitchen_board');
   }
-  
-  // Check tier features only (no add-ons)
+  if (isPro) {
+    features.add('loyalty');
+    features.add('analytics');
+  }
+
   return features;
 }
 
