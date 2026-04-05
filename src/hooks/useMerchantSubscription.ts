@@ -48,9 +48,9 @@ export interface SubscriptionState {
 }
 
 function getTierFromProducts(productIds: string[]): string | null {
-  for (const [key, tier] of Object.entries(SUBSCRIPTION_TIERS)) {
-    if (productIds.includes(tier.product_id) || productIds.includes(tier.annual_product_id)) {
-      return tier.name;
+  for (const [tierKey, tierProductIds] of Object.entries(TIER_PRODUCT_IDS)) {
+    if (tierProductIds.some(id => productIds.includes(id))) {
+      return SUBSCRIPTION_TIERS[tierKey]?.name || tierKey;
     }
   }
   return null;
