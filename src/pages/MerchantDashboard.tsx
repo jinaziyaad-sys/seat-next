@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMerchantAuth } from "@/hooks/useAuth";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
+import { useMerchantSubscription } from "@/hooks/useMerchantSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { KitchenBoard } from "@/components/merchant/KitchenBoard";
