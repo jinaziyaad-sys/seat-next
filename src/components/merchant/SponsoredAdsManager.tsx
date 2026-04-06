@@ -225,6 +225,11 @@ export function SponsoredAdsManager({ venueId }: Props) {
     return <Badge variant="outline">{c.review_status}</Badge>;
   };
 
+  const getPaymentBadge = (c: Campaign) => {
+    if (c.payment_status === 'paid') return <Badge variant="default" className="bg-green-600">Paid</Badge>;
+    return <Badge variant="outline" className="text-amber-600 border-amber-600">Unpaid</Badge>;
+  };
+
   // Estimate price for preview
   const { total: estimatedPrice, days, basePrice } = calculatePrice(form.placements, form.start_date, form.end_date);
 
