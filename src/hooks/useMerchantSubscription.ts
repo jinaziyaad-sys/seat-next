@@ -147,6 +147,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
         setTrialEnd(null);
         setTierName(null);
         setEntitledFeatures(new Set());
+        setPaymentProvider('stripe');
       }
     } catch (err) {
       console.error('Error checking subscription:', err);
