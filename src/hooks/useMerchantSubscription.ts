@@ -137,6 +137,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
         setStripeSubscriptionId(data.stripe_subscription_id);
         setTierName(getTierFromProducts(data.product_ids || [], plans));
         setEntitledFeatures(getEntitledFeatures(data.product_ids || [], plans));
+        setPaymentProvider(data.payment_provider || 'stripe');
       } else {
         setSubscribed(false);
         setStatus(data.status === 'past_due' ? 'past_due' : 'none');
