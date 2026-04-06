@@ -331,7 +331,7 @@ export function SponsoredAdsManager({ venueId }: Props) {
               <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Cancel</Button>
               <Button onClick={handleSubmit} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Submit for Review
+                Pay & Submit
               </Button>
             </DialogFooter>
           </DialogContent>
