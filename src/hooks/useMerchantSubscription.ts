@@ -109,6 +109,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
   const [stripeCustomerId, setStripeCustomerId] = useState<string | null>(null);
   const [stripeSubscriptionId, setStripeSubscriptionId] = useState<string | null>(null);
   const [entitledFeatures, setEntitledFeatures] = useState<Set<string>>(new Set());
+  const [paymentProvider, setPaymentProvider] = useState('stripe');
 
   const checkSubscription = useCallback(async () => {
     try {
