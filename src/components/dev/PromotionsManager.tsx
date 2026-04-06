@@ -362,14 +362,20 @@ export const PromotionsManager = () => {
             {!archived && campaign.review_status === 'pending' && (
               <>
                 <Button variant="default" size="sm" onClick={async () => {
-                  await supabase.from("promo_campaigns").update({ review_status: 'approved', is_active: true }).eq("id", campaign.id);
-                  toast({ title: "Campaign approved and activated" });
+                  const isNowLive = campaign.payment_status === 'paid' || campaign.payment_status === 'comp';
+                  await supabase.from("promo_campaigns").update({
+                    review_status: 'approved',
+                    is_active: isNowLive,
+                  }).eq("id", campaign.id);
+                  toast({
+                    title: isNowLive ? "Campaign approved & live" : "Campaign approved — awaiting payment",
+                  });
                   fetchData();
                 }}>Approve</Button>
-                <Button variant="destructive" size="sm" onClick={async () => {
-                  await supabase.from("promo_campaigns").update({ review_status: 'rejected' }).eq("id", campaign.id);
-                  toast({ title: "Campaign rejected" });
-                  fetchData();
+                <Button variant="destructive" size="sm" onClick={() => {
+                  setRejectCampaign(campaign);
+                  setRejectReason("");
+                  setRejectDialogOpen(true);
                 }}>Reject</Button>
               </>
             )}
