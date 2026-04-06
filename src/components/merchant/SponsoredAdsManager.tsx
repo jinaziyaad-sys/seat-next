@@ -130,6 +130,29 @@ export function SponsoredAdsManager({ venueId }: Props) {
     }));
   };
 
+  const calculatePrice = (placements: string[], startDate: Date | null, endDate: Date | null) => {
+    const days = endDate && startDate
+      ? Math.max(1, Math.ceil((endDate.getTime() - startDate.getTime()) / 86400000))
+      : 7;
+    const basePrice = pricingRule?.base_price_per_day ?? 50;
+    const placementMultipliers = pricingRule?.placement_multipliers ?? {};
+    const reachTiers = pricingRule?.reach_tiers ?? [];
+
+    // Sum placement multipliers (default 1.0 per placement)
+    const placementTotal = placements.reduce((sum, p) => sum + (placementMultipliers[p] ?? 1.0), 0);
+
+    // Find reach tier discount
+    let reachMult = 1.0;
+    for (const tier of reachTiers) {
+      if (days >= tier.min_days && days <= tier.max_days) {
+        reachMult = tier.multiplier;
+        break;
+      }
+    }
+
+    return { total: Math.round(days * basePrice * placementTotal * reachMult), days, basePrice };
+  };
+
   const handleSubmit = async () => {
     if (!form.title || !form.start_date) {
       toast.error('Title and start date are required');
@@ -138,13 +161,7 @@ export function SponsoredAdsManager({ venueId }: Props) {
     setSaving(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-
-      // Calculate price estimate (simplified — real pricing from promo_pricing_rules)
-      const days = form.end_date && form.start_date
-        ? Math.ceil((form.end_date.getTime() - form.start_date.getTime()) / 86400000)
-        : 7;
-      const basePricePerDay = 50; // R50/day default
-      const estimatedPrice = days * basePricePerDay * form.placements.length;
+      const { total: estimatedPrice } = calculatePrice(form.placements, form.start_date, form.end_date);
 
       // Create campaign directly with pending status
       const { error } = await supabase.from('promo_campaigns').insert({
