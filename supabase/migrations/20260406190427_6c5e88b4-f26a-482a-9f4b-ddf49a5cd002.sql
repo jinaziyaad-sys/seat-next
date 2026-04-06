@@ -1,0 +1,1 @@
+ALTER TABLE public.promo_campaigns ADD COLUMN IF NOT EXISTS stripe_payment_intent_id text;

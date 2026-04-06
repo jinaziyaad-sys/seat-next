@@ -221,12 +221,14 @@ export function SponsoredAdsManager({ venueId }: Props) {
     if (c.review_status === 'rejected') return <Badge variant="destructive">Rejected</Badge>;
     if (c.review_status === 'pending') return <Badge variant="outline">Pending Review</Badge>;
     if (c.review_status === 'approved' && c.is_active) return <Badge variant="default">Live</Badge>;
+    if (c.review_status === 'approved' && c.payment_status !== 'paid' && c.payment_status !== 'comp') return <Badge variant="secondary">Approved (Awaiting Payment)</Badge>;
     if (c.review_status === 'approved' && !c.is_active) return <Badge variant="secondary">Approved (Inactive)</Badge>;
     return <Badge variant="outline">{c.review_status}</Badge>;
   };
 
   const getPaymentBadge = (c: Campaign) => {
     if (c.payment_status === 'paid') return <Badge variant="default" className="bg-green-600">Paid</Badge>;
+    if (c.payment_status === 'refunded') return <Badge variant="destructive">Refunded</Badge>;
     return <Badge variant="outline" className="text-amber-600 border-amber-600">Unpaid</Badge>;
   };
 
@@ -368,7 +370,7 @@ export function SponsoredAdsManager({ venueId }: Props) {
                       <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {c.impressions_count}</span>
                       <span className="flex items-center gap-1"><MousePointer className="h-3 w-3" /> {c.clicks_count}</span>
                       <span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {format(new Date(c.start_date), 'MMM d')}{c.end_date && ` – ${format(new Date(c.end_date), 'MMM d')}`}</span>
-                      {c.payment_status !== 'paid' && (
+                      {c.payment_status !== 'paid' && c.payment_status !== 'refunded' && c.review_status !== 'rejected' && (
                         <Button variant="outline" size="sm" className="h-6 text-xs" onClick={() => initiateCheckout(c.id)}>
                           Pay Now
                         </Button>
