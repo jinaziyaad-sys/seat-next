@@ -712,6 +712,71 @@ export const PromotionsManager = () => {
         onClose={() => setCropDialogOpen(false)}
         onCropComplete={handleCropComplete}
       />
+
+      {/* Reject Confirmation Dialog */}
+      <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Reject Campaign
+            </DialogTitle>
+            <DialogDescription>
+              {rejectCampaign?.payment_status === 'paid'
+                ? "This merchant has already paid. Rejecting will issue a full Stripe refund."
+                : "This campaign has not been paid for. No refund is needed."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label>Rejection Reason</Label>
+              <Textarea
+                value={rejectReason}
+                onChange={e => setRejectReason(e.target.value)}
+                placeholder="Explain why this campaign is being rejected..."
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRejectDialogOpen(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={rejecting}
+              onClick={async () => {
+                if (!rejectCampaign) return;
+                setRejecting(true);
+                try {
+                  if (rejectCampaign.payment_status === 'paid') {
+                    // Issue refund via edge function
+                    const { data, error } = await supabase.functions.invoke('refund-promo-campaign', {
+                      body: { campaignId: rejectCampaign.id, reason: rejectReason },
+                    });
+                    if (error) throw error;
+                    if (data?.error) throw new Error(data.error);
+                    toast({ title: "Campaign rejected & refund issued" });
+                  } else {
+                    await supabase.from("promo_campaigns").update({
+                      review_status: 'rejected',
+                      review_notes: rejectReason || null,
+                      is_active: false,
+                    }).eq("id", rejectCampaign.id);
+                    toast({ title: "Campaign rejected" });
+                  }
+                  setRejectDialogOpen(false);
+                  fetchData();
+                } catch (err: any) {
+                  toast({ title: "Error", description: err.message, variant: "destructive" });
+                } finally {
+                  setRejecting(false);
+                }
+              }}
+            >
+              {rejecting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              {rejectCampaign?.payment_status === 'paid' ? 'Reject & Refund' : 'Reject'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
