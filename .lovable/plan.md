@@ -1,89 +1,124 @@
 
 
-# Unified Pricing Management from Dev Dashboard
+# Future Phases: PayFast + Sponsored Ads Self-Checkout + Dev-to-Merchant Announcements
 
-## Problem
+## What Already Exists
 
-Pricing is currently stored in three disconnected places:
-1. **`subscription_plans` DB table** — `monthly_price`, `annual_price` (used for display on signup page)
-2. **Stripe products/prices** — actual billing amounts (price IDs hardcoded in `useMerchantSubscription.ts`)
-3. **Code constants** — `SUBSCRIPTION_TIERS` in `useMerchantSubscription.ts` with hardcoded Stripe price/product IDs
+- **PayFast**: DB columns exist (`payfast_subscription_id` on `merchant_subscriptions`, `payfast_reference` on `billing_invoices`) but no edge functions or frontend integration
+- **Sponsored Ads**: Full dev-side `PromotionsManager` exists with `promo_campaigns`, `promo_impressions`, `promo_pricing_rules` tables. Merchants have NO self-service UI to purchase promotions
+- **Dev-to-Merchant Announcements**: `platform_config` has a global `announcement.active` shown on merchant dashboard via `usePlatformConfig`. No targeted, persistent announcement system for merchant-specific or batch messaging
 
-Changing a price requires manual updates in all three places. We can fix this.
+---
 
-## Solution: Single Source of Truth in `subscription_plans` Table
+## Phase 1: PayFast Integration
 
-Add `stripe_monthly_price_id` and `stripe_annual_price_id` columns to the `subscription_plans` table. The dev dashboard gets a pricing editor. When the dev changes a price:
+### Overview
+Add PayFast as an alternative payment gateway for South African merchants. Merchants choose Stripe or PayFast at checkout. PayFast uses server-side ITN (Instant Transaction Notification) webhooks, not client-side redirects for confirmation.
 
-1. An edge function creates a **new Stripe price** via the API (Stripe prices are immutable — you archive the old one and create a new one)
-2. The edge function updates the `subscription_plans` row with the new display price AND the new Stripe price ID
-3. The frontend reads price IDs from the DB at runtime instead of from hardcoded constants
+### Database Migration
+- Add `payfast_subscription_token` column to `subscription_plans` (for recurring billing setup)
+- Add `payment_provider` column to `merchant_subscriptions` (default `'stripe'`, enum `stripe | payfast`)
 
-This means: change the price in one place (dev dashboard), and it flows everywhere automatically.
+### New Edge Functions
+1. **`payfast-checkout`** — generates a PayFast payment form with subscription parameters (merchant_id, merchant_key, amount, item_name, subscription_type, return/cancel/notify URLs). Returns form data for client-side POST to PayFast.
+2. **`payfast-itn`** — PayFast ITN webhook handler. Validates signature, verifies source IP, updates `merchant_subscriptions` status, writes to `billing_invoices`. Handles `COMPLETE`, `CANCELLED`, `FAILED` statuses.
 
-## Architecture
+### Frontend Changes
+- **`MerchantSignup.tsx`** — Add payment provider toggle (Stripe / PayFast). When PayFast is selected, call `payfast-checkout` and redirect via form POST instead of Stripe checkout session.
+- **`MerchantBilling.tsx`** — Show payment provider badge. If PayFast, link to PayFast dashboard for management instead of Stripe portal.
+- **`useMerchantSubscription.ts`** — Read `payment_provider` from `merchant_subscriptions` to display correct provider info.
 
-```text
-Dev Dashboard (pricing form)
-        │
-        ▼
-Edge Function: update-plan-pricing
-        │
-        ├──► Stripe API: create new price, archive old price
-        │
-        └──► subscription_plans table: update monthly_price,
-             annual_price, stripe_monthly_price_id,
-             stripe_annual_price_id
-        
-Frontend (signup page + checkout)
-        │
-        └──► Reads price IDs from subscription_plans at runtime
-             (no more hardcoded constants)
-```
+### Secrets Required
+- `PAYFAST_MERCHANT_ID` — PayFast merchant ID
+- `PAYFAST_MERCHANT_KEY` — PayFast merchant key
+- `PAYFAST_PASSPHRASE` — PayFast passphrase for signature validation
 
-## Implementation Steps
+### Files
+- New: `supabase/functions/payfast-checkout/index.ts`, `supabase/functions/payfast-itn/index.ts`
+- Modified: `MerchantSignup.tsx`, `MerchantBilling.tsx`, `useMerchantSubscription.ts`, `supabase/config.toml`
+- Migration: add `payment_provider` to `merchant_subscriptions`
 
-### 1. Database Migration
-Add Stripe price ID columns to `subscription_plans`:
-- `stripe_monthly_price_id text` — e.g. `price_1TIs3WRrnmiHUS0LBQ9DkJlO`
-- `stripe_annual_price_id text` — e.g. `price_1TIscARrnmiHUS0LYvmnYFDl`
-- `stripe_product_id text` — monthly product ID
-- `stripe_annual_product_id text` — annual product ID
+---
 
-Seed the existing Stripe IDs into the rows so nothing breaks.
+## Phase 2: Sponsored Ads Self-Checkout
 
-### 2. New Edge Function: `update-plan-pricing`
-- Accepts: `planId`, `newMonthlyPrice`, `newAnnualPrice`
-- Creates new Stripe prices on the existing products (Stripe prices are immutable, so we create new ones)
-- Archives old Stripe prices
-- Updates the `subscription_plans` row with new amounts and new price IDs
-- Returns success/failure
+### Overview
+Merchants can purchase promoted placement directly from their dashboard. Pricing is auto-calculated from `promo_pricing_rules`. Campaigns go into a `pending_review` state until the dev approves them.
 
-### 3. Update Dev Dashboard (`BillingDashboard.tsx`)
-Add a "Manage Pricing" section with:
-- Editable monthly and annual price fields per plan
-- A "Save & Sync" button that calls `update-plan-pricing`
-- Shows current Stripe price IDs for reference
-- Confirmation dialog before changing live pricing
+### Database Migration
+- Add `submitted_by` (uuid, nullable) to `promo_campaigns` — tracks merchant who submitted
+- Add `review_status` column to `promo_campaigns` (default `'pending'`, values: `pending`, `approved`, `rejected`)
+- Add `review_notes` text column to `promo_campaigns`
 
-### 4. Remove Hardcoded Constants
-- **`useMerchantSubscription.ts`**: Remove `SUBSCRIPTION_TIERS` and `TIER_PRODUCT_IDS` constants. Instead, load them from the `subscription_plans` table at runtime (or keep a lightweight cache).
-- **`MerchantSignup.tsx`**: Already reads from `subscription_plans` for display prices. Update checkout to use the Stripe price IDs from the DB rows instead of from the hardcoded `tierMap`.
-- **`create-checkout`**: Accept price IDs from the client (already does via `priceIds` param) — no change needed.
-- **`check-subscription`**: Match product IDs from the DB instead of hardcoded arrays.
+### New Edge Function
+- **`create-promo-checkout`** — Calculates price from `promo_pricing_rules` (base_price_per_day * duration * placement_multiplier * reach_tier), creates a Stripe one-off checkout session, creates a `promo_campaigns` row with `payment_status: 'pending'` and `review_status: 'pending'`.
 
-### 5. Keep Existing Subscribers Safe
-Stripe handles this automatically — existing subscriptions keep their original price. Only new subscriptions or renewals use the new price.
+### Frontend Changes
+- **New: `src/components/merchant/SponsoredAdsManager.tsx`** — Merchant-facing UI:
+  - Campaign creation form (title, description, banner upload, placements, date range)
+  - Live price calculator based on selected options
+  - "Pay & Submit for Review" button
+  - List of merchant's campaigns with status badges (pending review, approved, live, ended, rejected)
+- **`MerchantDashboard.tsx`** — Add "Promotions" tab (gated to Pro+ tier)
+- **`PromotionsManager.tsx`** (dev side) — Add review queue: approve/reject buttons, review notes field. When approved, set `is_active: true` + `review_status: 'approved'`
+- **`stripe-webhook`** — Handle `checkout.session.completed` for promo payments: update `promo_campaigns.payment_status` to `'paid'`
 
-## Files Modified
-- `subscription_plans` table — add 4 new columns + seed data (migration)
-- `supabase/functions/update-plan-pricing/index.ts` — new edge function
-- `src/components/dev/BillingDashboard.tsx` — pricing editor UI
-- `src/hooks/useMerchantSubscription.ts` — load tier config from DB instead of constants
-- `src/pages/MerchantSignup.tsx` — use DB-sourced price IDs for checkout
+### Files
+- New: `src/components/merchant/SponsoredAdsManager.tsx`, `supabase/functions/create-promo-checkout/index.ts`
+- Modified: `MerchantDashboard.tsx`, `PromotionsManager.tsx`, `stripe-webhook/index.ts`, `supabase/config.toml`
+- Migration: add columns to `promo_campaigns`
 
-## Technical Notes
-- Stripe prices are immutable. To "change" a price, you create a new price on the same product and archive the old one.
-- Existing subscribers are unaffected — their subscription references the old price ID until renewal.
-- The edge function needs `STRIPE_SECRET_KEY` (already configured).
+---
+
+## Phase 3: Dev-to-Merchant Announcements
+
+### Overview
+Replace the single global `platform_config` announcement with a persistent, targeted messaging system. The dev can send announcements to all merchants, specific venues, or by subscription tier.
+
+### Database Migration
+New table: `merchant_announcements`
+- `id` uuid PK
+- `title` text not null
+- `message` text not null
+- `type` text default `'info'` (info, warning, error, maintenance)
+- `audience` text default `'all'` (all, specific_venues, tier_starter, tier_pro, tier_enterprise)
+- `target_venue_ids` uuid[] nullable
+- `is_active` boolean default true
+- `dismissible` boolean default true
+- `priority` integer default 0
+- `expires_at` timestamptz nullable
+- `created_by` uuid references auth.users
+- `created_at` timestamptz default now()
+
+New table: `merchant_announcement_dismissals`
+- `id` uuid PK
+- `announcement_id` uuid references merchant_announcements on delete cascade
+- `user_id` uuid references auth.users on delete cascade
+- `dismissed_at` timestamptz default now()
+- Unique constraint on (announcement_id, user_id)
+
+RLS: merchants can SELECT announcements (filtered by audience in code), INSERT dismissals for themselves. Super admins can INSERT/UPDATE/DELETE announcements.
+
+### Frontend Changes
+- **New: `src/components/dev/MerchantAnnouncementsPanel.tsx`** — Dev UI for creating/managing announcements with audience targeting, priority, expiry, and active/archive toggle
+- **`AIControlCenter.tsx`** — Add "Merchant Announcements" tab
+- **New: `src/components/merchant/MerchantAnnouncementBanner.tsx`** — Renders active announcements on merchant dashboard, filtered by venue and tier. Supports dismiss with DB persistence.
+- **`MerchantDashboard.tsx`** — Replace/augment the existing `announcement` banner with the new component that reads from `merchant_announcements` table
+
+### Files
+- New: `src/components/dev/MerchantAnnouncementsPanel.tsx`, `src/components/merchant/MerchantAnnouncementBanner.tsx`
+- Modified: `MerchantDashboard.tsx`, `AIControlCenter.tsx`
+- Migration: create `merchant_announcements` and `merchant_announcement_dismissals` tables with RLS
+
+---
+
+## Implementation Order
+
+1. Phase 3 (Announcements) — smallest scope, no external dependencies
+2. Phase 2 (Sponsored Ads) — builds on existing promo infrastructure
+3. Phase 1 (PayFast) — requires external API keys, most complex
+
+## Total New Files: 6
+## Total Modified Files: ~10
+## Migrations: 3
 
