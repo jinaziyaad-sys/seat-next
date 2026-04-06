@@ -600,6 +600,12 @@ const MerchantDashboard = () => {
                     {loyaltyLocked && <Lock size={12} className="ml-1 text-muted-foreground" />}
                   </TabsTrigger>
                 )}
+                {hasPromotions && (
+                  <TabsTrigger value="promotions" className={tabTriggerClass}>
+                    <Megaphone size={16} />
+                    Promotions
+                  </TabsTrigger>
+                )}
               </>
             )}
           </TabsList>
