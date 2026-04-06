@@ -286,6 +286,30 @@ export function BillingDashboard() {
     }
   };
 
+  const handleSavePromoPricing = async () => {
+    setPromoSaving(true);
+    try {
+      const base = parseFloat(promoBasePrice);
+      if (isNaN(base) || base <= 0) throw new Error("Invalid base price");
+      const mults: Record<string, number> = {};
+      for (const [k, v] of Object.entries(promoPlacementMults)) {
+        const n = parseFloat(v);
+        if (isNaN(n) || n <= 0) throw new Error(`Invalid multiplier for ${k}`);
+        mults[k] = n;
+      }
+      const { error } = await supabase
+        .from("promo_pricing_rules")
+        .update({ base_price_per_day: base, placement_multipliers: mults })
+        .eq("is_active", true);
+      if (error) throw error;
+      toast({ title: "Promo pricing updated" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setPromoSaving(false);
+    }
+  };
+
   const statusBadge = (status: string) => {
     const map: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
       active: "default", trial: "secondary", past_due: "destructive", inactive: "outline", cancelled: "outline",
