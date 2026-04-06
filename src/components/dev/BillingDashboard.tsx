@@ -420,7 +420,52 @@ export function BillingDashboard() {
         </CardContent>
       </Card>
 
-      {/* Venue Subscriptions Table */}
+      {/* Promo Ad Pricing */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5" /> Sponsored Ad Pricing
+          </CardTitle>
+          <CardDescription>
+            Set the base price per day and placement multipliers for merchant-purchased promotions
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="max-w-xs">
+              <Label className="text-xs text-muted-foreground">Base Price Per Day (ZAR)</Label>
+              <Input
+                type="number"
+                min="1"
+                value={promoBasePrice}
+                onChange={(e) => setPromoBasePrice(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">Placement Multipliers</Label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(promoPlacementMults).map(([key, val]) => (
+                  <div key={key}>
+                    <Label className="text-xs capitalize">{key}</Label>
+                    <Input
+                      type="number"
+                      min="0.1"
+                      step="0.1"
+                      value={val}
+                      onChange={(e) => setPromoPlacementMults(prev => ({ ...prev, [key]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Button onClick={handleSavePromoPricing} disabled={promoSaving} size="sm">
+              {promoSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Save Promo Pricing
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Venue Subscriptions</CardTitle>
