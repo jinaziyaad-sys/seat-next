@@ -8,8 +8,8 @@ const corsHeaders = {
 };
 
 const logStep = (step: string, details?: any) => {
-  const d = details ? ` - ${JSON.stringify(details)}` : '';
-  console.log(`[CUSTOMER-PORTAL] ${step}${d}`);
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[CUSTOMER-PORTAL] ${step}${detailsStr}`);
 };
 
 serve(async (req) => {
@@ -39,18 +39,17 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated");
     logStep("User authenticated", { email: user.email });
 
-    // Get the user's venue to find their subscription
+    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
+
+    // Find customer - first try via subscription record, then by email
+    let customerId: string | null = null;
+
+    // Look up venue_id for this user
     const { data: roleData } = await supabaseClient
       .from("user_roles")
       .select("venue_id")
       .eq("user_id", user.id)
-      .limit(1)
-      .single();
-
-    const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-
-    // First try to find customer via stored stripe_customer_id
-    let customerId: string | null = null;
+      .maybeSingle();
 
     if (roleData?.venue_id) {
       const { data: sub } = await supabaseClient
@@ -65,19 +64,61 @@ serve(async (req) => {
       }
     }
 
-    // Fallback to email lookup
     if (!customerId) {
       const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-      if (customers.data.length === 0) throw new Error("No Stripe customer found for this account");
+      if (customers.data.length === 0) throw new Error("No Stripe customer found");
       customerId = customers.data[0].id;
-      logStep("Found customer via email lookup", { customerId });
+      logStep("Found customer by email", { customerId });
     }
 
-    const origin = req.headers.get("origin") || "http://localhost:3000";
-    logStep("Creating portal session", { customerId, returnUrl: `${origin}/merchant/billing` });
+    // Fetch available plans from DB to build portal config
+    const { data: plans } = await supabaseClient
+      .from("subscription_plans")
+      .select("stripe_product_id, stripe_monthly_price_id, stripe_annual_price_id")
+      .eq("is_active", true)
+      .order("sort_order");
 
+    // Build products config for the portal - allows switching between plans
+    const products = (plans || [])
+      .filter(p => p.stripe_product_id)
+      .map(p => ({
+        product: p.stripe_product_id,
+        prices: [p.stripe_monthly_price_id, p.stripe_annual_price_id].filter(Boolean),
+      }));
+
+    logStep("Building portal config", { productCount: products.length });
+
+    // Create a portal configuration that allows plan switching
+    const portalConfig = await stripe.billingPortal.configurations.create({
+      business_profile: {
+        headline: "Manage your subscription",
+      },
+      features: {
+        subscription_update: {
+          enabled: true,
+          default_allowed_updates: ["price"],
+          proration_behavior: "create_prorations",
+          products: products.length > 0 ? products : undefined,
+        },
+        subscription_cancel: {
+          enabled: true,
+          mode: "at_period_end",
+        },
+        payment_method_update: {
+          enabled: true,
+        },
+        invoice_history: {
+          enabled: true,
+        },
+      },
+    });
+
+    logStep("Portal configuration created", { configId: portalConfig.id });
+
+    const origin = req.headers.get("origin") || "http://localhost:3000";
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
+      configuration: portalConfig.id,
       return_url: `${origin}/merchant/billing`,
     });
 
