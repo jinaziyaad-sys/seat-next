@@ -141,11 +141,34 @@ serve(async (req) => {
         const metadata = session.metadata || {};
 
         if (metadata.type === "promo_campaign" && metadata.campaign_id) {
+          const paymentIntentId = typeof session.payment_intent === 'string'
+            ? session.payment_intent
+            : (session.payment_intent as any)?.id || null;
+
           await supabase
             .from("promo_campaigns")
-            .update({ payment_status: "paid" })
+            .update({
+              payment_status: "paid",
+              stripe_payment_intent_id: paymentIntentId,
+            })
             .eq("id", metadata.campaign_id);
-          logStep("Promo campaign payment completed", { campaignId: metadata.campaign_id });
+
+          // If already approved by dev, activate now that payment is in
+          if (paymentIntentId) {
+            const { data: camp } = await supabase
+              .from("promo_campaigns")
+              .select("review_status")
+              .eq("id", metadata.campaign_id)
+              .single();
+            if (camp?.review_status === "approved") {
+              await supabase
+                .from("promo_campaigns")
+                .update({ is_active: true })
+                .eq("id", metadata.campaign_id);
+            }
+          }
+
+          logStep("Promo campaign payment completed", { campaignId: metadata.campaign_id, paymentIntentId });
         }
         break;
       }

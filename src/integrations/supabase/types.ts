@@ -1813,6 +1813,7 @@ export type Database = {
           review_notes: string | null
           review_status: string
           start_date: string
+          stripe_payment_intent_id: string | null
           submitted_by: string | null
           title: string
           updated_at: string
@@ -1837,6 +1838,7 @@ export type Database = {
           review_notes?: string | null
           review_status?: string
           start_date?: string
+          stripe_payment_intent_id?: string | null
           submitted_by?: string | null
           title: string
           updated_at?: string
@@ -1861,6 +1863,7 @@ export type Database = {
           review_notes?: string | null
           review_status?: string
           start_date?: string
+          stripe_payment_intent_id?: string | null
           submitted_by?: string | null
           title?: string
           updated_at?: string
