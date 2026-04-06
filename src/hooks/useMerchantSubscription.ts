@@ -89,6 +89,7 @@ export interface SubscriptionState {
   trialEnd: string | null;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
+  paymentProvider: string;
   hasFeature: (feature: string) => boolean;
 }
 
