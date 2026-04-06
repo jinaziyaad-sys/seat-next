@@ -108,16 +108,42 @@ export default function MerchantSignup() {
 
     setCheckoutLoading(plan.id);
     try {
-      // Use Stripe price IDs directly from the DB row
-      const priceId = isAnnual ? plan.stripe_annual_price_id : plan.stripe_monthly_price_id;
-      if (!priceId) throw new Error('This plan has no Stripe price configured. Please contact support.');
+      if (paymentProvider === 'payfast') {
+        const { data, error } = await supabase.functions.invoke('payfast-checkout', {
+          body: {
+            planId: plan.id,
+            billingCycle: isAnnual ? 'annual' : 'monthly',
+            returnUrl: `${window.location.origin}/merchant/dashboard`,
+            cancelUrl: `${window.location.origin}/merchant/signup`,
+          },
+        });
+        if (error) throw error;
+        if (data?.paymentUrl && data?.formData) {
+          // Create and submit a form to PayFast
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = data.paymentUrl;
+          Object.entries(data.formData as Record<string, string>).forEach(([k, v]) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = k;
+            input.value = v;
+            form.appendChild(input);
+          });
+          document.body.appendChild(form);
+          form.submit();
+        }
+      } else {
+        const priceId = isAnnual ? plan.stripe_annual_price_id : plan.stripe_monthly_price_id;
+        if (!priceId) throw new Error('This plan has no Stripe price configured. Please contact support.');
 
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceIds: [priceId] },
-      });
-      if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, '_blank');
+        const { data, error } = await supabase.functions.invoke('create-checkout', {
+          body: { priceIds: [priceId] },
+        });
+        if (error) throw error;
+        if (data?.url) {
+          window.open(data.url, '_blank');
+        }
       }
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Checkout Error', description: err.message || 'Failed to start checkout' });
