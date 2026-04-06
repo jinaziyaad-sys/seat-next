@@ -100,6 +100,14 @@ export function BillingDashboard() {
         .eq("is_active", true)
         .order("sort_order");
 
+      // Fetch promo pricing
+      const { data: promoData } = await supabase
+        .from("promo_pricing_rules")
+        .select("base_price_per_day, placement_multipliers")
+        .eq("is_active", true)
+        .limit(1)
+        .single();
+
       const subMap = new Map((subs || []).map((s: any) => [s.venue_id, s]));
       const overrideMap = new Map((overrides || []).map((o: any) => [o.venue_id, o]));
       const venueMap = new Map(venues.map(v => [v.id, v.name]));
@@ -132,6 +140,14 @@ export function BillingDashboard() {
           prices[p.id] = { monthly: String(p.monthly_price), annual: String(p.annual_price) };
         }
         setEditingPrices(prices);
+      }
+
+      if (promoData) {
+        setPromoBasePrice(String(promoData.base_price_per_day));
+        const mults = (promoData.placement_multipliers || {}) as Record<string, number>;
+        const multsStr: Record<string, string> = {};
+        for (const [k, v] of Object.entries(mults)) multsStr[k] = String(v);
+        setPromoPlacementMults(multsStr);
       }
     } finally {
       setLoading(false);
