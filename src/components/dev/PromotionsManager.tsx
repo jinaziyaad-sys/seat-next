@@ -314,6 +314,15 @@ export const PromotionsManager = () => {
                 }>
                   {campaign.payment_status}
                 </Badge>
+                {campaign.review_status && (
+                  <Badge variant={
+                    campaign.review_status === "approved" ? "default" :
+                    campaign.review_status === "rejected" ? "destructive" : "outline"
+                  }>
+                    {campaign.review_status}
+                  </Badge>
+                )}
+                {campaign.submitted_by && <Badge variant="outline" className="text-[10px]">Merchant submitted</Badge>}
               </div>
               <p className="text-sm text-muted-foreground mt-1">{campaign.venue_name}</p>
               {campaign.description && (
