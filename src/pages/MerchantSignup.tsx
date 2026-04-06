@@ -40,6 +40,7 @@ export default function MerchantSignup() {
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [isAnnual, setIsAnnual] = useState(false);
+  const [paymentProvider, setPaymentProvider] = useState<'stripe' | 'payfast'>('stripe');
   const [user, setUser] = useState<any>(null);
 
   const [showRegister, setShowRegister] = useState(false);
