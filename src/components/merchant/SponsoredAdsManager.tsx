@@ -370,7 +370,7 @@ export function SponsoredAdsManager({ venueId }: Props) {
                       <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {c.impressions_count}</span>
                       <span className="flex items-center gap-1"><MousePointer className="h-3 w-3" /> {c.clicks_count}</span>
                       <span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {format(new Date(c.start_date), 'MMM d')}{c.end_date && ` – ${format(new Date(c.end_date), 'MMM d')}`}</span>
-                      {c.payment_status !== 'paid' && (
+                      {c.payment_status !== 'paid' && c.payment_status !== 'refunded' && c.review_status !== 'rejected' && (
                         <Button variant="outline" size="sm" className="h-6 text-xs" onClick={() => initiateCheckout(c.id)}>
                           Pay Now
                         </Button>
