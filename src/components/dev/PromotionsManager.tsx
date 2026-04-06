@@ -353,7 +353,21 @@ export const PromotionsManager = () => {
             </div>
           </div>
           <div className="flex gap-1">
-            {!archived && (
+            {!archived && campaign.review_status === 'pending' && (
+              <>
+                <Button variant="default" size="sm" onClick={async () => {
+                  await supabase.from("promo_campaigns").update({ review_status: 'approved', is_active: true }).eq("id", campaign.id);
+                  toast({ title: "Campaign approved and activated" });
+                  fetchData();
+                }}>Approve</Button>
+                <Button variant="destructive" size="sm" onClick={async () => {
+                  await supabase.from("promo_campaigns").update({ review_status: 'rejected' }).eq("id", campaign.id);
+                  toast({ title: "Campaign rejected" });
+                  fetchData();
+                }}>Reject</Button>
+              </>
+            )}
+            {!archived && campaign.review_status !== 'pending' && (
               <>
                 <Button variant="ghost" size="icon" onClick={() => handleEdit(campaign)}>
                   <Edit2 className="h-4 w-4" />
