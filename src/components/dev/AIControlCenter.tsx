@@ -5,6 +5,7 @@ import { FeatureFlagsPanel } from './FeatureFlagsPanel';
 import { AnnouncementsPanel } from './AnnouncementsPanel';
 import { DevAIAssistant } from './DevAIAssistant';
 import { AIOperationsCenter } from './AIOperationsCenter';
+import { MerchantAnnouncementsPanel } from './MerchantAnnouncementsPanel';
 import { Loader2 } from 'lucide-react';
 
 export function AIControlCenter() {
@@ -53,11 +54,12 @@ export function AIControlCenter() {
   return (
     <div className="space-y-6">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="operations">AI Operations</TabsTrigger>
           <TabsTrigger value="ai">Config Assistant</TabsTrigger>
           <TabsTrigger value="features">Feature Flags</TabsTrigger>
-          <TabsTrigger value="announcements">Announcements</TabsTrigger>
+          <TabsTrigger value="announcements">Global Alerts</TabsTrigger>
+          <TabsTrigger value="merchant-announcements">Merchant Alerts</TabsTrigger>
         </TabsList>
 
         <TabsContent value="operations">
@@ -85,6 +87,10 @@ export function AIControlCenter() {
             onPublish={handlePublishAnnouncement}
             onClear={handleClearAnnouncement}
           />
+        </TabsContent>
+
+        <TabsContent value="merchant-announcements">
+          <MerchantAnnouncementsPanel />
         </TabsContent>
       </Tabs>
     </div>

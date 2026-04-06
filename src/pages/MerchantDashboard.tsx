@@ -696,6 +696,12 @@ const MerchantDashboard = () => {
                   </div>
                 </TabsContent>
               ) : null}
+
+              {hasPromotions && (
+                <TabsContent value="promotions">
+                  <SponsoredAdsManager venueId={userRole.venue_id!} />
+                </TabsContent>
+              )}
             </>
           ) : (
             <>
