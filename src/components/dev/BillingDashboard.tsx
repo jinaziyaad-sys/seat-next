@@ -72,6 +72,11 @@ export function BillingDashboard() {
   const [pricingSaving, setPricingSaving] = useState<string | null>(null);
   const [confirmPricing, setConfirmPricing] = useState<PlanPricing | null>(null);
 
+  // Promo pricing state
+  const [promoBasePrice, setPromoBasePrice] = useState("");
+  const [promoPlacementMults, setPromoPlacementMults] = useState<Record<string, string>>({});
+  const [promoSaving, setPromoSaving] = useState(false);
+
   const { toast } = useToast();
 
   const fetchData = async () => {
@@ -94,6 +99,14 @@ export function BillingDashboard() {
         .select("id, name, monthly_price, annual_price, stripe_monthly_price_id, stripe_annual_price_id, stripe_product_id, stripe_annual_product_id")
         .eq("is_active", true)
         .order("sort_order");
+
+      // Fetch promo pricing
+      const { data: promoData } = await supabase
+        .from("promo_pricing_rules")
+        .select("base_price_per_day, placement_multipliers")
+        .eq("is_active", true)
+        .limit(1)
+        .single();
 
       const subMap = new Map((subs || []).map((s: any) => [s.venue_id, s]));
       const overrideMap = new Map((overrides || []).map((o: any) => [o.venue_id, o]));
@@ -127,6 +140,14 @@ export function BillingDashboard() {
           prices[p.id] = { monthly: String(p.monthly_price), annual: String(p.annual_price) };
         }
         setEditingPrices(prices);
+      }
+
+      if (promoData) {
+        setPromoBasePrice(String(promoData.base_price_per_day));
+        const mults = (promoData.placement_multipliers || {}) as Record<string, number>;
+        const multsStr: Record<string, string> = {};
+        for (const [k, v] of Object.entries(mults)) multsStr[k] = String(v);
+        setPromoPlacementMults(multsStr);
       }
     } finally {
       setLoading(false);
@@ -265,6 +286,30 @@ export function BillingDashboard() {
     }
   };
 
+  const handleSavePromoPricing = async () => {
+    setPromoSaving(true);
+    try {
+      const base = parseFloat(promoBasePrice);
+      if (isNaN(base) || base <= 0) throw new Error("Invalid base price");
+      const mults: Record<string, number> = {};
+      for (const [k, v] of Object.entries(promoPlacementMults)) {
+        const n = parseFloat(v);
+        if (isNaN(n) || n <= 0) throw new Error(`Invalid multiplier for ${k}`);
+        mults[k] = n;
+      }
+      const { error } = await supabase
+        .from("promo_pricing_rules")
+        .update({ base_price_per_day: base, placement_multipliers: mults })
+        .eq("is_active", true);
+      if (error) throw error;
+      toast({ title: "Promo pricing updated" });
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setPromoSaving(false);
+    }
+  };
+
   const statusBadge = (status: string) => {
     const map: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
       active: "default", trial: "secondary", past_due: "destructive", inactive: "outline", cancelled: "outline",
@@ -375,7 +420,52 @@ export function BillingDashboard() {
         </CardContent>
       </Card>
 
-      {/* Venue Subscriptions Table */}
+      {/* Promo Ad Pricing */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <DollarSign className="h-5 w-5" /> Sponsored Ad Pricing
+          </CardTitle>
+          <CardDescription>
+            Set the base price per day and placement multipliers for merchant-purchased promotions
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="max-w-xs">
+              <Label className="text-xs text-muted-foreground">Base Price Per Day (ZAR)</Label>
+              <Input
+                type="number"
+                min="1"
+                value={promoBasePrice}
+                onChange={(e) => setPromoBasePrice(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs text-muted-foreground mb-2 block">Placement Multipliers</Label>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                {Object.entries(promoPlacementMults).map(([key, val]) => (
+                  <div key={key}>
+                    <Label className="text-xs capitalize">{key}</Label>
+                    <Input
+                      type="number"
+                      min="0.1"
+                      step="0.1"
+                      value={val}
+                      onChange={(e) => setPromoPlacementMults(prev => ({ ...prev, [key]: e.target.value }))}
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+            <Button onClick={handleSavePromoPricing} disabled={promoSaving} size="sm">
+              {promoSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              Save Promo Pricing
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Venue Subscriptions</CardTitle>
