@@ -1,75 +1,49 @@
 
 
-# Remaining Monetization Work - Status Assessment & Next Steps
+# Fix: Multiple Subscriptions + Pricing Sync + Cancellation
 
-## Current Status
+## Problems Identified
 
-| Item | Status |
-|------|--------|
-| Stripe checkout + subscription verification | Done |
-| Monthly/Annual pricing toggle | Done (wired with correct price IDs) |
-| Feature gating (Starter/Pro/Enterprise) | Done |
-| Merchant billing page with portal link | Done |
-| Invoice history (merchant-facing) | Done (reads from billing_invoices) |
-| Dev billing dashboard + pricing overrides | Done |
-| Per-venue subscription isolation | Done |
-| Stripe webhook (real-time sync) | Done |
-| update-subscription edge function | Done |
-| Cancellation via Stripe portal | Done (button exists on billing page) |
-| Multi-venue selector on login | Done |
-| **7-day free trial** | **Missing** |
-| **Dev invoice generation UI** | **Partially done** (UI exists but no Stripe invoice creation) |
-| **PayFast integration** | **Not started** |
-| **Sponsored ads self-checkout** | **Not started** |
-| **Dev-to-merchant announcements** | **Not started** |
+1. **3 concurrent active subscriptions** — `create-checkout` doesn't cancel existing subscriptions before creating new ones. Each plan selection creates a new subscription.
+2. **Pricing is stored in two places** — Stripe has the actual billing prices, the `subscription_plans` DB table has display prices. Changing one doesn't update the other.
+3. **No cancellation guard** — nothing prevents stacking subscriptions on the same customer.
 
----
+## Immediate Fix: Cancel 2 Extra Subscriptions
 
-## What to Build Now
+Cancel the Starter and Pro subscriptions via Stripe tools, keeping only the Enterprise one (which is what La Tayy should have).
 
-### 1. Add 7-Day Free Trial to Stripe Checkout
+- Cancel `sub_1TIsJfRrnmiHUS0L9XPbPhVE` (Starter)
+- Cancel `sub_1TIsMtRrnmiHUS0LmsDxGGOa` (Pro)
 
-**What changes:**
-- `create-checkout` edge function: add `subscription_data.trial_period_days: 7` to the Stripe checkout session
-- `check-subscription` edge function: handle `trialing` status from Stripe (currently only checks `active`)
-- `useMerchantSubscription.ts`: map `trialing` to the existing `trial` status
-- `MerchantBilling.tsx`: show trial badge and days remaining
-- `MerchantSignup.tsx`: update CTA text to "Start 7-Day Free Trial"
-- `stripe-webhook`: handle `customer.subscription.trial_will_end` event (optional notification)
+## Code Fix: Prevent Duplicate Subscriptions
 
-### 2. Dev Invoice Generation via Stripe
+**`supabase/functions/create-checkout/index.ts`** — Before creating a new checkout session, check if the customer already has an active subscription. If they do:
+- Cancel the old subscription (or redirect to the Customer Portal for plan changes instead of creating a new checkout)
+- Only allow new checkout if no active subscription exists
 
-**What changes:**
-- `BillingDashboard.tsx`: wire the existing "Generate Invoice" dialog to call Stripe's invoice API (create invoice item + finalize invoice) via a new edge function
-- New edge function `create-invoice`: creates a Stripe invoice for a venue's customer, writes to `billing_invoices` table
-- The merchant then sees it in their invoice history (already built)
+This ensures a merchant can only have one subscription at a time.
 
-### 3. Cancellation Confirmation (UX improvement)
+## Pricing Sync Answer
 
-Currently the "Manage Cancellation" button opens the Stripe portal which handles everything. This is already functional. No code change needed unless you want an in-app confirmation dialog before redirecting.
+**How it works today:**
+- Display prices on the signup page come from the `subscription_plans` database table (`monthly_price`, `annual_price` columns)
+- Actual billing amounts come from the Stripe price objects (hardcoded price IDs in the code)
+- If you change prices in Stripe Dashboard, the app UI won't reflect it (and vice versa)
 
----
+**What we'll fix:**
+- Update `create-checkout` to cancel existing subscriptions before creating new ones
+- Add a note/section in the Dev BillingDashboard explaining that to change pricing, they need to: (1) update the Stripe price or create a new one, (2) update the `subscription_plans` table, and (3) update the price ID constants in code
 
-## Technical Details
+**Dev pricing control flow:**
+- Dev changes price in Stripe Dashboard → creates new price ID
+- Dev updates `subscription_plans` table amounts (via Dev Dashboard or SQL)
+- Dev updates price ID constants in code (requires a code deploy)
+- Existing subscribers keep their old price until renewal (Stripe handles this)
 
-**Files modified:**
-- `supabase/functions/create-checkout/index.ts` — add `trial_period_days: 7`
-- `supabase/functions/check-subscription/index.ts` — handle `trialing` status alongside `active`
-- `supabase/functions/stripe-webhook/index.ts` — handle `trialing` status in subscription updates
-- `src/hooks/useMerchantSubscription.ts` — map trialing to trial status
-- `src/pages/MerchantBilling.tsx` — show trial info (days remaining, trial badge)
-- `src/pages/MerchantSignup.tsx` — update button text to mention free trial
+## Files Modified
 
-**New files:**
-- `supabase/functions/create-invoice/index.ts` — Stripe invoice generation for dev dashboard
+- `supabase/functions/create-checkout/index.ts` — add existing subscription check, cancel old sub before new checkout
+- Stripe: cancel 2 duplicate subscriptions via Stripe tools
 
-**No database changes needed.**
-
----
-
-## Future Phases (not this session)
-
-- **PayFast integration** — SA payment gateway alternative
-- **Sponsored ads self-checkout** — merchant promotion purchase flow
-- **Dev-to-merchant announcements** — in-app broadcast system
+## No Database Changes Needed
 
