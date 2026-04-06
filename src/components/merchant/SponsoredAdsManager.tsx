@@ -319,7 +319,7 @@ export function SponsoredAdsManager({ venueId }: Props) {
 
       <BannerCropDialog
         open={cropDialogOpen}
-        onOpenChange={setCropDialogOpen}
+        onClose={() => setCropDialogOpen(false)}
         imageSrc={cropImageSrc}
         onCropComplete={handleCropComplete}
       />

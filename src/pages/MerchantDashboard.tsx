@@ -27,6 +27,8 @@ import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
 import { MerchantMessengerHub } from "@/components/merchant/MerchantMessengerHub";
 import { LoyaltyManagement } from "@/components/merchant/LoyaltyManagement";
 import { LiveFloorPlan } from "@/components/merchant/LiveFloorPlan";
+import { MerchantAnnouncementBanner } from "@/components/merchant/MerchantAnnouncementBanner";
+import { SponsoredAdsManager } from "@/components/merchant/SponsoredAdsManager";
 import {
   AlertDialog,
   AlertDialogAction,
