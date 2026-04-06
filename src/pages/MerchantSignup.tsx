@@ -183,6 +183,11 @@ export default function MerchantSignup() {
           <p className="text-xs text-muted-foreground mt-4">
             🧪 Test mode — Use card <code className="bg-muted px-1 rounded">4242 4242 4242 4242</code> with any future expiry and CVC.
           </p>
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <Label className={paymentProvider === 'stripe' ? 'font-semibold' : 'text-muted-foreground'}>💳 Stripe</Label>
+            <Switch checked={paymentProvider === 'payfast'} onCheckedChange={v => setPaymentProvider(v ? 'payfast' : 'stripe')} />
+            <Label className={paymentProvider === 'payfast' ? 'font-semibold' : 'text-muted-foreground'}>🇿🇦 PayFast</Label>
+          </div>
         </div>
 
         {showRegister && !user && (
