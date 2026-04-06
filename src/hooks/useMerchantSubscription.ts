@@ -177,6 +177,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
     trialEnd,
     stripeCustomerId,
     stripeSubscriptionId,
+    paymentProvider,
     hasFeature,
   };
 }
