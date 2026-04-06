@@ -153,6 +153,27 @@ export function SponsoredAdsManager({ venueId }: Props) {
     return { total: Math.round(days * basePrice * placementTotal * reachMult), days, basePrice };
   };
 
+  const initiateCheckout = async (campaignId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('create-promo-checkout', {
+        body: {
+          campaignId,
+          successUrl: `${window.location.origin}/merchant/dashboard?promo=success`,
+          cancelUrl: `${window.location.origin}/merchant/dashboard?promo=cancelled`,
+        },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, '_blank');
+        toast.success('Redirecting to payment...');
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (err: any) {
+      toast.error('Payment redirect failed: ' + err.message);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!form.title || !form.start_date) {
       toast.error('Title and start date are required');
@@ -163,8 +184,7 @@ export function SponsoredAdsManager({ venueId }: Props) {
       const { data: { user } } = await supabase.auth.getUser();
       const { total: estimatedPrice } = calculatePrice(form.placements, form.start_date, form.end_date);
 
-      // Create campaign directly with pending status
-      const { error } = await supabase.from('promo_campaigns').insert({
+      const { data: inserted, error } = await supabase.from('promo_campaigns').insert({
         venue_id: venueId,
         title: form.title,
         description: form.description || null,
@@ -178,14 +198,18 @@ export function SponsoredAdsManager({ venueId }: Props) {
         amount_charged: estimatedPrice,
         submitted_by: user?.id,
         created_by: user?.id,
-      });
+      }).select('id').single();
 
       if (error) throw error;
 
-      toast.success('Campaign submitted for review!');
       setDialogOpen(false);
       resetForm();
       fetchCampaigns();
+
+      // Initiate Stripe checkout
+      if (inserted?.id) {
+        await initiateCheckout(inserted.id);
+      }
     } catch (err: any) {
       toast.error(err.message);
     } finally {
