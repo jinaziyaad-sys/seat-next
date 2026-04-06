@@ -68,6 +68,12 @@ export const PromotionsManager = () => {
   const [archivedOpen, setArchivedOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Reject dialog state
+  const [rejectDialogOpen, setRejectDialogOpen] = useState(false);
+  const [rejectCampaign, setRejectCampaign] = useState<Campaign | null>(null);
+  const [rejectReason, setRejectReason] = useState("");
+  const [rejecting, setRejecting] = useState(false);
+
   // Crop dialog state
   const [cropDialogOpen, setCropDialogOpen] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState("");
