@@ -282,7 +282,68 @@ serve(async (req) => {
             status: 200,
           });
         } else {
-          // Cancelled or other
+          // Stored sub is cancelled/inactive — check if the customer has a newer active sub
+          logStep("Stored sub is cancelled, checking for newer active subs", { storedSubId: existingSub.stripe_subscription_id });
+          
+          const customerSubs = await stripe.subscriptions.list({
+            customer: existingSub.stripe_customer_id!,
+            limit: 10,
+          });
+          const newerActiveSub = customerSubs.data.find(
+            (s: any) => s.status === 'active' || s.status === 'trialing'
+          );
+
+          if (newerActiveSub) {
+            // Check it's not already claimed by another venue
+            const { data: claimedVenue } = await supabaseClient
+              .from("merchant_subscriptions")
+              .select("venue_id")
+              .eq("stripe_subscription_id", newerActiveSub.id)
+              .neq("venue_id", venueId)
+              .maybeSingle();
+
+            if (!claimedVenue) {
+              // Claim this newer subscription for this venue
+              const newProductIds = newerActiveSub.items.data.map((item: any) => 
+                typeof item.price.product === 'string' ? item.price.product : item.price.product?.id
+              ).filter(Boolean);
+              const newPriceIds = newerActiveSub.items.data.map((item: any) => item.price.id);
+              const newEnd = safeTimestamp(newerActiveSub.current_period_end);
+              const newStart = safeTimestamp(newerActiveSub.current_period_start);
+              const newInterval = newerActiveSub.items?.data?.[0]?.price?.recurring?.interval;
+              const newStatus = newerActiveSub.status === 'trialing' ? 'trial' : 'active';
+              const newTrialEnd = newerActiveSub.trial_end ? safeTimestamp(newerActiveSub.trial_end) : null;
+
+              await syncSubscriptionToDb(supabaseClient, venueId, {
+                status: newStatus,
+                stripe_customer_id: existingSub.stripe_customer_id,
+                stripe_subscription_id: newerActiveSub.id,
+                plan_id: await determinePlanIdFromDb(supabaseClient, newProductIds),
+                current_period_start: newStart,
+                current_period_end: newEnd,
+                billing_cycle: newInterval === 'year' ? 'annual' : 'monthly',
+                trial_ends_at: newTrialEnd,
+              });
+
+              logStep("Auto-recovered to newer subscription", { venueId, newSubId: newerActiveSub.id });
+
+              return new Response(JSON.stringify({
+                subscribed: true,
+                status: newStatus,
+                product_ids: newProductIds,
+                price_ids: newPriceIds,
+                subscription_end: newEnd,
+                stripe_customer_id: existingSub.stripe_customer_id,
+                stripe_subscription_id: newerActiveSub.id,
+                trial_end: newTrialEnd,
+              }), {
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+                status: 200,
+              });
+            }
+          }
+
+          // No active sub found — truly unsubscribed
           await syncSubscriptionToDb(supabaseClient, venueId, {
             status: 'none',
             stripe_customer_id: existingSub.stripe_customer_id,
