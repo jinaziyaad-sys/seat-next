@@ -312,10 +312,11 @@ export const PromotionsManager = () => {
               <div className="flex items-center gap-2 flex-wrap">
                 <h3 className="font-semibold">{campaign.title}</h3>
                 <Badge variant={campaign.is_active ? "default" : "secondary"}>
-                  {campaign.is_active ? "Active" : "Ended"}
+                  {campaign.is_active ? "Live" : campaign.review_status === "approved" && campaign.payment_status !== "paid" && campaign.payment_status !== "comp" ? "Awaiting Payment" : "Inactive"}
                 </Badge>
                 <Badge variant={
                   campaign.payment_status === "paid" ? "default" :
+                  campaign.payment_status === "refunded" ? "destructive" :
                   campaign.payment_status === "comp" ? "secondary" : "outline"
                 }>
                   {campaign.payment_status}
