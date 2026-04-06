@@ -251,7 +251,7 @@ serve(async (req) => {
             status: retrievedStatus,
             stripe_customer_id: existingSub.stripe_customer_id,
             stripe_subscription_id: sub.id,
-            plan_id: determinePlanId(productIds),
+            plan_id: await determinePlanIdFromDb(supabaseClient, productIds),
             current_period_start: subscriptionStart,
             current_period_end: subscriptionEnd,
             billing_cycle: interval === 'year' ? 'annual' : 'monthly',
