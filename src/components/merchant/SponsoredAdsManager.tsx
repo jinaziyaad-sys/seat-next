@@ -153,6 +153,27 @@ export function SponsoredAdsManager({ venueId }: Props) {
     return { total: Math.round(days * basePrice * placementTotal * reachMult), days, basePrice };
   };
 
+  const initiateCheckout = async (campaignId: string) => {
+    try {
+      const { data, error } = await supabase.functions.invoke('create-promo-checkout', {
+        body: {
+          campaignId,
+          successUrl: `${window.location.origin}/merchant/dashboard?promo=success`,
+          cancelUrl: `${window.location.origin}/merchant/dashboard?promo=cancelled`,
+        },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, '_blank');
+        toast.success('Redirecting to payment...');
+      } else {
+        throw new Error('No checkout URL returned');
+      }
+    } catch (err: any) {
+      toast.error('Payment redirect failed: ' + err.message);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!form.title || !form.start_date) {
       toast.error('Title and start date are required');
@@ -163,8 +184,7 @@ export function SponsoredAdsManager({ venueId }: Props) {
       const { data: { user } } = await supabase.auth.getUser();
       const { total: estimatedPrice } = calculatePrice(form.placements, form.start_date, form.end_date);
 
-      // Create campaign directly with pending status
-      const { error } = await supabase.from('promo_campaigns').insert({
+      const { data: inserted, error } = await supabase.from('promo_campaigns').insert({
         venue_id: venueId,
         title: form.title,
         description: form.description || null,
@@ -178,14 +198,18 @@ export function SponsoredAdsManager({ venueId }: Props) {
         amount_charged: estimatedPrice,
         submitted_by: user?.id,
         created_by: user?.id,
-      });
+      }).select('id').single();
 
       if (error) throw error;
 
-      toast.success('Campaign submitted for review!');
       setDialogOpen(false);
       resetForm();
       fetchCampaigns();
+
+      // Initiate Stripe checkout
+      if (inserted?.id) {
+        await initiateCheckout(inserted.id);
+      }
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -199,6 +223,11 @@ export function SponsoredAdsManager({ venueId }: Props) {
     if (c.review_status === 'approved' && c.is_active) return <Badge variant="default">Live</Badge>;
     if (c.review_status === 'approved' && !c.is_active) return <Badge variant="secondary">Approved (Inactive)</Badge>;
     return <Badge variant="outline">{c.review_status}</Badge>;
+  };
+
+  const getPaymentBadge = (c: Campaign) => {
+    if (c.payment_status === 'paid') return <Badge variant="default" className="bg-green-600">Paid</Badge>;
+    return <Badge variant="outline" className="text-amber-600 border-amber-600">Unpaid</Badge>;
   };
 
   // Estimate price for preview
@@ -302,7 +331,7 @@ export function SponsoredAdsManager({ venueId }: Props) {
               <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Cancel</Button>
               <Button onClick={handleSubmit} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Submit for Review
+                Pay & Submit
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -328,6 +357,7 @@ export function SponsoredAdsManager({ venueId }: Props) {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold">{c.title}</h3>
+                      {getPaymentBadge(c)}
                       {getStatusBadge(c)}
                     </div>
                     {c.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{c.description}</p>}
@@ -338,6 +368,11 @@ export function SponsoredAdsManager({ venueId }: Props) {
                       <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {c.impressions_count}</span>
                       <span className="flex items-center gap-1"><MousePointer className="h-3 w-3" /> {c.clicks_count}</span>
                       <span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {format(new Date(c.start_date), 'MMM d')}{c.end_date && ` – ${format(new Date(c.end_date), 'MMM d')}`}</span>
+                      {c.payment_status !== 'paid' && (
+                        <Button variant="outline" size="sm" className="h-6 text-xs" onClick={() => initiateCheckout(c.id)}>
+                          Pay Now
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </div>
