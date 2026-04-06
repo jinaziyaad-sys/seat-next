@@ -39,6 +39,9 @@ interface Campaign {
   clicks_count: number;
   created_at: string;
   venue_name?: string;
+  review_status?: string;
+  review_notes?: string | null;
+  submitted_by?: string | null;
 }
 
 interface Venue {
