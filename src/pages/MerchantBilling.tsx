@@ -169,18 +169,30 @@ export default function MerchantBilling() {
               <CardTitle className="flex items-center gap-2">
                 <CreditCard className="h-5 w-5" />
                 Payment Method
+                <Badge variant="outline" className="ml-2">{subscription.paymentProvider === 'payfast' ? '🇿🇦 PayFast' : '💳 Stripe'}</Badge>
               </CardTitle>
-              <CardDescription>Update your card or payment details via Stripe</CardDescription>
+              <CardDescription>
+                {subscription.paymentProvider === 'payfast'
+                  ? 'Manage your PayFast subscription at payfast.co.za'
+                  : 'Update your card or payment details via Stripe'}
+              </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button onClick={handleOpenPortal} disabled={portalLoading} variant="outline">
-                {portalLoading ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
+              {subscription.paymentProvider === 'payfast' ? (
+                <Button onClick={() => window.open('https://www.payfast.co.za/dashboard', '_blank')} variant="outline">
                   <ExternalLink className="h-4 w-4 mr-2" />
-                )}
-                Manage Payment Method
-              </Button>
+                  Manage on PayFast
+                </Button>
+              ) : (
+                <Button onClick={handleOpenPortal} disabled={portalLoading} variant="outline">
+                  {portalLoading ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                  )}
+                  Manage Payment Method
+                </Button>
+              )}
             </CardContent>
           </Card>
         )}

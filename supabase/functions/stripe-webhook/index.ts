@@ -136,6 +136,20 @@ serve(async (req) => {
         break;
       }
 
+      case "checkout.session.completed": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const metadata = session.metadata || {};
+
+        if (metadata.type === "promo_campaign" && metadata.campaign_id) {
+          await supabase
+            .from("promo_campaigns")
+            .update({ payment_status: "paid" })
+            .eq("id", metadata.campaign_id);
+          logStep("Promo campaign payment completed", { campaignId: metadata.campaign_id });
+        }
+        break;
+      }
+
       default:
         logStep("Unhandled event type", { type: event.type });
     }

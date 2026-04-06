@@ -18,7 +18,7 @@ import { SoundSnoozeButton } from "@/components/merchant/SoundSnoozeButton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar, AlertTriangle, Info, X, Wrench, Gift, LayoutGrid, CreditCard, ArrowUpCircle } from "lucide-react";
+import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar, AlertTriangle, Info, X, Wrench, Gift, LayoutGrid, CreditCard, ArrowUpCircle, Megaphone } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId, playPatronArrivedSound } from "@/utils/notificationSound";
@@ -27,6 +27,8 @@ import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
 import { MerchantMessengerHub } from "@/components/merchant/MerchantMessengerHub";
 import { LoyaltyManagement } from "@/components/merchant/LoyaltyManagement";
 import { LiveFloorPlan } from "@/components/merchant/LiveFloorPlan";
+import { MerchantAnnouncementBanner } from "@/components/merchant/MerchantAnnouncementBanner";
+import { SponsoredAdsManager } from "@/components/merchant/SponsoredAdsManager";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -371,6 +373,7 @@ const MerchantDashboard = () => {
   const hasLoyalty = loyaltyAdminEnabled && subscription.hasFeature('loyalty');
   const analyticsLocked = features.analytics_enabled && !subscription.hasFeature('analytics');
   const loyaltyLocked = loyaltyAdminEnabled && !subscription.hasFeature('loyalty');
+  const hasPromotions = subscription.hasFeature('analytics'); // Pro+ can create promotions
 
   // Tab trigger class for consistent sizing
   const tabTriggerClass = "flex items-center gap-2 flex-1 min-w-fit";
@@ -519,35 +522,8 @@ const MerchantDashboard = () => {
         </div>
       </div>
 
-      {/* Developer Announcement Banner */}
-      {announcement && !announcementDismissed && (
-        <div className={cn(
-          "px-4 py-3 flex items-center gap-3",
-          announcement.type === 'maintenance' && "bg-amber-600 text-white",
-          announcement.type === 'warning' && "bg-yellow-500 text-black",
-          announcement.type === 'error' && "bg-red-600 text-white",
-          announcement.type === 'info' && "bg-blue-600 text-white"
-        )}>
-          {(() => {
-            const IconComponent = getAnnouncementIcon(announcement.type);
-            return <IconComponent className="h-5 w-5 shrink-0" />;
-          })()}
-          <p className="text-sm font-medium flex-1">{announcement.message}</p>
-          {announcement.dismissible && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                "h-6 w-6 shrink-0",
-                announcement.type === 'warning' ? "hover:bg-black/10 text-black" : "hover:bg-white/20 text-white"
-              )}
-              onClick={() => setAnnouncementDismissed(true)}
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          )}
-        </div>
-      )}
+      {/* Targeted Merchant Announcements */}
+      <MerchantAnnouncementBanner venueId={userRole.venue_id!} tierName={subscription.tierName} />
 
       <div className="max-w-7xl mx-auto p-6">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
@@ -622,6 +598,12 @@ const MerchantDashboard = () => {
                     <Gift size={16} />
                     Loyalty
                     {loyaltyLocked && <Lock size={12} className="ml-1 text-muted-foreground" />}
+                  </TabsTrigger>
+                )}
+                {hasPromotions && (
+                  <TabsTrigger value="promotions" className={tabTriggerClass}>
+                    <Megaphone size={16} />
+                    Promotions
                   </TabsTrigger>
                 )}
               </>
@@ -714,6 +696,12 @@ const MerchantDashboard = () => {
                   </div>
                 </TabsContent>
               ) : null}
+
+              {hasPromotions && (
+                <TabsContent value="promotions">
+                  <SponsoredAdsManager venueId={userRole.venue_id!} />
+                </TabsContent>
+              )}
             </>
           ) : (
             <>

@@ -786,6 +786,80 @@ export type Database = {
           },
         ]
       }
+      merchant_announcement_dismissals: {
+        Row: {
+          announcement_id: string
+          dismissed_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          announcement_id: string
+          dismissed_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          announcement_id?: string
+          dismissed_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_announcement_dismissals_announcement_id_fkey"
+            columns: ["announcement_id"]
+            isOneToOne: false
+            referencedRelation: "merchant_announcements"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      merchant_announcements: {
+        Row: {
+          audience: string
+          created_at: string
+          created_by: string | null
+          dismissible: boolean
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          message: string
+          priority: number
+          target_venue_ids: string[] | null
+          title: string
+          type: string
+        }
+        Insert: {
+          audience?: string
+          created_at?: string
+          created_by?: string | null
+          dismissible?: boolean
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          message: string
+          priority?: number
+          target_venue_ids?: string[] | null
+          title: string
+          type?: string
+        }
+        Update: {
+          audience?: string
+          created_at?: string
+          created_by?: string | null
+          dismissible?: boolean
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          message?: string
+          priority?: number
+          target_venue_ids?: string[] | null
+          title?: string
+          type?: string
+        }
+        Relationships: []
+      }
       merchant_subscriptions: {
         Row: {
           billing_cycle: string
@@ -795,6 +869,7 @@ export type Database = {
           current_period_start: string | null
           id: string
           payfast_subscription_id: string | null
+          payment_provider: string
           plan_id: string
           status: string
           stripe_customer_id: string | null
@@ -811,6 +886,7 @@ export type Database = {
           current_period_start?: string | null
           id?: string
           payfast_subscription_id?: string | null
+          payment_provider?: string
           plan_id: string
           status?: string
           stripe_customer_id?: string | null
@@ -827,6 +903,7 @@ export type Database = {
           current_period_start?: string | null
           id?: string
           payfast_subscription_id?: string | null
+          payment_provider?: string
           plan_id?: string
           status?: string
           stripe_customer_id?: string | null
@@ -1733,7 +1810,10 @@ export type Database = {
           payment_notes: string | null
           payment_status: string
           placements: string[]
+          review_notes: string | null
+          review_status: string
           start_date: string
+          submitted_by: string | null
           title: string
           updated_at: string
           venue_id: string
@@ -1754,7 +1834,10 @@ export type Database = {
           payment_notes?: string | null
           payment_status?: string
           placements?: string[]
+          review_notes?: string | null
+          review_status?: string
           start_date?: string
+          submitted_by?: string | null
           title: string
           updated_at?: string
           venue_id: string
@@ -1775,7 +1858,10 @@ export type Database = {
           payment_notes?: string | null
           payment_status?: string
           placements?: string[]
+          review_notes?: string | null
+          review_status?: string
           start_date?: string
+          submitted_by?: string | null
           title?: string
           updated_at?: string
           venue_id?: string

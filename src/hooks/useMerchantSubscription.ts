@@ -89,6 +89,7 @@ export interface SubscriptionState {
   trialEnd: string | null;
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
+  paymentProvider: string;
   hasFeature: (feature: string) => boolean;
 }
 
@@ -108,6 +109,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
   const [stripeCustomerId, setStripeCustomerId] = useState<string | null>(null);
   const [stripeSubscriptionId, setStripeSubscriptionId] = useState<string | null>(null);
   const [entitledFeatures, setEntitledFeatures] = useState<Set<string>>(new Set());
+  const [paymentProvider, setPaymentProvider] = useState('stripe');
 
   const checkSubscription = useCallback(async () => {
     try {
@@ -135,6 +137,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
         setStripeSubscriptionId(data.stripe_subscription_id);
         setTierName(getTierFromProducts(data.product_ids || [], plans));
         setEntitledFeatures(getEntitledFeatures(data.product_ids || [], plans));
+        setPaymentProvider(data.payment_provider || 'stripe');
       } else {
         setSubscribed(false);
         setStatus(data.status === 'past_due' ? 'past_due' : 'none');
@@ -144,6 +147,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
         setTrialEnd(null);
         setTierName(null);
         setEntitledFeatures(new Set());
+        setPaymentProvider('stripe');
       }
     } catch (err) {
       console.error('Error checking subscription:', err);
@@ -173,6 +177,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
     trialEnd,
     stripeCustomerId,
     stripeSubscriptionId,
+    paymentProvider,
     hasFeature,
   };
 }

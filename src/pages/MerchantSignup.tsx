@@ -40,6 +40,7 @@ export default function MerchantSignup() {
   const [loading, setLoading] = useState(true);
   const [checkoutLoading, setCheckoutLoading] = useState<string | null>(null);
   const [isAnnual, setIsAnnual] = useState(false);
+  const [paymentProvider, setPaymentProvider] = useState<'stripe' | 'payfast'>('stripe');
   const [user, setUser] = useState<any>(null);
 
   const [showRegister, setShowRegister] = useState(false);
@@ -107,16 +108,42 @@ export default function MerchantSignup() {
 
     setCheckoutLoading(plan.id);
     try {
-      // Use Stripe price IDs directly from the DB row
-      const priceId = isAnnual ? plan.stripe_annual_price_id : plan.stripe_monthly_price_id;
-      if (!priceId) throw new Error('This plan has no Stripe price configured. Please contact support.');
+      if (paymentProvider === 'payfast') {
+        const { data, error } = await supabase.functions.invoke('payfast-checkout', {
+          body: {
+            planId: plan.id,
+            billingCycle: isAnnual ? 'annual' : 'monthly',
+            returnUrl: `${window.location.origin}/merchant/dashboard`,
+            cancelUrl: `${window.location.origin}/merchant/signup`,
+          },
+        });
+        if (error) throw error;
+        if (data?.paymentUrl && data?.formData) {
+          // Create and submit a form to PayFast
+          const form = document.createElement('form');
+          form.method = 'POST';
+          form.action = data.paymentUrl;
+          Object.entries(data.formData as Record<string, string>).forEach(([k, v]) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = k;
+            input.value = v;
+            form.appendChild(input);
+          });
+          document.body.appendChild(form);
+          form.submit();
+        }
+      } else {
+        const priceId = isAnnual ? plan.stripe_annual_price_id : plan.stripe_monthly_price_id;
+        if (!priceId) throw new Error('This plan has no Stripe price configured. Please contact support.');
 
-      const { data, error } = await supabase.functions.invoke('create-checkout', {
-        body: { priceIds: [priceId] },
-      });
-      if (error) throw error;
-      if (data?.url) {
-        window.open(data.url, '_blank');
+        const { data, error } = await supabase.functions.invoke('create-checkout', {
+          body: { priceIds: [priceId] },
+        });
+        if (error) throw error;
+        if (data?.url) {
+          window.open(data.url, '_blank');
+        }
       }
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Checkout Error', description: err.message || 'Failed to start checkout' });
@@ -156,6 +183,11 @@ export default function MerchantSignup() {
           <p className="text-xs text-muted-foreground mt-4">
             🧪 Test mode — Use card <code className="bg-muted px-1 rounded">4242 4242 4242 4242</code> with any future expiry and CVC.
           </p>
+          <div className="flex items-center justify-center gap-3 mt-4">
+            <Label className={paymentProvider === 'stripe' ? 'font-semibold' : 'text-muted-foreground'}>💳 Stripe</Label>
+            <Switch checked={paymentProvider === 'payfast'} onCheckedChange={v => setPaymentProvider(v ? 'payfast' : 'stripe')} />
+            <Label className={paymentProvider === 'payfast' ? 'font-semibold' : 'text-muted-foreground'}>🇿🇦 PayFast</Label>
+          </div>
         </div>
 
         {showRegister && !user && (
