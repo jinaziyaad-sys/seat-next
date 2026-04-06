@@ -2023,6 +2023,10 @@ export type Database = {
           monthly_price: number
           name: string
           sort_order: number
+          stripe_annual_price_id: string | null
+          stripe_annual_product_id: string | null
+          stripe_monthly_price_id: string | null
+          stripe_product_id: string | null
           updated_at: string
         }
         Insert: {
@@ -2035,6 +2039,10 @@ export type Database = {
           monthly_price?: number
           name: string
           sort_order?: number
+          stripe_annual_price_id?: string | null
+          stripe_annual_product_id?: string | null
+          stripe_monthly_price_id?: string | null
+          stripe_product_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -2047,6 +2055,10 @@ export type Database = {
           monthly_price?: number
           name?: string
           sort_order?: number
+          stripe_annual_price_id?: string | null
+          stripe_annual_product_id?: string | null
+          stripe_monthly_price_id?: string | null
+          stripe_product_id?: string | null
           updated_at?: string
         }
         Relationships: []
