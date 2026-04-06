@@ -48,31 +48,10 @@ serve(async (req) => {
     let customerId: string | undefined;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
-
-      // Check for existing active/trialing subscriptions and cancel them
-      const existingSubs = await stripe.subscriptions.list({
-        customer: customerId,
-        status: "active",
-      });
-      const trialingSubs = await stripe.subscriptions.list({
-        customer: customerId,
-        status: "trialing",
-      });
-
-      const allActiveSubs = [...existingSubs.data, ...trialingSubs.data];
-
-      if (allActiveSubs.length > 0) {
-        logStep("Cancelling existing subscriptions", {
-          count: allActiveSubs.length,
-          ids: allActiveSubs.map(s => s.id),
-        });
-        for (const sub of allActiveSubs) {
-          await stripe.subscriptions.cancel(sub.id, {
-            prorate: true,
-          });
-          logStep("Cancelled subscription", { id: sub.id });
-        }
-      }
+      // NOTE: We no longer cancel existing subscriptions here.
+      // Each venue gets its own subscription. Plan changes should go
+      // through the Stripe Customer Portal instead.
+      logStep("Found existing customer", { customerId });
     }
 
     const lineItems = priceIds.map((priceId: string) => ({
