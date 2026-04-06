@@ -72,6 +72,11 @@ export function BillingDashboard() {
   const [pricingSaving, setPricingSaving] = useState<string | null>(null);
   const [confirmPricing, setConfirmPricing] = useState<PlanPricing | null>(null);
 
+  // Promo pricing state
+  const [promoBasePrice, setPromoBasePrice] = useState("");
+  const [promoPlacementMults, setPromoPlacementMults] = useState<Record<string, string>>({});
+  const [promoSaving, setPromoSaving] = useState(false);
+
   const { toast } = useToast();
 
   const fetchData = async () => {
