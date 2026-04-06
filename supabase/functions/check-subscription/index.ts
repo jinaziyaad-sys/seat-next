@@ -390,12 +390,31 @@ async function syncSubscriptionToDb(
   }
 }
 
+async function determinePlanIdFromDb(client: any, productIds: string[]): Promise<string> {
+  try {
+    const { data: plans } = await client
+      .from("subscription_plans")
+      .select("name, stripe_product_id, stripe_annual_product_id")
+      .eq("is_active", true);
+
+    if (plans) {
+      for (const plan of plans) {
+        const planProductIds = [plan.stripe_product_id, plan.stripe_annual_product_id].filter(Boolean);
+        if (planProductIds.some((id: string) => productIds.includes(id))) {
+          return plan.name.toLowerCase();
+        }
+      }
+    }
+  } catch (err) {
+    logStep("Failed to load plans from DB for tier matching", { error: String(err) });
+  }
+  return 'starter';
+}
+
+// Legacy fallback kept for override logic
 function determinePlanId(productIds: string[]): string {
-  // Enterprise (monthly or annual)
   if (productIds.includes('prod_UHQwZRXj29yoYZ') || productIds.includes('prod_UHTdy0VRFEXVQe')) return 'enterprise';
-  // Pro (monthly or annual)
   if (productIds.includes('prod_UHQvBPLpLypA0e') || productIds.includes('prod_UHRVAz3q59g5Vm')) return 'pro';
-  // Starter (monthly or annual)
   if (productIds.includes('prod_UHQvy6yev2Z4FJ') || productIds.includes('prod_UHRVRONaVJns9q')) return 'starter';
   return 'starter';
 }
