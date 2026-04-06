@@ -202,10 +202,7 @@ export function SponsoredAdsManager({ venueId }: Props) {
   };
 
   // Estimate price for preview
-  const days = form.end_date && form.start_date
-    ? Math.ceil((form.end_date.getTime() - form.start_date.getTime()) / 86400000)
-    : 7;
-  const estimatedPrice = days * 50 * form.placements.length;
+  const { total: estimatedPrice, days, basePrice } = calculatePrice(form.placements, form.start_date, form.end_date);
 
   if (loading) {
     return <Card><CardContent className="p-6 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></CardContent></Card>;
