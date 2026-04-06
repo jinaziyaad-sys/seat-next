@@ -44,6 +44,12 @@ interface Props {
   venueId: string;
 }
 
+interface PricingRule {
+  base_price_per_day: number;
+  placement_multipliers: Record<string, number>;
+  reach_tiers: { min_days: number; max_days: number; multiplier: number }[];
+}
+
 export function SponsoredAdsManager({ venueId }: Props) {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,6 +59,7 @@ export function SponsoredAdsManager({ venueId }: Props) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [cropDialogOpen, setCropDialogOpen] = useState(false);
   const [cropImageSrc, setCropImageSrc] = useState('');
+  const [pricingRule, setPricingRule] = useState<PricingRule | null>(null);
 
   const [form, setForm] = useState({
     title: '',
@@ -65,12 +72,21 @@ export function SponsoredAdsManager({ venueId }: Props) {
 
   const fetchCampaigns = async () => {
     setLoading(true);
-    const { data } = await supabase
-      .from('promo_campaigns')
-      .select('id, title, description, banner_image_url, placements, start_date, end_date, is_active, payment_status, review_status, review_notes, impressions_count, clicks_count, created_at')
-      .eq('venue_id', venueId)
-      .order('created_at', { ascending: false });
-    setCampaigns((data as Campaign[]) || []);
+    const [{ data: campData }, { data: priceData }] = await Promise.all([
+      supabase
+        .from('promo_campaigns')
+        .select('id, title, description, banner_image_url, placements, start_date, end_date, is_active, payment_status, review_status, review_notes, impressions_count, clicks_count, created_at')
+        .eq('venue_id', venueId)
+        .order('created_at', { ascending: false }),
+      supabase
+        .from('promo_pricing_rules')
+        .select('base_price_per_day, placement_multipliers, reach_tiers')
+        .eq('is_active', true)
+        .limit(1)
+        .single(),
+    ]);
+    setCampaigns((campData as Campaign[]) || []);
+    if (priceData) setPricingRule(priceData as unknown as PricingRule);
     setLoading(false);
   };
 
