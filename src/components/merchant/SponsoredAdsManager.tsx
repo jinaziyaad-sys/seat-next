@@ -293,8 +293,8 @@ export function SponsoredAdsManager({ venueId }: Props) {
               <Card className="bg-muted/50">
                 <CardContent className="p-4">
                   <p className="text-sm font-medium">Estimated Cost</p>
-                  <p className="text-2xl font-bold">R{estimatedPrice.toFixed(0)}</p>
-                  <p className="text-xs text-muted-foreground">{days} days × {form.placements.length} placement(s) × R50/day</p>
+                  <p className="text-2xl font-bold">R{estimatedPrice}</p>
+                  <p className="text-xs text-muted-foreground">{days} days × {form.placements.length} placement(s) × R{basePrice}/day base</p>
                 </CardContent>
               </Card>
             </div>
