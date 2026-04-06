@@ -1,43 +1,82 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
-// Stripe product/price mapping
-export const SUBSCRIPTION_TIERS: Record<string, {
-  product_id: string;
-  price_id: string;
-  annual_product_id: string;
-  annual_price_id: string;
+export interface SubscriptionPlanConfig {
+  id: string;
   name: string;
-}> = {
-  starter: {
-    product_id: 'prod_UHQvy6yev2Z4FJ',
-    price_id: 'price_1TIs3WRrnmiHUS0LBQ9DkJlO',
-    annual_product_id: 'prod_UHRVRONaVJns9q',
-    annual_price_id: 'price_1TIscARrnmiHUS0LYvmnYFDl',
-    name: 'Starter',
-  },
-  pro: {
-    product_id: 'prod_UHQvBPLpLypA0e',
-    price_id: 'price_1TIs3pRrnmiHUS0LaAn8xvUy',
-    annual_product_id: 'prod_UHRVAz3q59g5Vm',
-    annual_price_id: 'price_1TIscHRrnmiHUS0Lt8fOF8aP',
-    name: 'Pro',
-  },
-  enterprise: {
-    product_id: 'prod_UHQwZRXj29yoYZ',
-    price_id: 'price_1TIs4JRrnmiHUS0LYSuWZptR',
-    annual_product_id: 'prod_UHTdy0VRFEXVQe',
-    annual_price_id: 'price_1TIufsRrnmiHUS0LTTWh2jVo',
-    name: 'Enterprise',
-  },
-};
+  stripe_product_id: string | null;
+  stripe_annual_product_id: string | null;
+  stripe_monthly_price_id: string | null;
+  stripe_annual_price_id: string | null;
+  monthly_price: number;
+  annual_price: number;
+}
 
-// All product IDs that map to each tier (monthly + annual)
-export const TIER_PRODUCT_IDS: Record<string, string[]> = {
-  starter: ['prod_UHQvy6yev2Z4FJ', 'prod_UHRVRONaVJns9q'],
-  pro: ['prod_UHQvBPLpLypA0e', 'prod_UHRVAz3q59g5Vm'],
-  enterprise: ['prod_UHQwZRXj29yoYZ', 'prod_UHTdy0VRFEXVQe'],
-};
+// Cache for subscription plans loaded from DB
+let cachedPlans: SubscriptionPlanConfig[] | null = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+export async function loadSubscriptionPlans(): Promise<SubscriptionPlanConfig[]> {
+  if (cachedPlans && Date.now() - cacheTimestamp < CACHE_TTL) {
+    return cachedPlans;
+  }
+
+  const { data, error } = await supabase
+    .from('subscription_plans')
+    .select('id, name, stripe_product_id, stripe_annual_product_id, stripe_monthly_price_id, stripe_annual_price_id, monthly_price, annual_price')
+    .eq('is_active', true)
+    .order('sort_order');
+
+  if (error || !data) {
+    console.error('Failed to load subscription plans:', error);
+    return cachedPlans || [];
+  }
+
+  cachedPlans = data as SubscriptionPlanConfig[];
+  cacheTimestamp = Date.now();
+  return cachedPlans;
+}
+
+function getTierFromProducts(productIds: string[], plans: SubscriptionPlanConfig[]): string | null {
+  for (const plan of plans) {
+    const planProductIds = [plan.stripe_product_id, plan.stripe_annual_product_id].filter(Boolean);
+    if (planProductIds.some(id => productIds.includes(id!))) {
+      return plan.name;
+    }
+  }
+  return null;
+}
+
+function getEntitledFeatures(productIds: string[], plans: SubscriptionPlanConfig[]): Set<string> {
+  const features = new Set<string>();
+
+  const isMatch = (planName: string) => {
+    const plan = plans.find(p => p.name.toLowerCase() === planName.toLowerCase());
+    if (!plan) return false;
+    const ids = [plan.stripe_product_id, plan.stripe_annual_product_id].filter(Boolean);
+    return ids.some(id => productIds.includes(id!));
+  };
+
+  const isStarter = isMatch('starter');
+  const isPro = isMatch('pro');
+  const isEnterprise = isMatch('enterprise');
+
+  if (isStarter || isPro || isEnterprise) {
+    features.add('food_ordering');
+    features.add('waitlist');
+    features.add('reservations');
+    features.add('kitchen_board');
+  }
+  if (isPro || isEnterprise) {
+    features.add('analytics');
+  }
+  if (isEnterprise) {
+    features.add('loyalty');
+  }
+
+  return features;
+}
 
 export interface SubscriptionState {
   loading: boolean;
@@ -51,40 +90,6 @@ export interface SubscriptionState {
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   hasFeature: (feature: string) => boolean;
-}
-
-function getTierFromProducts(productIds: string[]): string | null {
-  for (const [tierKey, tierProductIds] of Object.entries(TIER_PRODUCT_IDS)) {
-    if (tierProductIds.some(id => productIds.includes(id))) {
-      return SUBSCRIPTION_TIERS[tierKey]?.name || tierKey;
-    }
-  }
-  return null;
-}
-
-function getEntitledFeatures(productIds: string[]): Set<string> {
-  const features = new Set<string>();
-  const isStarter = TIER_PRODUCT_IDS.starter.some(id => productIds.includes(id));
-  const isPro = TIER_PRODUCT_IDS.pro.some(id => productIds.includes(id));
-  const isEnterprise = TIER_PRODUCT_IDS.enterprise.some(id => productIds.includes(id));
-
-  // Starter: core features
-  if (isStarter || isPro || isEnterprise) {
-    features.add('food_ordering');
-    features.add('waitlist');
-    features.add('reservations');
-    features.add('kitchen_board');
-  }
-  // Pro: + analytics
-  if (isPro || isEnterprise) {
-    features.add('analytics');
-  }
-  // Enterprise: + loyalty
-  if (isEnterprise) {
-    features.add('loyalty');
-  }
-
-  return features;
 }
 
 /**
@@ -106,9 +111,13 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
 
   const checkSubscription = useCallback(async () => {
     try {
-      const { data, error } = await supabase.functions.invoke('check-subscription', {
-        body: venueId ? { venueId } : undefined,
-      });
+      const [{ data, error }, plans] = await Promise.all([
+        supabase.functions.invoke('check-subscription', {
+          body: venueId ? { venueId } : undefined,
+        }),
+        loadSubscriptionPlans(),
+      ]);
+
       if (error) {
         console.error('Error checking subscription:', error);
         setLoading(false);
@@ -124,8 +133,8 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
         setTrialEnd(data.trial_end || null);
         setStripeCustomerId(data.stripe_customer_id);
         setStripeSubscriptionId(data.stripe_subscription_id);
-        setTierName(getTierFromProducts(data.product_ids || []));
-        setEntitledFeatures(getEntitledFeatures(data.product_ids || []));
+        setTierName(getTierFromProducts(data.product_ids || [], plans));
+        setEntitledFeatures(getEntitledFeatures(data.product_ids || [], plans));
       } else {
         setSubscribed(false);
         setStatus(data.status === 'past_due' ? 'past_due' : 'none');

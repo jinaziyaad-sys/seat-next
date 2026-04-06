@@ -7,9 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Separator } from '@/components/ui/separator';
 import { Check, Loader2, Sparkles, Shield, X, ChefHat, Users, Calendar, Gift, BarChart3, LayoutGrid, ArrowLeft } from 'lucide-react';
-import { SUBSCRIPTION_TIERS } from '@/hooks/useMerchantSubscription';
 import { useToast } from '@/hooks/use-toast';
 
 interface PlanFromDB {
@@ -20,43 +18,19 @@ interface PlanFromDB {
   annual_price: number;
   included_features: string[];
   sort_order: number;
+  stripe_monthly_price_id: string | null;
+  stripe_annual_price_id: string | null;
 }
 
-// Detailed feature info for each capability
 const FEATURE_DETAILS: Record<string, { label: string; description: string; icon: any }> = {
-  food_ordering: {
-    label: 'Food Ready Notifications',
-    description: 'Let customers order and get notified when their food is ready for collection. Includes order tracking and ETA estimates.',
-    icon: ChefHat,
-  },
-  waitlist: {
-    label: 'Digital Waitlist',
-    description: 'Replace paper waitlists with a digital queue. Customers join via QR code and get real-time position updates.',
-    icon: Users,
-  },
-  reservations: {
-    label: 'Table Reservations',
-    description: 'Accept and manage table bookings with automated reminders, calendar view, and conflict detection.',
-    icon: Calendar,
-  },
-  loyalty: {
-    label: 'Loyalty Program',
-    description: 'Build repeat visits with stamp cards, points, tier rewards, challenges, and referral programs.',
-    icon: Gift,
-  },
-  analytics: {
-    label: 'Analytics & Reports',
-    description: 'Track wait times, order trends, customer segments, staff performance, and export data for insights.',
-    icon: BarChart3,
-  },
-  kitchen_board: {
-    label: 'Kitchen Display Board',
-    description: 'Real-time kitchen screen showing active orders, prep times, and priority queues for your team.',
-    icon: LayoutGrid,
-  },
+  food_ordering: { label: 'Food Ready Notifications', description: 'Let customers order and get notified when their food is ready for collection. Includes order tracking and ETA estimates.', icon: ChefHat },
+  waitlist: { label: 'Digital Waitlist', description: 'Replace paper waitlists with a digital queue. Customers join via QR code and get real-time position updates.', icon: Users },
+  reservations: { label: 'Table Reservations', description: 'Accept and manage table bookings with automated reminders, calendar view, and conflict detection.', icon: Calendar },
+  loyalty: { label: 'Loyalty Program', description: 'Build repeat visits with stamp cards, points, tier rewards, challenges, and referral programs.', icon: Gift },
+  analytics: { label: 'Analytics & Reports', description: 'Track wait times, order trends, customer segments, staff performance, and export data for insights.', icon: BarChart3 },
+  kitchen_board: { label: 'Kitchen Display Board', description: 'Real-time kitchen screen showing active orders, prep times, and priority queues for your team.', icon: LayoutGrid },
 };
 
-// All possible features in order
 const ALL_FEATURES = ['food_ordering', 'waitlist', 'reservations', 'loyalty', 'analytics', 'kitchen_board'];
 
 export default function MerchantSignup() {
@@ -68,7 +42,6 @@ export default function MerchantSignup() {
   const [isAnnual, setIsAnnual] = useState(false);
   const [user, setUser] = useState<any>(null);
 
-  // Registration form state
   const [showRegister, setShowRegister] = useState(false);
   const [regEmail, setRegEmail] = useState('');
   const [regPassword, setRegPassword] = useState('');
@@ -96,18 +69,10 @@ export default function MerchantSignup() {
     checkUser();
   }, []);
 
-  const tierMap: Record<string, { monthly_price_id: string; annual_price_id: string }> = {
-    'Starter': { monthly_price_id: SUBSCRIPTION_TIERS.starter.price_id, annual_price_id: SUBSCRIPTION_TIERS.starter.annual_price_id },
-    'Pro': { monthly_price_id: SUBSCRIPTION_TIERS.pro.price_id, annual_price_id: SUBSCRIPTION_TIERS.pro.annual_price_id },
-    'Enterprise': { monthly_price_id: SUBSCRIPTION_TIERS.enterprise.price_id, annual_price_id: SUBSCRIPTION_TIERS.enterprise.annual_price_id },
-  };
-
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegLoading(true);
-
     try {
-      // 1. Sign up the user
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: regEmail,
         password: regPassword,
@@ -116,35 +81,19 @@ export default function MerchantSignup() {
           emailRedirectTo: `${window.location.origin}/merchant/dashboard`,
         },
       });
-
       if (signUpError) throw signUpError;
       if (!signUpData.user) throw new Error('Registration failed');
 
-      // 2. Create the merchant via edge function (creates venue + role)
-      const { data: merchantData, error: merchantError } = await supabase.functions.invoke('create-merchant', {
-        body: {
-          userId: signUpData.user.id,
-          email: regEmail,
-          fullName: regName,
-          venueName: regVenueName,
-        },
+      const { error: merchantError } = await supabase.functions.invoke('create-merchant', {
+        body: { userId: signUpData.user.id, email: regEmail, fullName: regName, venueName: regVenueName },
       });
-
       if (merchantError) throw merchantError;
 
       setUser(signUpData.user);
       setShowRegister(false);
-
-      toast({
-        title: 'Account Created!',
-        description: 'You can now select a plan to get started.',
-      });
+      toast({ title: 'Account Created!', description: 'You can now select a plan to get started.' });
     } catch (err: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Registration Error',
-        description: err.message || 'Failed to create account',
-      });
+      toast({ variant: 'destructive', title: 'Registration Error', description: err.message || 'Failed to create account' });
     } finally {
       setRegLoading(false);
     }
@@ -158,25 +107,19 @@ export default function MerchantSignup() {
 
     setCheckoutLoading(plan.id);
     try {
-      const tier = tierMap[plan.name];
-      if (!tier) throw new Error('Invalid plan');
-
-      const priceId = isAnnual ? tier.annual_price_id : tier.monthly_price_id;
+      // Use Stripe price IDs directly from the DB row
+      const priceId = isAnnual ? plan.stripe_annual_price_id : plan.stripe_monthly_price_id;
+      if (!priceId) throw new Error('This plan has no Stripe price configured. Please contact support.');
 
       const { data, error } = await supabase.functions.invoke('create-checkout', {
         body: { priceIds: [priceId] },
       });
-
       if (error) throw error;
       if (data?.url) {
         window.open(data.url, '_blank');
       }
     } catch (err: any) {
-      toast({
-        variant: 'destructive',
-        title: 'Checkout Error',
-        description: err.message || 'Failed to start checkout',
-      });
+      toast({ variant: 'destructive', title: 'Checkout Error', description: err.message || 'Failed to start checkout' });
     } finally {
       setCheckoutLoading(null);
     }
@@ -193,21 +136,15 @@ export default function MerchantSignup() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container max-w-6xl mx-auto px-4 py-12">
-        {/* Back link */}
         <Button variant="ghost" size="sm" onClick={() => navigate('/merchant/auth')} className="mb-6">
           <ArrowLeft className="h-4 w-4 mr-2" /> Back to Sign In
         </Button>
 
-        {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold tracking-tight mb-3">
-            Everything You Need to Run Your Venue
-          </h1>
+          <h1 className="text-4xl font-bold tracking-tight mb-3">Everything You Need to Run Your Venue</h1>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
             ReadyUp replaces paper waitlists, manual order tracking, and scattered loyalty programs with one seamless platform your customers will love.
           </p>
-
-          {/* Billing toggle */}
           <div className="flex items-center justify-center gap-3 mt-8">
             <Label className={!isAnnual ? 'font-semibold' : 'text-muted-foreground'}>Monthly</Label>
             <Switch checked={isAnnual} onCheckedChange={setIsAnnual} />
@@ -216,14 +153,11 @@ export default function MerchantSignup() {
               <Badge variant="secondary" className="ml-2 text-xs">Save 17%</Badge>
             </Label>
           </div>
-
-          {/* Test mode notice */}
           <p className="text-xs text-muted-foreground mt-4">
             🧪 Test mode — Use card <code className="bg-muted px-1 rounded">4242 4242 4242 4242</code> with any future expiry and CVC.
           </p>
         </div>
 
-        {/* Registration form (shown when not logged in and clicking a plan) */}
         {showRegister && !user && (
           <Card className="max-w-md mx-auto mb-12">
             <CardHeader>
@@ -254,16 +188,13 @@ export default function MerchantSignup() {
                 </Button>
                 <p className="text-xs text-center text-muted-foreground">
                   Already have an account?{' '}
-                  <button type="button" className="text-primary underline" onClick={() => { setShowRegister(false); navigate('/merchant/auth'); }}>
-                    Sign in
-                  </button>
+                  <button type="button" className="text-primary underline" onClick={() => { setShowRegister(false); navigate('/merchant/auth'); }}>Sign in</button>
                 </p>
               </form>
             </CardContent>
           </Card>
         )}
 
-        {/* Plans grid */}
         <div className="grid md:grid-cols-3 gap-6 mb-16">
           {plans.map((plan) => {
             const price = isAnnual ? plan.annual_price / 12 : plan.monthly_price;
@@ -272,10 +203,7 @@ export default function MerchantSignup() {
             const isLoading = checkoutLoading === plan.id;
 
             return (
-              <Card
-                key={plan.id}
-                className={`relative flex flex-col ${isPro ? 'border-primary shadow-lg ring-2 ring-primary/20' : ''}`}
-              >
+              <Card key={plan.id} className={`relative flex flex-col ${isPro ? 'border-primary shadow-lg ring-2 ring-primary/20' : ''}`}>
                 {isPro && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <Badge className="bg-primary text-primary-foreground px-3">
@@ -291,43 +219,24 @@ export default function MerchantSignup() {
                   <div className="text-center mb-6">
                     <span className="text-4xl font-bold">R{price.toFixed(0)}</span>
                     <span className="text-muted-foreground">/mo</span>
-                    {isAnnual && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Billed R{plan.annual_price.toFixed(0)}/year
-                      </p>
-                    )}
+                    {isAnnual && <p className="text-xs text-muted-foreground mt-1">Billed R{plan.annual_price.toFixed(0)}/year</p>}
                   </div>
-
-                  {/* Feature list with included/excluded */}
                   <ul className="space-y-3">
                     {ALL_FEATURES.map((featureKey) => {
                       const included = includedFeatures.includes(featureKey);
                       const detail = FEATURE_DETAILS[featureKey];
                       if (!detail) return null;
-                      const Icon = detail.icon;
-
                       return (
                         <li key={featureKey} className={`flex items-start gap-2 text-sm ${!included ? 'opacity-40' : ''}`}>
-                          {included ? (
-                            <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                          ) : (
-                            <X className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
-                          )}
-                          <div>
-                            <span className="font-medium">{detail.label}</span>
-                          </div>
+                          {included ? <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" /> : <X className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />}
+                          <span className="font-medium">{detail.label}</span>
                         </li>
                       );
                     })}
                   </ul>
                 </CardContent>
                 <CardFooter>
-                  <Button
-                    className="w-full"
-                    variant={isPro ? 'default' : 'outline'}
-                    onClick={() => handleSelectPlan(plan)}
-                    disabled={!!checkoutLoading}
-                  >
+                  <Button className="w-full" variant={isPro ? 'default' : 'outline'} onClick={() => handleSelectPlan(plan)} disabled={!!checkoutLoading}>
                     {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : user ? 'Start 7-Day Free Trial' : 'Start Free Trial'}
                   </Button>
                 </CardFooter>
@@ -336,7 +245,6 @@ export default function MerchantSignup() {
           })}
         </div>
 
-        {/* Detailed feature breakdown */}
         <div className="max-w-4xl mx-auto mb-16">
           <h2 className="text-2xl font-bold text-center mb-8">What's Included in Each Feature</h2>
           <div className="grid sm:grid-cols-2 gap-6">
@@ -344,25 +252,18 @@ export default function MerchantSignup() {
               const detail = FEATURE_DETAILS[featureKey];
               if (!detail) return null;
               const Icon = detail.icon;
-
-              // Determine which plans include this feature
               const availableIn = plans
                 .filter(p => Array.isArray(p.included_features) && p.included_features.includes(featureKey))
                 .map(p => p.name);
-
               return (
                 <Card key={featureKey} className="p-5">
                   <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10">
-                      <Icon className="h-5 w-5 text-primary" />
-                    </div>
+                    <div className="p-2 rounded-lg bg-primary/10"><Icon className="h-5 w-5 text-primary" /></div>
                     <div className="flex-1">
                       <h3 className="font-semibold mb-1">{detail.label}</h3>
                       <p className="text-sm text-muted-foreground mb-2">{detail.description}</p>
                       <div className="flex gap-1.5 flex-wrap">
-                        {availableIn.map(name => (
-                          <Badge key={name} variant="secondary" className="text-xs">{name}</Badge>
-                        ))}
+                        {availableIn.map(name => <Badge key={name} variant="secondary" className="text-xs">{name}</Badge>)}
                       </div>
                     </div>
                   </div>
@@ -372,7 +273,6 @@ export default function MerchantSignup() {
           </div>
         </div>
 
-        {/* Security note */}
         <div className="text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
           <Shield className="h-4 w-4" />
           Secure payment powered by Stripe. Cancel anytime. 14-day money-back guarantee.
