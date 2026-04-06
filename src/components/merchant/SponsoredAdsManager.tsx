@@ -357,6 +357,7 @@ export function SponsoredAdsManager({ venueId }: Props) {
                   <div className="flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="font-semibold">{c.title}</h3>
+                      {getPaymentBadge(c)}
                       {getStatusBadge(c)}
                     </div>
                     {c.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-1">{c.description}</p>}
