@@ -78,6 +78,14 @@ export function BillingDashboard() {
   const [promoPlacementMults, setPromoPlacementMults] = useState<Record<string, string>>({});
   const [promoSaving, setPromoSaving] = useState(false);
 
+  // Currency overrides state
+  const [currencyOverrides, setCurrencyOverrides] = useState<any[]>([]);
+  const [overrideCurrency, setOverrideCurrency] = useState("USD");
+  const [overridePlanId, setOverridePlanId] = useState("");
+  const [overrideMonthly, setOverrideMonthly] = useState("");
+  const [overrideAnnual, setOverrideAnnual] = useState("");
+  const [overrideSaving, setOverrideSaving] = useState(false);
+
   const { toast } = useToast();
 
   const fetchData = async () => {
