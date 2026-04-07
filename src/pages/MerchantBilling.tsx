@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CreditCard, ExternalLink, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Loader2, Receipt, Settings } from "lucide-react";
 import { toast } from "sonner";
+import { getCurrencySymbol } from "@/utils/currency";
 
 interface Invoice {
   id: string;
