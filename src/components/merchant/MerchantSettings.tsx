@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, X, ChevronDown, Clock, Calendar, AlertCircle, RotateCcw, Save, Settings, Utensils, Users, Timer, Building2, ClipboardList } from "lucide-react";
+import { Plus, X, ChevronDown, Clock, Calendar, AlertCircle, RotateCcw, Save, Settings, Utensils, Users, Timer, Building2, ClipboardList, ImageIcon, Upload, Trash2 } from "lucide-react";
 import { TableConfigurationManager } from "./TableConfigurationManager";
 import { VenueDiscoverySettings } from "./VenueDiscoverySettings";
 import { BusinessHours, HolidayClosure } from "@/utils/businessHours";
@@ -25,6 +25,8 @@ import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { VenueLogo } from "@/components/VenueLogo";
+import { LogoCropDialog } from "@/components/LogoCropDialog";
 
 interface WaitlistPreference {
   id: string;
