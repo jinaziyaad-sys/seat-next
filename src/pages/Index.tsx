@@ -780,71 +780,77 @@ const Index = () => {
       </div>
 
 
-      {/* Compact Active Tracking Summary */}
-      {(user || isDemoMode) && (isLoadingTracking || activeOrders.length > 0 || activeWaitlist.length > 0 || isDemoMode) && (
+      {/* Compact Active Tracking Summary — only truly active items */}
+      {(() => {
+        const ACTIVE_ORDER_STATUSES = ['awaiting_verification', 'placed', 'in_prep', 'ready'];
+        const ACTIVE_WAITLIST_STATUSES = ['waiting', 'ready'];
+        const activeOnlyOrders = activeOrders.filter(o => ACTIVE_ORDER_STATUSES.includes(o.status));
+        const activeOnlyWaitlist = activeWaitlist.filter(w => ACTIVE_WAITLIST_STATUSES.includes(w.status) || (w.reservation_type === 'reservation' && w.status === 'waiting'));
+        const activeItems = [...activeOnlyOrders, ...activeOnlyWaitlist];
+        const totalAll = activeOrders.length + activeWaitlist.length;
+
+        if (!user && !isDemoMode) return null;
+        if (!isLoadingTracking && activeItems.length === 0 && !isDemoMode) return null;
+
+        return (
         <div className="p-6 space-y-3" data-tour="active-tracking">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold">
               {t("home.activeTracking")}
               {isDemoMode && <span className="ml-2 text-xs font-normal text-primary">{t("home.demoMode")}</span>}
             </h2>
-            {(activeOrders.length + activeWaitlist.length) > 3 && (
+            {totalAll > 3 && (
               <Button variant="link" size="sm" onClick={() => setActiveTab("activity")} className="text-primary">
-                {t("activity.viewAll", { count: activeOrders.length + activeWaitlist.length })}
+                {t("activity.viewAll", { count: totalAll })}
               </Button>
             )}
           </div>
           
           {/* Loading Skeleton */}
-          {isLoadingTracking && activeOrders.length === 0 && activeWaitlist.length === 0 && !isDemoMode && (
+          {isLoadingTracking && activeItems.length === 0 && !isDemoMode && (
             <ActiveTrackingListSkeleton count={2} />
           )}
 
-          {/* Demo cards during tour */}
-          {isDemoMode && activeOrders.length === 0 && (
-            <Card className="shadow-card border-dashed border-2 border-primary/30 cursor-pointer" data-tour="demo-order">
+          {/* Demo Cards */}
+          {isDemoMode && (
+            <Card className="bg-primary/5 border-primary/20 shadow-card">
               <CardContent className="p-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-primary/10 shrink-0">
-                    <UtensilsCrossed className="w-5 h-5 text-primary" />
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <ChefHat className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-sm truncate">{DEMO_ORDER.venues?.name}</h3>
                     <p className="text-xs text-muted-foreground">Order #{DEMO_ORDER.order_number}</p>
                   </div>
-                  <Badge variant="default" className="shrink-0">Preparing</Badge>
+                  <Badge variant="secondary">Preparing</Badge>
                 </div>
               </CardContent>
             </Card>
           )}
-          {isDemoMode && activeWaitlist.length === 0 && (
-            <Card className="shadow-card border-dashed border-2 border-accent/30 cursor-pointer" data-tour="demo-waitlist">
+          {isDemoMode && (
+            <Card className="bg-primary/5 border-primary/20 shadow-card">
               <CardContent className="p-3">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full flex items-center justify-center bg-accent/10 shrink-0">
-                    <Users className="w-5 h-5 text-accent" />
+                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Users className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-sm truncate">{DEMO_WAITLIST.venues?.name}</h3>
                     <p className="text-xs text-muted-foreground">Party of {DEMO_WAITLIST.party_size}</p>
                   </div>
-                  <Badge variant="secondary" className="shrink-0">Waiting</Badge>
+                  <Badge variant="secondary">Waiting</Badge>
                 </div>
               </CardContent>
             </Card>
           )}
           
-          {/* Compact summary cards - max 3 */}
-          {[...activeOrders, ...activeWaitlist].slice(0, 3).map((item) => {
+          {/* Compact summary cards - max 3, active only */}
+          {activeItems.slice(0, 3).map((item) => {
             const isOrder = 'order_number' in item;
             const statusKey = item.status === 'ready' ? t("status.ready") :
               item.status === 'in_prep' ? t("status.preparing") :
               item.status === 'awaiting_verification' ? t("status.verifying") :
-              item.status === 'rejected' ? t("status.cancelled") :
-              item.status === 'collected' ? t("status.collected") :
-              item.status === 'seated' ? t("status.seated") :
-              item.status === 'cancelled' ? t("status.cancelled") :
-              item.status === 'no_show' ? t("status.cancelled") :
               item.status === 'waiting' ? t("status.waiting") :
               t("status.placed");
 
@@ -853,9 +859,7 @@ const Index = () => {
                 key={item.id}
                 className={cn(
                   "shadow-card cursor-pointer transition-all hover:shadow-floating hover:scale-[1.01]",
-                  item.status === 'ready' && "bg-success/10 border-success",
-                  (item.status === 'rejected' || item.status === 'cancelled' || item.status === 'no_show') && "bg-destructive/10 border-destructive",
-                  (item.status === 'collected' || item.status === 'seated') && "bg-success/10 border-success"
+                  item.status === 'ready' && "bg-success/10 border-success"
                 )}
                 onClick={() => {
                   if (isOrder) {
@@ -881,12 +885,7 @@ const Index = () => {
                       </p>
                     </div>
                     <Badge
-                      variant={
-                        item.status === 'ready' ? 'default' :
-                        ['rejected', 'cancelled', 'no_show'].includes(item.status) ? 'destructive' :
-                        ['collected', 'seated'].includes(item.status) ? 'default' :
-                        'secondary'
-                      }
+                      variant={item.status === 'ready' ? 'default' : 'secondary'}
                       className="shrink-0"
                     >
                       {statusKey}
@@ -897,18 +896,19 @@ const Index = () => {
             );
           })}
 
-          {/* View all link if more than 3 */}
-          {(activeOrders.length + activeWaitlist.length) > 3 && (
+          {/* View all link if more than 3 active */}
+          {activeItems.length > 3 && (
             <Button
               variant="ghost"
               className="w-full text-primary"
               onClick={() => setActiveTab("activity")}
             >
-              {t("activity.viewAll", { count: activeOrders.length + activeWaitlist.length })}
+              {t("activity.viewAll", { count: activeItems.length })}
             </Button>
           )}
         </div>
-      )}
+        );
+      })()}
 
 
 
