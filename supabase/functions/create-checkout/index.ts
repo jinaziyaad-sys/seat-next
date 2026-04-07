@@ -113,7 +113,7 @@ serve(async (req) => {
       }
     }
 
-    const checkoutCurrency = (currency || "zar").toLowerCase();
+    const checkoutCurrency = checkoutCurrencyLower;
     let lineItems: any[];
 
     if (priceIds && Array.isArray(priceIds) && priceIds.length > 0 && priceIds[0]) {
