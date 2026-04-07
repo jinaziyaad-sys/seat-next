@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 export interface SubscriptionPlanConfig {
@@ -13,10 +13,9 @@ export interface SubscriptionPlanConfig {
   included_features: string[];
 }
 
-// Cache for subscription plans loaded from DB
 let cachedPlans: SubscriptionPlanConfig[] | null = null;
 let cacheTimestamp = 0;
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL = 5 * 60 * 1000;
 
 export async function loadSubscriptionPlans(): Promise<SubscriptionPlanConfig[]> {
   if (cachedPlans && Date.now() - cacheTimestamp < CACHE_TTL) {
@@ -49,18 +48,15 @@ function getTierFromProducts(productIds: string[], plans: SubscriptionPlanConfig
   return null;
 }
 
-// Uses included_features from DB instead of hardcoded mapping
 function getEntitledFeatures(
   productIds: string[],
   plans: SubscriptionPlanConfig[],
   serverFeatures?: string[]
 ): Set<string> {
-  // If server already returned included_features, use those directly
   if (serverFeatures && serverFeatures.length > 0) {
     return new Set(serverFeatures);
   }
 
-  // Fallback: determine from plan product IDs
   for (const plan of plans) {
     const planProductIds = [plan.stripe_product_id, plan.stripe_annual_product_id].filter(Boolean);
     if (planProductIds.some(id => productIds.includes(id!))) {
@@ -103,8 +99,21 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
   const [stripeSubscriptionId, setStripeSubscriptionId] = useState<string | null>(null);
   const [entitledFeatures, setEntitledFeatures] = useState<Set<string>>(new Set());
   const [paymentProvider, setPaymentProvider] = useState('stripe');
+  const requestIdRef = useRef(0);
+  const isMountedRef = useRef(true);
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+      requestIdRef.current += 1;
+    };
+  }, []);
 
   const checkSubscription = useCallback(async () => {
+    const requestId = ++requestIdRef.current;
+    const isCurrentRequest = () =>
+      isMountedRef.current && requestId === requestIdRef.current;
+
     try {
       const [{ data, error }, plans] = await Promise.all([
         supabase.functions.invoke('check-subscription', {
@@ -115,7 +124,10 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
 
       if (error) {
         console.error('Error checking subscription:', error);
-        setLoading(false);
+        return;
+      }
+
+      if (!data || !isCurrentRequest()) {
         return;
       }
 
@@ -129,7 +141,6 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
         setStripeCustomerId(data.stripe_customer_id);
         setStripeSubscriptionId(data.stripe_subscription_id);
         setTierName(getTierFromProducts(data.product_ids || [], plans));
-        // Use server-provided included_features if available, else derive from plans
         setEntitledFeatures(getEntitledFeatures(data.product_ids || [], plans, data.included_features));
         setPaymentProvider(data.payment_provider || 'stripe');
       } else {
@@ -140,20 +151,28 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
         setSubscriptionEnd(null);
         setTrialEnd(null);
         setTierName(null);
+        setStripeCustomerId(null);
+        setStripeSubscriptionId(null);
         setEntitledFeatures(new Set());
         setPaymentProvider('stripe');
       }
     } catch (err) {
       console.error('Error checking subscription:', err);
     } finally {
-      setLoading(false);
+      if (isCurrentRequest()) {
+        setLoading(false);
+      }
     }
   }, [venueId]);
 
   useEffect(() => {
+    setLoading(true);
     checkSubscription();
     const interval = setInterval(checkSubscription, 60000);
-    return () => clearInterval(interval);
+    return () => {
+      requestIdRef.current += 1;
+      clearInterval(interval);
+    };
   }, [checkSubscription]);
 
   const hasFeature = useCallback((feature: string) => {
