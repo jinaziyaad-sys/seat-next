@@ -3,7 +3,7 @@
     "home": "Home",
     "food": "Food",
     "table": "Table",
-    "rewardsReady": "Rewards",
+    "rewardsReady": "Rewards Ready",
     "activity": "Activity",
     "profile": "Profile"
   },
@@ -16,7 +16,7 @@
     "viewAll": "View all ({{count}})"
   },
   "loyaltyFlow": {
-    "title": "Loyalty",
+    "title": "Rewards Ready",
     "noPrograms": "No Loyalty Programs",
     "noProgramsDesc": "Visit participating restaurants to start earning stamps toward rewards!",
     "hubSubtitle": "Tap a restaurant to view your stamp card",
@@ -308,7 +308,7 @@
     "savedDesc": "Your dining preferences have been updated"
   },
   "loyalty": {
-    "title": "Loyalty & Rewards",
+    "title": "Rewards Ready",
     "stamps": "stamps",
     "points": "points",
     "nextReward": "Next reward",
