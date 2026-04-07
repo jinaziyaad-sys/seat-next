@@ -436,6 +436,107 @@ export function BillingDashboard() {
         </CardContent>
       </Card>
 
+      {/* Currency Overrides */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Globe className="h-5 w-5" /> Currency Price Overrides
+          </CardTitle>
+          <CardDescription>
+            Set fixed prices for specific currencies. If no override exists, prices auto-convert from ZAR using live exchange rates.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Existing overrides */}
+          {currencyOverrides.length > 0 && (
+            <div className="space-y-2">
+              {currencyOverrides.map((ov: any) => {
+                const plan = plans.find(p => p.id === ov.plan_id);
+                return (
+                  <div key={ov.id} className="flex items-center justify-between p-3 rounded-lg border">
+                    <div>
+                      <p className="font-medium text-sm">{plan?.name || 'Unknown'} — {ov.currency}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {getCurrencySymbol(ov.currency)}{ov.monthly_price}/mo · {getCurrencySymbol(ov.currency)}{ov.annual_price}/yr
+                      </p>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={async () => {
+                      await supabase.from("plan_currency_overrides").delete().eq("id", ov.id);
+                      toast({ title: "Override removed" });
+                      fetchData();
+                    }}>
+                      <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Add new override */}
+          <div className="p-4 rounded-lg border bg-muted/50 space-y-3">
+            <p className="text-sm font-medium">Add Override</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div>
+                <Label className="text-xs">Plan</Label>
+                <Select value={overridePlanId} onValueChange={setOverridePlanId}>
+                  <SelectTrigger><SelectValue placeholder="Select plan" /></SelectTrigger>
+                  <SelectContent>
+                    {plans.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Currency</Label>
+                <Select value={overrideCurrency} onValueChange={setOverrideCurrency}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {CURRENCY_CODES.filter(c => c !== 'ZAR').map(c => (
+                      <SelectItem key={c} value={c}>{SUPPORTED_CURRENCIES[c].symbol} {c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-xs">Monthly</Label>
+                <Input type="number" min="1" value={overrideMonthly} onChange={e => setOverrideMonthly(e.target.value)} placeholder="49" />
+              </div>
+              <div>
+                <Label className="text-xs">Annual</Label>
+                <Input type="number" min="1" value={overrideAnnual} onChange={e => setOverrideAnnual(e.target.value)} placeholder="490" />
+              </div>
+            </div>
+            <Button size="sm" disabled={overrideSaving || !overridePlanId || !overrideMonthly || !overrideAnnual} onClick={async () => {
+              setOverrideSaving(true);
+              try {
+                const monthly = parseFloat(overrideMonthly);
+                const annual = parseFloat(overrideAnnual);
+                if (isNaN(monthly) || isNaN(annual) || monthly <= 0 || annual <= 0) throw new Error("Invalid prices");
+                const { error } = await supabase.from("plan_currency_overrides").upsert({
+                  plan_id: overridePlanId,
+                  currency: overrideCurrency,
+                  monthly_price: monthly,
+                  annual_price: annual,
+                  updated_at: new Date().toISOString(),
+                }, { onConflict: "plan_id,currency" });
+                if (error) throw error;
+                toast({ title: "Currency override saved" });
+                setOverrideMonthly("");
+                setOverrideAnnual("");
+                fetchData();
+              } catch (err: any) {
+                toast({ title: "Error", description: err.message, variant: "destructive" });
+              } finally {
+                setOverrideSaving(false);
+              }
+            }}>
+              {overrideSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Plus className="h-4 w-4 mr-1" />}
+              Save Override
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Promo Ad Pricing */}
       <Card>
         <CardHeader>
