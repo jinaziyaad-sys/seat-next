@@ -2358,6 +2358,7 @@ export type Database = {
           logo_url: string | null
           longitude: number | null
           name: string
+          onboarding_completed: boolean | null
           phone: string | null
           service_types: string[] | null
           settings: Json | null
@@ -2374,6 +2375,7 @@ export type Database = {
           logo_url?: string | null
           longitude?: number | null
           name: string
+          onboarding_completed?: boolean | null
           phone?: string | null
           service_types?: string[] | null
           settings?: Json | null
@@ -2390,6 +2392,7 @@ export type Database = {
           logo_url?: string | null
           longitude?: number | null
           name?: string
+          onboarding_completed?: boolean | null
           phone?: string | null
           service_types?: string[] | null
           settings?: Json | null
