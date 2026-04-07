@@ -512,16 +512,26 @@ export default function MerchantSignup() {
                 const includedFeatures = Array.isArray(plan.included_features) ? plan.included_features : [];
                 const isRecommended = plan.id === recommendedPlanId;
                 const isSelected = plan.id === selectedPlanId;
+                const isCurrent = isUpgradeMode && plan.id === currentPlanId;
 
                 return (
                   <Card
                     key={plan.id}
-                    className={`relative flex flex-col cursor-pointer transition-all ${
-                      isSelected ? 'border-primary ring-2 ring-primary/30 shadow-lg' : isRecommended ? 'border-primary/50 shadow-md' : ''
+                    className={`relative flex flex-col transition-all ${
+                      isCurrent ? 'opacity-60 cursor-not-allowed border-muted' :
+                      isSelected ? 'border-primary ring-2 ring-primary/30 shadow-lg cursor-pointer' : 
+                      isRecommended ? 'border-primary/50 shadow-md cursor-pointer' : 'cursor-pointer'
                     }`}
-                    onClick={() => setSelectedPlanId(plan.id)}
+                    onClick={() => !isCurrent && setSelectedPlanId(plan.id)}
                   >
-                    {isRecommended && (
+                    {isCurrent && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                        <Badge variant="secondary" className="px-3">
+                          Current Plan
+                        </Badge>
+                      </div>
+                    )}
+                    {isRecommended && !isCurrent && (
                       <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                         <Badge className="bg-primary text-primary-foreground px-3">
                           <Sparkles className="h-3 w-3 mr-1" /> Recommended
