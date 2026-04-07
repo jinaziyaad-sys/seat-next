@@ -217,13 +217,14 @@ export default function MerchantAuth() {
               </Button>
             )}
 
-            <div className="text-sm text-center mt-4 space-y-1">
-              <p className="text-muted-foreground">
-                Don't have an account?{" "}
-                <button type="button" className="text-primary hover:underline font-medium" onClick={() => navigate("/merchant/signup")}>
-                  Sign up here
-                </button>
-              </p>
+            <div className="text-center mt-4 space-y-3">
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
+                <div className="relative flex justify-center text-xs uppercase"><span className="bg-card px-2 text-muted-foreground">or</span></div>
+              </div>
+              <Button type="button" variant="outline" className="w-full" onClick={() => navigate("/merchant/signup")}>
+                <Store className="h-4 w-4 mr-2" /> Create a New Venue Account
+              </Button>
             </div>
           </form>
         </CardContent>
