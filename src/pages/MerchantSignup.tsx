@@ -76,7 +76,10 @@ export default function MerchantSignup() {
   const [venueDisplayAddress, setVenueDisplayAddress] = useState('');
   const [serviceTypes, setServiceTypes] = useState<string[]>(['food_ready', 'table_ready']);
   const [venueLoading, setVenueLoading] = useState(false);
-  const [venueId, setVenueId] = useState<string | null>(null);
+  const [venueId, setVenueId] = useState<string | null>(upgradeVenueId || null);
+
+  // Upgrade mode: current plan tracking
+  const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
 
   // Address validation & geolocation
   const [validatedAddress, setValidatedAddress] = useState<{
@@ -124,9 +127,24 @@ export default function MerchantSignup() {
       }
     };
 
+    // In upgrade mode, load current subscription to badge the current plan
+    const loadCurrentPlan = async () => {
+      if (!isUpgradeMode || !upgradeVenueId) return;
+      const { data } = await supabase
+        .from('merchant_subscriptions')
+        .select('plan_id')
+        .eq('venue_id', upgradeVenueId)
+        .in('status', ['active', 'trial'])
+        .maybeSingle();
+      if (data?.plan_id) {
+        setCurrentPlanId(data.plan_id);
+      }
+    };
+
     fetchPlans();
     checkUser();
-  }, []);
+    if (isUpgradeMode) loadCurrentPlan();
+  }, [isUpgradeMode, upgradeVenueId]);
 
   // Auto-recommend plan based on selected features
   const getRecommendedPlan = () => {
