@@ -14,6 +14,7 @@ const tabKeys = [
   { id: "table-ready", labelKey: "nav.table", icon: Users },
   { id: "loyalty", labelKey: "nav.rewardsReady", icon: Gift },
   { id: "activity", labelKey: "nav.activity", icon: ClipboardList },
+  { id: "profile", labelKey: "nav.profile", icon: User },
 ];
 
 export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
