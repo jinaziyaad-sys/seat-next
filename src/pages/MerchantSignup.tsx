@@ -557,7 +557,9 @@ export default function MerchantSignup() {
             {/* Plan cards */}
             <div className="grid md:grid-cols-3 gap-5 mb-8">
               {plans.map(plan => {
-                const price = isAnnual ? plan.annual_price / 12 : plan.monthly_price;
+                const monthlyPrice = getPlanPrice(plan, 'monthly');
+                const annualPrice = getPlanPrice(plan, 'annual');
+                const price = isAnnual ? annualPrice / 12 : monthlyPrice;
                 const includedFeatures = Array.isArray(plan.included_features) ? plan.included_features : [];
                 const isRecommended = plan.id === recommendedPlanId;
                 const isSelected = plan.id === selectedPlanId;
