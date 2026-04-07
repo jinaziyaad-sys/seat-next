@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,11 +39,18 @@ const FEATURE_DETAILS: Record<string, { label: string; description: string; icon
 
 const ALL_FEATURES = ['food_ordering', 'waitlist', 'reservations', 'loyalty', 'analytics', 'kitchen_board'];
 
-const STEPS = ['Choose Plan', 'Create Account', 'Set Up Venue', 'Payment'];
+const STEPS_FULL = ['Choose Plan', 'Create Account', 'Set Up Venue', 'Payment'];
+const STEPS_UPGRADE = ['Choose Plan', 'Payment'];
 
 export default function MerchantSignup() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+
+  // Upgrade mode detection
+  const isUpgradeMode = searchParams.get('upgrade') === 'true';
+  const upgradeVenueId = searchParams.get('venueId');
+  const STEPS = isUpgradeMode ? STEPS_UPGRADE : STEPS_FULL;
 
   // Wizard state
   const [step, setStep] = useState(0);
