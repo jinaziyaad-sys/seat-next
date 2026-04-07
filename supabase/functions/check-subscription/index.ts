@@ -65,7 +65,6 @@ serve(async (req) => {
     // Get the user's venue_id from user_roles (use requested venue or first)
     let venueId: string | null = null;
     if (requestedVenueId) {
-      // Verify user has access to this venue
       const { data: roleData } = await supabaseClient
         .from("user_roles")
         .select("venue_id")
@@ -96,20 +95,24 @@ serve(async (req) => {
       if (override && (!override.expires_at || new Date(override.expires_at) > new Date())) {
         logStep("Found active pricing override", { type: override.override_type });
         
-        let simulatedProductIds: string[] = [];
-        if (override.override_type === 'free_starter') {
-          simulatedProductIds = ['prod_UHQvy6yev2Z4FJ'];
-        } else if (override.override_type === 'free_pro') {
-          simulatedProductIds = ['prod_UHQvBPLpLypA0e'];
-        } else if (override.override_type === 'free_enterprise' || override.override_type === 'free') {
-          simulatedProductIds = ['prod_UHQwZRXj29yoYZ'];
-        }
+        // Look up the plan from DB by override type
+        const overridePlanName = override.override_type.replace('free_', '');
+        const { data: overridePlan } = await supabaseClient
+          .from("subscription_plans")
+          .select("id, stripe_product_id, stripe_annual_product_id, included_features")
+          .ilike("name", `%${overridePlanName}%`)
+          .limit(1)
+          .maybeSingle();
+
+        const simulatedProductIds = overridePlan
+          ? [overridePlan.stripe_product_id, overridePlan.stripe_annual_product_id].filter(Boolean)
+          : [];
 
         await syncSubscriptionToDb(supabaseClient, venueId, {
           status: 'active',
           stripe_subscription_id: null,
           stripe_customer_id: null,
-          plan_id: override.override_type,
+          plan_id: overridePlan?.id || undefined,
           current_period_start: override.created_at,
           current_period_end: override.expires_at,
         });
@@ -123,6 +126,7 @@ serve(async (req) => {
           stripe_customer_id: null,
           stripe_subscription_id: null,
           override: true,
+          included_features: overridePlan?.included_features || [],
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
@@ -130,19 +134,67 @@ serve(async (req) => {
       }
     }
 
-    // Check if this venue already has a subscription record with a stripe_subscription_id
-    // This ensures per-venue subscription isolation
+    // ===== PayFast path: check local DB for PayFast subscriptions =====
+    if (venueId) {
+      const { data: pfSub } = await supabaseClient
+        .from("merchant_subscriptions")
+        .select("*, subscription_plans:plan_id(id, name, stripe_product_id, stripe_annual_product_id, included_features)")
+        .eq("venue_id", venueId)
+        .eq("payment_provider", "payfast")
+        .maybeSingle();
+
+      if (pfSub && (pfSub.status === 'active' || pfSub.status === 'trial')) {
+        const plan = pfSub.subscription_plans as any;
+        const productIds = plan ? [plan.stripe_product_id, plan.stripe_annual_product_id].filter(Boolean) : [];
+        const trialEnd = pfSub.trial_ends_at;
+        const isTrialing = pfSub.status === 'trial' && trialEnd && new Date(trialEnd) > new Date();
+
+        // If trial has expired, mark as inactive
+        if (pfSub.status === 'trial' && trialEnd && new Date(trialEnd) <= new Date()) {
+          await supabaseClient
+            .from("merchant_subscriptions")
+            .update({ status: 'inactive', updated_at: new Date().toISOString() })
+            .eq("venue_id", venueId);
+          logStep("PayFast trial expired", { venueId });
+        } else {
+          logStep("PayFast subscription active", { venueId, status: pfSub.status });
+          return new Response(JSON.stringify({
+            subscribed: true,
+            status: isTrialing ? 'trial' : 'active',
+            product_ids: productIds,
+            price_ids: [],
+            subscription_end: pfSub.current_period_end,
+            stripe_customer_id: null,
+            stripe_subscription_id: null,
+            trial_end: trialEnd,
+            payment_provider: 'payfast',
+            included_features: plan?.included_features || [],
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+      }
+    }
+
+    // ===== Stripe path =====
     if (venueId) {
       const { data: existingSub } = await supabaseClient
         .from("merchant_subscriptions")
-        .select("stripe_subscription_id, stripe_customer_id, status")
+        .select("stripe_subscription_id, stripe_customer_id, status, payment_provider")
         .eq("venue_id", venueId)
         .maybeSingle();
 
-      // If this venue has NO subscription record or no stripe_subscription_id,
-      // check if the Stripe customer has a subscription and if it belongs to this venue
+      // Skip Stripe check if this is a PayFast venue (already handled above)
+      if (existingSub?.payment_provider === 'payfast') {
+        // PayFast venue but not active/trial — return unsubscribed
+        return new Response(JSON.stringify({ subscribed: false, status: existingSub.status === 'past_due' ? 'past_due' : 'none' }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+
       if (!existingSub?.stripe_subscription_id) {
-        // No subscription linked to this venue - check Stripe
         const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
         const customers = await stripe.customers.list({ email: user.email, limit: 1 });
         
@@ -155,7 +207,6 @@ serve(async (req) => {
         }
 
         const customerId = customers.data[0].id;
-        // Check for active OR trialing subscriptions
         const subscriptions = await stripe.subscriptions.list({
           customer: customerId,
           limit: 10,
@@ -173,7 +224,6 @@ serve(async (req) => {
           });
         }
 
-        // Check if any subscription is already claimed by another venue
         const sub = activeSubs[0];
         const { data: claimedVenue } = await supabaseClient
           .from("merchant_subscriptions")
@@ -182,7 +232,6 @@ serve(async (req) => {
           .maybeSingle();
 
         if (claimedVenue && claimedVenue.venue_id !== venueId) {
-          // This Stripe subscription belongs to a different venue
           logStep("Subscription belongs to different venue", { 
             subVenue: claimedVenue.venue_id, currentVenue: venueId 
           });
@@ -192,7 +241,6 @@ serve(async (req) => {
           });
         }
 
-        // Subscription is unclaimed or belongs to this venue - claim it
         const productIds = sub.items.data.map((item: any) => 
           typeof item.price.product === 'string' ? item.price.product : item.price.product?.id
         ).filter(Boolean);
@@ -203,16 +251,20 @@ serve(async (req) => {
         const subStatus = sub.status === 'trialing' ? 'trial' : 'active';
         const trialEnd = sub.trial_end ? safeTimestamp(sub.trial_end) : null;
 
+        const planId = await determinePlanIdFromDb(supabaseClient, productIds);
         await syncSubscriptionToDb(supabaseClient, venueId, {
           status: subStatus,
           stripe_customer_id: customerId,
           stripe_subscription_id: sub.id,
-          plan_id: await determinePlanIdFromDb(supabaseClient, productIds),
+          plan_id: planId,
           current_period_start: subscriptionStart,
           current_period_end: subscriptionEnd,
           billing_cycle: interval === 'year' ? 'annual' : 'monthly',
           trial_ends_at: trialEnd,
         });
+
+        // Load included_features for the plan
+        const includedFeatures = await getIncludedFeatures(supabaseClient, planId);
 
         logStep("Claimed subscription for venue", { venueId, subId: sub.id });
 
@@ -225,6 +277,7 @@ serve(async (req) => {
           stripe_customer_id: customerId,
           stripe_subscription_id: sub.id,
           trial_end: trialEnd,
+          included_features: includedFeatures,
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
@@ -247,16 +300,19 @@ serve(async (req) => {
           const retrievedStatus = sub.status === 'trialing' ? 'trial' : 'active';
           const trialEnd = sub.trial_end ? safeTimestamp(sub.trial_end) : null;
 
+          const planId = await determinePlanIdFromDb(supabaseClient, productIds);
           await syncSubscriptionToDb(supabaseClient, venueId, {
             status: retrievedStatus,
             stripe_customer_id: existingSub.stripe_customer_id,
             stripe_subscription_id: sub.id,
-            plan_id: await determinePlanIdFromDb(supabaseClient, productIds),
+            plan_id: planId,
             current_period_start: subscriptionStart,
             current_period_end: subscriptionEnd,
             billing_cycle: interval === 'year' ? 'annual' : 'monthly',
             trial_ends_at: trialEnd,
           });
+
+          const includedFeatures = await getIncludedFeatures(supabaseClient, planId);
 
           return new Response(JSON.stringify({
             subscribed: true,
@@ -267,6 +323,7 @@ serve(async (req) => {
             stripe_customer_id: existingSub.stripe_customer_id,
             stripe_subscription_id: sub.id,
             trial_end: trialEnd,
+            included_features: includedFeatures,
           }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
             status: 200,
@@ -294,7 +351,6 @@ serve(async (req) => {
           );
 
           if (newerActiveSub) {
-            // Check it's not already claimed by another venue
             const { data: claimedVenue } = await supabaseClient
               .from("merchant_subscriptions")
               .select("venue_id")
@@ -303,7 +359,6 @@ serve(async (req) => {
               .maybeSingle();
 
             if (!claimedVenue) {
-              // Claim this newer subscription for this venue
               const newProductIds = newerActiveSub.items.data.map((item: any) => 
                 typeof item.price.product === 'string' ? item.price.product : item.price.product?.id
               ).filter(Boolean);
@@ -314,16 +369,19 @@ serve(async (req) => {
               const newStatus = newerActiveSub.status === 'trialing' ? 'trial' : 'active';
               const newTrialEnd = newerActiveSub.trial_end ? safeTimestamp(newerActiveSub.trial_end) : null;
 
+              const newPlanId = await determinePlanIdFromDb(supabaseClient, newProductIds);
               await syncSubscriptionToDb(supabaseClient, venueId, {
                 status: newStatus,
                 stripe_customer_id: existingSub.stripe_customer_id,
                 stripe_subscription_id: newerActiveSub.id,
-                plan_id: await determinePlanIdFromDb(supabaseClient, newProductIds),
+                plan_id: newPlanId,
                 current_period_start: newStart,
                 current_period_end: newEnd,
                 billing_cycle: newInterval === 'year' ? 'annual' : 'monthly',
                 trial_ends_at: newTrialEnd,
               });
+
+              const includedFeatures = await getIncludedFeatures(supabaseClient, newPlanId);
 
               logStep("Auto-recovered to newer subscription", { venueId, newSubId: newerActiveSub.id });
 
@@ -336,6 +394,7 @@ serve(async (req) => {
                 stripe_customer_id: existingSub.stripe_customer_id,
                 stripe_subscription_id: newerActiveSub.id,
                 trial_end: newTrialEnd,
+                included_features: includedFeatures,
               }), {
                 headers: { ...corsHeaders, "Content-Type": "application/json" },
                 status: 200,
@@ -343,7 +402,6 @@ serve(async (req) => {
             }
           }
 
-          // No active sub found — truly unsubscribed
           await syncSubscriptionToDb(supabaseClient, venueId, {
             status: 'none',
             stripe_customer_id: existingSub.stripe_customer_id,
@@ -355,7 +413,6 @@ serve(async (req) => {
         }
       } catch (stripeErr) {
         logStep("Error retrieving subscription from Stripe", { error: String(stripeErr) });
-        // Subscription might have been deleted
         await syncSubscriptionToDb(supabaseClient, venueId, { status: 'none' });
         return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -364,7 +421,7 @@ serve(async (req) => {
       }
     }
 
-    // No venue found - can't check subscription
+    // No venue found
     return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
@@ -394,24 +451,7 @@ async function syncSubscriptionToDb(
   }
 ) {
   try {
-    let dbPlanId = data.plan_id;
-    if (dbPlanId && !dbPlanId.match(/^[0-9a-f-]{36}$/)) {
-      const { data: planData } = await client
-        .from("subscription_plans")
-        .select("id")
-        .ilike("name", `%${dbPlanId}%`)
-        .limit(1)
-        .maybeSingle();
-      if (planData) dbPlanId = planData.id;
-      else {
-        const { data: anyPlan } = await client
-          .from("subscription_plans")
-          .select("id")
-          .limit(1)
-          .maybeSingle();
-        if (anyPlan) dbPlanId = anyPlan.id;
-      }
-    }
+    const dbPlanId = data.plan_id;
 
     const upsertData: any = {
       venue_id: venueId,
@@ -451,31 +491,50 @@ async function syncSubscriptionToDb(
   }
 }
 
+// Returns the UUID plan_id from subscription_plans, matching by Stripe product IDs
 async function determinePlanIdFromDb(client: any, productIds: string[]): Promise<string> {
   try {
     const { data: plans } = await client
       .from("subscription_plans")
-      .select("name, stripe_product_id, stripe_annual_product_id")
+      .select("id, stripe_product_id, stripe_annual_product_id")
       .eq("is_active", true);
 
     if (plans) {
       for (const plan of plans) {
         const planProductIds = [plan.stripe_product_id, plan.stripe_annual_product_id].filter(Boolean);
         if (planProductIds.some((id: string) => productIds.includes(id))) {
-          return plan.name.toLowerCase();
+          return plan.id; // Return UUID, not name
         }
       }
     }
   } catch (err) {
     logStep("Failed to load plans from DB for tier matching", { error: String(err) });
   }
-  return 'starter';
+  // Fallback: return first plan's UUID
+  try {
+    const { data: fallback } = await client
+      .from("subscription_plans")
+      .select("id")
+      .eq("is_active", true)
+      .order("sort_order")
+      .limit(1)
+      .maybeSingle();
+    if (fallback) return fallback.id;
+  } catch {}
+  return 'starter'; // absolute last resort
 }
 
-// Legacy fallback kept for override logic
-function determinePlanId(productIds: string[]): string {
-  if (productIds.includes('prod_UHQwZRXj29yoYZ') || productIds.includes('prod_UHTdy0VRFEXVQe')) return 'enterprise';
-  if (productIds.includes('prod_UHQvBPLpLypA0e') || productIds.includes('prod_UHRVAz3q59g5Vm')) return 'pro';
-  if (productIds.includes('prod_UHQvy6yev2Z4FJ') || productIds.includes('prod_UHRVRONaVJns9q')) return 'starter';
-  return 'starter';
+// Helper to load included_features for a plan UUID
+async function getIncludedFeatures(client: any, planId: string): Promise<string[]> {
+  try {
+    if (!planId || !planId.match(/^[0-9a-f-]{36}$/)) return [];
+    const { data } = await client
+      .from("subscription_plans")
+      .select("included_features")
+      .eq("id", planId)
+      .maybeSingle();
+    return data?.included_features || [];
+  } catch {
+    return [];
+  }
 }

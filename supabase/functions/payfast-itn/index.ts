@@ -6,19 +6,6 @@ const logStep = (step: string, details?: any) => {
   console.log(`[PAYFAST-ITN] ${step}${d}`);
 };
 
-// PayFast valid IP ranges
-const PAYFAST_IPS = [
-  "197.97.145.144/28",
-  "41.74.179.192/27",
-];
-
-const isValidPayFastIP = (ip: string): boolean => {
-  // In production, validate against PAYFAST_IPS ranges
-  // For now, log and allow (PayFast sandbox uses different IPs)
-  logStep("Source IP", { ip });
-  return true;
-};
-
 serve(async (req) => {
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
@@ -69,7 +56,7 @@ serve(async (req) => {
     const billingCycle = pfData.custom_str3 || "monthly";
     const paymentStatus = pfData.payment_status;
     const pfPaymentId = pfData.pf_payment_id;
-    const token = pfData.token; // subscription token for recurring
+    const token = pfData.token;
 
     if (!venueId || !planId) {
       logStep("Missing venue or plan ID");
@@ -77,10 +64,10 @@ serve(async (req) => {
     }
 
     if (paymentStatus === "COMPLETE") {
-      // Upsert subscription
+      // Check if there's an existing trial subscription
       const { data: existing } = await supabase
         .from("merchant_subscriptions")
-        .select("id")
+        .select("id, status, trial_ends_at")
         .eq("venue_id", venueId)
         .maybeSingle();
 
@@ -93,6 +80,7 @@ serve(async (req) => {
       }
 
       if (existing) {
+        // Transition from trial to active, or renew
         await supabase
           .from("merchant_subscriptions")
           .update({
@@ -103,9 +91,12 @@ serve(async (req) => {
             payfast_subscription_id: token || pfPaymentId,
             current_period_start: now.toISOString(),
             current_period_end: periodEnd.toISOString(),
+            trial_ends_at: null, // Clear trial since payment received
             updated_at: now.toISOString(),
           })
           .eq("venue_id", venueId);
+
+        logStep("Trial-to-active transition", { venueId, wasTrialing: existing.status === 'trial' });
       } else {
         await supabase.from("merchant_subscriptions").insert({
           venue_id: venueId,

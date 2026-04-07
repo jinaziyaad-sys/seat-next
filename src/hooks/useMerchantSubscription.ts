@@ -10,6 +10,7 @@ export interface SubscriptionPlanConfig {
   stripe_annual_price_id: string | null;
   monthly_price: number;
   annual_price: number;
+  included_features: string[];
 }
 
 // Cache for subscription plans loaded from DB
@@ -24,7 +25,7 @@ export async function loadSubscriptionPlans(): Promise<SubscriptionPlanConfig[]>
 
   const { data, error } = await supabase
     .from('subscription_plans')
-    .select('id, name, stripe_product_id, stripe_annual_product_id, stripe_monthly_price_id, stripe_annual_price_id, monthly_price, annual_price')
+    .select('id, name, stripe_product_id, stripe_annual_product_id, stripe_monthly_price_id, stripe_annual_price_id, monthly_price, annual_price, included_features')
     .eq('is_active', true)
     .order('sort_order');
 
@@ -48,34 +49,26 @@ function getTierFromProducts(productIds: string[], plans: SubscriptionPlanConfig
   return null;
 }
 
-function getEntitledFeatures(productIds: string[], plans: SubscriptionPlanConfig[]): Set<string> {
-  const features = new Set<string>();
-
-  const isMatch = (planName: string) => {
-    const plan = plans.find(p => p.name.toLowerCase() === planName.toLowerCase());
-    if (!plan) return false;
-    const ids = [plan.stripe_product_id, plan.stripe_annual_product_id].filter(Boolean);
-    return ids.some(id => productIds.includes(id!));
-  };
-
-  const isStarter = isMatch('starter');
-  const isPro = isMatch('pro');
-  const isEnterprise = isMatch('enterprise');
-
-  if (isStarter || isPro || isEnterprise) {
-    features.add('food_ordering');
-    features.add('waitlist');
-    features.add('reservations');
-    features.add('kitchen_board');
-  }
-  if (isPro || isEnterprise) {
-    features.add('analytics');
-  }
-  if (isEnterprise) {
-    features.add('loyalty');
+// Uses included_features from DB instead of hardcoded mapping
+function getEntitledFeatures(
+  productIds: string[],
+  plans: SubscriptionPlanConfig[],
+  serverFeatures?: string[]
+): Set<string> {
+  // If server already returned included_features, use those directly
+  if (serverFeatures && serverFeatures.length > 0) {
+    return new Set(serverFeatures);
   }
 
-  return features;
+  // Fallback: determine from plan product IDs
+  for (const plan of plans) {
+    const planProductIds = [plan.stripe_product_id, plan.stripe_annual_product_id].filter(Boolean);
+    if (planProductIds.some(id => productIds.includes(id!))) {
+      return new Set(plan.included_features || []);
+    }
+  }
+
+  return new Set();
 }
 
 export interface SubscriptionState {
@@ -136,7 +129,8 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
         setStripeCustomerId(data.stripe_customer_id);
         setStripeSubscriptionId(data.stripe_subscription_id);
         setTierName(getTierFromProducts(data.product_ids || [], plans));
-        setEntitledFeatures(getEntitledFeatures(data.product_ids || [], plans));
+        // Use server-provided included_features if available, else derive from plans
+        setEntitledFeatures(getEntitledFeatures(data.product_ids || [], plans, data.included_features));
         setPaymentProvider(data.payment_provider || 'stripe');
       } else {
         setSubscribed(false);

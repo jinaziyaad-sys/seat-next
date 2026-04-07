@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "npm:@supabase/supabase-js@2.57.2";
-import { createHash } from "https://deno.land/std@0.190.0/crypto/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,7 +36,7 @@ serve(async (req) => {
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated");
 
-    const { planId, billingCycle, returnUrl, cancelUrl } = await req.json();
+    const { planId, billingCycle, returnUrl, cancelUrl, venueId: requestedVenueId } = await req.json();
     if (!planId) throw new Error("planId is required");
 
     logStep("Generating PayFast form", { email: user.email, planId, billingCycle });
@@ -56,18 +55,59 @@ serve(async (req) => {
 
     if (planError || !plan) throw new Error("Plan not found");
 
-    // Get venue for this user
-    const { data: role } = await adminClient
-      .from("user_roles")
-      .select("venue_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
+    // Get venue for this user - prefer requested venueId
+    let venueId = requestedVenueId;
+    if (!venueId) {
+      const { data: role } = await adminClient
+        .from("user_roles")
+        .select("venue_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      venueId = role?.venue_id;
+    }
 
-    if (!role?.venue_id) throw new Error("No venue found for user");
+    if (!venueId) throw new Error("No venue found for user");
 
     const isAnnual = billingCycle === "annual";
     const amount = isAnnual ? plan.annual_price : plan.monthly_price;
     const frequency = isAnnual ? "6" : "3"; // 6 = yearly, 3 = monthly in PayFast
+
+    // Set billing_date 7 days out for trial period
+    const trialEndDate = new Date();
+    trialEndDate.setDate(trialEndDate.getDate() + 7);
+    const billingDate = trialEndDate.toISOString().split("T")[0];
+
+    // Create trial subscription record immediately
+    const { data: existingSub } = await adminClient
+      .from("merchant_subscriptions")
+      .select("id")
+      .eq("venue_id", venueId)
+      .maybeSingle();
+
+    const trialData = {
+      venue_id: venueId,
+      plan_id: planId,
+      status: "trial",
+      billing_cycle: billingCycle || "monthly",
+      payment_provider: "payfast",
+      trial_ends_at: trialEndDate.toISOString(),
+      current_period_start: new Date().toISOString(),
+      current_period_end: trialEndDate.toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    if (existingSub) {
+      await adminClient
+        .from("merchant_subscriptions")
+        .update(trialData)
+        .eq("venue_id", venueId);
+    } else {
+      await adminClient
+        .from("merchant_subscriptions")
+        .insert(trialData);
+    }
+
+    logStep("Created PayFast trial subscription", { venueId, trialEnds: billingDate });
 
     // Build PayFast payment data
     const pfData: Record<string, string> = {
@@ -77,15 +117,15 @@ serve(async (req) => {
       cancel_url: cancelUrl || `${req.headers.get("origin") || "https://app.example.com"}/merchant/signup`,
       notify_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/payfast-itn`,
       email_address: user.email,
-      m_payment_id: `${role.venue_id}_${planId}`,
+      m_payment_id: `${venueId}_${planId}`,
       amount: amount.toFixed(2),
       item_name: `ReadyUp ${plan.name} Plan (${isAnnual ? "Annual" : "Monthly"})`,
       subscription_type: "1",
-      billing_date: new Date().toISOString().split("T")[0],
+      billing_date: billingDate, // 7 days out for trial
       recurring_amount: amount.toFixed(2),
       frequency: frequency,
-      cycles: "0", // indefinite
-      custom_str1: role.venue_id,
+      cycles: "0",
+      custom_str1: venueId,
       custom_str2: planId,
       custom_str3: billingCycle || "monthly",
     };
@@ -108,7 +148,7 @@ serve(async (req) => {
 
     pfData.signature = signature;
 
-    logStep("PayFast form data generated", { venue_id: role.venue_id, amount });
+    logStep("PayFast form data generated", { venue_id: venueId, amount, billingDate });
 
     return new Response(
       JSON.stringify({
