@@ -18,7 +18,7 @@ import { SoundSnoozeButton } from "@/components/merchant/SoundSnoozeButton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar, AlertTriangle, Info, X, Wrench, Gift, LayoutGrid, CreditCard, ArrowUpCircle, Megaphone } from "lucide-react";
+import { ChefHat, Users, Settings, BarChart3, LogOut, Lock, Calendar, AlertTriangle, Info, X, Wrench, Gift, LayoutGrid, CreditCard, ArrowUpCircle, Megaphone, Store } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { initializeAudio, playNewWaitlistSound, playNewOrderSound, stopSoundForId, playPatronArrivedSound } from "@/utils/notificationSound";
@@ -423,6 +423,26 @@ const MerchantDashboard = () => {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  // Onboarding incomplete guard
+  if (venueData && venueData.onboarding_completed === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="max-w-md text-center space-y-6 p-8">
+          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+            <Store size={32} className="text-muted-foreground" />
+          </div>
+          <h1 className="text-2xl font-bold">Complete Your Setup</h1>
+          <p className="text-muted-foreground">
+            Your venue is almost ready. Complete the onboarding to start using your dashboard.
+          </p>
+          <Button onClick={() => navigate("/merchant/signup")} size="lg">
+            Continue Setup
+          </Button>
+        </div>
       </div>
     );
   }
