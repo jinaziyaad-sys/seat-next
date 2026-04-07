@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -39,11 +39,18 @@ const FEATURE_DETAILS: Record<string, { label: string; description: string; icon
 
 const ALL_FEATURES = ['food_ordering', 'waitlist', 'reservations', 'loyalty', 'analytics', 'kitchen_board'];
 
-const STEPS = ['Choose Plan', 'Create Account', 'Set Up Venue', 'Payment'];
+const STEPS_FULL = ['Choose Plan', 'Create Account', 'Set Up Venue', 'Payment'];
+const STEPS_UPGRADE = ['Choose Plan', 'Payment'];
 
 export default function MerchantSignup() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
+
+  // Upgrade mode detection
+  const isUpgradeMode = searchParams.get('upgrade') === 'true';
+  const upgradeVenueId = searchParams.get('venueId');
+  const STEPS = isUpgradeMode ? STEPS_UPGRADE : STEPS_FULL;
 
   // Wizard state
   const [step, setStep] = useState(0);
@@ -69,7 +76,10 @@ export default function MerchantSignup() {
   const [venueDisplayAddress, setVenueDisplayAddress] = useState('');
   const [serviceTypes, setServiceTypes] = useState<string[]>(['food_ready', 'table_ready']);
   const [venueLoading, setVenueLoading] = useState(false);
-  const [venueId, setVenueId] = useState<string | null>(null);
+  const [venueId, setVenueId] = useState<string | null>(upgradeVenueId || null);
+
+  // Upgrade mode: current plan tracking
+  const [currentPlanId, setCurrentPlanId] = useState<string | null>(null);
 
   // Address validation & geolocation
   const [validatedAddress, setValidatedAddress] = useState<{
@@ -117,9 +127,24 @@ export default function MerchantSignup() {
       }
     };
 
+    // In upgrade mode, load current subscription to badge the current plan
+    const loadCurrentPlan = async () => {
+      if (!isUpgradeMode || !upgradeVenueId) return;
+      const { data } = await supabase
+        .from('merchant_subscriptions')
+        .select('plan_id')
+        .eq('venue_id', upgradeVenueId)
+        .in('status', ['active', 'trial'])
+        .maybeSingle();
+      if (data?.plan_id) {
+        setCurrentPlanId(data.plan_id);
+      }
+    };
+
     fetchPlans();
     checkUser();
-  }, []);
+    if (isUpgradeMode) loadCurrentPlan();
+  }, [isUpgradeMode, upgradeVenueId]);
 
   // Auto-recommend plan based on selected features
   const getRecommendedPlan = () => {
@@ -403,8 +428,15 @@ export default function MerchantSignup() {
     <div className="min-h-screen bg-background">
       <div className="container max-w-5xl mx-auto px-4 py-8">
         {/* Back button */}
-        <Button variant="ghost" size="sm" onClick={() => step === 0 ? navigate('/merchant/auth') : setStep(step - 1)} className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" /> {step === 0 ? 'Back to Sign In' : 'Back'}
+        <Button variant="ghost" size="sm" onClick={() => {
+          if (step === 0) {
+            navigate(isUpgradeMode ? '/merchant/dashboard' : '/merchant/auth');
+          } else {
+            // In upgrade mode step 1 = payment, go back to step 0 (plan selection)
+            setStep(step - 1);
+          }
+        }} className="mb-4">
+          <ArrowLeft className="h-4 w-4 mr-2" /> {step === 0 ? (isUpgradeMode ? 'Back to Dashboard' : 'Back to Sign In') : 'Back'}
         </Button>
 
         {/* Progress */}
@@ -421,9 +453,13 @@ export default function MerchantSignup() {
         {step === 0 && (
           <div>
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold tracking-tight mb-2">Everything You Need to Run Your Venue</h1>
+              <h1 className="text-3xl font-bold tracking-tight mb-2">
+                {isUpgradeMode ? 'Change Your Plan' : 'Everything You Need to Run Your Venue'}
+              </h1>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                Select the features you need, and we'll recommend the right plan.
+                {isUpgradeMode 
+                  ? 'Select a new plan below. Your current plan is highlighted.' 
+                  : "Select the features you need, and we'll recommend the right plan."}
               </p>
             </div>
 
@@ -480,16 +516,26 @@ export default function MerchantSignup() {
                 const includedFeatures = Array.isArray(plan.included_features) ? plan.included_features : [];
                 const isRecommended = plan.id === recommendedPlanId;
                 const isSelected = plan.id === selectedPlanId;
+                const isCurrent = isUpgradeMode && plan.id === currentPlanId;
 
                 return (
                   <Card
                     key={plan.id}
-                    className={`relative flex flex-col cursor-pointer transition-all ${
-                      isSelected ? 'border-primary ring-2 ring-primary/30 shadow-lg' : isRecommended ? 'border-primary/50 shadow-md' : ''
+                    className={`relative flex flex-col transition-all ${
+                      isCurrent ? 'opacity-60 cursor-not-allowed border-muted' :
+                      isSelected ? 'border-primary ring-2 ring-primary/30 shadow-lg cursor-pointer' : 
+                      isRecommended ? 'border-primary/50 shadow-md cursor-pointer' : 'cursor-pointer'
                     }`}
-                    onClick={() => setSelectedPlanId(plan.id)}
+                    onClick={() => !isCurrent && setSelectedPlanId(plan.id)}
                   >
-                    {isRecommended && (
+                    {isCurrent && (
+                      <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                        <Badge variant="secondary" className="px-3">
+                          Current Plan
+                        </Badge>
+                      </div>
+                    )}
+                    {isRecommended && !isCurrent && (
                       <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                         <Badge className="bg-primary text-primary-foreground px-3">
                           <Sparkles className="h-3 w-3 mr-1" /> Recommended
@@ -536,11 +582,16 @@ export default function MerchantSignup() {
                     toast({ variant: 'destructive', title: 'Select a Plan', description: 'Please choose a plan to continue.' });
                     return;
                   }
-                  setStep(1);
+                  if (selectedPlanId === currentPlanId) {
+                    toast({ variant: 'destructive', title: 'Same Plan', description: 'Please select a different plan to upgrade or downgrade.' });
+                    return;
+                  }
+                  // In upgrade mode, skip registration & venue setup — go straight to payment
+                  setStep(isUpgradeMode ? 1 : 1);
                 }}
-                disabled={!selectedPlanId}
+                disabled={!selectedPlanId || selectedPlanId === currentPlanId}
               >
-                Get Started <ArrowRight className="h-4 w-4 ml-2" />
+                {isUpgradeMode ? 'Continue to Payment' : 'Get Started'} <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
 
@@ -551,7 +602,7 @@ export default function MerchantSignup() {
         )}
 
         {/* ============ STEP 1: Registration ============ */}
-        {step === 1 && (
+        {step === 1 && !isUpgradeMode && (
           <Card className="max-w-md mx-auto">
             <CardHeader className="text-center">
               <CardTitle>{user ? 'Account Ready' : 'Create Your Account'}</CardTitle>
@@ -604,7 +655,7 @@ export default function MerchantSignup() {
         )}
 
         {/* ============ STEP 2: Venue Setup ============ */}
-        {step === 2 && (
+        {step === 2 && !isUpgradeMode && (
           <Card className="max-w-2xl mx-auto">
             <CardHeader className="text-center">
               <Store className="h-8 w-8 mx-auto text-primary mb-2" />
@@ -781,13 +832,13 @@ export default function MerchantSignup() {
           </Card>
         )}
 
-        {/* ============ STEP 3: Payment ============ */}
-        {step === 3 && (
+        {/* ============ STEP 3: Payment (or Step 1 in upgrade mode) ============ */}
+        {(step === 3 || (isUpgradeMode && step === 1)) && (
           <div className="max-w-md mx-auto">
             <Card>
               <CardHeader className="text-center">
-                <CardTitle>Start Your Free Trial</CardTitle>
-                <CardDescription>7-day free trial, cancel anytime</CardDescription>
+                <CardTitle>{isUpgradeMode ? 'Change Your Plan' : 'Start Your Free Trial'}</CardTitle>
+                <CardDescription>{isUpgradeMode ? 'Proration is handled automatically by Stripe' : '7-day free trial, cancel anytime'}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {selectedPlan && (
@@ -810,12 +861,19 @@ export default function MerchantSignup() {
 
                 <Button className="w-full" size="lg" onClick={handleCheckout} disabled={checkoutLoading}>
                   {checkoutLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Start 7-Day Free Trial
+                  {isUpgradeMode ? 'Confirm Plan Change' : 'Start 7-Day Free Trial'}
                 </Button>
 
-                <Button variant="ghost" className="w-full text-sm" onClick={() => navigate('/merchant/dashboard')}>
-                  Skip for now — set up later
-                </Button>
+                {!isUpgradeMode && (
+                  <Button variant="ghost" className="w-full text-sm" onClick={() => navigate('/merchant/dashboard')}>
+                    Skip for now — set up later
+                  </Button>
+                )}
+                {isUpgradeMode && (
+                  <Button variant="ghost" className="w-full text-sm" onClick={() => navigate('/merchant/dashboard')}>
+                    Cancel
+                  </Button>
+                )}
               </CardContent>
             </Card>
 

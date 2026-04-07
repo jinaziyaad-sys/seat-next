@@ -140,7 +140,7 @@ export default function MerchantBilling() {
 
             <div className="flex flex-wrap gap-3">
               {!subscription.subscribed && (
-                <Button onClick={() => navigate("/merchant/signup")}>Choose a Plan</Button>
+                <Button onClick={() => navigate(`/merchant/signup?upgrade=true&venueId=${userRole?.venue_id}`)}>Choose a Plan</Button>
               )}
               {subscription.subscribed && (
                 <Button onClick={handleOpenPortal} disabled={portalLoading}>
