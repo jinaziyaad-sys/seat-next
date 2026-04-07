@@ -379,18 +379,46 @@ serve(async (req) => {
             status: 200,
           });
         } else {
-          // Stored sub is cancelled/inactive — check if the customer has a newer active sub
-          logStep("Stored sub is cancelled, checking for newer active subs", { storedSubId: existingSub.stripe_subscription_id });
+          // Stored sub is cancelled/inactive — check ALL customers for this email for a newer active sub
+          logStep("Stored sub is cancelled, checking for newer active subs across all customers", { storedSubId: existingSub.stripe_subscription_id });
           
+          // Search the stored customer first
+          let newerActiveSub: any = null;
+          let newerCustomerId: string | null = null;
+
           const customerSubs = await stripe.subscriptions.list({
             customer: existingSub.stripe_customer_id!,
             limit: 10,
           });
-          const newerActiveSub = customerSubs.data.find(
+          newerActiveSub = customerSubs.data.find(
             (s: any) => s.status === 'active' || s.status === 'trialing'
           );
-
           if (newerActiveSub) {
+            newerCustomerId = existingSub.stripe_customer_id!;
+          }
+
+          // If not found on stored customer, search ALL customers for this email (handles currency-change scenarios)
+          if (!newerActiveSub) {
+            logStep("No active sub on stored customer, searching all customers by email");
+            const allCustomers = await stripe.customers.list({ email: user.email, limit: 10 });
+            for (const cust of allCustomers.data) {
+              if (cust.id === existingSub.stripe_customer_id) continue; // already checked
+              const custSubs = await stripe.subscriptions.list({ customer: cust.id, limit: 10 });
+              const found = custSubs.data.find((s: any) => {
+                if (s.status !== 'active' && s.status !== 'trialing') return false;
+                const sVenue = s.metadata?.venue_id;
+                return sVenue === venueId || !sVenue; // Match venue or unclaimed
+              });
+              if (found) {
+                newerActiveSub = found;
+                newerCustomerId = cust.id;
+                logStep("Found active sub on different customer", { customerId: cust.id, subId: found.id });
+                break;
+              }
+            }
+          }
+
+          if (newerActiveSub && newerCustomerId) {
             const { data: claimedVenue } = await supabaseClient
               .from("merchant_subscriptions")
               .select("venue_id")
@@ -412,7 +440,7 @@ serve(async (req) => {
               const newPlanId = await determinePlanIdFromDb(supabaseClient, newProductIds);
               await syncSubscriptionToDb(supabaseClient, venueId, {
                 status: newStatus,
-                stripe_customer_id: existingSub.stripe_customer_id,
+                stripe_customer_id: newerCustomerId,
                 stripe_subscription_id: newerActiveSub.id,
                 plan_id: newPlanId,
                 current_period_start: newStart,
@@ -423,7 +451,7 @@ serve(async (req) => {
 
               const includedFeatures = await getIncludedFeatures(supabaseClient, newPlanId);
 
-              logStep("Auto-recovered to newer subscription", { venueId, newSubId: newerActiveSub.id });
+              logStep("Auto-recovered to newer subscription", { venueId, newSubId: newerActiveSub.id, newCustomerId: newerCustomerId });
 
               return new Response(JSON.stringify({
                 subscribed: true,
@@ -431,7 +459,7 @@ serve(async (req) => {
                 product_ids: newProductIds,
                 price_ids: newPriceIds,
                 subscription_end: newEnd,
-                stripe_customer_id: existingSub.stripe_customer_id,
+                stripe_customer_id: newerCustomerId,
                 stripe_subscription_id: newerActiveSub.id,
                 trial_end: newTrialEnd,
                 included_features: includedFeatures,
