@@ -144,14 +144,20 @@ export default function MerchantBilling() {
                 <Button onClick={() => navigate(`/merchant/signup?upgrade=true&venueId=${userRole?.venue_id}`)}>Choose a Plan</Button>
               )}
               {subscription.subscribed && (
-                <Button onClick={handleOpenPortal} disabled={portalLoading}>
-                  {portalLoading ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
+                <>
+                  <Button onClick={() => navigate(`/merchant/signup?upgrade=true&venueId=${userRole?.venue_id}`)}>
                     <Settings className="h-4 w-4 mr-2" />
-                  )}
-                  Change Plan
-                </Button>
+                    Change Plan
+                  </Button>
+                  <Button variant="outline" onClick={handleOpenPortal} disabled={portalLoading}>
+                    {portalLoading ? (
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    ) : (
+                      <ExternalLink className="h-4 w-4 mr-2" />
+                    )}
+                    Manage Billing
+                  </Button>
+                </>
               )}
             </div>
 
