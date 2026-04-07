@@ -427,6 +427,26 @@ const MerchantDashboard = () => {
     );
   }
 
+  // Onboarding incomplete guard
+  if (venueData && venueData.onboarding_completed === false) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <div className="max-w-md text-center space-y-6 p-8">
+          <div className="mx-auto w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+            <Store size={32} className="text-muted-foreground" />
+          </div>
+          <h1 className="text-2xl font-bold">Complete Your Setup</h1>
+          <p className="text-muted-foreground">
+            Your venue is almost ready. Complete the onboarding to start using your dashboard.
+          </p>
+          <Button onClick={() => navigate("/merchant/signup")} size="lg">
+            Continue Setup
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // Subscription paywall
   if (!subscription.loading && !subscription.subscribed && subscription.status !== 'active') {
     return (
