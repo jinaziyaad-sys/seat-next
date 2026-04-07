@@ -828,8 +828,8 @@ export default function MerchantSignup() {
           </Card>
         )}
 
-        {/* ============ STEP 3: Payment ============ */}
-        {step === 3 && (
+        {/* ============ STEP 3: Payment (or Step 1 in upgrade mode) ============ */}
+        {(step === 3 || (isUpgradeMode && step === 1)) && (
           <div className="max-w-md mx-auto">
             <Card>
               <CardHeader className="text-center">
