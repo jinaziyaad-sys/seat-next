@@ -177,7 +177,21 @@ export default function MerchantSignup() {
     if (isUpgradeMode) loadCurrentPlan();
   }, [isUpgradeMode, upgradeVenueId]);
 
-  // Auto-recommend plan based on selected features
+  // Get price for a plan in the selected currency
+  const getPlanPrice = (plan: PlanFromDB, cycle: 'monthly' | 'annual'): number => {
+    if (selectedCurrency === 'ZAR') {
+      return cycle === 'monthly' ? plan.monthly_price : plan.annual_price;
+    }
+    const overrideKey = `${plan.id}_${selectedCurrency}`;
+    const override = currencyOverrides[overrideKey];
+    if (override) {
+      return cycle === 'monthly' ? override.monthly : override.annual;
+    }
+    const zarPrice = cycle === 'monthly' ? plan.monthly_price : plan.annual_price;
+    return convertFromZAR(zarPrice, selectedCurrency, exchangeRates);
+  };
+
+
   const getRecommendedPlan = () => {
     if (selectedFeatures.length === 0) return null;
     const sorted = [...plans].sort((a, b) => a.sort_order - b.sort_order);
