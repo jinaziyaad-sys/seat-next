@@ -428,8 +428,15 @@ export default function MerchantSignup() {
     <div className="min-h-screen bg-background">
       <div className="container max-w-5xl mx-auto px-4 py-8">
         {/* Back button */}
-        <Button variant="ghost" size="sm" onClick={() => step === 0 ? navigate('/merchant/auth') : setStep(step - 1)} className="mb-4">
-          <ArrowLeft className="h-4 w-4 mr-2" /> {step === 0 ? 'Back to Sign In' : 'Back'}
+        <Button variant="ghost" size="sm" onClick={() => {
+          if (step === 0) {
+            navigate(isUpgradeMode ? '/merchant/dashboard' : '/merchant/auth');
+          } else {
+            // In upgrade mode step 1 = payment, go back to step 0 (plan selection)
+            setStep(step - 1);
+          }
+        }} className="mb-4">
+          <ArrowLeft className="h-4 w-4 mr-2" /> {step === 0 ? (isUpgradeMode ? 'Back to Dashboard' : 'Back to Sign In') : 'Back'}
         </Button>
 
         {/* Progress */}
