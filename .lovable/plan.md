@@ -1,115 +1,48 @@
 
 
-# Merchant Signup & Onboarding Wizard
+# Add Logo Upload to Merchant Signup + Logo Management in Merchant Settings
 
 ## Problem
-The current signup flow is minimal: a basic registration form (name, venue name, email, password) that immediately shows plan cards. There's no way for merchants to configure their requirements (loyalty, kitchen board, etc.), set up venue details (address, logo, contact info, staff), or understand what they're getting before paying. The dev dashboard has all this venue creation logic but it's not exposed to self-service merchants.
+1. The merchant signup wizard (Step 2: Venue Setup) has no logo upload field -- the dev dashboard has this but it was never ported to self-service signup.
+2. MerchantSettings has no way for admins to view, update, or remove their venue logo after initial setup.
 
-## Solution
-Replace the current `MerchantSignup` page with a multi-step onboarding wizard that mirrors the dev venue creation process but is self-service.
+## Changes
 
-### Step Flow (two valid paths)
+### 1. MerchantSignup.tsx — Add logo upload to Venue Setup step (Step 2)
+- Add state for `logoFile` (File | null) and `logoPreview` (string | null)
+- Add a circular logo upload area with camera/upload icon, showing preview when selected
+- Add the `LogoCropDialog` integration (already exists in the project) so merchants can crop their logo before upload
+- After venue creation via `self-register-merchant`, upload the logo to the `venue-logos` bucket and update the venue's `logo_url` (same pattern as DevDashboard lines 425-445)
 
-```text
-Path A: Browse → Register → Configure → Setup → Pay
-Path B: Browse → Register → Pay → Configure → Setup
+### 2. MerchantSettings.tsx — Add Logo Management section
+- Add a new "Venue Branding" or "Venue Logo" accordion item at the top of settings
+- Show the current logo (using `VenueLogo` component) or a placeholder
+- "Change Logo" button triggers file picker + `LogoCropDialog`
+- On confirm: upload to `venue-logos` bucket, update `logo_url` on the venue row with cache-buster
+- "Remove Logo" button to clear `logo_url`
+- Needs to fetch current `logo_url` from the venue — check if it's already available via props or needs a query
 
-Step 1: Plan Selection (public, no auth required)
-  - Show pricing tiers with feature breakdowns (existing UI)
-  - Feature configurator: toggle which features matter (loyalty, kitchen, etc.)
-  - Recommends a plan based on selections
-  - CTA: "Get Started" → goes to Step 2
+### 3. self-register-merchant edge function
+- Already accepts `logoUrl` parameter and stores it — no changes needed to the function itself
+- However, the logo upload must happen client-side (to `venue-logos` bucket) after venue creation, then update `logo_url` via a direct Supabase update — same as dev dashboard pattern
 
-Step 2: Account Registration (if not logged in)
-  - Email, password, full name
-  - On submit: create auth user (supabase.auth.signUp)
-  - No venue created yet
+## Technical Details
 
-Step 3: Venue Setup
-  - Venue name, phone, display address
-  - Address validation + map (reuse validate-address function)
-  - Logo upload (reuse venue-logos bucket)
-  - Service types toggle (Food Ready, Table Ready)
-  - Business hours (sensible defaults pre-filled)
-  - On submit: insert into venues table + upload logo
+**Signup logo flow:**
+- File input accepts `image/*`
+- On file select, read as data URL for preview, open `LogoCropDialog`
+- On crop complete, store the resulting Blob as `logoFile`
+- After `self-register-merchant` returns `venueId`, upload blob to `venue-logos/{venueId}.png` and update venue row
 
-Step 4: Admin Account Setup
-  - Already created in Step 2 — this step assigns the admin role
-  - Optionally add additional staff members
-  - Creates user_role entries via create-merchant edge function
+**Settings logo flow:**
+- Fetch venue `logo_url` (may need to add it to the existing venue query in MerchantDashboard and pass as prop, or query directly in MerchantSettings)
+- Same crop + upload + cache-buster pattern as DevDashboard
 
-Step 5: Payment / Checkout
-  - Show selected plan summary
-  - Stripe checkout (existing create-checkout function)
-  - On success: redirect to /merchant/dashboard
-
-Alternative: user can pay first (Step 5 before Steps 3-4)
-  - After payment, redirect to a "Complete Setup" flow
-  - Dashboard detects incomplete setup and shows wizard
-```
-
-### Technical Details
-
-**New/Modified Files:**
-
+## Files Modified
 | File | Change |
 |------|--------|
-| `src/pages/MerchantSignup.tsx` | Full rewrite — multi-step wizard with 5 steps |
-| `src/pages/MerchantAuth.tsx` | Add prominent "Sign Up" link/button |
-| `supabase/migrations/...` | Add `onboarding_completed` boolean to `venues` table |
-| `src/pages/MerchantDashboard.tsx` | Check `onboarding_completed` — if false, redirect to setup wizard |
+| `src/pages/MerchantSignup.tsx` | Add logo upload UI + crop dialog + post-creation upload logic |
+| `src/components/merchant/MerchantSettings.tsx` | Add "Venue Logo" section with view/change/remove |
 
-**Step 1 — Plan Explorer** (no auth):
-- Reuse existing plan-fetching logic from `subscription_plans` table
-- Add interactive feature selector (checkboxes for loyalty, kitchen board, analytics, etc.)
-- Highlight recommended plan based on selected features
-- "Get Started" stores selected plan in component state
-
-**Step 2 — Registration** (if not authenticated):
-- Email, password, full name fields
-- `supabase.auth.signUp()` with `emailRedirectTo`
-- Auto-login after signup (Supabase returns session)
-
-**Step 3 — Venue Setup**:
-- Reuse venue creation logic from DevDashboard (address validation, logo upload, service types, default settings)
-- Insert into `venues` table with `onboarding_completed: false`
-- Upload logo to `venue-logos` bucket
-
-**Step 4 — Admin Role Assignment**:
-- Insert `user_roles` row: `{ user_id, venue_id, role: 'admin' }` using service role via a new lightweight edge function (`self-register-merchant`) since the existing `create-merchant` requires an existing admin to call it
-- Optional: add staff email invites (stored for later)
-
-**Step 5 — Payment**:
-- Call `create-checkout` with selected plan's price ID and venue_id metadata
-- On return from Stripe: update `venues.onboarding_completed = true`
-- Redirect to dashboard
-
-**New Edge Function: `self-register-merchant`**:
-- Accepts: `{ venueName, address, phone, displayAddress, latitude, longitude, serviceTypes, logoUrl, settings }`
-- Authenticates via JWT (gets user from token)
-- Creates the venue row
-- Assigns the calling user as `admin` in `user_roles`
-- Returns `{ venueId }`
-- This replaces the current `create-merchant` for self-service (which requires an existing admin)
-
-**Migration**:
-```sql
-ALTER TABLE venues ADD COLUMN IF NOT EXISTS onboarding_completed boolean DEFAULT true;
--- Default true so existing venues aren't affected
-```
-
-**Dashboard guard** in `MerchantDashboard.tsx`:
-- After loading venue data, check `venueData.onboarding_completed`
-- If false, show inline setup completion wizard or redirect to `/merchant/signup?complete=true`
-
-### What Gets Removed
-- The inline registration card currently embedded in plan selection
-- Direct call to `create-merchant` from signup (replaced by `self-register-merchant`)
-
-## Implementation Order
-1. Migration: add `onboarding_completed` column
-2. Edge function: `self-register-merchant`
-3. Rewrite `MerchantSignup.tsx` as multi-step wizard
-4. Update `MerchantAuth.tsx` with prominent signup link
-5. Add dashboard guard for incomplete onboarding
+No database or edge function changes needed — the `venue-logos` bucket and `logo_url` column already exist.
 
