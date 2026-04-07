@@ -158,7 +158,7 @@ export const MerchantSettings = ({
     const fetchVenueSettings = async () => {
       const { data, error } = await supabase
         .from("venues")
-        .select("waitlist_preferences, settings, timezone")
+        .select("waitlist_preferences, settings, timezone, logo_url")
         .eq("id", venueId)
         .single();
 
