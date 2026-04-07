@@ -477,6 +477,30 @@ export default function MerchantSignup() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleCreateVenue} className="space-y-4">
+                {/* Logo Upload */}
+                <div className="flex flex-col items-center gap-2">
+                  <Label className="text-sm text-muted-foreground">Venue Logo</Label>
+                  <button
+                    type="button"
+                    onClick={() => logoInputRef.current?.click()}
+                    className="relative group"
+                  >
+                    <Avatar className="h-20 w-20 border-2 border-dashed border-muted-foreground/30 group-hover:border-primary transition-colors">
+                      {logoPreview ? (
+                        <AvatarImage src={logoPreview} alt="Logo preview" />
+                      ) : null}
+                      <AvatarFallback className="bg-muted">
+                        <Camera className="h-6 w-6 text-muted-foreground" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Upload className="h-5 w-5 text-white" />
+                    </div>
+                  </button>
+                  <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoSelect} />
+                  <p className="text-xs text-muted-foreground">Click to upload (optional)</p>
+                </div>
+
                 <div>
                   <Label htmlFor="venue-name">Venue Name *</Label>
                   <Input id="venue-name" value={venueName} onChange={e => setVenueName(e.target.value)} required placeholder="The Daily Grind" />
