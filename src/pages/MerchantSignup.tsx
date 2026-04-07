@@ -833,8 +833,8 @@ export default function MerchantSignup() {
           <div className="max-w-md mx-auto">
             <Card>
               <CardHeader className="text-center">
-                <CardTitle>Start Your Free Trial</CardTitle>
-                <CardDescription>7-day free trial, cancel anytime</CardDescription>
+                <CardTitle>{isUpgradeMode ? 'Change Your Plan' : 'Start Your Free Trial'}</CardTitle>
+                <CardDescription>{isUpgradeMode ? 'Proration is handled automatically by Stripe' : '7-day free trial, cancel anytime'}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {selectedPlan && (
