@@ -857,12 +857,19 @@ export default function MerchantSignup() {
 
                 <Button className="w-full" size="lg" onClick={handleCheckout} disabled={checkoutLoading}>
                   {checkoutLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Start 7-Day Free Trial
+                  {isUpgradeMode ? 'Confirm Plan Change' : 'Start 7-Day Free Trial'}
                 </Button>
 
-                <Button variant="ghost" className="w-full text-sm" onClick={() => navigate('/merchant/dashboard')}>
-                  Skip for now — set up later
-                </Button>
+                {!isUpgradeMode && (
+                  <Button variant="ghost" className="w-full text-sm" onClick={() => navigate('/merchant/dashboard')}>
+                    Skip for now — set up later
+                  </Button>
+                )}
+                {isUpgradeMode && (
+                  <Button variant="ghost" className="w-full text-sm" onClick={() => navigate('/merchant/dashboard')}>
+                    Cancel
+                  </Button>
+                )}
               </CardContent>
             </Card>
 

@@ -469,7 +469,7 @@ const MerchantDashboard = () => {
                 Update Payment Method
               </Button>
             ) : (
-              <Button onClick={() => navigate("/merchant/signup")} size="lg">
+              <Button onClick={() => navigate(`/merchant/signup?upgrade=true&venueId=${userRole.venue_id}`)} size="lg">
                 View Plans & Subscribe
               </Button>
             )}
@@ -689,7 +689,7 @@ const MerchantDashboard = () => {
                     <p className="text-muted-foreground max-w-md">
                       Analytics & Reports are available on the Pro plan. Upgrade to unlock detailed insights about your venue's performance.
                     </p>
-                    <Button onClick={() => navigate("/merchant/signup")}>
+                    <Button onClick={() => navigate(`/merchant/signup?upgrade=true&venueId=${userRole.venue_id}`)}>
                       View Plans & Upgrade
                     </Button>
                   </div>
@@ -710,7 +710,7 @@ const MerchantDashboard = () => {
                     <p className="text-muted-foreground max-w-md">
                       Loyalty programs are available on the Pro plan. Upgrade to create stamp cards, rewards, and keep customers coming back.
                     </p>
-                    <Button onClick={() => navigate("/merchant/signup")}>
+                    <Button onClick={() => navigate(`/merchant/signup?upgrade=true&venueId=${userRole.venue_id}`)}>
                       View Plans & Upgrade
                     </Button>
                   </div>
