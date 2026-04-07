@@ -158,6 +158,13 @@ export function BillingDashboard() {
         for (const [k, v] of Object.entries(mults)) multsStr[k] = String(v);
         setPromoPlacementMults(multsStr);
       }
+
+      // Fetch currency overrides
+      const { data: currOverrides } = await supabase
+        .from("plan_currency_overrides")
+        .select("*")
+        .order("currency");
+      setCurrencyOverrides(currOverrides || []);
     } finally {
       setLoading(false);
     }
