@@ -309,6 +309,15 @@ export default function MerchantSignup() {
       }
 
       toast({ title: 'Venue Created!', description: 'Almost done — choose your payment.' });
+
+      // Auto-detect payment provider based on venue address
+      const addr = (validatedAddress?.formatted_address || venueAddress || '').toLowerCase();
+      if (addr.includes('south africa') || addr.includes(', za') || addr.includes('cape town') || addr.includes('johannesburg') || addr.includes('durban') || addr.includes('pretoria')) {
+        setPaymentProvider('payfast');
+      } else {
+        setPaymentProvider('stripe');
+      }
+
       setStep(3);
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Setup Error', description: err.message || 'Failed to create venue' });
@@ -329,6 +338,7 @@ export default function MerchantSignup() {
           body: {
             planId: plan.id,
             billingCycle: isAnnual ? 'annual' : 'monthly',
+            venueId,
             returnUrl: `${window.location.origin}/merchant/dashboard`,
             cancelUrl: `${window.location.origin}/merchant/signup`,
           },
@@ -353,7 +363,7 @@ export default function MerchantSignup() {
         if (!priceId) throw new Error('This plan has no Stripe price configured.');
 
         const { data, error } = await supabase.functions.invoke('create-checkout', {
-          body: { priceIds: [priceId] },
+          body: { priceIds: [priceId], venueId },
         });
         if (error) throw error;
         if (data?.url) {
