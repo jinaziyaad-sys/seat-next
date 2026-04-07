@@ -652,7 +652,7 @@ export function BillingDashboard() {
                     <p className="text-xs text-muted-foreground">{inv.venue_name} • {new Date(inv.created_at).toLocaleDateString()}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className="font-medium text-sm">R{(inv.amount / 100).toFixed(2)}</span>
+                    <span className="font-medium text-sm">{getCurrencySymbol(inv.currency)}{(inv.amount / 100).toFixed(2)}</span>
                     <Badge variant={inv.status === 'paid' ? 'default' : inv.status === 'sent' ? 'secondary' : 'outline'}>
                       {inv.status}
                     </Badge>
