@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -8,9 +8,11 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Check, Loader2, Sparkles, Shield, X, ChefHat, Users, Calendar, Gift, BarChart3, LayoutGrid, ArrowLeft, ArrowRight, Eye, Upload, MapPin, Phone, Store } from 'lucide-react';
+import { Check, Loader2, Sparkles, Shield, X, ChefHat, Users, Calendar, Gift, BarChart3, LayoutGrid, ArrowLeft, ArrowRight, Eye, Upload, MapPin, Phone, Store, Camera } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
+import { LogoCropDialog } from '@/components/LogoCropDialog';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 
 interface PlanFromDB {
   id: string;
@@ -66,6 +68,13 @@ export default function MerchantSignup() {
   const [serviceTypes, setServiceTypes] = useState<string[]>(['food_ready', 'table_ready']);
   const [venueLoading, setVenueLoading] = useState(false);
   const [venueId, setVenueId] = useState<string | null>(null);
+
+  // Logo state
+  const [logoFile, setLogoFile] = useState<Blob | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoCropOpen, setLogoCropOpen] = useState(false);
+  const [logoCropSrc, setLogoCropSrc] = useState('');
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   // Step 4 — Payment
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -136,6 +145,25 @@ export default function MerchantSignup() {
     }
   };
 
+  // Logo file selection
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setLogoCropSrc(reader.result as string);
+      setLogoCropOpen(true);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleLogoCropComplete = (blob: Blob) => {
+    setLogoFile(blob);
+    setLogoPreview(URL.createObjectURL(blob));
+    setLogoCropOpen(false);
+  };
+
   // Step 3: Create venue
   const handleCreateVenue = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -153,7 +181,26 @@ export default function MerchantSignup() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      setVenueId(data.venueId);
+      const newVenueId = data.venueId;
+      setVenueId(newVenueId);
+
+      // Upload logo if selected
+      if (logoFile && newVenueId) {
+        try {
+          const logoPath = `${newVenueId}.png`;
+          await supabase.storage.from('venue-logos').upload(logoPath, logoFile, {
+            upsert: true,
+            contentType: 'image/png',
+          });
+          const { data: urlData } = supabase.storage.from('venue-logos').getPublicUrl(logoPath);
+          const logoUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+          await supabase.from('venues').update({ logo_url: logoUrl }).eq('id', newVenueId);
+        } catch (logoErr) {
+          console.error('Logo upload failed:', logoErr);
+          // Non-blocking — venue is still created
+        }
+      }
+
       toast({ title: 'Venue Created!', description: 'Almost done — choose your payment.' });
       setStep(3);
     } catch (err: any) {
@@ -430,6 +477,30 @@ export default function MerchantSignup() {
             </CardHeader>
             <CardContent>
               <form onSubmit={handleCreateVenue} className="space-y-4">
+                {/* Logo Upload */}
+                <div className="flex flex-col items-center gap-2">
+                  <Label className="text-sm text-muted-foreground">Venue Logo</Label>
+                  <button
+                    type="button"
+                    onClick={() => logoInputRef.current?.click()}
+                    className="relative group"
+                  >
+                    <Avatar className="h-20 w-20 border-2 border-dashed border-muted-foreground/30 group-hover:border-primary transition-colors">
+                      {logoPreview ? (
+                        <AvatarImage src={logoPreview} alt="Logo preview" />
+                      ) : null}
+                      <AvatarFallback className="bg-muted">
+                        <Camera className="h-6 w-6 text-muted-foreground" />
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <Upload className="h-5 w-5 text-white" />
+                    </div>
+                  </button>
+                  <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoSelect} />
+                  <p className="text-xs text-muted-foreground">Click to upload (optional)</p>
+                </div>
+
                 <div>
                   <Label htmlFor="venue-name">Venue Name *</Label>
                   <Input id="venue-name" value={venueName} onChange={e => setVenueName(e.target.value)} required placeholder="The Daily Grind" />
@@ -526,6 +597,14 @@ export default function MerchantSignup() {
             </div>
           </div>
         )}
+
+        {/* Logo Crop Dialog */}
+        <LogoCropDialog
+          open={logoCropOpen}
+          imageSrc={logoCropSrc}
+          onClose={() => setLogoCropOpen(false)}
+          onCropComplete={handleLogoCropComplete}
+        />
       </div>
     </div>
   );

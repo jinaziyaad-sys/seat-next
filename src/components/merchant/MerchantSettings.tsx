@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Plus, X, ChevronDown, Clock, Calendar, AlertCircle, RotateCcw, Save, Settings, Utensils, Users, Timer, Building2, ClipboardList } from "lucide-react";
+import { Plus, X, ChevronDown, Clock, Calendar, AlertCircle, RotateCcw, Save, Settings, Utensils, Users, Timer, Building2, ClipboardList, ImageIcon, Upload, Trash2, Loader2 } from "lucide-react";
 import { TableConfigurationManager } from "./TableConfigurationManager";
 import { VenueDiscoverySettings } from "./VenueDiscoverySettings";
 import { BusinessHours, HolidayClosure } from "@/utils/businessHours";
@@ -25,6 +25,8 @@ import { format } from "date-fns";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { VenueLogo } from "@/components/VenueLogo";
+import { LogoCropDialog } from "@/components/LogoCropDialog";
 
 interface WaitlistPreference {
   id: string;
@@ -105,6 +107,13 @@ export const MerchantSettings = ({
   const [holidayClose, setHolidayClose] = useState("22:00");
   const [holidayOvernight, setHolidayOvernight] = useState(false);
 
+  // Logo state
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoCropOpen, setLogoCropOpen] = useState(false);
+  const [logoCropSrc, setLogoCropSrc] = useState('');
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
   // Unsaved changes tracking
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -149,7 +158,7 @@ export const MerchantSettings = ({
     const fetchVenueSettings = async () => {
       const { data, error } = await supabase
         .from("venues")
-        .select("waitlist_preferences, settings, timezone")
+        .select("waitlist_preferences, settings, timezone, logo_url")
         .eq("id", venueId)
         .single();
 
@@ -164,6 +173,11 @@ export const MerchantSettings = ({
         initialVenueTimezoneRef.current = data.timezone;
       } else {
         initialVenueTimezoneRef.current = DEFAULT_TIMEZONE;
+      }
+
+      // Load logo
+      if (data?.logo_url) {
+        setLogoUrl(data.logo_url);
       }
 
       if (data?.settings) {
@@ -419,7 +433,52 @@ export const MerchantSettings = ({
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
-  const togglePreference = (id: string) => {
+  // Logo handlers
+  const handleLogoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setLogoCropSrc(reader.result as string);
+      setLogoCropOpen(true);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleLogoCropComplete = async (blob: Blob) => {
+    setLogoCropOpen(false);
+    setLogoUploading(true);
+    try {
+      const logoPath = `${venueId}.png`;
+      await supabase.storage.from('venue-logos').upload(logoPath, blob, {
+        upsert: true,
+        contentType: 'image/png',
+      });
+      const { data: urlData } = supabase.storage.from('venue-logos').getPublicUrl(logoPath);
+      const newUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      await supabase.from('venues').update({ logo_url: newUrl }).eq('id', venueId);
+      setLogoUrl(newUrl);
+      toast({ title: 'Logo Updated', description: 'Your venue logo has been saved.' });
+    } catch (err: any) {
+      console.error('Logo upload failed:', err);
+      toast({ variant: 'destructive', title: 'Upload Failed', description: err.message || 'Could not upload logo' });
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    try {
+      await supabase.from('venues').update({ logo_url: null }).eq('id', venueId);
+      setLogoUrl(null);
+      toast({ title: 'Logo Removed' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not remove logo' });
+    }
+  };
+
+
     setWaitlistPreferences(prev =>
       prev.map(pref =>
         pref.id === id ? { ...pref, enabled: !pref.enabled } : pref
@@ -547,6 +606,41 @@ export const MerchantSettings = ({
       <h2 className="text-2xl font-bold">Venue Settings</h2>
 
       <Accordion type="multiple" defaultValue={getDefaultAccordionValues()} className="space-y-4">
+        {/* Venue Logo / Branding */}
+        <AccordionItem value="branding" className="border rounded-lg px-4 bg-card">
+          <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-5 w-5 text-primary" />
+              Venue Logo
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pt-2 pb-4">
+            <div className="flex items-center gap-6">
+              <VenueLogo logoUrl={logoUrl} name={venue} size="xl" />
+              <div className="flex flex-col gap-2">
+                <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoFileSelect} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={logoUploading}
+                >
+                  {logoUploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                  {logoUrl ? 'Change Logo' : 'Upload Logo'}
+                </Button>
+                {logoUrl && (
+                  <Button variant="ghost" size="sm" className="text-destructive" onClick={handleRemoveLogo}>
+                    <Trash2 className="h-4 w-4 mr-2" /> Remove
+                  </Button>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Square image recommended. You can crop and adjust after selecting.
+            </p>
+          </AccordionContent>
+        </AccordionItem>
+
         {/* Venue Discovery Profile - Available for all venues */}
         <AccordionItem value="discovery" className="border rounded-lg px-4 bg-card">
           <AccordionTrigger className="text-lg font-semibold hover:no-underline">
@@ -1428,6 +1522,13 @@ export const MerchantSettings = ({
         </div>
       )}
 
+      {/* Logo Crop Dialog */}
+      <LogoCropDialog
+        open={logoCropOpen}
+        imageSrc={logoCropSrc}
+        onClose={() => setLogoCropOpen(false)}
+        onCropComplete={handleLogoCropComplete}
+      />
     </div>
   );
 };
