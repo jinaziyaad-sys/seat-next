@@ -606,6 +606,41 @@ export const MerchantSettings = ({
       <h2 className="text-2xl font-bold">Venue Settings</h2>
 
       <Accordion type="multiple" defaultValue={getDefaultAccordionValues()} className="space-y-4">
+        {/* Venue Logo / Branding */}
+        <AccordionItem value="branding" className="border rounded-lg px-4 bg-card">
+          <AccordionTrigger className="text-lg font-semibold hover:no-underline">
+            <div className="flex items-center gap-2">
+              <ImageIcon className="h-5 w-5 text-primary" />
+              Venue Logo
+            </div>
+          </AccordionTrigger>
+          <AccordionContent className="pt-2 pb-4">
+            <div className="flex items-center gap-6">
+              <VenueLogo logoUrl={logoUrl} name={venue} size="xl" />
+              <div className="flex flex-col gap-2">
+                <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoFileSelect} />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={logoUploading}
+                >
+                  {logoUploading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Upload className="h-4 w-4 mr-2" />}
+                  {logoUrl ? 'Change Logo' : 'Upload Logo'}
+                </Button>
+                {logoUrl && (
+                  <Button variant="ghost" size="sm" className="text-destructive" onClick={handleRemoveLogo}>
+                    <Trash2 className="h-4 w-4 mr-2" /> Remove
+                  </Button>
+                )}
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Square image recommended. You can crop and adjust after selecting.
+            </p>
+          </AccordionContent>
+        </AccordionItem>
+
         {/* Venue Discovery Profile - Available for all venues */}
         <AccordionItem value="discovery" className="border rounded-lg px-4 bg-card">
           <AccordionTrigger className="text-lg font-semibold hover:no-underline">
