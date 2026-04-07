@@ -8,13 +8,15 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Check, Loader2, Sparkles, Shield, X, ChefHat, Users, Calendar, Gift, BarChart3, LayoutGrid, ArrowLeft, ArrowRight, Eye, Upload, MapPin, Phone, Store, Camera, Search, MapPinned } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Check, Loader2, Sparkles, Shield, X, ChefHat, Users, Calendar, Gift, BarChart3, LayoutGrid, ArrowLeft, ArrowRight, Eye, Upload, MapPin, Phone, Store, Camera, Search, MapPinned, Globe } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { LogoCropDialog } from '@/components/LogoCropDialog';
 import { BannerCropDialog } from '@/components/BannerCropDialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { InteractiveLocationMap } from '@/components/InteractiveLocationMap';
+import { SUPPORTED_CURRENCIES, CURRENCY_CODES, formatPrice, detectCurrency, convertFromZAR, FALLBACK_RATES } from '@/utils/currency';
 
 interface PlanFromDB {
   id: string;
