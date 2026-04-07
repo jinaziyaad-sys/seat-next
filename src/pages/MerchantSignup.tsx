@@ -64,6 +64,10 @@ export default function MerchantSignup() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [isAnnual, setIsAnnual] = useState(false);
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
+  const [selectedCurrency, setSelectedCurrency] = useState(() => detectCurrency());
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(FALLBACK_RATES);
+  const [currencyOverrides, setCurrencyOverrides] = useState<Record<string, { monthly: number; annual: number }>>({});
+  const [ratesLoading, setRatesLoading] = useState(false);
 
   // Step 2 — Registration
   const [regEmail, setRegEmail] = useState('');
