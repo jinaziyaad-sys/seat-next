@@ -69,6 +69,13 @@ export default function MerchantSignup() {
   const [venueLoading, setVenueLoading] = useState(false);
   const [venueId, setVenueId] = useState<string | null>(null);
 
+  // Logo state
+  const [logoFile, setLogoFile] = useState<Blob | null>(null);
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoCropOpen, setLogoCropOpen] = useState(false);
+  const [logoCropSrc, setLogoCropSrc] = useState('');
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
   // Step 4 — Payment
   const [checkoutLoading, setCheckoutLoading] = useState(false);
   const [paymentProvider, setPaymentProvider] = useState<'stripe' | 'payfast'>('stripe');
