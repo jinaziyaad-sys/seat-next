@@ -107,6 +107,13 @@ export const MerchantSettings = ({
   const [holidayClose, setHolidayClose] = useState("22:00");
   const [holidayOvernight, setHolidayOvernight] = useState(false);
 
+  // Logo state
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoCropOpen, setLogoCropOpen] = useState(false);
+  const [logoCropSrc, setLogoCropSrc] = useState('');
+  const [logoUploading, setLogoUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
   // Unsaved changes tracking
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
