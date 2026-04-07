@@ -32,8 +32,18 @@ export default function MerchantBilling() {
   const [venueName, setVenueName] = useState<string>("");
 
   useEffect(() => {
-    const fetchInvoices = async () => {
+    const fetchVenueAndInvoices = async () => {
       if (!user || !userRole?.venue_id) return;
+
+      // Fetch venue name
+      const { data: venueData } = await supabase
+        .from("venues")
+        .select("name")
+        .eq("id", userRole.venue_id)
+        .maybeSingle();
+      if (venueData?.name) setVenueName(venueData.name);
+
+      // Fetch invoices
       const { data } = await supabase
         .from("billing_invoices")
         .select("id, invoice_number, amount, currency, status, period_start, period_end, created_at")
@@ -43,7 +53,7 @@ export default function MerchantBilling() {
       setInvoices((data as Invoice[]) || []);
       setInvoicesLoading(false);
     };
-    if (!authLoading && user) fetchInvoices();
+    if (!authLoading && user) fetchVenueAndInvoices();
   }, [user, authLoading, userRole?.venue_id]);
 
   const handleOpenPortal = async () => {
