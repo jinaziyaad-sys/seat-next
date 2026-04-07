@@ -1,38 +1,37 @@
 
 
-# Fix Plan Change Flow
+# Fix Loyalty Tab Visibility & La-tayy Plan Sync
 
-## Root Cause
-From the edge function logs, three issues are clear:
+## Issues Found
 
-1. **Stale portal config reused**: The function finds an old config `bpc_1TIv4tRrnmiHUS0LDJ2isSoG` created before products were properly set up. This config likely only has cancellation enabled — no subscription_update with products.
-2. **`excludedPrice: null`**: The customer is found by email (not from `merchant_subscriptions`), so there's no `stripe_subscription_id` to look up the current price. Without knowing the current price, the products config is malformed.
-3. **Portal configs are limited**: Stripe limits how many portal configurations you can create. Constantly creating new ones isn't viable.
+### Issue 1: Zii's Place — Loyalty tab invisible despite Enterprise plan
+- **Root cause**: The loyalty tab visibility depends on `loyaltyAdminEnabled`, which requires a `loyalty_programs` row to exist for the venue (line 195: `!!loyaltyData`). Zii's Place has no loyalty_programs row yet, so `loyaltyAdminEnabled = false`, making both `hasLoyalty` and `loyaltyLocked` false — the tab is completely hidden.
+- **Expected behavior**: Enterprise venues should see the Loyalty tab even without a pre-existing loyalty program, so they can set one up.
 
-## Solution: Don't Use Stripe Portal for Plan Changes
+### Issue 2: La-tayy — Still showing Pro instead of Enterprise
+- **Root cause**: The `merchant_subscriptions` table still has the old Pro Stripe subscription ID (`sub_1TJGJJRrnmiHUS0Lkgw2BZV3`). When `check-subscription` retrieves this from Stripe, it's still active/trialing, so the recovery path (which searches for newer subs) never triggers. The newer Enterprise subscription exists but is unclaimed.
+- **Fix**: The old Pro subscription needs to be cancelled in Stripe, and the DB record updated to point to the Enterprise subscription.
 
-The Stripe customer portal is the wrong tool for plan switching in this app. It's designed for simple setups with pre-configured products — our app has dynamic plans, multi-currency, and custom pricing. Instead:
+## Plan
 
-- **"Change Plan"** → Navigate to `/merchant/signup?upgrade=true&venueId=xxx` (the existing upgrade flow with our own plan cards, currency selector, and checkout)
-- **"Manage Billing"** → Opens Stripe portal for payment method updates, invoice history, and cancellation only
+### 1. Fix loyalty tab visibility logic (`src/pages/MerchantDashboard.tsx`)
+- Change `loyaltyAdminEnabled` to be true when the venue has the `loyalty` feature entitled, regardless of whether a `loyalty_programs` row exists
+- Current logic: `hasLoyalty = loyaltyAdminEnabled && subscription.hasFeature('loyalty')`
+- New logic: `hasLoyalty = subscription.hasFeature('loyalty')` — if the plan includes loyalty, show the tab. The `loyaltyAdminEnabled` check (which requires a DB row) should only gate whether the program is *active for patrons*, not whether the merchant can access the management UI.
+- Also update `loyaltyLocked` to show the locked tab for non-Enterprise plans even without a loyalty_programs row: `loyaltyLocked = !subscription.hasFeature('loyalty') && subscription.subscribed`
 
-### Changes
+### 2. Fix La-tayy's stale subscription
+- Cancel the old Pro subscription (`sub_1TJGJJRrnmiHUS0Lkgw2BZV3`) in Stripe
+- The next `check-subscription` call will then trigger the recovery path, find the active Enterprise subscription, and sync it to the DB automatically
 
-**1. `src/pages/MerchantBilling.tsx`**
-- Split the current single "Change Plan" button into two:
-  - "Change Plan" → `navigate(/merchant/signup?upgrade=true&venueId=...)`
-  - "Manage Billing" → opens portal (for payment/cancel only)
-- This gives merchants a clear, familiar plan selection UI instead of the sparse Stripe portal
-
-**2. `supabase/functions/customer-portal/index.ts`**
-- Remove all `subscription_update` configuration — the portal should only handle payment methods, cancellation, and invoice history
-- Remove the products lookup entirely (no longer needed)
-- Simplify the config: just enable `payment_method_update`, `subscription_cancel`, and `invoice_history`
-- Always create a simple config (or reuse one) without products
+### 3. Prevent future duplicate subscriptions (`supabase/functions/create-checkout/index.ts`)
+- Before creating a new checkout session for an upgrade, cancel any existing active Stripe subscription for the same venue
+- This prevents the accumulation of multiple active subscriptions when merchants change plans
 
 ## Files Modified
 | File | Change |
 |------|--------|
-| `src/pages/MerchantBilling.tsx` | Split "Change Plan" into navigate-to-upgrade + manage-billing buttons |
-| `supabase/functions/customer-portal/index.ts` | Remove subscription_update; keep only payment/cancel/invoices |
+| `src/pages/MerchantDashboard.tsx` | Decouple loyalty tab visibility from loyalty_programs row existence |
+| `supabase/functions/create-checkout/index.ts` | Cancel existing venue subscription before creating new checkout |
+| Stripe (manual) | Cancel stale Pro sub for La-tayy |
 
