@@ -404,6 +404,11 @@ export default function MerchantSignup() {
     setCheckoutLoading(true);
     try {
       if (paymentProvider === 'payfast') {
+        if (selectedCurrency !== 'ZAR') {
+          toast({ variant: 'destructive', title: 'PayFast supports ZAR only', description: 'Please switch to Stripe for non-ZAR currencies, or change your currency to ZAR.' });
+          setCheckoutLoading(false);
+          return;
+        }
         const { data, error } = await supabase.functions.invoke('payfast-checkout', {
           body: {
             planId: plan.id,
@@ -429,11 +434,34 @@ export default function MerchantSignup() {
           form.submit();
         }
       } else {
-        const priceId = isAnnual ? plan.stripe_annual_price_id : plan.stripe_monthly_price_id;
-        if (!priceId) throw new Error('This plan has no Stripe price configured.');
+        // Check for currency override with Stripe price IDs
+        const overrideKey = `${plan.id}_${selectedCurrency}`;
+        const override = currencyOverrides[overrideKey];
+        let priceId: string | null = null;
+
+        if (selectedCurrency === 'ZAR') {
+          priceId = isAnnual ? plan.stripe_annual_price_id : plan.stripe_monthly_price_id;
+        } else if (override) {
+          // We need to look up stripe price IDs from the overrides table
+          const { data: overrideData } = await supabase
+            .from('plan_currency_overrides')
+            .select('stripe_monthly_price_id, stripe_annual_price_id')
+            .eq('plan_id', plan.id)
+            .eq('currency', selectedCurrency)
+            .maybeSingle();
+          if (overrideData) {
+            priceId = isAnnual ? overrideData.stripe_annual_price_id : overrideData.stripe_monthly_price_id;
+          }
+        }
 
         const { data, error } = await supabase.functions.invoke('create-checkout', {
-          body: { priceIds: [priceId], venueId },
+          body: {
+            priceIds: priceId ? [priceId] : undefined,
+            venueId,
+            currency: selectedCurrency,
+            planId: plan.id,
+            billingCycle: isAnnual ? 'annual' : 'monthly',
+          },
         });
         if (error) throw error;
         if (data?.url) {
