@@ -8,11 +8,13 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Check, Loader2, Sparkles, Shield, X, ChefHat, Users, Calendar, Gift, BarChart3, LayoutGrid, ArrowLeft, ArrowRight, Eye, Upload, MapPin, Phone, Store, Camera } from 'lucide-react';
+import { Check, Loader2, Sparkles, Shield, X, ChefHat, Users, Calendar, Gift, BarChart3, LayoutGrid, ArrowLeft, ArrowRight, Eye, Upload, MapPin, Phone, Store, Camera, Search, MapPinned } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { LogoCropDialog } from '@/components/LogoCropDialog';
+import { BannerCropDialog } from '@/components/BannerCropDialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { InteractiveLocationMap } from '@/components/InteractiveLocationMap';
 
 interface PlanFromDB {
   id: string;
@@ -69,12 +71,29 @@ export default function MerchantSignup() {
   const [venueLoading, setVenueLoading] = useState(false);
   const [venueId, setVenueId] = useState<string | null>(null);
 
+  // Address validation & geolocation
+  const [validatedAddress, setValidatedAddress] = useState<{
+    formatted_address: string;
+    latitude: number;
+    longitude: number;
+    precision: string;
+  } | null>(null);
+  const [addressValidating, setAddressValidating] = useState(false);
+  const [showMap, setShowMap] = useState(false);
+
   // Logo state
   const [logoFile, setLogoFile] = useState<Blob | null>(null);
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoCropOpen, setLogoCropOpen] = useState(false);
   const [logoCropSrc, setLogoCropSrc] = useState('');
   const logoInputRef = useRef<HTMLInputElement>(null);
+
+  // Banner state
+  const [bannerFile, setBannerFile] = useState<Blob | null>(null);
+  const [bannerPreview, setBannerPreview] = useState<string | null>(null);
+  const [bannerCropOpen, setBannerCropOpen] = useState(false);
+  const [bannerCropSrc, setBannerCropSrc] = useState('');
+  const bannerInputRef = useRef<HTMLInputElement>(null);
 
   // Step 4 — Payment
   const [checkoutLoading, setCheckoutLoading] = useState(false);
@@ -105,7 +124,6 @@ export default function MerchantSignup() {
   // Auto-recommend plan based on selected features
   const getRecommendedPlan = () => {
     if (selectedFeatures.length === 0) return null;
-    // Find smallest plan that includes all selected features
     const sorted = [...plans].sort((a, b) => a.sort_order - b.sort_order);
     for (const plan of sorted) {
       const included = Array.isArray(plan.included_features) ? plan.included_features : [];
@@ -113,11 +131,18 @@ export default function MerchantSignup() {
         return plan.id;
       }
     }
-    // If no plan covers all, recommend the biggest
     return sorted[sorted.length - 1]?.id || null;
   };
 
   const recommendedPlanId = getRecommendedPlan();
+
+  // Check if selected plan includes loyalty
+  const selectedPlanIncludesLoyalty = () => {
+    const plan = plans.find(p => p.id === selectedPlanId);
+    if (!plan) return false;
+    const included = Array.isArray(plan.included_features) ? plan.included_features : [];
+    return included.includes('loyalty');
+  };
 
   // Step 2: Register
   const handleRegister = async (e: React.FormEvent) => {
@@ -145,7 +170,7 @@ export default function MerchantSignup() {
     }
   };
 
-  // Logo file selection
+  // Logo handlers
   const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -164,9 +189,73 @@ export default function MerchantSignup() {
     setLogoCropOpen(false);
   };
 
+  // Banner handlers
+  const handleBannerSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setBannerCropSrc(reader.result as string);
+      setBannerCropOpen(true);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleBannerCropComplete = (blob: Blob) => {
+    setBannerFile(blob);
+    setBannerPreview(URL.createObjectURL(blob));
+    setBannerCropOpen(false);
+  };
+
+  // Address validation
+  const handleValidateAddress = async () => {
+    if (!venueAddress?.trim()) {
+      toast({ variant: 'destructive', title: 'Address Required', description: 'Please enter an address to validate.' });
+      return;
+    }
+    setAddressValidating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('validate-address', {
+        body: { address: venueAddress },
+      });
+      if (error) throw error;
+      if (!data?.valid) {
+        toast({ variant: 'destructive', title: 'Invalid Address', description: data?.error || 'Address not found.' });
+        return;
+      }
+
+      setValidatedAddress({
+        formatted_address: data.formatted_address,
+        latitude: data.latitude,
+        longitude: data.longitude,
+        precision: data.precision || 'area',
+      });
+      setShowMap(true);
+
+      const precisionEmoji = data.precision === 'exact' ? '🎯' : data.precision === 'street' ? '📍' : '📌';
+      const precisionLabel = data.precision === 'exact' ? 'Exact' : data.precision === 'street' ? 'Street Level' : 'Area Level';
+      toast({
+        title: `${precisionEmoji} Address Verified — ${precisionLabel}`,
+        description: data.precision !== 'exact' ? 'You can adjust the pin on the map below.' : 'Location confirmed!',
+      });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Validation Error', description: err.message || 'Failed to validate.' });
+    } finally {
+      setAddressValidating(false);
+    }
+  };
+
   // Step 3: Create venue
   const handleCreateVenue = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Require validated address if address was entered
+    if (venueAddress?.trim() && !validatedAddress) {
+      toast({ variant: 'destructive', title: 'Validate Address', description: 'Please validate your address before continuing.' });
+      return;
+    }
+
     setVenueLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke('self-register-merchant', {
@@ -174,8 +263,11 @@ export default function MerchantSignup() {
           venueName,
           phone: venuePhone,
           displayAddress: venueDisplayAddress || venueAddress,
-          address: venueAddress,
+          address: validatedAddress?.formatted_address || venueAddress,
+          latitude: validatedAddress?.latitude || null,
+          longitude: validatedAddress?.longitude || null,
           serviceTypes,
+          enableLoyalty: selectedPlanIncludesLoyalty(),
         },
       });
       if (error) throw error;
@@ -197,7 +289,22 @@ export default function MerchantSignup() {
           await supabase.from('venues').update({ logo_url: logoUrl }).eq('id', newVenueId);
         } catch (logoErr) {
           console.error('Logo upload failed:', logoErr);
-          // Non-blocking — venue is still created
+        }
+      }
+
+      // Upload banner if selected
+      if (bannerFile && newVenueId) {
+        try {
+          const bannerPath = `${newVenueId}-banner.jpg`;
+          await supabase.storage.from('venue-logos').upload(bannerPath, bannerFile, {
+            upsert: true,
+            contentType: 'image/jpeg',
+          });
+          const { data: urlData } = supabase.storage.from('venue-logos').getPublicUrl(bannerPath);
+          const bannerUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+          await supabase.from('venues').update({ banner_url: bannerUrl } as any).eq('id', newVenueId);
+        } catch (bannerErr) {
+          console.error('Banner upload failed:', bannerErr);
         }
       }
 
@@ -469,61 +576,140 @@ export default function MerchantSignup() {
 
         {/* ============ STEP 2: Venue Setup ============ */}
         {step === 2 && (
-          <Card className="max-w-lg mx-auto">
+          <Card className="max-w-2xl mx-auto">
             <CardHeader className="text-center">
               <Store className="h-8 w-8 mx-auto text-primary mb-2" />
               <CardTitle>Set Up Your Venue</CardTitle>
-              <CardDescription>Tell us about your restaurant or business</CardDescription>
+              <CardDescription>Tell us about your restaurant or business — you can update everything later in Settings</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleCreateVenue} className="space-y-4">
-                {/* Logo Upload */}
-                <div className="flex flex-col items-center gap-2">
-                  <Label className="text-sm text-muted-foreground">Venue Logo</Label>
-                  <button
-                    type="button"
-                    onClick={() => logoInputRef.current?.click()}
-                    className="relative group"
-                  >
-                    <Avatar className="h-20 w-20 border-2 border-dashed border-muted-foreground/30 group-hover:border-primary transition-colors">
-                      {logoPreview ? (
-                        <AvatarImage src={logoPreview} alt="Logo preview" />
-                      ) : null}
-                      <AvatarFallback className="bg-muted">
-                        <Camera className="h-6 w-6 text-muted-foreground" />
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                      <Upload className="h-5 w-5 text-white" />
-                    </div>
-                  </button>
-                  <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoSelect} />
-                  <p className="text-xs text-muted-foreground">Click to upload (optional)</p>
+              <form onSubmit={handleCreateVenue} className="space-y-6">
+                {/* Branding Row: Logo + Banner side by side */}
+                <div className="grid sm:grid-cols-[auto_1fr] gap-6 items-start">
+                  {/* Logo */}
+                  <div className="flex flex-col items-center gap-2">
+                    <Label className="text-sm text-muted-foreground">Logo</Label>
+                    <button
+                      type="button"
+                      onClick={() => logoInputRef.current?.click()}
+                      className="relative group"
+                    >
+                      <Avatar className="h-20 w-20 border-2 border-dashed border-muted-foreground/30 group-hover:border-primary transition-colors">
+                        {logoPreview ? (
+                          <AvatarImage src={logoPreview} alt="Logo preview" />
+                        ) : null}
+                        <AvatarFallback className="bg-muted">
+                          <Camera className="h-6 w-6 text-muted-foreground" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <Upload className="h-5 w-5 text-white" />
+                      </div>
+                    </button>
+                    <input ref={logoInputRef} type="file" accept="image/*" className="hidden" onChange={handleLogoSelect} />
+                  </div>
+
+                  {/* Banner */}
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-sm text-muted-foreground">Banner Image (optional)</Label>
+                    <button
+                      type="button"
+                      onClick={() => bannerInputRef.current?.click()}
+                      className="relative group w-full h-24 rounded-lg border-2 border-dashed border-muted-foreground/30 hover:border-primary transition-colors overflow-hidden bg-muted flex items-center justify-center"
+                    >
+                      {bannerPreview ? (
+                        <img src={bannerPreview} alt="Banner preview" className="w-full h-full object-cover" />
+                      ) : (
+                        <div className="flex flex-col items-center gap-1 text-muted-foreground">
+                          <Upload className="h-5 w-5" />
+                          <span className="text-xs">16:9 recommended</span>
+                        </div>
+                      )}
+                    </button>
+                    <input ref={bannerInputRef} type="file" accept="image/*" className="hidden" onChange={handleBannerSelect} />
+                  </div>
                 </div>
 
-                <div>
-                  <Label htmlFor="venue-name">Venue Name *</Label>
-                  <Input id="venue-name" value={venueName} onChange={e => setVenueName(e.target.value)} required placeholder="The Daily Grind" />
-                </div>
-                <div>
-                  <Label htmlFor="venue-phone">Phone Number</Label>
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="venue-phone" className="pl-10" value={venuePhone} onChange={e => setVenuePhone(e.target.value)} placeholder="+27 12 345 6789" />
+                {/* Basic Details */}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="venue-name">Venue Name *</Label>
+                    <Input id="venue-name" value={venueName} onChange={e => setVenueName(e.target.value)} required placeholder="The Daily Grind" />
+                  </div>
+                  <div>
+                    <Label htmlFor="venue-phone">Phone Number</Label>
+                    <div className="relative">
+                      <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input id="venue-phone" className="pl-10" value={venuePhone} onChange={e => setVenuePhone(e.target.value)} placeholder="+27 12 345 6789" />
+                    </div>
                   </div>
                 </div>
-                <div>
-                  <Label htmlFor="venue-address">Address</Label>
-                  <div className="relative">
-                    <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input id="venue-address" className="pl-10" value={venueAddress} onChange={e => setVenueAddress(e.target.value)} placeholder="123 Main St, Cape Town" />
+
+                {/* Address with Validation */}
+                <div className="space-y-3">
+                  <Label>Venue Address</Label>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        className="pl-10"
+                        value={venueAddress}
+                        onChange={e => {
+                          setVenueAddress(e.target.value);
+                          setValidatedAddress(null);
+                          setShowMap(false);
+                        }}
+                        placeholder="123 Main St, Cape Town"
+                      />
+                    </div>
+                    <Button
+                      type="button"
+                      variant={validatedAddress ? 'secondary' : 'outline'}
+                      onClick={handleValidateAddress}
+                      disabled={addressValidating || !venueAddress?.trim()}
+                    >
+                      {addressValidating ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : validatedAddress ? (
+                        <><Check className="h-4 w-4 mr-1" /> Verified</>
+                      ) : (
+                        <><Search className="h-4 w-4 mr-1" /> Verify</>
+                      )}
+                    </Button>
                   </div>
+
+                  {validatedAddress && (
+                    <div className="rounded-md bg-muted p-3 text-sm space-y-1">
+                      <div className="flex items-center gap-2 text-foreground font-medium">
+                        <MapPinned className="h-4 w-4 text-primary" />
+                        {validatedAddress.formatted_address}
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        GPS: {validatedAddress.latitude.toFixed(5)}, {validatedAddress.longitude.toFixed(5)} · {validatedAddress.precision} precision
+                      </p>
+                    </div>
+                  )}
+
+                  {showMap && validatedAddress && (
+                    <div className="h-48 rounded-lg overflow-hidden border">
+                      <InteractiveLocationMap
+                        initialLatitude={validatedAddress.latitude}
+                        initialLongitude={validatedAddress.longitude}
+                        address={validatedAddress.formatted_address}
+                        onLocationChange={(lat, lng) =>
+                          setValidatedAddress(prev => prev ? { ...prev, latitude: lat, longitude: lng } : null)
+                        }
+                      />
+                    </div>
+                  )}
                 </div>
+
                 <div>
                   <Label htmlFor="venue-display-address">Display Address (shown to customers)</Label>
                   <Input id="venue-display-address" value={venueDisplayAddress} onChange={e => setVenueDisplayAddress(e.target.value)} placeholder="Corner of Main & Oak, Cape Town" />
                 </div>
 
+                {/* Service Types */}
                 <div>
                   <Label className="mb-2 block">Service Types</Label>
                   <div className="flex gap-4">
@@ -544,7 +730,20 @@ export default function MerchantSignup() {
                   </div>
                 </div>
 
-                <Button type="submit" className="w-full" disabled={venueLoading || serviceTypes.length === 0}>
+                {/* Loyalty auto-activation note */}
+                {selectedPlanIncludesLoyalty() && (
+                  <div className="rounded-md bg-primary/5 border border-primary/20 p-3 flex items-start gap-3">
+                    <Gift className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-sm font-medium">Loyalty Program Included</p>
+                      <p className="text-xs text-muted-foreground">
+                        A stamp card loyalty program will be automatically activated for your venue. You can customise rewards and settings in your dashboard.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <Button type="submit" className="w-full" size="lg" disabled={venueLoading || serviceTypes.length === 0}>
                   {venueLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                   Create Venue & Continue
                 </Button>
@@ -598,12 +797,18 @@ export default function MerchantSignup() {
           </div>
         )}
 
-        {/* Logo Crop Dialog */}
+        {/* Crop Dialogs */}
         <LogoCropDialog
           open={logoCropOpen}
           imageSrc={logoCropSrc}
           onClose={() => setLogoCropOpen(false)}
           onCropComplete={handleLogoCropComplete}
+        />
+        <BannerCropDialog
+          open={bannerCropOpen}
+          imageSrc={bannerCropSrc}
+          onClose={() => setBannerCropOpen(false)}
+          onCropComplete={handleBannerCropComplete}
         />
       </div>
     </div>
