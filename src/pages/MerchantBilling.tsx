@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { CreditCard, ExternalLink, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Loader2, Receipt, Settings } from "lucide-react";
+import { CreditCard, ExternalLink, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Loader2, Receipt, Settings, Store } from "lucide-react";
 import { toast } from "sonner";
 import { getCurrencySymbol } from "@/utils/currency";
 
@@ -29,10 +29,21 @@ export default function MerchantBilling() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
+  const [venueName, setVenueName] = useState<string>("");
 
   useEffect(() => {
-    const fetchInvoices = async () => {
+    const fetchVenueAndInvoices = async () => {
       if (!user || !userRole?.venue_id) return;
+
+      // Fetch venue name
+      const { data: venueData } = await supabase
+        .from("venues")
+        .select("name")
+        .eq("id", userRole.venue_id)
+        .maybeSingle();
+      if (venueData?.name) setVenueName(venueData.name);
+
+      // Fetch invoices
       const { data } = await supabase
         .from("billing_invoices")
         .select("id, invoice_number, amount, currency, status, period_start, period_end, created_at")
@@ -42,13 +53,15 @@ export default function MerchantBilling() {
       setInvoices((data as Invoice[]) || []);
       setInvoicesLoading(false);
     };
-    if (!authLoading && user) fetchInvoices();
+    if (!authLoading && user) fetchVenueAndInvoices();
   }, [user, authLoading, userRole?.venue_id]);
 
   const handleOpenPortal = async () => {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("customer-portal");
+      const { data, error } = await supabase.functions.invoke("customer-portal", {
+        body: { venueId: userRole?.venue_id },
+      });
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");
     } catch (err: any) {
@@ -87,7 +100,13 @@ export default function MerchantBilling() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Billing & Subscription</h1>
-            <p className="text-muted-foreground">Manage your plan, payment method, and invoices</p>
+            {venueName && (
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Store className="h-4 w-4" />
+                <span>{venueName}</span>
+              </div>
+            )}
+            {!venueName && <p className="text-muted-foreground">Manage your plan, payment method, and invoices</p>}
           </div>
         </div>
 
