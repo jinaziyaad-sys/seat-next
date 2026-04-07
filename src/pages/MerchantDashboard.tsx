@@ -706,9 +706,9 @@ const MerchantDashboard = () => {
                     <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
                       <ArrowUpCircle className="w-8 h-8 text-muted-foreground" />
                     </div>
-                    <h3 className="text-lg font-semibold">Upgrade to Pro</h3>
+                    <h3 className="text-lg font-semibold">Upgrade to Enterprise</h3>
                     <p className="text-muted-foreground max-w-md">
-                      Loyalty programs are available on the Pro plan. Upgrade to create stamp cards, rewards, and keep customers coming back.
+                      Loyalty programs are available on the Enterprise plan. Upgrade to create stamp cards, rewards, and keep customers coming back.
                     </p>
                     <Button onClick={() => navigate(`/merchant/signup?upgrade=true&venueId=${userRole.venue_id}`)}>
                       View Plans & Upgrade
