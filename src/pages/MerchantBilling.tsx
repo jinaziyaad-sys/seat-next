@@ -29,6 +29,7 @@ export default function MerchantBilling() {
   const [portalLoading, setPortalLoading] = useState(false);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [invoicesLoading, setInvoicesLoading] = useState(true);
+  const [venueName, setVenueName] = useState<string>("");
 
   useEffect(() => {
     const fetchInvoices = async () => {
