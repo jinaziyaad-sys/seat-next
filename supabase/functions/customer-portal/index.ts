@@ -41,11 +41,9 @@ serve(async (req) => {
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    // Find customer - first try via subscription record, then by email
+    // Find customer
     let customerId: string | null = null;
-    let currentPriceId: string | null = null;
 
-    // Look up venue_id for this user
     const { data: roleData } = await supabaseClient
       .from("user_roles")
       .select("venue_id")
@@ -55,25 +53,13 @@ serve(async (req) => {
     if (roleData?.venue_id) {
       const { data: sub } = await supabaseClient
         .from("merchant_subscriptions")
-        .select("stripe_customer_id, stripe_subscription_id")
+        .select("stripe_customer_id")
         .eq("venue_id", roleData.venue_id)
         .maybeSingle();
 
       if (sub?.stripe_customer_id) {
         customerId = sub.stripe_customer_id;
         logStep("Found customer from subscription record", { customerId });
-
-        // Get current price to exclude from portal
-        if (sub.stripe_subscription_id) {
-          try {
-            const currentSub = await stripe.subscriptions.retrieve(sub.stripe_subscription_id);
-            if (currentSub.items?.data?.[0]?.price?.id) {
-              currentPriceId = currentSub.items.data[0].price.id;
-            }
-          } catch (e) {
-            logStep("Could not retrieve current subscription for price exclusion", { error: String(e) });
-          }
-        }
       }
     }
 
@@ -84,75 +70,33 @@ serve(async (req) => {
       logStep("Found customer by email", { customerId });
     }
 
-    // Fetch available plans from DB to build portal config
-    const { data: plans } = await supabaseClient
-      .from("subscription_plans")
-      .select("stripe_product_id, stripe_monthly_price_id, stripe_annual_price_id")
-      .eq("is_active", true)
-      .order("sort_order");
-
-    // Build products config, excluding the current price so they don't see their own plan as an "option"
-    const products = (plans || [])
-      .filter(p => p.stripe_product_id)
-      .map(p => ({
-        product: p.stripe_product_id,
-        prices: [p.stripe_monthly_price_id, p.stripe_annual_price_id]
-          .filter(Boolean)
-          .filter(priceId => priceId !== currentPriceId),
-      }))
-      .filter(p => p.prices.length > 0);
-
-    logStep("Building portal config", { productCount: products.length, excludedPrice: currentPriceId });
-
-    // Try to reuse an existing portal configuration
-    let portalConfigId: string | null = null;
-    try {
-      const configs = await stripe.billingPortal.configurations.list({ limit: 10 });
-      // Look for a config that's still active and has subscription_update enabled
-      for (const cfg of configs.data) {
-        if (cfg.is_default || cfg.features?.subscription_update?.enabled) {
-          portalConfigId = cfg.id;
-          logStep("Reusing existing portal config", { configId: portalConfigId });
-          break;
-        }
-      }
-    } catch (e) {
-      logStep("Could not list portal configs, will create new", { error: String(e) });
-    }
-
-    // Create new config if none found or products changed
-    if (!portalConfigId) {
-      const portalConfig = await stripe.billingPortal.configurations.create({
-        business_profile: {
-          headline: "Manage your subscription",
+    // Simple portal config: payment method, cancellation, invoices only
+    // Plan changes are handled in-app via /merchant/signup?upgrade=true
+    const portalConfig = await stripe.billingPortal.configurations.create({
+      business_profile: {
+        headline: "Manage your billing",
+      },
+      features: {
+        subscription_update: { enabled: false },
+        subscription_cancel: {
+          enabled: true,
+          mode: "at_period_end",
         },
-        features: {
-          subscription_update: {
-            enabled: true,
-            default_allowed_updates: ["price"],
-            proration_behavior: "create_prorations",
-            products: products.length > 0 ? products : undefined,
-          },
-          subscription_cancel: {
-            enabled: true,
-            mode: "at_period_end",
-          },
-          payment_method_update: {
-            enabled: true,
-          },
-          invoice_history: {
-            enabled: true,
-          },
+        payment_method_update: {
+          enabled: true,
         },
-      });
-      portalConfigId = portalConfig.id;
-      logStep("Portal configuration created", { configId: portalConfigId });
-    }
+        invoice_history: {
+          enabled: true,
+        },
+      },
+    });
+
+    logStep("Portal configuration created", { configId: portalConfig.id });
 
     const origin = req.headers.get("origin") || "http://localhost:3000";
     const portalSession = await stripe.billingPortal.sessions.create({
       customer: customerId,
-      configuration: portalConfigId,
+      configuration: portalConfig.id,
       return_url: `${origin}/merchant/billing`,
     });
 
