@@ -526,7 +526,7 @@ export default function MerchantSignup() {
                     toast({ variant: 'destructive', title: 'Select a Plan', description: 'Please choose a plan to continue.' });
                     return;
                   }
-                  setStep(user ? 2 : 1);
+                  setStep(1);
                 }}
                 disabled={!selectedPlanId}
               >
@@ -544,32 +544,51 @@ export default function MerchantSignup() {
         {step === 1 && (
           <Card className="max-w-md mx-auto">
             <CardHeader className="text-center">
-              <CardTitle>Create Your Account</CardTitle>
-              <CardDescription>We'll set up your venue next</CardDescription>
+              <CardTitle>{user ? 'Account Ready' : 'Create Your Account'}</CardTitle>
+              <CardDescription>{user ? 'You\'re signed in — let\'s set up your venue' : 'We\'ll set up your venue next'}</CardDescription>
             </CardHeader>
             <CardContent>
-              <form onSubmit={handleRegister} className="space-y-4">
-                <div>
-                  <Label htmlFor="reg-name">Your Full Name</Label>
-                  <Input id="reg-name" value={regName} onChange={e => setRegName(e.target.value)} required placeholder="John Smith" />
+              {user ? (
+                <div className="space-y-4">
+                  <div className="p-4 rounded-lg bg-muted text-center">
+                    <p className="text-sm text-muted-foreground mb-1">Signed in as</p>
+                    <p className="font-medium">{user.email}</p>
+                  </div>
+                  <Button className="w-full" size="lg" onClick={() => setStep(2)}>
+                    Continue to Venue Setup <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground">
+                    Not you?{' '}
+                    <button type="button" className="text-primary underline" onClick={async () => {
+                      await supabase.auth.signOut();
+                      setUser(null);
+                    }}>Sign out</button>
+                  </p>
                 </div>
-                <div>
-                  <Label htmlFor="reg-email">Email</Label>
-                  <Input id="reg-email" type="email" value={regEmail} onChange={e => setRegEmail(e.target.value)} required placeholder="you@venue.com" />
-                </div>
-                <div>
-                  <Label htmlFor="reg-password">Password</Label>
-                  <Input id="reg-password" type="password" value={regPassword} onChange={e => setRegPassword(e.target.value)} required minLength={6} placeholder="Min 6 characters" />
-                </div>
-                <Button type="submit" className="w-full" disabled={regLoading}>
-                  {regLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Create Account
-                </Button>
-                <p className="text-xs text-center text-muted-foreground">
-                  Already have an account?{' '}
-                  <button type="button" className="text-primary underline" onClick={() => navigate('/merchant/auth')}>Sign in</button>
-                </p>
-              </form>
+              ) : (
+                <form onSubmit={handleRegister} className="space-y-4">
+                  <div>
+                    <Label htmlFor="reg-name">Your Full Name</Label>
+                    <Input id="reg-name" value={regName} onChange={e => setRegName(e.target.value)} required placeholder="John Smith" />
+                  </div>
+                  <div>
+                    <Label htmlFor="reg-email">Email</Label>
+                    <Input id="reg-email" type="email" value={regEmail} onChange={e => setRegEmail(e.target.value)} required placeholder="you@venue.com" />
+                  </div>
+                  <div>
+                    <Label htmlFor="reg-password">Password</Label>
+                    <Input id="reg-password" type="password" value={regPassword} onChange={e => setRegPassword(e.target.value)} required minLength={6} placeholder="Min 6 characters" />
+                  </div>
+                  <Button type="submit" className="w-full" disabled={regLoading}>
+                    {regLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Create Account
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground">
+                    Already have an account?{' '}
+                    <button type="button" className="text-primary underline" onClick={() => navigate('/merchant/auth')}>Sign in</button>
+                  </p>
+                </form>
+              )}
             </CardContent>
           </Card>
         )}
