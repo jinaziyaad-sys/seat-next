@@ -595,9 +595,9 @@ export default function MerchantSignup() {
                     </CardHeader>
                     <CardContent className="flex-1">
                       <div className="text-center mb-4">
-                        <span className="text-3xl font-bold">R{price.toFixed(0)}</span>
+                        <span className="text-3xl font-bold">{formatPrice(Math.round(price), selectedCurrency)}</span>
                         <span className="text-muted-foreground text-sm">/mo</span>
-                        {isAnnual && <p className="text-xs text-muted-foreground mt-1">Billed R{plan.annual_price.toFixed(0)}/year</p>}
+                        {isAnnual && <p className="text-xs text-muted-foreground mt-1">Billed {formatPrice(Math.round(annualPrice), selectedCurrency)}/year</p>}
                       </div>
                       <ul className="space-y-2">
                         {ALL_FEATURES.map(featureKey => {
