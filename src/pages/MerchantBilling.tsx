@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { CreditCard, ExternalLink, ArrowLeft, AlertTriangle, CheckCircle2, XCircle, Loader2, Receipt, Settings } from "lucide-react";
 import { toast } from "sonner";
+import { getCurrencySymbol } from "@/utils/currency";
 
 interface Invoice {
   id: string;
@@ -228,7 +229,7 @@ export default function MerchantBilling() {
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-sm">
-                        R{(inv.amount / 100).toFixed(2)}
+                        {getCurrencySymbol(inv.currency)}{(inv.amount / 100).toFixed(2)}
                       </span>
                       <Badge variant={inv.status === 'paid' ? 'default' : inv.status === 'overdue' ? 'destructive' : 'outline'}>
                         {inv.status}

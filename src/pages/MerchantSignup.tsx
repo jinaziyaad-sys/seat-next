@@ -8,13 +8,15 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Check, Loader2, Sparkles, Shield, X, ChefHat, Users, Calendar, Gift, BarChart3, LayoutGrid, ArrowLeft, ArrowRight, Eye, Upload, MapPin, Phone, Store, Camera, Search, MapPinned } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Check, Loader2, Sparkles, Shield, X, ChefHat, Users, Calendar, Gift, BarChart3, LayoutGrid, ArrowLeft, ArrowRight, Eye, Upload, MapPin, Phone, Store, Camera, Search, MapPinned, Globe } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { LogoCropDialog } from '@/components/LogoCropDialog';
 import { BannerCropDialog } from '@/components/BannerCropDialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { InteractiveLocationMap } from '@/components/InteractiveLocationMap';
+import { SUPPORTED_CURRENCIES, CURRENCY_CODES, formatPrice, detectCurrency, convertFromZAR, FALLBACK_RATES } from '@/utils/currency';
 
 interface PlanFromDB {
   id: string;
@@ -62,6 +64,10 @@ export default function MerchantSignup() {
   const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
   const [isAnnual, setIsAnnual] = useState(false);
   const [selectedFeatures, setSelectedFeatures] = useState<string[]>([]);
+  const [selectedCurrency, setSelectedCurrency] = useState(() => detectCurrency());
+  const [exchangeRates, setExchangeRates] = useState<Record<string, number>>(FALLBACK_RATES);
+  const [currencyOverrides, setCurrencyOverrides] = useState<Record<string, { monthly: number; annual: number }>>({});
+  const [ratesLoading, setRatesLoading] = useState(false);
 
   // Step 2 — Registration
   const [regEmail, setRegEmail] = useState('');
@@ -141,12 +147,51 @@ export default function MerchantSignup() {
       }
     };
 
+    const fetchRatesAndOverrides = async () => {
+      setRatesLoading(true);
+      try {
+        // Fetch exchange rates
+        const { data: rateData } = await supabase.functions.invoke('get-exchange-rates');
+        if (rateData?.rates) setExchangeRates(rateData.rates);
+      } catch { /* use fallback */ }
+
+      try {
+        // Fetch currency overrides
+        const { data: overrides } = await supabase
+          .from('plan_currency_overrides')
+          .select('plan_id, currency, monthly_price, annual_price');
+        if (overrides) {
+          const map: Record<string, { monthly: number; annual: number }> = {};
+          overrides.forEach((o: any) => {
+            map[`${o.plan_id}_${o.currency}`] = { monthly: o.monthly_price, annual: o.annual_price };
+          });
+          setCurrencyOverrides(map);
+        }
+      } catch { /* ignore */ }
+      setRatesLoading(false);
+    };
+
     fetchPlans();
     checkUser();
+    fetchRatesAndOverrides();
     if (isUpgradeMode) loadCurrentPlan();
   }, [isUpgradeMode, upgradeVenueId]);
 
-  // Auto-recommend plan based on selected features
+  // Get price for a plan in the selected currency
+  const getPlanPrice = (plan: PlanFromDB, cycle: 'monthly' | 'annual'): number => {
+    if (selectedCurrency === 'ZAR') {
+      return cycle === 'monthly' ? plan.monthly_price : plan.annual_price;
+    }
+    const overrideKey = `${plan.id}_${selectedCurrency}`;
+    const override = currencyOverrides[overrideKey];
+    if (override) {
+      return cycle === 'monthly' ? override.monthly : override.annual;
+    }
+    const zarPrice = cycle === 'monthly' ? plan.monthly_price : plan.annual_price;
+    return convertFromZAR(zarPrice, selectedCurrency, exchangeRates);
+  };
+
+
   const getRecommendedPlan = () => {
     if (selectedFeatures.length === 0) return null;
     const sorted = [...plans].sort((a, b) => a.sort_order - b.sort_order);
@@ -359,6 +404,11 @@ export default function MerchantSignup() {
     setCheckoutLoading(true);
     try {
       if (paymentProvider === 'payfast') {
+        if (selectedCurrency !== 'ZAR') {
+          toast({ variant: 'destructive', title: 'PayFast supports ZAR only', description: 'Please switch to Stripe for non-ZAR currencies, or change your currency to ZAR.' });
+          setCheckoutLoading(false);
+          return;
+        }
         const { data, error } = await supabase.functions.invoke('payfast-checkout', {
           body: {
             planId: plan.id,
@@ -384,11 +434,34 @@ export default function MerchantSignup() {
           form.submit();
         }
       } else {
-        const priceId = isAnnual ? plan.stripe_annual_price_id : plan.stripe_monthly_price_id;
-        if (!priceId) throw new Error('This plan has no Stripe price configured.');
+        // Check for currency override with Stripe price IDs
+        const overrideKey = `${plan.id}_${selectedCurrency}`;
+        const override = currencyOverrides[overrideKey];
+        let priceId: string | null = null;
+
+        if (selectedCurrency === 'ZAR') {
+          priceId = isAnnual ? plan.stripe_annual_price_id : plan.stripe_monthly_price_id;
+        } else if (override) {
+          // We need to look up stripe price IDs from the overrides table
+          const { data: overrideData } = await supabase
+            .from('plan_currency_overrides')
+            .select('stripe_monthly_price_id, stripe_annual_price_id')
+            .eq('plan_id', plan.id)
+            .eq('currency', selectedCurrency)
+            .maybeSingle();
+          if (overrideData) {
+            priceId = isAnnual ? overrideData.stripe_annual_price_id : overrideData.stripe_monthly_price_id;
+          }
+        }
 
         const { data, error } = await supabase.functions.invoke('create-checkout', {
-          body: { priceIds: [priceId], venueId },
+          body: {
+            priceIds: priceId ? [priceId] : undefined,
+            venueId,
+            currency: selectedCurrency,
+            planId: plan.id,
+            billingCycle: isAnnual ? 'annual' : 'monthly',
+          },
         });
         if (error) throw error;
         if (data?.url) {
@@ -500,19 +573,38 @@ export default function MerchantSignup() {
               </CardContent>
             </Card>
 
-            {/* Billing toggle */}
-            <div className="flex items-center justify-center gap-3 mb-6">
-              <Label className={!isAnnual ? 'font-semibold' : 'text-muted-foreground'}>Monthly</Label>
-              <Switch checked={isAnnual} onCheckedChange={setIsAnnual} />
-              <Label className={isAnnual ? 'font-semibold' : 'text-muted-foreground'}>
-                Annual <Badge variant="secondary" className="ml-1 text-xs">Save 17%</Badge>
-              </Label>
+            {/* Currency & Billing toggle */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
+                  <SelectTrigger className="w-[140px] h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CURRENCY_CODES.map(code => (
+                      <SelectItem key={code} value={code}>
+                        {SUPPORTED_CURRENCIES[code].symbol} {code}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-3">
+                <Label className={!isAnnual ? 'font-semibold' : 'text-muted-foreground'}>Monthly</Label>
+                <Switch checked={isAnnual} onCheckedChange={setIsAnnual} />
+                <Label className={isAnnual ? 'font-semibold' : 'text-muted-foreground'}>
+                  Annual <Badge variant="secondary" className="ml-1 text-xs">Save 17%</Badge>
+                </Label>
+              </div>
             </div>
 
             {/* Plan cards */}
             <div className="grid md:grid-cols-3 gap-5 mb-8">
               {plans.map(plan => {
-                const price = isAnnual ? plan.annual_price / 12 : plan.monthly_price;
+                const monthlyPrice = getPlanPrice(plan, 'monthly');
+                const annualPrice = getPlanPrice(plan, 'annual');
+                const price = isAnnual ? annualPrice / 12 : monthlyPrice;
                 const includedFeatures = Array.isArray(plan.included_features) ? plan.included_features : [];
                 const isRecommended = plan.id === recommendedPlanId;
                 const isSelected = plan.id === selectedPlanId;
@@ -548,9 +640,9 @@ export default function MerchantSignup() {
                     </CardHeader>
                     <CardContent className="flex-1">
                       <div className="text-center mb-4">
-                        <span className="text-3xl font-bold">R{price.toFixed(0)}</span>
+                        <span className="text-3xl font-bold">{formatPrice(Math.round(price), selectedCurrency)}</span>
                         <span className="text-muted-foreground text-sm">/mo</span>
-                        {isAnnual && <p className="text-xs text-muted-foreground mt-1">Billed R{plan.annual_price.toFixed(0)}/year</p>}
+                        {isAnnual && <p className="text-xs text-muted-foreground mt-1">Billed {formatPrice(Math.round(annualPrice), selectedCurrency)}/year</p>}
                       </div>
                       <ul className="space-y-2">
                         {ALL_FEATURES.map(featureKey => {
@@ -846,10 +938,10 @@ export default function MerchantSignup() {
                     <p className="text-sm text-muted-foreground">Selected Plan</p>
                     <p className="text-xl font-bold">{selectedPlan.name}</p>
                     <p className="text-2xl font-bold mt-1">
-                      R{(isAnnual ? selectedPlan.annual_price / 12 : selectedPlan.monthly_price).toFixed(0)}
+                      {formatPrice(Math.round(isAnnual ? getPlanPrice(selectedPlan, 'annual') / 12 : getPlanPrice(selectedPlan, 'monthly')), selectedCurrency)}
                       <span className="text-sm font-normal text-muted-foreground">/mo</span>
                     </p>
-                    {isAnnual && <p className="text-xs text-muted-foreground">Billed R{selectedPlan.annual_price.toFixed(0)}/year</p>}
+                    {isAnnual && <p className="text-xs text-muted-foreground">Billed {formatPrice(Math.round(getPlanPrice(selectedPlan, 'annual')), selectedCurrency)}/year</p>}
                   </div>
                 )}
 
