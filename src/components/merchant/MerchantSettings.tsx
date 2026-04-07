@@ -1522,6 +1522,13 @@ export const MerchantSettings = ({
         </div>
       )}
 
+      {/* Logo Crop Dialog */}
+      <LogoCropDialog
+        open={logoCropOpen}
+        imageSrc={logoCropSrc}
+        onClose={() => setLogoCropOpen(false)}
+        onCropComplete={handleLogoCropComplete}
+      />
     </div>
   );
 };
