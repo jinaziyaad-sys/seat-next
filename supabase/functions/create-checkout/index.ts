@@ -50,6 +50,28 @@ serve(async (req) => {
 
       // Cancel existing subscription for this venue to prevent duplicates on upgrade
       if (venueId && customerId) {
+        // Method 1: Cancel by DB lookup (handles old subs without venue_id metadata)
+        const supabaseService = createClient(
+          Deno.env.get("SUPABASE_URL") ?? "",
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+          { auth: { persistSession: false } }
+        );
+        const { data: dbSub } = await supabaseService
+          .from("merchant_subscriptions")
+          .select("stripe_subscription_id")
+          .eq("venue_id", venueId)
+          .maybeSingle();
+
+        if (dbSub?.stripe_subscription_id) {
+          try {
+            logStep("Cancelling existing venue subscription from DB", { subId: dbSub.stripe_subscription_id, venueId });
+            await stripe.subscriptions.cancel(dbSub.stripe_subscription_id);
+          } catch (cancelErr) {
+            logStep("Failed to cancel DB-linked sub (may already be cancelled)", { error: String(cancelErr) });
+          }
+        }
+
+        // Method 2: Also cancel by metadata match (catches any others)
         const existingSubs = await stripe.subscriptions.list({
           customer: customerId,
           status: 'active',
@@ -61,8 +83,12 @@ serve(async (req) => {
         const allSubs = [...existingSubs.data, ...trialSubs.data];
         for (const sub of allSubs) {
           if (sub.metadata?.venue_id === venueId) {
-            logStep("Cancelling existing venue subscription", { subId: sub.id, venueId });
-            await stripe.subscriptions.cancel(sub.id);
+            logStep("Cancelling existing venue subscription by metadata", { subId: sub.id, venueId });
+            try {
+              await stripe.subscriptions.cancel(sub.id);
+            } catch (e) {
+              logStep("Cancel by metadata failed (may already be cancelled)", { error: String(e) });
+            }
           }
         }
       }

@@ -290,21 +290,61 @@ serve(async (req) => {
         const sub = await stripe.subscriptions.retrieve(existingSub.stripe_subscription_id);
         
         if (sub.status === 'active' || sub.status === 'trialing') {
-          const productIds = sub.items.data.map((item: any) => 
+          // ── Upgrade discovery: check if a NEWER active sub exists for this venue ──
+          let activeSub = sub;
+          try {
+            if (existingSub.stripe_customer_id) {
+              const allSubs = await stripe.subscriptions.list({
+                customer: existingSub.stripe_customer_id,
+                limit: 20,
+              });
+              const activeOrTrialing = allSubs.data.filter(
+                (s: any) => (s.status === 'active' || s.status === 'trialing') && s.id !== sub.id
+              );
+              // Find a newer sub for the same venue (by metadata) or any unclaimed newer sub
+              const newerSub = activeOrTrialing.find((s: any) => {
+                const sVenue = s.metadata?.venue_id;
+                // Match if venue_id matches OR if it's unclaimed (no venue_id metadata but created after stored sub)
+                return (sVenue === venueId || (!sVenue && s.created > sub.created));
+              });
+              if (newerSub) {
+                // Verify it's not claimed by another venue
+                const { data: claimedCheck } = await supabaseClient
+                  .from("merchant_subscriptions")
+                  .select("venue_id")
+                  .eq("stripe_subscription_id", newerSub.id)
+                  .neq("venue_id", venueId)
+                  .maybeSingle();
+                if (!claimedCheck) {
+                  logStep("Found newer subscription, cancelling old one", {
+                    oldSubId: sub.id,
+                    newSubId: newerSub.id,
+                  });
+                  // Cancel the old subscription
+                  await stripe.subscriptions.cancel(sub.id);
+                  activeSub = newerSub;
+                }
+              }
+            }
+          } catch (upgradeErr) {
+            logStep("Upgrade discovery check failed (non-fatal)", { error: String(upgradeErr) });
+          }
+
+          const productIds = activeSub.items.data.map((item: any) => 
             typeof item.price.product === 'string' ? item.price.product : item.price.product?.id
           ).filter(Boolean);
-          const priceIds = sub.items.data.map((item: any) => item.price.id);
-          const subscriptionEnd = safeTimestamp(sub.current_period_end);
-          const subscriptionStart = safeTimestamp(sub.current_period_start);
-          const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
-          const retrievedStatus = sub.status === 'trialing' ? 'trial' : 'active';
-          const trialEnd = sub.trial_end ? safeTimestamp(sub.trial_end) : null;
+          const priceIds = activeSub.items.data.map((item: any) => item.price.id);
+          const subscriptionEnd = safeTimestamp(activeSub.current_period_end);
+          const subscriptionStart = safeTimestamp(activeSub.current_period_start);
+          const interval = activeSub.items?.data?.[0]?.price?.recurring?.interval;
+          const retrievedStatus = activeSub.status === 'trialing' ? 'trial' : 'active';
+          const trialEnd = activeSub.trial_end ? safeTimestamp(activeSub.trial_end) : null;
 
           const planId = await determinePlanIdFromDb(supabaseClient, productIds);
           await syncSubscriptionToDb(supabaseClient, venueId, {
             status: retrievedStatus,
             stripe_customer_id: existingSub.stripe_customer_id,
-            stripe_subscription_id: sub.id,
+            stripe_subscription_id: activeSub.id,
             plan_id: planId,
             current_period_start: subscriptionStart,
             current_period_end: subscriptionEnd,
@@ -321,7 +361,7 @@ serve(async (req) => {
             price_ids: priceIds,
             subscription_end: subscriptionEnd,
             stripe_customer_id: existingSub.stripe_customer_id,
-            stripe_subscription_id: sub.id,
+            stripe_subscription_id: activeSub.id,
             trial_end: trialEnd,
             included_features: includedFeatures,
           }), {
