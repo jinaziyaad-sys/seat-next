@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { DollarSign, Store, Shield, Plus, Trash2, Loader2, FileText, Send, RefreshCw } from "lucide-react";
+import { DollarSign, Store, Shield, Plus, Trash2, Loader2, FileText, Send, RefreshCw, Globe } from "lucide-react";
+import { SUPPORTED_CURRENCIES, CURRENCY_CODES, getCurrencySymbol } from "@/utils/currency";
 import {
   Dialog,
   DialogContent,
