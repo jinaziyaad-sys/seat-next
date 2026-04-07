@@ -100,7 +100,13 @@ export default function MerchantBilling() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold">Billing & Subscription</h1>
-            <p className="text-muted-foreground">Manage your plan, payment method, and invoices</p>
+            {venueName && (
+              <div className="flex items-center gap-1.5 text-muted-foreground">
+                <Store className="h-4 w-4" />
+                <span>{venueName}</span>
+              </div>
+            )}
+            {!venueName && <p className="text-muted-foreground">Manage your plan, payment method, and invoices</p>}
           </div>
         </div>
 
