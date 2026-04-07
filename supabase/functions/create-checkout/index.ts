@@ -34,12 +34,12 @@ serve(async (req) => {
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated");
 
-    const { priceIds, successUrl, cancelUrl } = await req.json();
+    const { priceIds, venueId, successUrl, cancelUrl } = await req.json();
     if (!priceIds || !Array.isArray(priceIds) || priceIds.length === 0) {
       throw new Error("priceIds array is required");
     }
 
-    logStep("Creating checkout", { email: user.email, priceIds });
+    logStep("Creating checkout", { email: user.email, priceIds, venueId });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
@@ -48,9 +48,6 @@ serve(async (req) => {
     let customerId: string | undefined;
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
-      // NOTE: We no longer cancel existing subscriptions here.
-      // Each venue gets its own subscription. Plan changes should go
-      // through the Stripe Customer Portal instead.
       logStep("Found existing customer", { customerId });
     }
 
@@ -66,11 +63,16 @@ serve(async (req) => {
       mode: "subscription",
       subscription_data: {
         trial_period_days: 7,
+        metadata: {
+          venue_id: venueId || '',
+          user_id: user.id,
+        },
       },
       success_url: successUrl || `${req.headers.get("origin")}/merchant/dashboard?checkout=success`,
       cancel_url: cancelUrl || `${req.headers.get("origin")}/merchant/signup?checkout=cancelled`,
       metadata: {
         user_id: user.id,
+        venue_id: venueId || '',
       },
     });
 
