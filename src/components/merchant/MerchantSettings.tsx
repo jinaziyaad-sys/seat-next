@@ -175,6 +175,11 @@ export const MerchantSettings = ({
         initialVenueTimezoneRef.current = DEFAULT_TIMEZONE;
       }
 
+      // Load logo
+      if (data?.logo_url) {
+        setLogoUrl(data.logo_url);
+      }
+
       if (data?.settings) {
         const settings = data.settings as any || {};
         
