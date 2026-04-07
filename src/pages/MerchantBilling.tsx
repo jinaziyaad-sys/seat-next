@@ -59,7 +59,9 @@ export default function MerchantBilling() {
   const handleOpenPortal = async () => {
     setPortalLoading(true);
     try {
-      const { data, error } = await supabase.functions.invoke("customer-portal");
+      const { data, error } = await supabase.functions.invoke("customer-portal", {
+        body: { venueId: userRole?.venue_id },
+      });
       if (error) throw error;
       if (data?.url) window.open(data.url, "_blank");
     } catch (err: any) {
