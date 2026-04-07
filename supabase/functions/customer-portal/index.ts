@@ -39,39 +39,65 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated");
     logStep("User authenticated", { email: user.email });
 
+    // Parse venueId from request body
+    let venueId: string | null = null;
+    try {
+      const body = await req.json();
+      venueId = body?.venueId || null;
+    } catch {
+      // No body or invalid JSON — fall back to user_roles lookup
+    }
+    logStep("Venue context", { venueId });
+
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
-    // Find customer
+    // Find customer scoped to the specific venue
     let customerId: string | null = null;
 
-    const { data: roleData } = await supabaseClient
-      .from("user_roles")
-      .select("venue_id")
-      .eq("user_id", user.id)
-      .maybeSingle();
-
-    if (roleData?.venue_id) {
+    if (venueId) {
+      // Direct lookup by venueId — most reliable for multi-venue users
       const { data: sub } = await supabaseClient
         .from("merchant_subscriptions")
         .select("stripe_customer_id")
-        .eq("venue_id", roleData.venue_id)
+        .eq("venue_id", venueId)
         .maybeSingle();
 
       if (sub?.stripe_customer_id) {
         customerId = sub.stripe_customer_id;
-        logStep("Found customer from subscription record", { customerId });
+        logStep("Found customer from venue subscription", { customerId, venueId });
       }
     }
 
+    // Fallback: try user_roles → merchant_subscriptions (for single-venue users or missing venueId)
+    if (!customerId) {
+      const { data: roleData } = await supabaseClient
+        .from("user_roles")
+        .select("venue_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (roleData?.venue_id) {
+        const { data: sub } = await supabaseClient
+          .from("merchant_subscriptions")
+          .select("stripe_customer_id")
+          .eq("venue_id", roleData.venue_id)
+          .maybeSingle();
+
+        if (sub?.stripe_customer_id) {
+          customerId = sub.stripe_customer_id;
+          logStep("Found customer from user_roles fallback", { customerId });
+        }
+      }
+    }
+
+    // Final fallback: email-based lookup
     if (!customerId) {
       const customers = await stripe.customers.list({ email: user.email, limit: 1 });
       if (customers.data.length === 0) throw new Error("No Stripe customer found");
       customerId = customers.data[0].id;
-      logStep("Found customer by email", { customerId });
+      logStep("Found customer by email fallback", { customerId });
     }
 
-    // Simple portal config: payment method, cancellation, invoices only
-    // Plan changes are handled in-app via /merchant/signup?upgrade=true
     const portalConfig = await stripe.billingPortal.configurations.create({
       business_profile: {
         headline: "Manage your billing",
