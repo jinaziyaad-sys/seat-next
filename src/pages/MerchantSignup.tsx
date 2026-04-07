@@ -693,8 +693,9 @@ export default function MerchantSignup() {
                   {showMap && validatedAddress && (
                     <div className="h-48 rounded-lg overflow-hidden border">
                       <InteractiveLocationMap
-                        latitude={validatedAddress.latitude}
-                        longitude={validatedAddress.longitude}
+                        initialLatitude={validatedAddress.latitude}
+                        initialLongitude={validatedAddress.longitude}
+                        address={validatedAddress.formatted_address}
                         onLocationChange={(lat, lng) =>
                           setValidatedAddress(prev => prev ? { ...prev, latitude: lat, longitude: lng } : null)
                         }
