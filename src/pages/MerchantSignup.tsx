@@ -910,10 +910,10 @@ export default function MerchantSignup() {
                     <p className="text-sm text-muted-foreground">Selected Plan</p>
                     <p className="text-xl font-bold">{selectedPlan.name}</p>
                     <p className="text-2xl font-bold mt-1">
-                      R{(isAnnual ? selectedPlan.annual_price / 12 : selectedPlan.monthly_price).toFixed(0)}
+                      {formatPrice(Math.round(isAnnual ? getPlanPrice(selectedPlan, 'annual') / 12 : getPlanPrice(selectedPlan, 'monthly')), selectedCurrency)}
                       <span className="text-sm font-normal text-muted-foreground">/mo</span>
                     </p>
-                    {isAnnual && <p className="text-xs text-muted-foreground">Billed R{selectedPlan.annual_price.toFixed(0)}/year</p>}
+                    {isAnnual && <p className="text-xs text-muted-foreground">Billed {formatPrice(Math.round(getPlanPrice(selectedPlan, 'annual')), selectedCurrency)}/year</p>}
                   </div>
                 )}
 
