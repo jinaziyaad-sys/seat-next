@@ -578,11 +578,16 @@ export default function MerchantSignup() {
                     toast({ variant: 'destructive', title: 'Select a Plan', description: 'Please choose a plan to continue.' });
                     return;
                   }
-                  setStep(1);
+                  if (selectedPlanId === currentPlanId) {
+                    toast({ variant: 'destructive', title: 'Same Plan', description: 'Please select a different plan to upgrade or downgrade.' });
+                    return;
+                  }
+                  // In upgrade mode, skip registration & venue setup — go straight to payment
+                  setStep(isUpgradeMode ? 1 : 1);
                 }}
-                disabled={!selectedPlanId}
+                disabled={!selectedPlanId || selectedPlanId === currentPlanId}
               >
-                Get Started <ArrowRight className="h-4 w-4 ml-2" />
+                {isUpgradeMode ? 'Continue to Payment' : 'Get Started'} <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
 
