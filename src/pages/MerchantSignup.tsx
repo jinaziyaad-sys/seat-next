@@ -234,7 +234,15 @@ export default function MerchantSignup() {
       toast({ title: 'Account Created!', description: 'Now let\'s set up your venue.' });
       setStep(2);
     } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Registration Error', description: err.message || 'Failed to create account' });
+      const msg = err.message || 'Failed to create account';
+      const isRateLimit = msg.toLowerCase().includes('rate') || err.status === 429;
+      toast({ 
+        variant: 'destructive', 
+        title: isRateLimit ? 'Too Many Attempts' : 'Registration Error', 
+        description: isRateLimit 
+          ? 'Please wait a few minutes before trying again.' 
+          : msg 
+      });
     } finally {
       setRegLoading(false);
     }
