@@ -453,9 +453,13 @@ export default function MerchantSignup() {
         {step === 0 && (
           <div>
             <div className="text-center mb-8">
-              <h1 className="text-3xl font-bold tracking-tight mb-2">Everything You Need to Run Your Venue</h1>
+              <h1 className="text-3xl font-bold tracking-tight mb-2">
+                {isUpgradeMode ? 'Change Your Plan' : 'Everything You Need to Run Your Venue'}
+              </h1>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                Select the features you need, and we'll recommend the right plan.
+                {isUpgradeMode 
+                  ? 'Select a new plan below. Your current plan is highlighted.' 
+                  : "Select the features you need, and we'll recommend the right plan."}
               </p>
             </div>
 
