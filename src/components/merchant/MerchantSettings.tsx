@@ -478,7 +478,7 @@ export const MerchantSettings = ({
     }
   };
 
-
+  const togglePreference = (id: string) => {
     setWaitlistPreferences(prev =>
       prev.map(pref =>
         pref.id === id ? { ...pref, enabled: !pref.enabled } : pref
