@@ -598,7 +598,7 @@ export default function MerchantSignup() {
         )}
 
         {/* ============ STEP 1: Registration ============ */}
-        {step === 1 && (
+        {step === 1 && !isUpgradeMode && (
           <Card className="max-w-md mx-auto">
             <CardHeader className="text-center">
               <CardTitle>{user ? 'Account Ready' : 'Create Your Account'}</CardTitle>
@@ -651,7 +651,7 @@ export default function MerchantSignup() {
         )}
 
         {/* ============ STEP 2: Venue Setup ============ */}
-        {step === 2 && (
+        {step === 2 && !isUpgradeMode && (
           <Card className="max-w-2xl mx-auto">
             <CardHeader className="text-center">
               <Store className="h-8 w-8 mx-auto text-primary mb-2" />
