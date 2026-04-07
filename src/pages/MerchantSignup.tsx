@@ -147,8 +147,33 @@ export default function MerchantSignup() {
       }
     };
 
+    const fetchRatesAndOverrides = async () => {
+      setRatesLoading(true);
+      try {
+        // Fetch exchange rates
+        const { data: rateData } = await supabase.functions.invoke('get-exchange-rates');
+        if (rateData?.rates) setExchangeRates(rateData.rates);
+      } catch { /* use fallback */ }
+
+      try {
+        // Fetch currency overrides
+        const { data: overrides } = await supabase
+          .from('plan_currency_overrides')
+          .select('plan_id, currency, monthly_price, annual_price');
+        if (overrides) {
+          const map: Record<string, { monthly: number; annual: number }> = {};
+          overrides.forEach((o: any) => {
+            map[`${o.plan_id}_${o.currency}`] = { monthly: o.monthly_price, annual: o.annual_price };
+          });
+          setCurrencyOverrides(map);
+        }
+      } catch { /* ignore */ }
+      setRatesLoading(false);
+    };
+
     fetchPlans();
     checkUser();
+    fetchRatesAndOverrides();
     if (isUpgradeMode) loadCurrentPlan();
   }, [isUpgradeMode, upgradeVenueId]);
 
