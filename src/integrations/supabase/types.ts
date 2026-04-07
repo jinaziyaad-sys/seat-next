@@ -449,6 +449,30 @@ export type Database = {
           },
         ]
       }
+      exchange_rate_cache: {
+        Row: {
+          base_currency: string
+          fetched_at: string
+          id: string
+          rate: number
+          target_currency: string
+        }
+        Insert: {
+          base_currency?: string
+          fetched_at?: string
+          id?: string
+          rate: number
+          target_currency: string
+        }
+        Update: {
+          base_currency?: string
+          fetched_at?: string
+          id?: string
+          rate?: number
+          target_currency?: string
+        }
+        Relationships: []
+      }
       feature_requests: {
         Row: {
           ai_summary: string | null
@@ -1606,6 +1630,50 @@ export type Database = {
             columns: ["venue_id"]
             isOneToOne: false
             referencedRelation: "venues"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_currency_overrides: {
+        Row: {
+          annual_price: number
+          created_at: string | null
+          currency: string
+          id: string
+          monthly_price: number
+          plan_id: string
+          stripe_annual_price_id: string | null
+          stripe_monthly_price_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          annual_price: number
+          created_at?: string | null
+          currency: string
+          id?: string
+          monthly_price: number
+          plan_id: string
+          stripe_annual_price_id?: string | null
+          stripe_monthly_price_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          annual_price?: number
+          created_at?: string | null
+          currency?: string
+          id?: string
+          monthly_price?: number
+          plan_id?: string
+          stripe_annual_price_id?: string | null
+          stripe_monthly_price_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_currency_overrides_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
             referencedColumns: ["id"]
           },
         ]
