@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Mail, Store } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import logo from "@/assets/logo.png";
 
