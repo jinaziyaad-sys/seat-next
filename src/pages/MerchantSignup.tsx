@@ -545,13 +545,30 @@ export default function MerchantSignup() {
               </CardContent>
             </Card>
 
-            {/* Billing toggle */}
-            <div className="flex items-center justify-center gap-3 mb-6">
-              <Label className={!isAnnual ? 'font-semibold' : 'text-muted-foreground'}>Monthly</Label>
-              <Switch checked={isAnnual} onCheckedChange={setIsAnnual} />
-              <Label className={isAnnual ? 'font-semibold' : 'text-muted-foreground'}>
-                Annual <Badge variant="secondary" className="ml-1 text-xs">Save 17%</Badge>
-              </Label>
+            {/* Currency & Billing toggle */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-6">
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-muted-foreground" />
+                <Select value={selectedCurrency} onValueChange={setSelectedCurrency}>
+                  <SelectTrigger className="w-[140px] h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CURRENCY_CODES.map(code => (
+                      <SelectItem key={code} value={code}>
+                        {SUPPORTED_CURRENCIES[code].symbol} {code}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-3">
+                <Label className={!isAnnual ? 'font-semibold' : 'text-muted-foreground'}>Monthly</Label>
+                <Switch checked={isAnnual} onCheckedChange={setIsAnnual} />
+                <Label className={isAnnual ? 'font-semibold' : 'text-muted-foreground'}>
+                  Annual <Badge variant="secondary" className="ml-1 text-xs">Save 17%</Badge>
+                </Label>
+              </div>
             </div>
 
             {/* Plan cards */}
