@@ -433,7 +433,52 @@ export const MerchantSettings = ({
     setSettings(prev => ({ ...prev, [key]: value }));
   };
 
-  const togglePreference = (id: string) => {
+  // Logo handlers
+  const handleLogoFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setLogoCropSrc(reader.result as string);
+      setLogoCropOpen(true);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleLogoCropComplete = async (blob: Blob) => {
+    setLogoCropOpen(false);
+    setLogoUploading(true);
+    try {
+      const logoPath = `${venueId}.png`;
+      await supabase.storage.from('venue-logos').upload(logoPath, blob, {
+        upsert: true,
+        contentType: 'image/png',
+      });
+      const { data: urlData } = supabase.storage.from('venue-logos').getPublicUrl(logoPath);
+      const newUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+      await supabase.from('venues').update({ logo_url: newUrl }).eq('id', venueId);
+      setLogoUrl(newUrl);
+      toast({ title: 'Logo Updated', description: 'Your venue logo has been saved.' });
+    } catch (err: any) {
+      console.error('Logo upload failed:', err);
+      toast({ variant: 'destructive', title: 'Upload Failed', description: err.message || 'Could not upload logo' });
+    } finally {
+      setLogoUploading(false);
+    }
+  };
+
+  const handleRemoveLogo = async () => {
+    try {
+      await supabase.from('venues').update({ logo_url: null }).eq('id', venueId);
+      setLogoUrl(null);
+      toast({ title: 'Logo Removed' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not remove logo' });
+    }
+  };
+
+
     setWaitlistPreferences(prev =>
       prev.map(pref =>
         pref.id === id ? { ...pref, enabled: !pref.enabled } : pref
