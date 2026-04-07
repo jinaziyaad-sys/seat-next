@@ -597,6 +597,14 @@ export default function MerchantSignup() {
             </div>
           </div>
         )}
+
+        {/* Logo Crop Dialog */}
+        <LogoCropDialog
+          open={logoCropOpen}
+          imageSrc={logoCropSrc}
+          onClose={() => setLogoCropOpen(false)}
+          onCropComplete={handleLogoCropComplete}
+        />
       </div>
     </div>
   );
