@@ -145,6 +145,25 @@ export default function MerchantSignup() {
     }
   };
 
+  // Logo file selection
+  const handleLogoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      setLogoCropSrc(reader.result as string);
+      setLogoCropOpen(true);
+    };
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleLogoCropComplete = (blob: Blob) => {
+    setLogoFile(blob);
+    setLogoPreview(URL.createObjectURL(blob));
+    setLogoCropOpen(false);
+  };
+
   // Step 3: Create venue
   const handleCreateVenue = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -162,7 +181,26 @@ export default function MerchantSignup() {
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      setVenueId(data.venueId);
+      const newVenueId = data.venueId;
+      setVenueId(newVenueId);
+
+      // Upload logo if selected
+      if (logoFile && newVenueId) {
+        try {
+          const logoPath = `${newVenueId}.png`;
+          await supabase.storage.from('venue-logos').upload(logoPath, logoFile, {
+            upsert: true,
+            contentType: 'image/png',
+          });
+          const { data: urlData } = supabase.storage.from('venue-logos').getPublicUrl(logoPath);
+          const logoUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+          await supabase.from('venues').update({ logo_url: logoUrl }).eq('id', newVenueId);
+        } catch (logoErr) {
+          console.error('Logo upload failed:', logoErr);
+          // Non-blocking — venue is still created
+        }
+      }
+
       toast({ title: 'Venue Created!', description: 'Almost done — choose your payment.' });
       setStep(3);
     } catch (err: any) {
