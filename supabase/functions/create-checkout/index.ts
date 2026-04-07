@@ -34,12 +34,10 @@ serve(async (req) => {
     const user = data.user;
     if (!user?.email) throw new Error("User not authenticated");
 
-    const { priceIds, venueId, successUrl, cancelUrl } = await req.json();
-    if (!priceIds || !Array.isArray(priceIds) || priceIds.length === 0) {
-      throw new Error("priceIds array is required");
-    }
+    const body = await req.json();
+    const { priceIds, venueId, successUrl, cancelUrl, currency, planId, billingCycle } = body;
 
-    logStep("Creating checkout", { email: user.email, priceIds, venueId });
+    logStep("Creating checkout", { email: user.email, priceIds, venueId, currency, planId });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
@@ -51,10 +49,83 @@ serve(async (req) => {
       logStep("Found existing customer", { customerId });
     }
 
-    const lineItems = priceIds.map((priceId: string) => ({
-      price: priceId,
-      quantity: 1,
-    }));
+    const checkoutCurrency = (currency || "zar").toLowerCase();
+    let lineItems: any[];
+
+    if (priceIds && Array.isArray(priceIds) && priceIds.length > 0 && priceIds[0]) {
+      // Use existing Stripe price IDs
+      lineItems = priceIds.map((priceId: string) => ({
+        price: priceId,
+        quantity: 1,
+      }));
+    } else if (planId && currency && currency !== 'ZAR') {
+      // No pre-existing Stripe price — use price_data with converted amount
+      // Look up the plan to get ZAR price, then check for currency override
+      const supabaseService = createClient(
+        Deno.env.get("SUPABASE_URL") ?? "",
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
+        { auth: { persistSession: false } }
+      );
+
+      const { data: plan } = await supabaseService
+        .from("subscription_plans")
+        .select("name, monthly_price, annual_price, stripe_product_id")
+        .eq("id", planId)
+        .single();
+
+      if (!plan) throw new Error("Plan not found");
+
+      // Check for currency override
+      const { data: override } = await supabaseService
+        .from("plan_currency_overrides")
+        .select("monthly_price, annual_price, stripe_monthly_price_id, stripe_annual_price_id")
+        .eq("plan_id", planId)
+        .eq("currency", currency)
+        .maybeSingle();
+
+      if (override) {
+        const overridePriceId = billingCycle === 'annual' ? override.stripe_annual_price_id : override.stripe_monthly_price_id;
+        if (overridePriceId) {
+          lineItems = [{ price: overridePriceId, quantity: 1 }];
+        } else {
+          // Override exists but no Stripe price ID — use price_data
+          const amount = billingCycle === 'annual' ? override.annual_price : override.monthly_price;
+          lineItems = [{
+            price_data: {
+              currency: checkoutCurrency,
+              product: plan.stripe_product_id,
+              unit_amount: Math.round(amount * 100),
+              recurring: { interval: billingCycle === 'annual' ? 'year' : 'month' },
+            },
+            quantity: 1,
+          }];
+        }
+      } else {
+        // No override — fetch exchange rates and convert
+        const { data: rateRow } = await supabaseService
+          .from("exchange_rate_cache")
+          .select("rate")
+          .eq("base_currency", "ZAR")
+          .eq("target_currency", currency)
+          .maybeSingle();
+
+        const rate = rateRow?.rate || 0.055; // fallback USD rate
+        const zarPrice = billingCycle === 'annual' ? plan.annual_price : plan.monthly_price;
+        const convertedAmount = Math.round(zarPrice * rate * 100);
+
+        lineItems = [{
+          price_data: {
+            currency: checkoutCurrency,
+            product: plan.stripe_product_id,
+            unit_amount: convertedAmount,
+            recurring: { interval: billingCycle === 'annual' ? 'year' : 'month' },
+          },
+          quantity: 1,
+        }];
+      }
+    } else {
+      throw new Error("Either priceIds or planId with currency is required");
+    }
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
