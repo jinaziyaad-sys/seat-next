@@ -1,37 +1,47 @@
 
 
-# Fix Loyalty Tab Visibility & La-tayy Plan Sync
+# Fix: Subscription Upgrade Discovery & La-tayy Cleanup
 
-## Issues Found
+## Root Cause Analysis
 
-### Issue 1: Zii's Place — Loyalty tab invisible despite Enterprise plan
-- **Root cause**: The loyalty tab visibility depends on `loyaltyAdminEnabled`, which requires a `loyalty_programs` row to exist for the venue (line 195: `!!loyaltyData`). Zii's Place has no loyalty_programs row yet, so `loyaltyAdminEnabled = false`, making both `hasLoyalty` and `loyaltyLocked` false — the tab is completely hidden.
-- **Expected behavior**: Enterprise venues should see the Loyalty tab even without a pre-existing loyalty program, so they can set one up.
+### Problem 1: `check-subscription` never discovers upgrades
+Lines 287-330: When a stored subscription ID exists and is **still active** in Stripe, it returns immediately with that subscription's data. It only searches for newer subs when the stored sub is **cancelled** (line 341). Since the old Pro sub was never cancelled, the recovery path never triggers.
 
-### Issue 2: La-tayy — Still showing Pro instead of Enterprise
-- **Root cause**: The `merchant_subscriptions` table still has the old Pro Stripe subscription ID (`sub_1TJGJJRrnmiHUS0Lkgw2BZV3`). When `check-subscription` retrieves this from Stripe, it's still active/trialing, so the recovery path (which searches for newer subs) never triggers. The newer Enterprise subscription exists but is unclaimed.
-- **Fix**: The old Pro subscription needs to be cancelled in Stripe, and the DB record updated to point to the Enterprise subscription.
+### Problem 2: `create-checkout` metadata mismatch
+Lines 62-63: The cancellation logic checks `sub.metadata?.venue_id === venueId`, but this is **subscription-level** metadata. The venue_id is set in `subscription_data.metadata` (line 157), which attaches to the subscription object. However, older subscriptions created before this code was added may not have `venue_id` in their metadata, causing them to be skipped.
 
-## Plan
+### Problem 3: La-tayy has an uncancelled Pro sub
+`sub_1TJGJJRrnmiHUS0Lkgw2BZV3` (Pro) is still active in Stripe. The newer Enterprise sub `sub_1TJIT0RrnmiHUS0LYInUwdQa` exists but is unclaimed.
 
-### 1. Fix loyalty tab visibility logic (`src/pages/MerchantDashboard.tsx`)
-- Change `loyaltyAdminEnabled` to be true when the venue has the `loyalty` feature entitled, regardless of whether a `loyalty_programs` row exists
-- Current logic: `hasLoyalty = loyaltyAdminEnabled && subscription.hasFeature('loyalty')`
-- New logic: `hasLoyalty = subscription.hasFeature('loyalty')` — if the plan includes loyalty, show the tab. The `loyaltyAdminEnabled` check (which requires a DB row) should only gate whether the program is *active for patrons*, not whether the merchant can access the management UI.
-- Also update `loyaltyLocked` to show the locked tab for non-Enterprise plans even without a loyalty_programs row: `loyaltyLocked = !subscription.hasFeature('loyalty') && subscription.subscribed`
+## Fix Plan
 
-### 2. Fix La-tayy's stale subscription
-- Cancel the old Pro subscription (`sub_1TJGJJRrnmiHUS0Lkgw2BZV3`) in Stripe
-- The next `check-subscription` call will then trigger the recovery path, find the active Enterprise subscription, and sync it to the DB automatically
+### 1. `check-subscription/index.ts` — Check for newer subs even when stored sub is active (lines 287-330)
 
-### 3. Prevent future duplicate subscriptions (`supabase/functions/create-checkout/index.ts`)
-- Before creating a new checkout session for an upgrade, cancel any existing active Stripe subscription for the same venue
-- This prevents the accumulation of multiple active subscriptions when merchants change plans
+After retrieving and confirming the stored sub is active, add a check: query the customer's other active subs to see if any has a **different (newer) product** for the same venue. If found, cancel the old one and switch to the new one. This handles the upgrade case where `create-checkout` failed to cancel the old sub.
+
+```text
+Current flow (lines 287-330):
+  retrieve stored sub → if active → return it ← PROBLEM: stops here
+
+New flow:
+  retrieve stored sub → if active →
+    list ALL customer active subs →
+    find any with venue_id matching AND created after stored sub →
+    if found: cancel old sub, sync new one, return new
+    else: return stored sub as before
+```
+
+### 2. `create-checkout/index.ts` — Also cancel by DB lookup (lines 51-68)
+
+Add a fallback: before the metadata-based search, query `merchant_subscriptions` for the venue's current `stripe_subscription_id` and cancel that directly. This handles old subs that lack venue_id metadata.
+
+### 3. Cancel La-tayy's old Pro sub via Stripe tool
+Cancel `sub_1TJGJJRrnmiHUS0Lkgw2BZV3`. The next `check-subscription` call will then find the Enterprise sub and sync it.
 
 ## Files Modified
 | File | Change |
 |------|--------|
-| `src/pages/MerchantDashboard.tsx` | Decouple loyalty tab visibility from loyalty_programs row existence |
-| `supabase/functions/create-checkout/index.ts` | Cancel existing venue subscription before creating new checkout |
-| Stripe (manual) | Cancel stale Pro sub for La-tayy |
+| `supabase/functions/check-subscription/index.ts` | Add upgrade discovery when stored sub is active (lines 292-330) |
+| `supabase/functions/create-checkout/index.ts` | Add DB-based cancellation fallback before metadata search |
+| Stripe (manual) | Cancel `sub_1TJGJJRrnmiHUS0Lkgw2BZV3` |
 
