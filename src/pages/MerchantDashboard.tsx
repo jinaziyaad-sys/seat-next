@@ -370,9 +370,9 @@ const MerchantDashboard = () => {
   const hasReservations = hasTableReady && features.reservations_enabled;
   const hasKitchenBoard = hasFoodReady && features.kitchen_board_enabled;
   const hasAnalytics = features.analytics_enabled && subscription.hasFeature('analytics');
-  const hasLoyalty = loyaltyAdminEnabled && subscription.hasFeature('loyalty');
+  const hasLoyalty = subscription.hasFeature('loyalty');
   const analyticsLocked = features.analytics_enabled && !subscription.hasFeature('analytics');
-  const loyaltyLocked = loyaltyAdminEnabled && !subscription.hasFeature('loyalty');
+  const loyaltyLocked = !subscription.hasFeature('loyalty') && subscription.subscribed;
   const hasPromotions = subscription.hasFeature('analytics'); // Pro+ can create promotions
 
   // Tab trigger class for consistent sizing

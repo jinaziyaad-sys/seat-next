@@ -47,6 +47,25 @@ serve(async (req) => {
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
       logStep("Found existing customer", { customerId });
+
+      // Cancel existing subscription for this venue to prevent duplicates on upgrade
+      if (venueId && customerId) {
+        const existingSubs = await stripe.subscriptions.list({
+          customer: customerId,
+          status: 'active',
+        });
+        const trialSubs = await stripe.subscriptions.list({
+          customer: customerId,
+          status: 'trialing',
+        });
+        const allSubs = [...existingSubs.data, ...trialSubs.data];
+        for (const sub of allSubs) {
+          if (sub.metadata?.venue_id === venueId) {
+            logStep("Cancelling existing venue subscription", { subId: sub.id, venueId });
+            await stripe.subscriptions.cancel(sub.id);
+          }
+        }
+      }
     }
 
     const checkoutCurrency = (currency || "zar").toLowerCase();
