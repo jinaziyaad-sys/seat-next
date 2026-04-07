@@ -1,67 +1,115 @@
 
 
-# Fix Sponsored Ads: Payment-Gated Activation + Rejection Refunds
+# Merchant Signup & Onboarding Wizard
 
-## Problems
-
-1. **Dev approve sets `is_active: true` without checking payment** — Line 359 of `PromotionsManager.tsx` blindly activates on approval, even if `payment_status` is still `pending`.
-2. **No refund on rejection** — If a merchant has paid (via Stripe) and the dev rejects their campaign, there's no mechanism to refund the payment.
-3. **Merchant-side badge logic shows "Live" for unpaid approved campaigns** — `getStatusBadge` in `SponsoredAdsManager.tsx` doesn't factor in payment status.
+## Problem
+The current signup flow is minimal: a basic registration form (name, venue name, email, password) that immediately shows plan cards. There's no way for merchants to configure their requirements (loyalty, kitchen board, etc.), set up venue details (address, logo, contact info, staff), or understand what they're getting before paying. The dev dashboard has all this venue creation logic but it's not exposed to self-service merchants.
 
 ## Solution
+Replace the current `MerchantSignup` page with a multi-step onboarding wizard that mirrors the dev venue creation process but is self-service.
 
-### 1. Gate activation on payment (Dev side)
-In `src/components/dev/PromotionsManager.tsx`:
-- The "Approve" button should only set `is_active: true` if `payment_status === 'paid'`
-- If payment is still pending, set `review_status: 'approved'` but keep `is_active: false`
-- Show a visual indicator: "Approved — awaiting payment" vs "Live"
+### Step Flow (two valid paths)
 
-### 2. Auto-refund on rejection
-Create a new edge function `refund-promo-campaign/index.ts`:
-- Accepts a `campaignId`
-- Looks up the campaign's Stripe payment (via `checkout.session.completed` metadata or a stored `stripe_payment_intent_id`)
-- Issues a full Stripe refund
-- Updates `payment_status` to `'refunded'`
+```text
+Path A: Browse → Register → Configure → Setup → Pay
+Path B: Browse → Register → Pay → Configure → Setup
 
-This requires storing the Stripe Payment Intent ID on the campaign row — add a `stripe_payment_intent_id` column to `promo_campaigns`.
+Step 1: Plan Selection (public, no auth required)
+  - Show pricing tiers with feature breakdowns (existing UI)
+  - Feature configurator: toggle which features matter (loyalty, kitchen, etc.)
+  - Recommends a plan based on selections
+  - CTA: "Get Started" → goes to Step 2
 
-Update the dev "Reject" button to:
-- If `payment_status === 'paid'`, call the refund function before marking as rejected
-- Show a confirmation dialog: "This merchant has paid. Rejecting will issue a full refund."
-- Add a text input for rejection reason (`review_notes`)
+Step 2: Account Registration (if not logged in)
+  - Email, password, full name
+  - On submit: create auth user (supabase.auth.signUp)
+  - No venue created yet
 
-### 3. Fix merchant-side status display
-In `src/components/merchant/SponsoredAdsManager.tsx`:
-- Update `getStatusBadge` to show "Approved (Awaiting Payment)" when `review_status === 'approved'` and `payment_status !== 'paid'`
-- Show "Refunded" badge when `payment_status === 'refunded'`
+Step 3: Venue Setup
+  - Venue name, phone, display address
+  - Address validation + map (reuse validate-address function)
+  - Logo upload (reuse venue-logos bucket)
+  - Service types toggle (Food Ready, Table Ready)
+  - Business hours (sensible defaults pre-filled)
+  - On submit: insert into venues table + upload logo
 
-### 4. Store Payment Intent on webhook
-In `supabase/functions/stripe-webhook/index.ts`:
-- When handling `checkout.session.completed` for promo campaigns, also store `payment_intent` on the campaign row
+Step 4: Admin Account Setup
+  - Already created in Step 2 — this step assigns the admin role
+  - Optionally add additional staff members
+  - Creates user_role entries via create-merchant edge function
 
-## Database Migration
-```sql
-ALTER TABLE promo_campaigns 
-  ADD COLUMN IF NOT EXISTS stripe_payment_intent_id text;
+Step 5: Payment / Checkout
+  - Show selected plan summary
+  - Stripe checkout (existing create-checkout function)
+  - On success: redirect to /merchant/dashboard
+
+Alternative: user can pay first (Step 5 before Steps 3-4)
+  - After payment, redirect to a "Complete Setup" flow
+  - Dashboard detects incomplete setup and shows wizard
 ```
 
-## Files
+### Technical Details
+
+**New/Modified Files:**
 
 | File | Change |
 |------|--------|
-| `supabase/migrations/...` | Add `stripe_payment_intent_id` column |
-| `supabase/functions/stripe-webhook/index.ts` | Store `payment_intent` on promo checkout completion |
-| `supabase/functions/refund-promo-campaign/index.ts` | New — issues Stripe refund, updates status |
-| `src/components/dev/PromotionsManager.tsx` | Gate activation on payment; add reject-with-refund flow with reason dialog |
-| `src/components/merchant/SponsoredAdsManager.tsx` | Fix status badges; add "Refunded" state |
+| `src/pages/MerchantSignup.tsx` | Full rewrite — multi-step wizard with 5 steps |
+| `src/pages/MerchantAuth.tsx` | Add prominent "Sign Up" link/button |
+| `supabase/migrations/...` | Add `onboarding_completed` boolean to `venues` table |
+| `src/pages/MerchantDashboard.tsx` | Check `onboarding_completed` — if false, redirect to setup wizard |
 
-## Corrected Flow
-```text
-Merchant creates campaign → Pays via Stripe → payment_status = 'paid'
-  → Dev reviews:
-    ├─ Approve + paid → is_active = true (Live)
-    ├─ Approve + unpaid → is_active = false (Approved, awaiting payment)
-    └─ Reject + paid → Stripe refund issued → payment_status = 'refunded'
-         Reject + unpaid → No refund needed
+**Step 1 — Plan Explorer** (no auth):
+- Reuse existing plan-fetching logic from `subscription_plans` table
+- Add interactive feature selector (checkboxes for loyalty, kitchen board, analytics, etc.)
+- Highlight recommended plan based on selected features
+- "Get Started" stores selected plan in component state
+
+**Step 2 — Registration** (if not authenticated):
+- Email, password, full name fields
+- `supabase.auth.signUp()` with `emailRedirectTo`
+- Auto-login after signup (Supabase returns session)
+
+**Step 3 — Venue Setup**:
+- Reuse venue creation logic from DevDashboard (address validation, logo upload, service types, default settings)
+- Insert into `venues` table with `onboarding_completed: false`
+- Upload logo to `venue-logos` bucket
+
+**Step 4 — Admin Role Assignment**:
+- Insert `user_roles` row: `{ user_id, venue_id, role: 'admin' }` using service role via a new lightweight edge function (`self-register-merchant`) since the existing `create-merchant` requires an existing admin to call it
+- Optional: add staff email invites (stored for later)
+
+**Step 5 — Payment**:
+- Call `create-checkout` with selected plan's price ID and venue_id metadata
+- On return from Stripe: update `venues.onboarding_completed = true`
+- Redirect to dashboard
+
+**New Edge Function: `self-register-merchant`**:
+- Accepts: `{ venueName, address, phone, displayAddress, latitude, longitude, serviceTypes, logoUrl, settings }`
+- Authenticates via JWT (gets user from token)
+- Creates the venue row
+- Assigns the calling user as `admin` in `user_roles`
+- Returns `{ venueId }`
+- This replaces the current `create-merchant` for self-service (which requires an existing admin)
+
+**Migration**:
+```sql
+ALTER TABLE venues ADD COLUMN IF NOT EXISTS onboarding_completed boolean DEFAULT true;
+-- Default true so existing venues aren't affected
 ```
+
+**Dashboard guard** in `MerchantDashboard.tsx`:
+- After loading venue data, check `venueData.onboarding_completed`
+- If false, show inline setup completion wizard or redirect to `/merchant/signup?complete=true`
+
+### What Gets Removed
+- The inline registration card currently embedded in plan selection
+- Direct call to `create-merchant` from signup (replaced by `self-register-merchant`)
+
+## Implementation Order
+1. Migration: add `onboarding_completed` column
+2. Edge function: `self-register-merchant`
+3. Rewrite `MerchantSignup.tsx` as multi-step wizard
+4. Update `MerchantAuth.tsx` with prominent signup link
+5. Add dashboard guard for incomplete onboarding
 
