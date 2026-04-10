@@ -288,7 +288,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
           )}
         >
           {t("loyaltyFlow.vouchers")}
-          {currentVenue.active_codes.length > 0 && (
+          {(currentVenue.active_codes?.length ?? 0) > 0 && (
             <span className="ml-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">
               {currentVenue.active_codes.length}
             </span>
@@ -374,7 +374,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
             exit={{ opacity: 0, x: -20 }}
             className="p-6 space-y-3"
           >
-            {currentVenue.active_codes.length === 0 && currentVenue.history_codes.length === 0 ? (
+            {(currentVenue.active_codes?.length ?? 0) === 0 && (currentVenue.history_codes?.length ?? 0) === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
                   <Gift className="h-7 w-7 text-muted-foreground" />
