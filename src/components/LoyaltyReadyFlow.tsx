@@ -9,6 +9,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
+interface VoucherCode {
+  code: string;
+  reward_name: string | null;
+  image_url: string | null;
+  expires_at: string | null;
+  status: string;
+  redeemed_at: string | null;
+}
+
 interface VenueStampData {
   venue_id: string;
   venue_name: string;
@@ -17,7 +26,8 @@ interface VenueStampData {
   stamp_threshold: number;
   next_reward_name: string | null;
   next_reward_description: string | null;
-  active_codes: { code: string; reward_name: string | null; image_url: string | null; expires_at: string | null }[];
+  active_codes: VoucherCode[];
+  history_codes: VoucherCode[];
   program_id: string;
 }
 
@@ -91,27 +101,35 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
       const [venuesRes, programsRes, codesRes, rewardsRes] = await Promise.all([
         supabase.from("venues").select("id, name, logo_url").in("id", venueIds),
         supabase.from("loyalty_programs").select("*").in("venue_id", venueIds).eq("is_active", true).eq("type", "stamp_card"),
-        supabase.from("discount_codes").select("code, reward_name, venue_id, reward_id, expires_at").eq("user_id", user.id).eq("status", "active"),
+        supabase
+          .from("discount_codes")
+          .select("code, reward_name, venue_id, reward_id, expires_at, status, redeemed_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
         supabase.from("loyalty_rewards").select("*").in("venue_id", venueIds).eq("is_active", true),
       ]);
 
       const venueMap = new Map(venuesRes.data?.map(v => [v.id, v]) || []);
       const programMap = new Map(programsRes.data?.map(p => [p.venue_id, p]) || []);
-      const codesMap = new Map<string, { code: string; reward_name: string | null; image_url: string | null; expires_at: string | null }[]>();
+      const activeCodesMap = new Map<string, VoucherCode[]>();
+      const historyCodesMap = new Map<string, VoucherCode[]>();
       const now = new Date();
 
-      codesRes.data
-        ?.filter(c => !c.expires_at || new Date(c.expires_at) > now)
-        .forEach(c => {
-          if (!codesMap.has(c.venue_id)) codesMap.set(c.venue_id, []);
-          const reward = rewardsRes.data?.find(r => r.id === c.reward_id);
-          codesMap.get(c.venue_id)!.push({
-            code: c.code,
-            reward_name: c.reward_name,
-            image_url: reward?.image_url || null,
-            expires_at: c.expires_at,
-          });
-        });
+      codesRes.data?.forEach(c => {
+        const reward = rewardsRes.data?.find(r => r.id === c.reward_id);
+        const voucher: VoucherCode = {
+          code: c.code,
+          reward_name: c.reward_name,
+          image_url: reward?.image_url || null,
+          expires_at: c.expires_at,
+          status: c.status,
+          redeemed_at: c.redeemed_at,
+        };
+        const isExpired = c.expires_at ? new Date(c.expires_at) <= now : false;
+        const targetMap = c.status === "redeemed" || isExpired ? historyCodesMap : activeCodesMap;
+        if (!targetMap.has(c.venue_id)) targetMap.set(c.venue_id, []);
+        targetMap.get(c.venue_id)!.push(voucher);
+      });
       const rewardsMap = new Map<string, any>();
       rewardsRes.data?.forEach(r => {
         if (!rewardsMap.has(r.program_id)) rewardsMap.set(r.program_id, r);
@@ -133,7 +151,8 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
             stamp_threshold: program.stamp_threshold || 10,
             next_reward_name: reward?.name || null,
             next_reward_description: reward?.description || null,
-            active_codes: codes,
+            active_codes: activeCodesMap.get(l.venue_id) || [],
+            history_codes: historyCodesMap.get(l.venue_id) || [],
             program_id: program.id,
           };
         })
@@ -355,7 +374,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
             exit={{ opacity: 0, x: -20 }}
             className="p-6 space-y-3"
           >
-            {currentVenue.active_codes.length === 0 ? (
+            {currentVenue.active_codes.length === 0 && currentVenue.history_codes.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
                   <Gift className="h-7 w-7 text-muted-foreground" />
@@ -364,48 +383,88 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
                 <p className="text-xs text-muted-foreground mt-1">{t("loyaltyFlow.noVouchersDesc")}</p>
               </div>
             ) : (
-              currentVenue.active_codes.map((vc) => (
-                <Card key={vc.code} className="overflow-hidden">
-                  <CardContent className="p-0">
-                    {vc.image_url && (
-                      <img src={vc.image_url} alt={vc.reward_name || ''} className="w-full h-32 object-cover" />
-                    )}
-                    <div className="p-4 flex items-center justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-semibold text-sm">{vc.reward_name || t("loyalty.reward")}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {t("loyalty.tellStaff")}
-                        </p>
-                        {vc.expires_at && (
-                          <div className="flex items-center gap-1 mt-1">
-                            <Clock className="h-3 w-3 text-muted-foreground" />
-                            <p className="text-xs text-muted-foreground">
-                              {t("loyalty.expiresOn", { date: new Date(vc.expires_at).toLocaleDateString() })}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <code className="bg-muted px-3 py-1.5 rounded-md text-sm font-mono font-bold tracking-wider">
-                          {vc.code}
-                        </code>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 shrink-0"
-                          onClick={() => copyCode(vc.code)}
-                        >
-                          {copiedCode === vc.code ? (
-                            <Check className="h-4 w-4 text-primary" />
-                          ) : (
-                            <Copy className="h-4 w-4" />
+              <>
+                {currentVenue.active_codes.length > 0 && currentVenue.active_codes.map((vc) => (
+                  <Card key={vc.code} className="overflow-hidden">
+                    <CardContent className="p-0">
+                      {vc.image_url && (
+                        <img src={vc.image_url} alt={vc.reward_name || ''} className="w-full h-32 object-cover" />
+                      )}
+                      <div className="p-4 flex items-center justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm">{vc.reward_name || t("loyalty.reward")}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {t("loyalty.tellStaff")}
+                          </p>
+                          {vc.expires_at && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Clock className="h-3 w-3 text-muted-foreground" />
+                              <p className="text-xs text-muted-foreground">
+                                {t("loyalty.expiresOn", { date: new Date(vc.expires_at).toLocaleDateString() })}
+                              </p>
+                            </div>
                           )}
-                        </Button>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <code className="bg-muted px-3 py-1.5 rounded-md text-sm font-mono font-bold tracking-wider">
+                            {vc.code}
+                          </code>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 shrink-0"
+                            onClick={() => copyCode(vc.code)}
+                          >
+                            {copiedCode === vc.code ? (
+                              <Check className="h-4 w-4 text-primary" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
+                    </CardContent>
+                  </Card>
+                ))}
+
+                {currentVenue.history_codes.length > 0 && (
+                  <div className="space-y-3">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Voucher History</p>
+                    {currentVenue.history_codes.map((vc) => {
+                      const isRedeemed = vc.status === "redeemed";
+                      const historyDate = isRedeemed ? vc.redeemed_at : vc.expires_at;
+
+                      return (
+                        <Card key={`${vc.code}-history`} className="overflow-hidden opacity-60">
+                          <CardContent className="p-0">
+                            {vc.image_url && (
+                              <img src={vc.image_url} alt={vc.reward_name || ''} className="w-full h-32 object-cover grayscale" />
+                            )}
+                            <div className="p-4 flex items-center justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-semibold text-sm">{vc.reward_name || t("loyalty.reward")}</p>
+                                  <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                    {isRedeemed ? "Redeemed" : "Expired"}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {historyDate
+                                    ? `${isRedeemed ? "Redeemed" : "Expired"} ${new Date(historyDate).toLocaleDateString()}`
+                                    : isRedeemed ? "Redeemed" : "Expired"}
+                                </p>
+                              </div>
+                              <code className="bg-muted px-3 py-1.5 rounded-md text-sm font-mono font-bold tracking-wider text-muted-foreground">
+                                {vc.code}
+                              </code>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
+                  </div>
+                )}
+              </>
             )}
           </motion.div>
         )}
