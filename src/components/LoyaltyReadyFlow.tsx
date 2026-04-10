@@ -290,7 +290,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
           {t("loyaltyFlow.vouchers")}
           {(currentVenue.active_codes?.length ?? 0) > 0 && (
             <span className="ml-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">
-              {currentVenue.active_codes.length}
+              {currentVenue.active_codes?.length}
             </span>
           )}
         </button>
@@ -384,7 +384,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
               </div>
             ) : (
               <>
-                {currentVenue.active_codes.length > 0 && currentVenue.active_codes.map((vc) => (
+                {(currentVenue.active_codes?.length ?? 0) > 0 && currentVenue.active_codes.map((vc) => (
                   <Card key={vc.code} className="overflow-hidden">
                     <CardContent className="p-0">
                       {vc.image_url && (
@@ -427,7 +427,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
                   </Card>
                 ))}
 
-                {currentVenue.history_codes.length > 0 && (
+                {(currentVenue.history_codes?.length ?? 0) > 0 && (
                   <div className="space-y-3">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Voucher History</p>
                     {currentVenue.history_codes.map((vc) => {
