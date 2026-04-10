@@ -10,6 +10,14 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useTranslation } from "react-i18next";
 
+interface LoyaltyVoucher {
+  code: string;
+  reward_name: string | null;
+  expires_at: string | null;
+  status: string;
+  redeemed_at: string | null;
+}
+
 interface LoyaltyCardData {
   venue_id: string;
   venue_name: string;
@@ -20,7 +28,8 @@ interface LoyaltyCardData {
   points_balance: number;
   lifetime_stamps: number;
   lifetime_points: number;
-  active_codes: { code: string; reward_name: string | null }[];
+  active_codes: LoyaltyVoucher[];
+  history_codes: LoyaltyVoucher[];
   admin_enabled: boolean;
   next_reward_name: string | null;
   next_reward_description: string | null;
@@ -145,7 +154,11 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
       const [venuesRes, programsRes, codesRes, rewardsRes, tiersRes, tierStatusRes, cashbackRes, cashbackConfigRes, referralRes, referralConfigRes, challengesRes, progressRes, referralCompletionsRes] = await Promise.all([
         supabase.from("venues").select("id, name, logo_url").in("id", venueIds),
         supabase.from("loyalty_programs").select("*").in("venue_id", venueIds).eq("is_active", true),
-        supabase.from("discount_codes").select("code, reward_name, venue_id, expires_at").eq("user_id", user.id).eq("status", "active"),
+        supabase
+          .from("discount_codes")
+          .select("code, reward_name, venue_id, expires_at, status, redeemed_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
         supabase.from("loyalty_rewards").select("*").in("venue_id", venueIds).eq("is_active", true),
         supabase.from("loyalty_tiers").select("*").in("venue_id", venueIds).eq("is_active", true),
         supabase.from("patron_tier_status").select("*").eq("user_id", user.id).in("venue_id", venueIds),
@@ -160,19 +173,27 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
 
       const venueMap = new Map(venuesRes.data?.map(v => [v.id, v]) || []);
       const programMap = new Map(programsRes.data?.map(p => [p.venue_id, p]) || []);
-      const codesMap = new Map<string, { code: string; reward_name: string | null }[]>();
+      const activeCodesMap = new Map<string, LoyaltyVoucher[]>();
+      const historyCodesMap = new Map<string, LoyaltyVoucher[]>();
       const rewardsMap = new Map<string, { name: string; description: string | null; stamps_required: number | null; points_required: number | null }>();
       const now = new Date();
 
       rewardsRes.data?.forEach(r => {
         if (!rewardsMap.has(r.program_id)) rewardsMap.set(r.program_id, r);
       });
-      codesRes.data
-        ?.filter(c => !c.expires_at || new Date(c.expires_at) > now)
-        .forEach(c => {
-          if (!codesMap.has(c.venue_id)) codesMap.set(c.venue_id, []);
-          codesMap.get(c.venue_id)!.push({ code: c.code, reward_name: c.reward_name });
-        });
+      codesRes.data?.forEach(c => {
+        const voucher: LoyaltyVoucher = {
+          code: c.code,
+          reward_name: c.reward_name,
+          expires_at: c.expires_at,
+          status: c.status,
+          redeemed_at: c.redeemed_at,
+        };
+        const isExpired = c.expires_at ? new Date(c.expires_at) <= now : false;
+        const targetMap = c.status === "redeemed" || isExpired ? historyCodesMap : activeCodesMap;
+        if (!targetMap.has(c.venue_id)) targetMap.set(c.venue_id, []);
+        targetMap.get(c.venue_id)!.push(voucher);
+      });
 
       const tierMap = new Map(tiersRes.data?.map(t => [t.id, t]) || []);
       const tierStatusMap = new Map(tierStatusRes.data?.map(ts => [ts.venue_id, ts]) || []);
@@ -226,7 +247,8 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
             points_balance: l.points_balance,
             lifetime_stamps: l.lifetime_stamps,
             lifetime_points: l.lifetime_points,
-            active_codes: codesMap.get(l.venue_id) || [],
+            active_codes: activeCodesMap.get(l.venue_id) || [],
+            history_codes: historyCodesMap.get(l.venue_id) || [],
             admin_enabled: program.admin_enabled !== false,
             next_reward_name: reward?.name || null,
             next_reward_description: reward?.description || null,
@@ -379,16 +401,50 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
                       <p className="text-xs font-semibold text-muted-foreground uppercase">{t("loyalty.yourRewards")}</p>
                       <p className="text-xs text-muted-foreground">{t("loyalty.tellStaff")}</p>
                       {card.active_codes.map((code, i) => (
-                        <div key={i} className="flex items-center justify-between bg-primary/10 rounded-lg p-2.5">
+                        <div key={`${code.code}-${i}`} className="flex items-center justify-between bg-primary/10 rounded-lg p-2.5">
                           <div>
                             <p className="text-sm font-medium">{code.reward_name || t("loyalty.reward")}</p>
                             <code className="text-xs font-mono text-primary font-bold">{code.code}</code>
+                            {code.expires_at && (
+                              <p className="text-[11px] text-muted-foreground mt-1">
+                                {t("loyalty.expiresOn", { date: new Date(code.expires_at).toLocaleDateString() })}
+                              </p>
+                            )}
                           </div>
                           <button onClick={(e) => copyCode(code.code, e)} className="flex items-center gap-1 text-xs px-2 py-1 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
                             {copiedCode === code.code ? <><Check className="h-3 w-3" /> {t("loyalty.copied")}</> : <><Copy className="h-3 w-3" /> {t("loyalty.copy")}</>}
                           </button>
                         </div>
                       ))}
+                    </div>
+                  )}
+
+                  {card.history_codes.length > 0 && (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">Voucher History</p>
+                      {card.history_codes.map((code, i) => {
+                        const isRedeemed = code.status === "redeemed";
+                        const historyDate = isRedeemed ? code.redeemed_at : code.expires_at;
+
+                        return (
+                          <div key={`${code.code}-history-${i}`} className="flex items-center justify-between rounded-lg border bg-muted/50 p-2.5 opacity-60">
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-medium">{code.reward_name || t("loyalty.reward")}</p>
+                                <Badge variant="secondary" className="text-[10px]">
+                                  {isRedeemed ? "Redeemed" : "Expired"}
+                                </Badge>
+                              </div>
+                              <code className="text-xs font-mono text-muted-foreground font-bold">{code.code}</code>
+                              {historyDate && (
+                                <p className="text-[11px] text-muted-foreground mt-1">
+                                  {isRedeemed ? "Redeemed" : "Expired"} {new Date(historyDate).toLocaleDateString()}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
