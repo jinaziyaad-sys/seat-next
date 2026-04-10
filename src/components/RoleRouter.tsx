@@ -33,11 +33,9 @@ export function RoleRouter({ userId, userName }: RoleRouterProps) {
       const roleSet = new Set(roles?.map((r: any) => r.role) || []);
       const isSuperAdmin = roleSet.has("super_admin");
       const isMerchant = roleSet.has("staff") || roleSet.has("admin");
-      const isPatron = !roles || roles.length === 0 || (!isSuperAdmin && !isMerchant);
 
-      // Build available role types
-      const available: RoleType[] = [];
-      if (isPatron || (!isSuperAdmin && !isMerchant)) available.push("patron");
+      // Build available role types — every user can access the patron view
+      const available: RoleType[] = ["patron"];
       if (isMerchant) available.push("merchant");
       if (isSuperAdmin) available.push("super_admin");
 
