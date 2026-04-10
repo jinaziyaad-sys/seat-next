@@ -56,15 +56,18 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Program not active' }), { status: 400, headers: corsHeaders });
     }
 
-    // Check if already has an active code
+    // Check if already has an active, unexpired code
+    const now = new Date();
     const { data: existingCodes } = await admin
       .from('discount_codes')
-      .select('id')
+      .select('id, expires_at')
       .eq('user_id', user.id)
       .eq('venue_id', venue_id)
       .eq('status', 'active');
 
-    if (existingCodes && existingCodes.length > 0) {
+    const hasActiveCode = existingCodes?.some(existingCode => !existingCode.expires_at || new Date(existingCode.expires_at) > now);
+
+    if (hasActiveCode) {
       return new Response(JSON.stringify({ error: 'You already have an active reward code' }), { status: 400, headers: corsHeaders });
     }
 

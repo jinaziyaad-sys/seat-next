@@ -145,7 +145,7 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
       const [venuesRes, programsRes, codesRes, rewardsRes, tiersRes, tierStatusRes, cashbackRes, cashbackConfigRes, referralRes, referralConfigRes, challengesRes, progressRes, referralCompletionsRes] = await Promise.all([
         supabase.from("venues").select("id, name, logo_url").in("id", venueIds),
         supabase.from("loyalty_programs").select("*").in("venue_id", venueIds).eq("is_active", true),
-        supabase.from("discount_codes").select("code, reward_name, venue_id").eq("user_id", user.id).eq("status", "active"),
+        supabase.from("discount_codes").select("code, reward_name, venue_id, expires_at").eq("user_id", user.id).eq("status", "active"),
         supabase.from("loyalty_rewards").select("*").in("venue_id", venueIds).eq("is_active", true),
         supabase.from("loyalty_tiers").select("*").in("venue_id", venueIds).eq("is_active", true),
         supabase.from("patron_tier_status").select("*").eq("user_id", user.id).in("venue_id", venueIds),
@@ -162,14 +162,17 @@ export const PatronLoyaltyCard = ({ compact = false, venueId }: PatronLoyaltyCar
       const programMap = new Map(programsRes.data?.map(p => [p.venue_id, p]) || []);
       const codesMap = new Map<string, { code: string; reward_name: string | null }[]>();
       const rewardsMap = new Map<string, { name: string; description: string | null; stamps_required: number | null; points_required: number | null }>();
+      const now = new Date();
 
       rewardsRes.data?.forEach(r => {
         if (!rewardsMap.has(r.program_id)) rewardsMap.set(r.program_id, r);
       });
-      codesRes.data?.forEach(c => {
-        if (!codesMap.has(c.venue_id)) codesMap.set(c.venue_id, []);
-        codesMap.get(c.venue_id)!.push(c);
-      });
+      codesRes.data
+        ?.filter(c => !c.expires_at || new Date(c.expires_at) > now)
+        .forEach(c => {
+          if (!codesMap.has(c.venue_id)) codesMap.set(c.venue_id, []);
+          codesMap.get(c.venue_id)!.push({ code: c.code, reward_name: c.reward_name });
+        });
 
       const tierMap = new Map(tiersRes.data?.map(t => [t.id, t]) || []);
       const tierStatusMap = new Map(tierStatusRes.data?.map(ts => [ts.venue_id, ts]) || []);

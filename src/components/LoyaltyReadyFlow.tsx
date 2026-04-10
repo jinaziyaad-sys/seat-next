@@ -98,16 +98,20 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
       const venueMap = new Map(venuesRes.data?.map(v => [v.id, v]) || []);
       const programMap = new Map(programsRes.data?.map(p => [p.venue_id, p]) || []);
       const codesMap = new Map<string, { code: string; reward_name: string | null; image_url: string | null; expires_at: string | null }[]>();
-      codesRes.data?.forEach(c => {
-        if (!codesMap.has(c.venue_id)) codesMap.set(c.venue_id, []);
-        const reward = rewardsRes.data?.find(r => r.id === (c as any).reward_id);
-        codesMap.get(c.venue_id)!.push({
-          code: c.code,
-          reward_name: c.reward_name,
-          image_url: (reward as any)?.image_url || null,
-          expires_at: (c as any).expires_at || null,
+      const now = new Date();
+
+      codesRes.data
+        ?.filter(c => !c.expires_at || new Date(c.expires_at) > now)
+        .forEach(c => {
+          if (!codesMap.has(c.venue_id)) codesMap.set(c.venue_id, []);
+          const reward = rewardsRes.data?.find(r => r.id === c.reward_id);
+          codesMap.get(c.venue_id)!.push({
+            code: c.code,
+            reward_name: c.reward_name,
+            image_url: reward?.image_url || null,
+            expires_at: c.expires_at,
+          });
         });
-      });
       const rewardsMap = new Map<string, any>();
       rewardsRes.data?.forEach(r => {
         if (!rewardsMap.has(r.program_id)) rewardsMap.set(r.program_id, r);
