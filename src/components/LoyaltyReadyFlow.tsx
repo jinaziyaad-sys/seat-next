@@ -141,7 +141,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
           const program = programMap.get(l.venue_id);
           if (!venue || !program) return null;
           const reward = rewardsMap.get(program.id);
-          const codes = codesMap.get(l.venue_id) || [];
+          const codes = activeCodesMap.get(l.venue_id) || [];
 
           return {
             venue_id: l.venue_id,
