@@ -107,7 +107,7 @@ export const useMerchantAuth = () => {
       if (authLoading) return;
 
       if (!user || !session) {
-        navigate("/merchant/auth");
+        navigate("/auth");
         return;
       }
 
@@ -125,7 +125,7 @@ export const useMerchantAuth = () => {
           variant: "destructive",
         });
         await supabase.auth.signOut();
-        navigate("/merchant/auth");
+        navigate("/auth");
         return;
       }
 
@@ -146,7 +146,7 @@ export const useMerchantAuth = () => {
           variant: "destructive",
         });
         await supabase.auth.signOut();
-        navigate("/merchant/auth");
+        navigate("/auth");
         return;
       }
 
@@ -200,7 +200,7 @@ export const useDevAuth = () => {
       if (authLoading) return;
 
       if (!user || !session) {
-        navigate("/dev/auth");
+        navigate("/auth");
         return;
       }
 
@@ -219,7 +219,7 @@ export const useDevAuth = () => {
           variant: "destructive",
         });
         await supabase.auth.signOut();
-        navigate("/dev/auth");
+        navigate("/auth");
         return;
       }
 
