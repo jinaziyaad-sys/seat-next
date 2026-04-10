@@ -223,10 +223,10 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
                       size="xl"
                       className={cn(
                         "ring-2 ring-border group-hover:ring-primary transition-all",
-                        v.active_codes.length > 0 && "ring-primary shadow-[0_0_12px_hsl(var(--primary)/0.3)]"
+                        (v.active_codes?.length ?? 0) > 0 && "ring-primary shadow-[0_0_12px_hsl(var(--primary)/0.3)]"
                       )}
                     />
-                    {v.active_codes.length > 0 && (
+                    {(v.active_codes?.length ?? 0) > 0 && (
                       <span className="absolute -bottom-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-accent text-accent-foreground flex items-center justify-center gap-0.5">
                         <Ticket className="h-2.5 w-2.5" />
                         <span className="text-[9px] font-bold">{v.active_codes.length}</span>
@@ -288,9 +288,9 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
           )}
         >
           {t("loyaltyFlow.vouchers")}
-          {currentVenue.active_codes.length > 0 && (
+          {(currentVenue.active_codes?.length ?? 0) > 0 && (
             <span className="ml-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-[10px] text-primary-foreground font-bold">
-              {currentVenue.active_codes.length}
+              {currentVenue.active_codes?.length}
             </span>
           )}
         </button>
@@ -374,7 +374,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
             exit={{ opacity: 0, x: -20 }}
             className="p-6 space-y-3"
           >
-            {currentVenue.active_codes.length === 0 && currentVenue.history_codes.length === 0 ? (
+            {(currentVenue.active_codes?.length ?? 0) === 0 && (currentVenue.history_codes?.length ?? 0) === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-center">
                 <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center mb-3">
                   <Gift className="h-7 w-7 text-muted-foreground" />
@@ -384,7 +384,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
               </div>
             ) : (
               <>
-                {currentVenue.active_codes.length > 0 && currentVenue.active_codes.map((vc) => (
+                {(currentVenue.active_codes?.length ?? 0) > 0 && currentVenue.active_codes.map((vc) => (
                   <Card key={vc.code} className="overflow-hidden">
                     <CardContent className="p-0">
                       {vc.image_url && (
@@ -427,7 +427,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
                   </Card>
                 ))}
 
-                {currentVenue.history_codes.length > 0 && (
+                {(currentVenue.history_codes?.length ?? 0) > 0 && (
                   <div className="space-y-3">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Voucher History</p>
                     {currentVenue.history_codes.map((vc) => {
