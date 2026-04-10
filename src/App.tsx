@@ -15,7 +15,7 @@ import MerchantSignup from "./pages/MerchantSignup";
 import DevAuth from "./pages/DevAuth";
 import DevDashboard from "./pages/DevDashboard";
 
-import WaitlistJoin from "./pages/WaitlistJoin";
+
 import Privacy from "./pages/Privacy";
 import MerchantBilling from "./pages/MerchantBilling";
 
@@ -34,7 +34,7 @@ const App = () => (
             {/* Patron App Routes */}
             <Route path="/" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/waitlist/:venueId" element={<WaitlistJoin />} />
+            
             <Route path="/privacy" element={<Privacy />} />
             
             {/* Merchant App Routes */}
