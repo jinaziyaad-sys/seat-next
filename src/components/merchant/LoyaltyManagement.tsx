@@ -17,6 +17,7 @@ interface DiscountCode {
   user_id: string;
   created_at: string;
   redeemed_at: string | null;
+  expires_at: string | null;
   patron_name?: string;
 }
 
@@ -60,7 +61,16 @@ export const LoyaltyManagement = ({ venueId }: LoyaltyManagementProps) => {
     }
   };
 
+  const isExpired = (code: DiscountCode) => {
+    return code.expires_at && new Date(code.expires_at) < new Date();
+  };
+
   const handleRedeem = async (codeId: string) => {
+    const code = codes.find(c => c.id === codeId);
+    if (code && isExpired(code)) {
+      toast({ title: "Cannot redeem", description: "This voucher has expired.", variant: "destructive" });
+      return;
+    }
     setRedeemingCode(codeId);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -156,22 +166,30 @@ export const LoyaltyManagement = ({ venueId }: LoyaltyManagementProps) => {
                     <div>
                       <div className="flex items-center gap-2">
                         <code className="font-mono font-bold text-lg">{code.code}</code>
-                        <Badge variant="default" className="text-xs">Active</Badge>
+                        {isExpired(code) ? (
+                          <Badge variant="destructive" className="text-xs">Expired</Badge>
+                        ) : (
+                          <Badge variant="default" className="text-xs">Active</Badge>
+                        )}
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {code.reward_name} · {code.patron_name}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         Issued {new Date(code.created_at).toLocaleDateString()}
+                        {code.expires_at && ` · Expires ${new Date(code.expires_at).toLocaleDateString()}`}
                       </p>
                     </div>
                     <Button
                       size="sm"
                       onClick={() => handleRedeem(code.id)}
-                      disabled={redeemingCode === code.id}
+                      disabled={redeemingCode === code.id || isExpired(code)}
+                      variant={isExpired(code) ? "outline" : "default"}
                     >
                       {redeemingCode === code.id ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : isExpired(code) ? (
+                        "Expired"
                       ) : (
                         <>
                           <CheckCircle className="h-4 w-4 mr-1" />
