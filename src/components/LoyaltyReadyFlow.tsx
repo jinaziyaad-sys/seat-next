@@ -223,7 +223,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
                       size="xl"
                       className={cn(
                         "ring-2 ring-border group-hover:ring-primary transition-all",
-                        v.active_codes.length > 0 && "ring-primary shadow-[0_0_12px_hsl(var(--primary)/0.3)]"
+                        (v.active_codes?.length ?? 0) > 0 && "ring-primary shadow-[0_0_12px_hsl(var(--primary)/0.3)]"
                       )}
                     />
                     {v.active_codes.length > 0 && (
