@@ -471,7 +471,7 @@ export default function Auth() {
           </Tabs>
 
           {/* Merchant signup link */}
-          <div className="mt-6 pt-4 border-t text-center">
+          <div className="mt-6 pt-4 border-t text-center space-y-2">
             <p className="text-sm text-muted-foreground">
               Want to list your restaurant?{" "}
               <button
@@ -481,6 +481,15 @@ export default function Auth() {
               >
                 <Store className="h-3.5 w-3.5" />
                 Create a venue account
+              </button>
+            </p>
+            <p className="text-xs text-muted-foreground">
+              <button
+                type="button"
+                className="hover:underline"
+                onClick={() => navigate("/privacy")}
+              >
+                Privacy Policy
               </button>
             </p>
           </div>
