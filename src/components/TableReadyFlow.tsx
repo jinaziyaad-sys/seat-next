@@ -70,9 +70,9 @@ interface WaitlistEntry {
   notes?: string;
 }
 
-const partyDetailsSchema = z.object({
+const getPartyDetailsSchema = (maxParty: number) => z.object({
   partyName: z.string().trim().min(1, "Party name is required").max(50, "Party name must be less than 50 characters"),
-  partySize: z.number().int().min(1, "Party size must be at least 1").max(12, "Party size cannot exceed 12"),
+  partySize: z.number().int().min(1, "Party size must be at least 1").max(maxParty, `Party size cannot exceed ${maxParty}`),
 });
 
 // Helper to extract extension reason from notes (for future use if notes field is added)
@@ -1946,8 +1946,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPartySize(Math.min(12, partySize + 1))}
-                  disabled={partySize >= 12}
+                  onClick={() => setPartySize(Math.min(maxPartySize, partySize + 1))}
+                  disabled={partySize >= maxPartySize}
                 >
                   +
                 </Button>
@@ -2219,8 +2219,8 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPartySize(Math.min(12, partySize + 1))}
-                  disabled={partySize >= 12}
+                  onClick={() => setPartySize(Math.min(maxPartySize, partySize + 1))}
+                  disabled={partySize >= maxPartySize}
                 >
                   +
                 </Button>

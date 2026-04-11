@@ -212,8 +212,8 @@ export default function WaitlistJoin() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setPartySize(Math.min(12, partySize + 1))}
-                disabled={partySize >= 12}
+                onClick={() => setPartySize(Math.min(maxPartySize, partySize + 1))}
+                disabled={partySize >= maxPartySize}
               >
                 +
               </Button>
