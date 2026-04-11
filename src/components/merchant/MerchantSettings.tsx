@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Plus, X, ChevronDown, Clock, Calendar, AlertCircle, RotateCcw, Save, Settings, Utensils, Users, Timer, Building2, ClipboardList, ImageIcon, Upload, Trash2, Loader2 } from "lucide-react";
-import { TableConfigurationManager } from "./TableConfigurationManager";
+
 import { VenueDiscoverySettings } from "./VenueDiscoverySettings";
 import { BusinessHours, HolidayClosure } from "@/utils/businessHours";
 import { TIMEZONE_OPTIONS, DEFAULT_TIMEZONE } from "@/utils/timezone";
@@ -33,12 +33,6 @@ interface WaitlistPreference {
   label: string;
   enabled: boolean;
   custom?: boolean;
-}
-
-interface TableConfig {
-  id: string;
-  capacity: number;
-  name: string;
 }
 
 interface MerchantSettingsProps {
@@ -72,7 +66,7 @@ export const MerchantSettings = ({
   const [waitlistPreferences, setWaitlistPreferences] = useState<WaitlistPreference[]>([]);
   const [newPreferenceLabel, setNewPreferenceLabel] = useState("");
   const [autoCleanupRejected, setAutoCleanupRejected] = useState(true);
-  const [tableConfiguration, setTableConfiguration] = useState<TableConfig[]>([]);
+  
   const [useClosingTimeForCleanup, setUseClosingTimeForCleanup] = useState(true);
   const [venueTimezone, setVenueTimezone] = useState(DEFAULT_TIMEZONE);
   
@@ -123,7 +117,7 @@ export const MerchantSettings = ({
   const initialHolidayClosuresRef = useRef<HolidayClosure[] | null>(null);
   const initialGracePeriodsRef = useRef<typeof gracePeriods | null>(null);
   const initialAutoCleanupRejectedRef = useRef<boolean | null>(null);
-  const initialTableConfigurationRef = useRef<TableConfig[] | null>(null);
+  
   const initialUseClosingTimeForCleanupRef = useRef<boolean | null>(null);
   const initialVenueTimezoneRef = useRef<string | null>(null);
 
@@ -147,7 +141,7 @@ export const MerchantSettings = ({
     if (!isInitialLoad) {
       setHasUnsavedChanges(true);
     }
-  }, [settings, businessHours, waitlistPreferences, holidayClosures, gracePeriods, autoCleanupRejected, tableConfiguration, useClosingTimeForCleanup, venueTimezone]);
+  }, [settings, businessHours, waitlistPreferences, holidayClosures, gracePeriods, autoCleanupRejected, useClosingTimeForCleanup, venueTimezone]);
 
   // Notify parent of unsaved changes state
   useEffect(() => {
@@ -203,10 +197,6 @@ export const MerchantSettings = ({
           setAutoCleanupRejected(settings.auto_cleanup_rejected);
         }
         
-        // Load table configuration
-        if (settings.table_configuration) {
-          setTableConfiguration(settings.table_configuration);
-        }
         
         // Load use_closing_time_for_cleanup setting
         if (settings.use_closing_time_for_cleanup !== undefined) {
@@ -262,7 +252,7 @@ export const MerchantSettings = ({
       initialHolidayClosuresRef.current = (data?.settings as any)?.holiday_closures || [];
       initialGracePeriodsRef.current = (data?.settings as any)?.grace_periods || gracePeriods;
       initialAutoCleanupRejectedRef.current = (data?.settings as any)?.auto_cleanup_rejected !== false;
-      initialTableConfigurationRef.current = (data?.settings as any)?.table_configuration || [];
+      
       initialUseClosingTimeForCleanupRef.current = (data?.settings as any)?.use_closing_time_for_cleanup !== false;
 
       // Mark initial load as complete after a short delay
@@ -345,6 +335,7 @@ export const MerchantSettings = ({
     // Build complete settings object with all configurations
     const currentSettings = (currentVenue?.settings as Record<string, any>) || {};
     const updatedSettings = {
+      ...currentSettings,
       // Business hours & scheduling
       business_hours: businessHours,
       holiday_closures: holidayClosures,
@@ -367,9 +358,6 @@ export const MerchantSettings = ({
       
       // Booking & Timing settings
       minimum_reservation_lead_time: parseInt(settings.minimumReservationLeadTime) || 60,
-      
-      // Table configuration
-      table_configuration: tableConfiguration,
     };
     
     // Save everything in one transaction - include timezone in venues table directly
@@ -398,7 +386,7 @@ export const MerchantSettings = ({
     initialHolidayClosuresRef.current = [...holidayClosures];
     initialGracePeriodsRef.current = { ...gracePeriods };
     initialAutoCleanupRejectedRef.current = autoCleanupRejected;
-    initialTableConfigurationRef.current = [...tableConfiguration];
+    
     initialUseClosingTimeForCleanupRef.current = useClosingTimeForCleanup;
     initialVenueTimezoneRef.current = venueTimezone;
     
@@ -417,7 +405,7 @@ export const MerchantSettings = ({
     if (initialHolidayClosuresRef.current) setHolidayClosures(initialHolidayClosuresRef.current);
     if (initialGracePeriodsRef.current) setGracePeriods(initialGracePeriodsRef.current);
     if (initialAutoCleanupRejectedRef.current !== null) setAutoCleanupRejected(initialAutoCleanupRejectedRef.current);
-    if (initialTableConfigurationRef.current) setTableConfiguration(initialTableConfigurationRef.current);
+    
     if (initialUseClosingTimeForCleanupRef.current !== null) setUseClosingTimeForCleanup(initialUseClosingTimeForCleanupRef.current);
     if (initialVenueTimezoneRef.current) setVenueTimezone(initialVenueTimezoneRef.current);
     setHasUnsavedChanges(false);
@@ -654,23 +642,6 @@ export const MerchantSettings = ({
           </AccordionContent>
         </AccordionItem>
 
-        {/* Table Configuration - Only for table_ready */}
-        {hasTableReady && (
-          <AccordionItem value="tables" className="border rounded-lg px-4 bg-card">
-            <AccordionTrigger className="text-lg font-semibold hover:no-underline">
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-primary" />
-                Table Configuration
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="pt-2 pb-4">
-              <TableConfigurationManager 
-                tables={tableConfiguration}
-                onChange={setTableConfiguration}
-              />
-            </AccordionContent>
-          </AccordionItem>
-        )}
 
         {/* Kitchen Settings - Only for food_ready */}
         {hasFoodReady && (

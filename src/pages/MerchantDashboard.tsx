@@ -26,7 +26,7 @@ import { toast as sonnerToast } from "sonner";
 import { HelpButton, HelpPanel, OnboardingTour } from "@/components/help";
 import { MerchantMessengerHub } from "@/components/merchant/MerchantMessengerHub";
 import { LoyaltyManagement } from "@/components/merchant/LoyaltyManagement";
-import { LiveFloorPlan } from "@/components/merchant/LiveFloorPlan";
+import { FloorPlan } from "@/components/merchant/FloorPlan";
 import { MerchantAnnouncementBanner } from "@/components/merchant/MerchantAnnouncementBanner";
 import { SponsoredAdsManager } from "@/components/merchant/SponsoredAdsManager";
 import {
@@ -650,7 +650,7 @@ const MerchantDashboard = () => {
 
           {hasTableReady && userRole.role === "admin" && (
             <TabsContent value="floor-plan">
-              <LiveFloorPlan venueId={userRole.venue_id!} />
+              <FloorPlan venueId={userRole.venue_id!} />
             </TabsContent>
           )}
 
