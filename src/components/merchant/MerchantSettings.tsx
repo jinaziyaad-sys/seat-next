@@ -361,6 +361,8 @@ export const MerchantSettings = ({
       venue_capacity: parseInt(settings.venueCapacity) || 40,
       auto_no_show_time: parseInt(settings.autoNoShowTime) || 15,
       
+      // Booking & Timing settings
+      minimum_reservation_lead_time: parseInt(settings.minimumReservationLeadTime) || 60,
     };
     
     // Save everything in one transaction - include timezone in venues table directly
