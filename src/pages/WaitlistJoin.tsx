@@ -45,6 +45,12 @@ export default function WaitlistJoin() {
   const [availablePreferences, setAvailablePreferences] = useState<WaitlistPreference[]>([]);
   const [selectedPreferences, setSelectedPreferences] = useState<string[]>([]);
 
+  // Compute max party size from venue's table configuration
+  const tableConfig = (venueSettings as any)?.table_configuration || [];
+  const maxPartySize = tableConfig.length > 0
+    ? tableConfig.reduce((sum: number, t: any) => sum + (t.capacity || 0), 0)
+    : 20;
+
   useEffect(() => {
     const fetchVenue = async () => {
       if (!venueId) {
@@ -212,8 +218,8 @@ export default function WaitlistJoin() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setPartySize(Math.min(12, partySize + 1))}
-                disabled={partySize >= 12}
+                onClick={() => setPartySize(Math.min(maxPartySize, partySize + 1))}
+                disabled={partySize >= maxPartySize}
               >
                 +
               </Button>
