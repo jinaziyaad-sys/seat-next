@@ -137,7 +137,13 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
   const readyDeadlineRef = useRef<string | null>(null);
 
   const soundStartedRef = useRef(false);
-  
+
+  // Compute max party size from venue's table configuration
+  const tableConfig = selectedVenueData?.settings?.table_configuration || [];
+  const maxPartySize = tableConfig.length > 0
+    ? tableConfig.reduce((sum: number, t: any) => sum + (t.capacity || 0), 0)
+    : 20;
+
   // Ref to track previous status - prevents real-time subscription from overriding manual step changes
   const prevStatusRef = useRef<string | null>(null);
 
@@ -752,7 +758,7 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     }
 
     // Validate inputs
-    const validation = partyDetailsSchema.safeParse({ partyName, partySize });
+    const validation = getPartyDetailsSchema(maxPartySize).safeParse({ partyName, partySize });
     if (!validation.success) {
       toast({
         title: "Validation Error",
