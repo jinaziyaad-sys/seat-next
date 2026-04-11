@@ -34,12 +34,6 @@ interface Reservation {
   venue_id: string;
 }
 
-interface TableOccupancy {
-  table_id: string;
-  party_size: number;
-  customer_name: string;
-  reservation_time: string;
-}
 
 export const ReservationCalendar = ({ venueId, venueName = "" }: { venueId: string; venueName?: string }) => {
   const { toast } = useToast();
@@ -717,83 +711,6 @@ export const ReservationCalendar = ({ venueId, venueName = "" }: { venueId: stri
         </Card>
       </div>
 
-      {/* Table Occupancy Grid */}
-      {tableConfiguration.length > 0 && reservations.length > 0 && (
-        <Card className="shadow-card">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Utensils className="h-5 w-5" />
-              Table Occupancy - {selectedDate ? format(selectedDate, 'MMMM d, yyyy') : 'Select a date'}
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              {getTimeSlots().map(timeSlot => {
-                const slotReservations = reservations.filter(r => {
-                  const resTime = new Date(r.reservation_time);
-                  const slotTime = new Date(selectedDate!);
-                  const [hours, minutes] = timeSlot.split(':');
-                  slotTime.setHours(parseInt(hours), parseInt(minutes), 0, 0);
-                  
-                  // Check if reservation is within ±30 min window
-                  const timeDiff = Math.abs(resTime.getTime() - slotTime.getTime());
-                  return timeDiff <= 30 * 60 * 1000;
-                });
-
-                if (slotReservations.length === 0) return null;
-
-                const occupiedTableIds = new Set(slotReservations.map(r => r.assigned_table_id).filter(Boolean));
-                const totalSeats = slotReservations.reduce((sum, r) => sum + r.party_size, 0);
-
-                return (
-                  <div key={timeSlot} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold text-lg">{timeSlot}</h4>
-                      <Badge variant="secondary">
-                        {slotReservations.length} reservations • {totalSeats} guests
-                      </Badge>
-                    </div>
-                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-                      {tableConfiguration.map(table => {
-                        const reservation = slotReservations.find(r => r.assigned_table_id === table.id);
-                        const isOccupied = occupiedTableIds.has(table.id);
-
-                        return (
-                          <Card 
-                            key={table.id} 
-                            className={`p-3 ${isOccupied ? 'bg-destructive/10 border-destructive' : 'bg-muted/30'}`}
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <p className="font-medium text-sm">{table.name}</p>
-                              <Badge 
-                                variant={isOccupied ? "destructive" : "secondary"}
-                                className="text-xs"
-                              >
-                                {isOccupied ? "🔴 FULL" : "🟢 FREE"}
-                              </Badge>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {table.capacity} seats
-                            </p>
-                            {reservation && (
-                              <div className="mt-2 pt-2 border-t">
-                                <p className="text-xs font-medium">{reservation.customer_name}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  Party of {reservation.party_size}
-                                </p>
-                              </div>
-                            )}
-                          </Card>
-                        );
-                      })}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
 
       {/* Cancel Reservation Dialog */}
       <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
@@ -874,15 +791,3 @@ export const ReservationCalendar = ({ venueId, venueName = "" }: { venueId: stri
     </div>
   );
 };
-
-// Helper to generate time slots (every 30 minutes from 11:00 to 22:00)
-function getTimeSlots(): string[] {
-  const slots: string[] = [];
-  for (let hour = 11; hour <= 22; hour++) {
-    slots.push(`${hour.toString().padStart(2, '0')}:00`);
-    if (hour < 22) {
-      slots.push(`${hour.toString().padStart(2, '0')}:30`);
-    }
-  }
-  return slots;
-}
