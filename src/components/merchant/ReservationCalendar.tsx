@@ -160,13 +160,29 @@ export const ReservationCalendar = ({ venueId, venueName = "" }: { venueId: stri
     }
   };
 
-  const acknowledgeReservation = async (id: string) => {
+  // Group newReservations by linked_reservation_id (standalone entries use their own id)
+  const groupedNewReservations = (() => {
+    const groups = new Map<string, Reservation[]>();
+    for (const r of newReservations) {
+      const key = r.linked_reservation_id || r.id;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(r);
+    }
+    return Array.from(groups.entries()).map(([groupKey, entries]) => ({
+      groupKey,
+      representative: entries[0],
+      allIds: entries.map(e => e.id),
+    }));
+  })();
+
+  const acknowledgeReservation = async (groupKey: string, allIds: string[]) => {
     await supabase
       .from('waitlist_entries')
       .update({ merchant_seen: true })
-      .eq('id', id);
+      .in('id', allIds);
     
-    setNewReservations(prev => prev.filter(r => r.id !== id));
+    const idSet = new Set(allIds);
+    setNewReservations(prev => prev.filter(r => !idSet.has(r.id)));
   };
 
   const acknowledgeAllReservations = async () => {

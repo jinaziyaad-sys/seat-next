@@ -147,15 +147,17 @@ const MerchantDashboard = () => {
   const fetchReservationCount = useCallback(async (isInitial = false) => {
     if (!userRole?.venue_id) return;
 
-    // Count unseen reservations (merchant_seen = false) instead of today's count
-    const { count } = await supabase
+    // Count unseen reservations, deduplicated by linked_reservation_id
+    const { data: unseenData } = await supabase
       .from("waitlist_entries")
-      .select("*", { count: "exact", head: true })
+      .select("id, linked_reservation_id")
       .eq("venue_id", userRole.venue_id)
       .eq("reservation_type", "reservation")
       .eq("merchant_seen", false)
       .in("status", ["waiting", "ready"]);
-    const newCount = count || 0;
+    const newCount = new Set(
+      (unseenData || []).map((r: any) => r.linked_reservation_id || r.id)
+    ).size;
     setReservationCount(newCount);
     
     // Badge is red when there are unseen reservations
