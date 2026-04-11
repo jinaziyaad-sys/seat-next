@@ -341,6 +341,7 @@ export const MerchantSettings = ({
     // Build complete settings object with all configurations
     const currentSettings = (currentVenue?.settings as Record<string, any>) || {};
     const updatedSettings = {
+      ...currentSettings,
       // Business hours & scheduling
       business_hours: businessHours,
       holiday_closures: holidayClosures,
