@@ -654,23 +654,6 @@ export const MerchantSettings = ({
           </AccordionContent>
         </AccordionItem>
 
-        {/* Table Configuration - Only for table_ready */}
-        {hasTableReady && (
-          <AccordionItem value="tables" className="border rounded-lg px-4 bg-card">
-            <AccordionTrigger className="text-lg font-semibold hover:no-underline">
-              <div className="flex items-center gap-2">
-                <Users className="h-5 w-5 text-primary" />
-                Table Configuration
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="pt-2 pb-4">
-              <TableConfigurationManager 
-                tables={tableConfiguration}
-                onChange={setTableConfiguration}
-              />
-            </AccordionContent>
-          </AccordionItem>
-        )}
 
         {/* Kitchen Settings - Only for food_ready */}
         {hasFoodReady && (
