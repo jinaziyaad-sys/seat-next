@@ -35,12 +35,6 @@ interface WaitlistPreference {
   custom?: boolean;
 }
 
-interface TableConfig {
-  id: string;
-  capacity: number;
-  name: string;
-}
-
 interface MerchantSettingsProps {
   venue: string;
   venueId: string;
