@@ -51,6 +51,7 @@ export default function WaitlistJoin() {
     ? tableConfig.reduce((sum: number, t: any) => sum + (t.capacity || 0), 0)
     : 20;
 
+  useEffect(() => {
     const fetchVenue = async () => {
       if (!venueId) {
         navigate("/");
