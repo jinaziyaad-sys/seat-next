@@ -160,13 +160,29 @@ export const ReservationCalendar = ({ venueId, venueName = "" }: { venueId: stri
     }
   };
 
-  const acknowledgeReservation = async (id: string) => {
+  // Group newReservations by linked_reservation_id (standalone entries use their own id)
+  const groupedNewReservations = (() => {
+    const groups = new Map<string, Reservation[]>();
+    for (const r of newReservations) {
+      const key = r.linked_reservation_id || r.id;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(r);
+    }
+    return Array.from(groups.entries()).map(([groupKey, entries]) => ({
+      groupKey,
+      representative: entries[0],
+      allIds: entries.map(e => e.id),
+    }));
+  })();
+
+  const acknowledgeReservation = async (groupKey: string, allIds: string[]) => {
     await supabase
       .from('waitlist_entries')
       .update({ merchant_seen: true })
-      .eq('id', id);
+      .in('id', allIds);
     
-    setNewReservations(prev => prev.filter(r => r.id !== id));
+    const idSet = new Set(allIds);
+    setNewReservations(prev => prev.filter(r => !idSet.has(r.id)));
   };
 
   const acknowledgeAllReservations = async () => {
@@ -336,13 +352,13 @@ export const ReservationCalendar = ({ venueId, venueName = "" }: { venueId: stri
   return (
     <div className="grid grid-cols-1 gap-6">
       {/* New Reservations Alert Panel */}
-      {newReservations.length > 0 && (
+      {groupedNewReservations.length > 0 && (
         <Card className="shadow-card border-2 border-primary bg-primary/5">
           <CardHeader className="pb-3">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-primary">
                 <Bell className="h-5 w-5 animate-pulse" />
-                New Reservations ({newReservations.length})
+                New Reservations ({groupedNewReservations.length})
               </CardTitle>
               <Button 
                 variant="outline" 
@@ -355,18 +371,18 @@ export const ReservationCalendar = ({ venueId, venueName = "" }: { venueId: stri
             </div>
           </CardHeader>
           <CardContent className="space-y-2">
-            {newReservations.map((reservation) => (
+            {groupedNewReservations.map(({ groupKey, representative, allIds }) => (
               <div 
-                key={reservation.id}
+                key={groupKey}
                 className="flex items-center justify-between p-3 bg-background rounded-lg border cursor-pointer hover:bg-muted/50 transition-colors"
-                onClick={() => acknowledgeReservation(reservation.id)}
+                onClick={() => acknowledgeReservation(groupKey, allIds)}
               >
                 <div className="flex items-center gap-3">
                   <span className="text-lg">📅</span>
                   <div>
-                    <p className="font-medium">{reservation.customer_name}</p>
+                    <p className="font-medium">{representative.customer_name}</p>
                     <p className="text-sm text-muted-foreground">
-                      Party of {reservation.party_size} • {format(new Date(reservation.reservation_time), 'MMM d @ HH:mm')}
+                      Party of {representative.party_size} • {format(new Date(representative.reservation_time), 'MMM d @ HH:mm')}
                     </p>
                   </div>
                 </div>
