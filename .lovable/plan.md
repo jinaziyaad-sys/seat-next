@@ -1,38 +1,42 @@
 
 
-## Plan: Dynamic Party Size Limit Based on Venue Capacity
+## Plan: Group Multi-Table Reservations in New Reservations Alert
 
 ### Problem
-Party size is hardcoded to max 12 in three places in the frontend. The backend already supports any party size via multi-table combinations.
 
-### Key Insight (your point)
-The max party size for the UI selector should be the **total venue capacity** (sum of all table capacities). This represents the theoretical max when all tables are free. The actual availability check at booking time already handles the real constraint -- the `check-time-slot-availability` edge function excludes occupied tables and checks if the remaining tables can fit the party. So if two bookings overlap, those tables are already removed from the pool. No backend changes needed.
+A multi-table booking (e.g., party of 21 across 4 tables) creates 4 rows in `waitlist_entries`, all sharing the same `linked_reservation_id`. The "New Reservations" alert panel and the tab badge count treat each row as a separate reservation, showing "4" instead of "1".
+
+The calendar day view already groups by `linked_reservation_id` correctly -- this fix applies the same grouping to the alert panel, the acknowledge logic, and the badge count.
 
 ### Changes
 
-**`src/components/TableReadyFlow.tsx`** (3 locations)
+**`src/components/merchant/ReservationCalendar.tsx`**
 
-1. Compute `maxPartySize` from venue's `table_configuration`:
+1. **Group `newReservations` before rendering**: After fetching, group entries by `linked_reservation_id` (standalone entries use their own `id` as key). Display one card per group, showing the first entry's name/party/time. The count in the header reflects grouped count, not raw row count.
+
+2. **Acknowledge by group**: When acknowledging a single reservation, if it has a `linked_reservation_id`, mark all entries with that same linked ID as `merchant_seen = true` and remove the whole group from state.
+
+**`src/pages/MerchantDashboard.tsx`** (badge count, ~line 151)
+
+3. **Deduplicate the badge count**: Change the count query to count distinct `COALESCE(linked_reservation_id, id)` instead of raw rows. This can be done by fetching the relevant columns and deduplicating client-side (since Supabase JS doesn't support `COUNT(DISTINCT ...)`):
    ```ts
-   const tableConfig = selectedVenueData?.settings?.table_configuration || [];
-   const maxPartySize = tableConfig.length > 0
-     ? tableConfig.reduce((sum, t) => sum + t.capacity, 0)
-     : 20; // fallback
+   const { data } = await supabase
+     .from("waitlist_entries")
+     .select("id, linked_reservation_id")
+     .eq("venue_id", userRole.venue_id)
+     .eq("reservation_type", "reservation")
+     .eq("merchant_seen", false)
+     .in("status", ["waiting", "ready"]);
+   
+   const uniqueCount = new Set(
+     (data || []).map(r => r.linked_reservation_id || r.id)
+   ).size;
    ```
 
-2. Update Zod schema to accept dynamic max (line 73-76):
-   ```ts
-   const getPartyDetailsSchema = (max: number) => z.object({
-     partyName: z.string()...,
-     partySize: z.number().int().min(1).max(max),
-   });
-   ```
+### Files
 
-3. Replace all three `Math.min(12, ...)` and `partySize >= 12` with the dynamic max (lines 75, 1949-1950, 2222-2223).
-
-**`src/pages/WaitlistJoin.tsx`** (lines 215-216)
-Same fix -- replace hardcoded 12 with dynamic max from venue config.
-
-### No backend changes
-The edge functions (`find-available-table`, `check-time-slot-availability`) already handle occupied table exclusion and multi-table combinations correctly.
+| File | Action |
+|---|---|
+| `src/components/merchant/ReservationCalendar.tsx` | Group new reservations by linked ID; acknowledge all linked entries together |
+| `src/pages/MerchantDashboard.tsx` | Deduplicate badge count |
 
