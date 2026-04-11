@@ -1,28 +1,38 @@
 
 
-## Plan: Merge Table Configuration and Floor Plan into One Card
+## Plan: Dynamic Party Size Limit Based on Venue Capacity
 
-Right now the Floor Plan tab shows two separate sections: a Table Configuration card (list of tables with edit/delete buttons) and a Floor Plan grid (same tables again, but with booking info). They duplicate the same table visuals.
+### Problem
+Party size is hardcoded to max 12 in three places in the frontend. The backend already supports any party size via multi-table combinations.
 
-### What changes
+### Key Insight (your point)
+The max party size for the UI selector should be the **total venue capacity** (sum of all table capacities). This represents the theoretical max when all tables are free. The actual availability check at booking time already handles the real constraint -- the `check-time-slot-availability` edge function excludes occupied tables and checks if the remaining tables can fit the party. So if two bookings overlap, those tables are already removed from the pool. No backend changes needed.
 
-**Single unified card in `FloorPlan.tsx`** -- Remove the separate `TableConfigurationManager` component usage. Instead, render one card titled "Floor Plan" with:
+### Changes
 
-- A header showing table/seat count badge, today's date, and an "Add Table" button
-- A single grid of table cards where each card shows:
-  - Table name + capacity (always)
-  - Edit/Delete buttons (small icons in the corner of each card)
-  - Booking info if a reservation exists for today (customer name, time, party size)
-  - "Available" badge if no booking
-- The empty state shows an "Add First Table" button (same dialog as before)
+**`src/components/TableReadyFlow.tsx`** (3 locations)
 
-**No changes to `TableConfigurationManager.tsx`** -- it stays as dead code for now (or we can delete it). The add/edit dialog logic moves inline into `FloorPlan.tsx`.
+1. Compute `maxPartySize` from venue's `table_configuration`:
+   ```ts
+   const tableConfig = selectedVenueData?.settings?.table_configuration || [];
+   const maxPartySize = tableConfig.length > 0
+     ? tableConfig.reduce((sum, t) => sum + t.capacity, 0)
+     : 20; // fallback
+   ```
 
-**No backend changes** -- same query, same save logic, same allocation functions.
+2. Update Zod schema to accept dynamic max (line 73-76):
+   ```ts
+   const getPartyDetailsSchema = (max: number) => z.object({
+     partyName: z.string()...,
+     partySize: z.number().int().min(1).max(max),
+   });
+   ```
 
-### Files
+3. Replace all three `Math.min(12, ...)` and `partySize >= 12` with the dynamic max (lines 75, 1949-1950, 2222-2223).
 
-| File | Action |
-|---|---|
-| `src/components/merchant/FloorPlan.tsx` | Rewrite to merge config + grid into one unified card with inline edit/delete on each table tile |
+**`src/pages/WaitlistJoin.tsx`** (lines 215-216)
+Same fix -- replace hardcoded 12 with dynamic max from venue config.
+
+### No backend changes
+The edge functions (`find-available-table`, `check-time-slot-availability`) already handle occupied table exclusion and multi-table combinations correctly.
 
