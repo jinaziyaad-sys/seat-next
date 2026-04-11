@@ -228,7 +228,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
                     />
                     {(v.active_codes?.length ?? 0) > 0 && (
                       <span className="absolute -bottom-1 -right-1 h-5 min-w-5 px-1 rounded-full bg-accent text-accent-foreground flex items-center justify-center gap-0.5">
-                        <Ticket className="h-2.5 w-2.5" />
+                        <Gift className="h-2.5 w-2.5" />
                         <span className="text-[9px] font-bold">{v.active_codes.length}</span>
                       </span>
                     )}
