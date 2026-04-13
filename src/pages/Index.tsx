@@ -756,18 +756,20 @@ const Index = () => {
               className="relative h-36 w-auto drop-shadow-[0_0_40px_rgba(255,107,53,0.4)]"
             />
           </motion.div>
-          {user && (
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.4 }}
-              className="mt-3 text-sm text-white/70"
-            >
-              {new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 17 ? "Good afternoon" : "Good evening"}, {user.email?.split('@')[0] || "there"} 👋
-            </motion.p>
-          )}
         </div>
       </div>
+
+      {/* Greeting below hero */}
+      {user && profileName && (
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+          className="text-center text-sm text-muted-foreground py-3 px-6"
+        >
+          {new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 17 ? "Good afternoon" : "Good evening"}, {profileName} 👋
+        </motion.p>
+      )}
 
       {/* Promotional Banner Carousel */}
       <div className="px-6 pt-4">
