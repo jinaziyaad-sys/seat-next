@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Gift, Plus, Trash2, Save, Loader2, Stamp, Star, AlertTriangle, Crown, Percent, Users, Target, Upload, Image, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { RewardImageCropDialog } from "@/components/RewardImageCropDialog";
 
 interface LoyaltyReward {
   id?: string;
