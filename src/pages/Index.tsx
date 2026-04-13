@@ -948,13 +948,13 @@ const Index = () => {
                 onClick={() => setActiveTab("food-ready")}
                 data-tour="card-food"
               >
-                <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
-                    <UtensilsCrossed size={22} />
+                <CardContent className="flex flex-col items-center gap-2 p-3 text-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
+                    <UtensilsCrossed size={20} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-sm">{t("home.foodReady")}</h3>
-                    <p className="text-xs text-muted-foreground">{t("home.trackOrderStatus")}</p>
+                    <h3 className="font-semibold text-xs">{t("home.foodReady")}</h3>
+                    <p className="text-[10px] text-muted-foreground leading-tight">{t("home.trackOrderStatus")}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -972,13 +972,13 @@ const Index = () => {
                 onClick={() => setActiveTab("table-ready")}
                 data-tour="card-table"
               >
-                <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
-                    <Users size={22} />
+                <CardContent className="flex flex-col items-center gap-2 p-3 text-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
+                    <Users size={20} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-sm">{t("home.tableReady")}</h3>
-                    <p className="text-xs text-muted-foreground">{t("home.joinWaitlist")}</p>
+                    <h3 className="font-semibold text-xs">{t("home.tableReady")}</h3>
+                    <p className="text-[10px] text-muted-foreground leading-tight">{t("home.joinWaitlist")}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -994,13 +994,13 @@ const Index = () => {
               className="cursor-pointer shadow-card press-feedback hover:scale-105 hover:shadow-floating h-full"
               onClick={() => setActiveTab("loyalty")}
             >
-              <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
-                  <Gift size={22} />
+              <CardContent className="flex flex-col items-center gap-2 p-3 text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
+                  <Gift size={20} />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm">{t("home.rewardsReady", "Rewards Ready")}</h3>
-                  <p className="text-xs text-muted-foreground">{t("home.loyaltyDesc", "Stamps & rewards")}</p>
+                  <h3 className="font-semibold text-xs">{t("home.rewardsReady", "Rewards Ready")}</h3>
+                  <p className="text-[10px] text-muted-foreground leading-tight">{t("home.loyaltyDesc", "Stamps & rewards")}</p>
                 </div>
               </CardContent>
             </Card>
