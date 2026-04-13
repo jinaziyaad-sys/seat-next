@@ -711,7 +711,7 @@ const Index = () => {
       )}
 
       {/* Hero Section - Black Background */}
-      <div className="relative overflow-hidden bg-black px-6 py-20 text-white" data-tour="patron-header">
+      <div className="relative overflow-hidden bg-black px-6 py-10 text-white" data-tour="patron-header">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,107,53,0.08),transparent_70%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,rgba(255,107,53,0.05),transparent_60%)]" />
         
@@ -725,7 +725,7 @@ const Index = () => {
               data-tour="nav-profile"
             >
               <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-coral/20 text-white font-semibold">
+                <AvatarFallback className="bg-primary/20 text-white font-semibold">
                   {user.email?.charAt(0).toUpperCase() || <UserIcon size={18} />}
                 </AvatarFallback>
               </Avatar>
@@ -742,18 +742,30 @@ const Index = () => {
           )}
         </div>
         
-        <div className="relative z-10 flex flex-col items-center text-center py-8">
-          {/* Logo */}
-          <div className="relative">
-            <div className="absolute inset-0 bg-primary/25 rounded-full blur-[100px] animate-pulse scale-150" />
-            <div className="relative">
-              <img 
-                src={logo} 
-                alt="ReadyUp" 
-                className="h-72 w-auto drop-shadow-[0_0_60px_rgba(255,107,53,0.5)]"
-              />
-            </div>
-          </div>
+        <div className="relative z-10 flex flex-col items-center text-center py-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="relative"
+          >
+            <div className="absolute inset-0 bg-primary/25 rounded-full blur-[80px] animate-pulse scale-150" />
+            <img 
+              src={logo} 
+              alt="ReadyUp" 
+              className="relative h-36 w-auto drop-shadow-[0_0_40px_rgba(255,107,53,0.4)]"
+            />
+          </motion.div>
+          {user && (
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.4 }}
+              className="mt-3 text-sm text-white/70"
+            >
+              {new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 17 ? "Good afternoon" : "Good evening"}, {user.email?.split('@')[0] || "there"} 👋
+            </motion.p>
+          )}
         </div>
       </div>
 
