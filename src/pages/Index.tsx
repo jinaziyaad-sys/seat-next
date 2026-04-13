@@ -98,7 +98,7 @@ const Index = () => {
 
   // Phone prompt dialog for Google Sign-In users
   const [showPhonePrompt, setShowPhonePrompt] = useState(false);
-
+  const [profileName, setProfileName] = useState<string | null>(null);
   useEffect(() => {
     const hasSeenTour = localStorage.getItem('patronTourCompleted');
     if (!hasSeenTour && user) {
@@ -231,13 +231,14 @@ const Index = () => {
     
     supabase
       .from('profiles')
-      .select('phone')
+      .select('phone, full_name')
       .eq('id', user.id)
       .single()
       .then(({ data }) => {
         if (!data?.phone) {
           setShowPhonePrompt(true);
         }
+        setProfileName(data?.full_name?.split(' ')[0] || user.email?.split('@')[0] || null);
       });
   }, [user]);
 
