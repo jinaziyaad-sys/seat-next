@@ -794,6 +794,32 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {cropDialogOpen && cropImageSrc && (
+        <RewardImageCropDialog
+          open={cropDialogOpen}
+          imageSrc={cropImageSrc}
+          onClose={() => {
+            setCropDialogOpen(false);
+            setCropImageSrc(null);
+            setCropRewardIndex(null);
+          }}
+          onCropComplete={async (blob) => {
+            if (cropRewardIndex === null) return;
+            const path = `${venueId}/${Date.now()}.png`;
+            const { error } = await supabase.storage.from('reward-images').upload(path, blob);
+            if (error) {
+              toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+            } else {
+              const { data: urlData } = supabase.storage.from('reward-images').getPublicUrl(path);
+              updateReward(cropRewardIndex, "image_url", urlData.publicUrl);
+            }
+            setCropDialogOpen(false);
+            setCropImageSrc(null);
+            setCropRewardIndex(null);
+          }}
+        />
+      )}
     </div>
   );
 };
