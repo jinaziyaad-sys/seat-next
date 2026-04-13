@@ -159,4 +159,9 @@ All colors MUST be HSL.
     @apply backdrop-blur-xl;
     background: hsl(var(--card));
   }
+
+  /* Press feedback for interactive cards */
+  .press-feedback {
+    @apply transition-transform duration-150 active:scale-[0.97];
+  }
 }

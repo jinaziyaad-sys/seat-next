@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import { AnimatePresence, motion } from "framer-motion";
 import { FoodReadyFlow } from "@/components/FoodReadyFlow";
 import { TableReadyFlow } from "@/components/TableReadyFlow";
 import { ProfileSection } from "@/components/ProfileSection";
@@ -548,119 +549,104 @@ const Index = () => {
     return () => clearInterval(interval);
   }, [activeWaitlist]);
 
-  if (activeTab === "food-ready") {
-    return (
-      <div className="min-h-screen bg-background pb-24">
-        <FoodReadyFlow 
-          onBack={() => {
-            setActiveTab("home");
-            setSelectedOrder(null);
-            fetchActiveTracking();
-          }} 
-          initialOrder={selectedOrder}
-        />
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
-    );
-  }
-
-  if (activeTab === "table-ready") {
-    return (
-      <div className="min-h-screen bg-background pb-24">
-        <TableReadyFlow 
-          onBack={() => {
-            setActiveTab("home");
-            setSelectedOrder(null);
-            fetchActiveTracking();
-          }} 
-          initialEntry={selectedOrder}
-        />
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
-    );
-  }
-
-  if (activeTab === "profile") {
-    return (
-      <div className="min-h-screen bg-background pb-24">
-        <ProfileSection onBack={() => setActiveTab("home")} />
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
-    );
-  }
-
-  if (activeTab === "loyalty") {
-    return (
-      <div className="min-h-screen bg-background pb-24">
-        <LoyaltyReadyFlow onBack={() => setActiveTab("home")} />
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
-    );
-  }
-
-  if (activeTab === "activity") {
-    return (
-      <div className="min-h-screen bg-background pb-24">
-        <ActivityFlow
-          onBack={() => setActiveTab("home")}
-          activeOrders={activeOrders}
-          activeWaitlist={activeWaitlist}
-          unreadCounts={unreadCounts}
-          onSelectOrder={(order) => {
-            setSelectedOrder(order);
-            setActiveTab("food-ready");
-          }}
-          onSelectWaitlist={(entry) => {
-            setSelectedOrder(entry);
-            setActiveTab("table-ready");
-          }}
-          onDismissOrder={handleDismissOrder}
-          onDismissWaitlist={handleDismissWaitlist}
-          onRateItem={(item) => {
-            setRatingItem(item);
-            setRatingDialogOpen(true);
-          }}
-          onOpenMessenger={(ctx) => {
-            setCardMessengerContext(ctx);
-            setCardMessengerOpen(true);
-          }}
-          onInviteFriends={(entry) => {
-            const url = `${window.location.origin}/waitlist/${entry.venue_id}?group=${entry.id}`;
-            const text = t("home.inviteFriendsText", { venue: entry.venues?.name || '' });
-            if (navigator.share) {
-              navigator.share({ title: entry.venues?.name || '', text, url }).catch(() => {});
-            } else {
-              navigator.clipboard.writeText(`${text} ${url}`);
-              toast({ title: t("explore.linkCopied") });
-            }
-          }}
-        />
-        {/* Rating Dialog */}
-        <RatingDialog
-          open={ratingDialogOpen}
-          onOpenChange={setRatingDialogOpen}
-          type={ratingItem?.type || 'order'}
-          itemId={ratingItem?.id || ''}
-          venueId={ratingItem?.venueId || ''}
-          venueName={ratingItem?.venueName || ''}
-          userId={user?.id || null}
-          onComplete={() => {
-            if (ratingItem) handleRatingComplete(ratingItem.id, ratingItem.type);
-          }}
-        />
-        {cardMessengerContext && (
-          <Messenger
-            open={cardMessengerOpen}
-            onOpenChange={(open) => { setCardMessengerOpen(open); if (!open) setCardMessengerContext(null); }}
-            waitlistEntryId={cardMessengerContext.type === 'waitlist' ? cardMessengerContext.id : undefined}
-            orderId={cardMessengerContext.type === 'order' ? cardMessengerContext.id : undefined}
-            userType="patron"
-            userId={user?.id || ''}
-            venueName={cardMessengerContext.venueName}
+  const tabContent = () => {
+    if (activeTab === "food-ready") {
+      return (
+        <motion.div key="food" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }} className="min-h-screen bg-background pb-24">
+          <FoodReadyFlow onBack={() => { setActiveTab("home"); setSelectedOrder(null); fetchActiveTracking(); }} initialOrder={selectedOrder} />
+        </motion.div>
+      );
+    }
+    if (activeTab === "table-ready") {
+      return (
+        <motion.div key="table" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }} className="min-h-screen bg-background pb-24">
+          <TableReadyFlow onBack={() => { setActiveTab("home"); setSelectedOrder(null); fetchActiveTracking(); }} initialEntry={selectedOrder} />
+        </motion.div>
+      );
+    }
+    if (activeTab === "profile") {
+      return (
+        <motion.div key="profile" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }} className="min-h-screen bg-background pb-24">
+          <ProfileSection onBack={() => setActiveTab("home")} />
+        </motion.div>
+      );
+    }
+    if (activeTab === "loyalty") {
+      return (
+        <motion.div key="loyalty" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }} className="min-h-screen bg-background pb-24">
+          <LoyaltyReadyFlow onBack={() => setActiveTab("home")} />
+        </motion.div>
+      );
+    }
+    if (activeTab === "activity") {
+      return (
+        <motion.div key="activity" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }} className="min-h-screen bg-background pb-24">
+          <ActivityFlow
+            onBack={() => setActiveTab("home")}
+            activeOrders={activeOrders}
+            activeWaitlist={activeWaitlist}
+            unreadCounts={unreadCounts}
+            onSelectOrder={(order) => { setSelectedOrder(order); setActiveTab("food-ready"); }}
+            onSelectWaitlist={(entry) => { setSelectedOrder(entry); setActiveTab("table-ready"); }}
+            onDismissOrder={handleDismissOrder}
+            onDismissWaitlist={handleDismissWaitlist}
+            onRateItem={(item) => { setRatingItem(item); setRatingDialogOpen(true); }}
+            onOpenMessenger={(ctx) => { setCardMessengerContext(ctx); setCardMessengerOpen(true); }}
+            onInviteFriends={(entry) => {
+              const url = `${window.location.origin}/waitlist/${entry.venue_id}?group=${entry.id}`;
+              const text = t("home.inviteFriendsText", { venue: entry.venues?.name || '' });
+              if (navigator.share) {
+                navigator.share({ title: entry.venues?.name || '', text, url }).catch(() => {});
+              } else {
+                navigator.clipboard.writeText(`${text} ${url}`);
+                toast({ title: t("explore.linkCopied") });
+              }
+            }}
           />
-        )}
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
+          <RatingDialog
+            open={ratingDialogOpen}
+            onOpenChange={setRatingDialogOpen}
+            type={ratingItem?.type || 'order'}
+            itemId={ratingItem?.id || ''}
+            venueId={ratingItem?.venueId || ''}
+            venueName={ratingItem?.venueName || ''}
+            userId={user?.id || null}
+            onComplete={() => { if (ratingItem) handleRatingComplete(ratingItem.id, ratingItem.type); }}
+          />
+          {cardMessengerContext && (
+            <Messenger
+              open={cardMessengerOpen}
+              onOpenChange={(open) => { setCardMessengerOpen(open); if (!open) setCardMessengerContext(null); }}
+              waitlistEntryId={cardMessengerContext.type === 'waitlist' ? cardMessengerContext.id : undefined}
+              orderId={cardMessengerContext.type === 'order' ? cardMessengerContext.id : undefined}
+              userType="patron"
+              userId={user?.id || ''}
+              venueName={cardMessengerContext.venueName}
+            />
+          )}
+        </motion.div>
+      );
+    }
+    return null;
+  };
+
+  // Compute badge counts for nav
+  const navBadges = useMemo(() => {
+    const ACTIVE_ORDER_STATUSES = ['awaiting_verification', 'placed', 'in_prep', 'ready'];
+    const ACTIVE_WAITLIST_STATUSES = ['waiting', 'ready'];
+    const activityCount = activeOrders.filter(o => ACTIVE_ORDER_STATUSES.includes(o.status)).length +
+      activeWaitlist.filter(w => ACTIVE_WAITLIST_STATUSES.includes(w.status)).length;
+    return { activity: activityCount };
+  }, [activeOrders, activeWaitlist]);
+
+  if (activeTab !== "home") {
+    return (
+      <>
+        <AnimatePresence mode="wait">
+          {tabContent()}
+        </AnimatePresence>
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} badges={navBadges} />
+      </>
     );
   }
 
@@ -725,7 +711,7 @@ const Index = () => {
       )}
 
       {/* Hero Section - Black Background */}
-      <div className="relative overflow-hidden bg-black px-6 py-20 text-white" data-tour="patron-header">
+      <div className="relative overflow-hidden bg-black px-6 py-10 text-white" data-tour="patron-header">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,107,53,0.08),transparent_70%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,rgba(255,107,53,0.05),transparent_60%)]" />
         
@@ -739,7 +725,7 @@ const Index = () => {
               data-tour="nav-profile"
             >
               <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-coral/20 text-white font-semibold">
+                <AvatarFallback className="bg-primary/20 text-white font-semibold">
                   {user.email?.charAt(0).toUpperCase() || <UserIcon size={18} />}
                 </AvatarFallback>
               </Avatar>
@@ -756,18 +742,30 @@ const Index = () => {
           )}
         </div>
         
-        <div className="relative z-10 flex flex-col items-center text-center py-8">
-          {/* Logo */}
-          <div className="relative">
-            <div className="absolute inset-0 bg-primary/25 rounded-full blur-[100px] animate-pulse scale-150" />
-            <div className="relative">
-              <img 
-                src={logo} 
-                alt="ReadyUp" 
-                className="h-72 w-auto drop-shadow-[0_0_60px_rgba(255,107,53,0.5)]"
-              />
-            </div>
-          </div>
+        <div className="relative z-10 flex flex-col items-center text-center py-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="relative"
+          >
+            <div className="absolute inset-0 bg-primary/25 rounded-full blur-[80px] animate-pulse scale-150" />
+            <img 
+              src={logo} 
+              alt="ReadyUp" 
+              className="relative h-36 w-auto drop-shadow-[0_0_40px_rgba(255,107,53,0.4)]"
+            />
+          </motion.div>
+          {user && (
+            <motion.p
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.4 }}
+              className="mt-3 text-sm text-white/70"
+            >
+              {new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 17 ? "Good afternoon" : "Good evening"}, {user.email?.split('@')[0] || "there"} 👋
+            </motion.p>
+          )}
         </div>
       </div>
 
@@ -846,7 +844,7 @@ const Index = () => {
           )}
           
           {/* Compact summary cards - max 3, active only */}
-          {activeItems.slice(0, 3).map((item) => {
+          {activeItems.slice(0, 3).map((item, idx) => {
             const isOrder = 'order_number' in item;
             const statusKey = item.status === 'ready' ? t("status.ready") :
               item.status === 'in_prep' ? t("status.preparing") :
@@ -855,44 +853,49 @@ const Index = () => {
               t("status.placed");
 
             return (
-              <Card
+              <motion.div
                 key={item.id}
-                className={cn(
-                  "shadow-card cursor-pointer transition-all hover:shadow-floating hover:scale-[1.01]",
-                  item.status === 'ready' && "bg-success/10 border-success"
-                )}
-                onClick={() => {
-                  if (isOrder) {
-                    setSelectedOrder(item);
-                    setActiveTab("food-ready");
-                  } else {
-                    setSelectedOrder(item);
-                    setActiveTab("table-ready");
-                  }
-                }}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.08, duration: 0.3 }}
               >
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-3">
-                    <VenueLogo
-                      logoUrl={item.venues?.logo_url}
-                      name={item.venues?.name || ''}
-                      size="sm"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm truncate">{item.venues?.name}</h3>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {isOrder ? `Order #${item.order_number}` : t("home.partyOf", { size: item.party_size })}
-                      </p>
+                <Card
+                  className={cn(
+                    "shadow-card cursor-pointer press-feedback hover:shadow-floating hover:scale-[1.01] relative overflow-hidden",
+                    item.status === 'ready' && "bg-success/10 border-success"
+                  )}
+                  onClick={() => {
+                    setSelectedOrder(item);
+                    setActiveTab(isOrder ? "food-ready" : "table-ready");
+                  }}
+                >
+                  {/* Pulse ring for ready items */}
+                  {item.status === 'ready' && (
+                    <div className="absolute inset-0 rounded-lg border-2 border-success animate-pulse-ring pointer-events-none" />
+                  )}
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <VenueLogo
+                        logoUrl={item.venues?.logo_url}
+                        name={item.venues?.name || ''}
+                        size="sm"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-sm truncate">{item.venues?.name}</h3>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {isOrder ? `Order #${item.order_number}` : t("home.partyOf", { size: item.party_size })}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={item.status === 'ready' ? 'default' : 'secondary'}
+                        className="shrink-0"
+                      >
+                        {statusKey}
+                      </Badge>
                     </div>
-                    <Badge
-                      variant={item.status === 'ready' ? 'default' : 'secondary'}
-                      className="shrink-0"
-                    >
-                      {statusKey}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </motion.div>
             );
           })}
 
@@ -932,55 +935,73 @@ const Index = () => {
 
         <div className="grid grid-cols-3 gap-3">
           {features.food_ordering_enabled && (
-            <Card 
-              className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
-              onClick={() => setActiveTab("food-ready")}
-              data-tour="card-food"
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.4 }}
             >
-              <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <UtensilsCrossed size={22} />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm">{t("home.foodReady")}</h3>
-                  <p className="text-xs text-muted-foreground">{t("home.trackOrderStatus")}</p>
-                </div>
-              </CardContent>
-            </Card>
+              <Card 
+                className="cursor-pointer shadow-card press-feedback hover:scale-105 hover:shadow-floating h-full"
+                onClick={() => setActiveTab("food-ready")}
+                data-tour="card-food"
+              >
+                <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
+                    <UtensilsCrossed size={22} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-sm">{t("home.foodReady")}</h3>
+                    <p className="text-xs text-muted-foreground">{t("home.trackOrderStatus")}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           )}
 
           {features.waitlist_enabled && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+            >
+              <Card 
+                className="cursor-pointer shadow-card press-feedback hover:scale-105 hover:shadow-floating h-full"
+                onClick={() => setActiveTab("table-ready")}
+                data-tour="card-table"
+              >
+                <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
+                    <Users size={22} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-sm">{t("home.tableReady")}</h3>
+                    <p className="text-xs text-muted-foreground">{t("home.joinWaitlist")}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+          >
             <Card 
-              className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
-              onClick={() => setActiveTab("table-ready")}
-              data-tour="card-table"
+              className="cursor-pointer shadow-card press-feedback hover:scale-105 hover:shadow-floating h-full"
+              onClick={() => setActiveTab("loyalty")}
             >
               <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <Users size={22} />
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
+                  <Gift size={22} />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm">{t("home.tableReady")}</h3>
-                  <p className="text-xs text-muted-foreground">{t("home.joinWaitlist")}</p>
+                  <h3 className="font-semibold text-sm">{t("home.rewardsReady", "Rewards Ready")}</h3>
+                  <p className="text-xs text-muted-foreground">{t("home.loyaltyDesc", "Stamps & rewards")}</p>
                 </div>
               </CardContent>
             </Card>
-          )}
-
-          <Card 
-            className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
-            onClick={() => setActiveTab("loyalty")}
-          >
-            <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <Gift size={22} />
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm">{t("home.rewardsReady", "Rewards Ready")}</h3>
-                <p className="text-xs text-muted-foreground">{t("home.loyaltyDesc", "Stamps & rewards")}</p>
-              </div>
-            </CardContent>
-          </Card>
+          </motion.div>
 
           
           {!features.food_ordering_enabled && !features.waitlist_enabled && (
@@ -1057,7 +1078,7 @@ const Index = () => {
           venueName={cardMessengerContext.venueName}
         />
       )}
-      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
+      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} badges={navBadges} />
     </main>
   );
 };

@@ -2,10 +2,12 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { Home, UtensilsCrossed, Users, Gift, ClipboardList, User } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { motion } from "framer-motion";
 
 interface TabNavigationProps {
   activeTab: string;
   onTabChange: (tab: string) => void;
+  badges?: Record<string, number>;
 }
 
 const tabKeys = [
@@ -17,7 +19,7 @@ const tabKeys = [
   { id: "profile", labelKey: "nav.profile", icon: User },
 ];
 
-export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
+export function TabNavigation({ activeTab, onTabChange, badges = {} }: TabNavigationProps) {
   const { t } = useTranslation();
   return (
     <Card className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl border-0 bg-card shadow-floating">
@@ -26,6 +28,7 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
           const Icon = tab.icon;
           const label = t(tab.labelKey);
           const isActive = activeTab === tab.id || (activeTab === "explore" && tab.id === "home");
+          const badgeCount = badges[tab.id] || 0;
           
           return (
             <button
@@ -36,22 +39,42 @@ export function TabNavigation({ activeTab, onTabChange }: TabNavigationProps) {
               data-tour={`nav-${tab.id === 'food-ready' ? 'food' : tab.id === 'table-ready' ? 'table' : tab.id}`}
               onClick={() => onTabChange(tab.id)}
               className={cn(
-                "flex flex-col items-center gap-1 p-3 rounded-xl transition-all duration-300",
+                "relative flex flex-col items-center gap-1 p-3 rounded-xl transition-colors duration-200",
                 "hover:bg-primary/10 active:scale-95 focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
                 isActive 
-                  ? "bg-primary text-primary-foreground shadow-button" 
+                  ? "text-primary-foreground" 
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              <Icon 
-                size={24} 
-                aria-hidden="true"
-                className={cn(
-                  "transition-transform duration-300",
-                  isActive && "scale-110"
-                )} 
-              />
-              <span className="text-xs font-medium">{label}</span>
+              {/* Sliding pill indicator */}
+              {isActive && (
+                <motion.div
+                  layoutId="tab-pill"
+                  className="absolute inset-0 rounded-xl bg-primary shadow-button"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
+              <div className="relative z-10">
+                <motion.div
+                  key={`${tab.id}-${isActive}`}
+                  initial={isActive ? { scale: 0.8 } : false}
+                  animate={{ scale: 1 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 20 }}
+                >
+                  <Icon size={24} aria-hidden="true" />
+                </motion.div>
+                {/* Badge dot */}
+                {badgeCount > 0 && (
+                  <motion.span
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className="absolute -top-1 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground"
+                  >
+                    {badgeCount > 9 ? "9+" : badgeCount}
+                  </motion.span>
+                )}
+              </div>
+              <span className="relative z-10 text-xs font-medium">{label}</span>
             </button>
           );
         })}
