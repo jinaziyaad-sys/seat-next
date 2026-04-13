@@ -81,7 +81,7 @@ export default function MerchantBilling() {
 
   const statusConfig: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: any }> = {
     active: { label: "Active", variant: "default", icon: CheckCircle2 },
-    trial: { label: "Free Trial", variant: "secondary", icon: CheckCircle2 },
+    trial: { label: "Active", variant: "default", icon: CheckCircle2 },
     past_due: { label: "Past Due", variant: "destructive", icon: AlertTriangle },
     cancelled: { label: "Cancelled", variant: "outline", icon: XCircle },
     locked: { label: "Locked", variant: "destructive", icon: XCircle },
@@ -131,15 +131,6 @@ export default function MerchantBilling() {
           <CardContent className="space-y-4">
             {subscription.subscribed && (
               <>
-                {subscription.status === 'trial' && subscription.trialEnd && (
-                  <div className="p-3 rounded-lg bg-secondary/50 border border-secondary text-sm">
-                    <p className="font-medium">🎉 You're on a 7-day free trial</p>
-                    <p className="text-muted-foreground">
-                      Trial ends on {new Date(subscription.trialEnd).toLocaleDateString()}
-                      {' '}({Math.max(0, Math.ceil((new Date(subscription.trialEnd).getTime() - Date.now()) / 86400000))} days remaining)
-                    </p>
-                  </div>
-                )}
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <p className="text-muted-foreground">Plan</p>

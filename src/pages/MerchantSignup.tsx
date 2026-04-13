@@ -937,8 +937,8 @@ export default function MerchantSignup() {
           <div className="max-w-md mx-auto">
             <Card>
               <CardHeader className="text-center">
-                <CardTitle>{isUpgradeMode ? 'Change Your Plan' : 'Start Your Free Trial'}</CardTitle>
-                <CardDescription>{isUpgradeMode ? 'Proration is handled automatically by Stripe' : '7-day free trial, cancel anytime'}</CardDescription>
+                <CardTitle>{isUpgradeMode ? 'Change Your Plan' : 'Choose Your Plan'}</CardTitle>
+                <CardDescription>{isUpgradeMode ? 'Proration is handled automatically by Stripe' : 'Select a plan to get started'}</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {selectedPlan && (
@@ -961,7 +961,7 @@ export default function MerchantSignup() {
 
                 <Button className="w-full" size="lg" onClick={handleCheckout} disabled={checkoutLoading}>
                   {checkoutLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  {isUpgradeMode ? 'Confirm Plan Change' : 'Start 7-Day Free Trial'}
+                  {isUpgradeMode ? 'Confirm Plan Change' : 'Subscribe Now'}
                 </Button>
 
                 {!isUpgradeMode && (

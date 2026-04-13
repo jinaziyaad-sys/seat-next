@@ -197,7 +197,6 @@ serve(async (req) => {
       line_items: lineItems,
       mode: "subscription",
       subscription_data: {
-        trial_period_days: 7,
         metadata: {
           venue_id: venueId || '',
           user_id: user.id,
