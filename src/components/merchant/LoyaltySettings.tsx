@@ -486,7 +486,7 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
                             <Label className="text-xs">Reward Image</Label>
                             {reward.image_url ? (
                               <div className="relative inline-block">
-                                <img src={reward.image_url} alt={reward.name} className="h-20 w-20 rounded-lg object-cover border" />
+                                <img src={reward.image_url} alt={reward.name} className="h-20 w-28 rounded-lg object-contain border bg-muted" />
                                 <Button
                                   variant="destructive"
                                   size="icon"
@@ -504,15 +504,17 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
                                   type="file"
                                   accept="image/*"
                                   className="hidden"
-                                  onChange={async (e) => {
+                                  onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (!file) return;
-                                    const ext = file.name.split('.').pop();
-                                    const path = `${venueId}/${Date.now()}.${ext}`;
-                                    const { error } = await supabase.storage.from('reward-images').upload(path, file);
-                                    if (error) { toast({ title: "Upload failed", description: error.message, variant: "destructive" }); return; }
-                                    const { data: urlData } = supabase.storage.from('reward-images').getPublicUrl(path);
-                                    updateReward(index, "image_url", urlData.publicUrl);
+                                    const reader = new FileReader();
+                                    reader.onload = () => {
+                                      setCropImageSrc(reader.result as string);
+                                      setCropRewardIndex(index);
+                                      setCropDialogOpen(true);
+                                    };
+                                    reader.readAsDataURL(file);
+                                    e.target.value = '';
                                   }}
                                 />
                               </label>
