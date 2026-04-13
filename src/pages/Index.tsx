@@ -844,7 +844,7 @@ const Index = () => {
           )}
           
           {/* Compact summary cards - max 3, active only */}
-          {activeItems.slice(0, 3).map((item) => {
+          {activeItems.slice(0, 3).map((item, idx) => {
             const isOrder = 'order_number' in item;
             const statusKey = item.status === 'ready' ? t("status.ready") :
               item.status === 'in_prep' ? t("status.preparing") :
@@ -853,44 +853,49 @@ const Index = () => {
               t("status.placed");
 
             return (
-              <Card
+              <motion.div
                 key={item.id}
-                className={cn(
-                  "shadow-card cursor-pointer transition-all hover:shadow-floating hover:scale-[1.01]",
-                  item.status === 'ready' && "bg-success/10 border-success"
-                )}
-                onClick={() => {
-                  if (isOrder) {
-                    setSelectedOrder(item);
-                    setActiveTab("food-ready");
-                  } else {
-                    setSelectedOrder(item);
-                    setActiveTab("table-ready");
-                  }
-                }}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.08, duration: 0.3 }}
               >
-                <CardContent className="p-3">
-                  <div className="flex items-center gap-3">
-                    <VenueLogo
-                      logoUrl={item.venues?.logo_url}
-                      name={item.venues?.name || ''}
-                      size="sm"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-sm truncate">{item.venues?.name}</h3>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {isOrder ? `Order #${item.order_number}` : t("home.partyOf", { size: item.party_size })}
-                      </p>
+                <Card
+                  className={cn(
+                    "shadow-card cursor-pointer press-feedback hover:shadow-floating hover:scale-[1.01] relative overflow-hidden",
+                    item.status === 'ready' && "bg-success/10 border-success"
+                  )}
+                  onClick={() => {
+                    setSelectedOrder(item);
+                    setActiveTab(isOrder ? "food-ready" : "table-ready");
+                  }}
+                >
+                  {/* Pulse ring for ready items */}
+                  {item.status === 'ready' && (
+                    <div className="absolute inset-0 rounded-lg border-2 border-success animate-pulse-ring pointer-events-none" />
+                  )}
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-3">
+                      <VenueLogo
+                        logoUrl={item.venues?.logo_url}
+                        name={item.venues?.name || ''}
+                        size="sm"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-sm truncate">{item.venues?.name}</h3>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {isOrder ? `Order #${item.order_number}` : t("home.partyOf", { size: item.party_size })}
+                        </p>
+                      </div>
+                      <Badge
+                        variant={item.status === 'ready' ? 'default' : 'secondary'}
+                        className="shrink-0"
+                      >
+                        {statusKey}
+                      </Badge>
                     </div>
-                    <Badge
-                      variant={item.status === 'ready' ? 'default' : 'secondary'}
-                      className="shrink-0"
-                    >
-                      {statusKey}
-                    </Badge>
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </motion.div>
             );
           })}
 
@@ -930,55 +935,73 @@ const Index = () => {
 
         <div className="grid grid-cols-3 gap-3">
           {features.food_ordering_enabled && (
-            <Card 
-              className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
-              onClick={() => setActiveTab("food-ready")}
-              data-tour="card-food"
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1, duration: 0.4 }}
             >
-              <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <UtensilsCrossed size={22} />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm">{t("home.foodReady")}</h3>
-                  <p className="text-xs text-muted-foreground">{t("home.trackOrderStatus")}</p>
-                </div>
-              </CardContent>
-            </Card>
+              <Card 
+                className="cursor-pointer shadow-card press-feedback hover:scale-105 hover:shadow-floating h-full"
+                onClick={() => setActiveTab("food-ready")}
+                data-tour="card-food"
+              >
+                <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
+                    <UtensilsCrossed size={22} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-sm">{t("home.foodReady")}</h3>
+                    <p className="text-xs text-muted-foreground">{t("home.trackOrderStatus")}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
           )}
 
           {features.waitlist_enabled && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.4 }}
+            >
+              <Card 
+                className="cursor-pointer shadow-card press-feedback hover:scale-105 hover:shadow-floating h-full"
+                onClick={() => setActiveTab("table-ready")}
+                data-tour="card-table"
+              >
+                <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
+                    <Users size={22} />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-sm">{t("home.tableReady")}</h3>
+                    <p className="text-xs text-muted-foreground">{t("home.joinWaitlist")}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3, duration: 0.4 }}
+          >
             <Card 
-              className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
-              onClick={() => setActiveTab("table-ready")}
-              data-tour="card-table"
+              className="cursor-pointer shadow-card press-feedback hover:scale-105 hover:shadow-floating h-full"
+              onClick={() => setActiveTab("loyalty")}
             >
               <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <Users size={22} />
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
+                  <Gift size={22} />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm">{t("home.tableReady")}</h3>
-                  <p className="text-xs text-muted-foreground">{t("home.joinWaitlist")}</p>
+                  <h3 className="font-semibold text-sm">{t("home.rewardsReady", "Rewards Ready")}</h3>
+                  <p className="text-xs text-muted-foreground">{t("home.loyaltyDesc", "Stamps & rewards")}</p>
                 </div>
               </CardContent>
             </Card>
-          )}
-
-          <Card 
-            className="cursor-pointer shadow-card transition-all hover:scale-105 hover:shadow-floating active:scale-95"
-            onClick={() => setActiveTab("loyalty")}
-          >
-            <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                <Gift size={22} />
-              </div>
-              <div>
-                <h3 className="font-semibold text-sm">{t("home.rewardsReady", "Rewards Ready")}</h3>
-                <p className="text-xs text-muted-foreground">{t("home.loyaltyDesc", "Stamps & rewards")}</p>
-              </div>
-            </CardContent>
-          </Card>
+          </motion.div>
 
           
           {!features.food_ordering_enabled && !features.waitlist_enabled && (
