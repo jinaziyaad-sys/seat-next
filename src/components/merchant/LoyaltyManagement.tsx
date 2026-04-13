@@ -23,9 +23,10 @@ interface DiscountCode {
 
 interface LoyaltyManagementProps {
   venueId: string;
+  readOnly?: boolean;
 }
 
-export const LoyaltyManagement = ({ venueId }: LoyaltyManagementProps) => {
+export const LoyaltyManagement = ({ venueId, readOnly = false }: LoyaltyManagementProps) => {
   const { toast } = useToast();
   const [codes, setCodes] = useState<DiscountCode[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,23 +105,25 @@ export const LoyaltyManagement = ({ venueId }: LoyaltyManagementProps) => {
 
   return (
     <div className="space-y-6">
-      {/* Program Settings Button - prominent, matching other tab patterns */}
-      <Button
-        variant="outline"
-        className="w-full justify-between h-auto py-4 px-5"
-        onClick={() => setSettingsOpen(true)}
-      >
-        <div className="flex items-center gap-3">
-          <Settings className="h-5 w-5 text-muted-foreground" />
-          <div className="text-left">
-            <p className="font-medium">Program Settings</p>
-            <p className="text-sm text-muted-foreground font-normal">
-              Configure stamp thresholds, rewards, and voucher details
-            </p>
+      {/* Program Settings Button - admin only */}
+      {!readOnly && (
+        <Button
+          variant="outline"
+          className="w-full justify-between h-auto py-4 px-5"
+          onClick={() => setSettingsOpen(true)}
+        >
+          <div className="flex items-center gap-3">
+            <Settings className="h-5 w-5 text-muted-foreground" />
+            <div className="text-left">
+              <p className="font-medium">Program Settings</p>
+              <p className="text-sm text-muted-foreground font-normal">
+                Configure stamp thresholds, rewards, and voucher details
+              </p>
+            </div>
           </div>
-        </div>
-        <ChevronRight className="h-5 w-5 text-muted-foreground" />
-      </Button>
+          <ChevronRight className="h-5 w-5 text-muted-foreground" />
+        </Button>
+      )}
 
       {/* Search */}
       <div className="relative">

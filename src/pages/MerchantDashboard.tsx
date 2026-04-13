@@ -517,7 +517,7 @@ const MerchantDashboard = () => {
                   />
                 )}
                 <span className="text-sm text-muted-foreground">
-                  {userRole.role === 'admin' ? 'Full access to all features' : 'Kitchen & Waitlist access'}
+                  {userRole.role === 'admin' ? 'Full access to all features' : 'Operational access'}
                   {allVenueRoles.length > 1 && ` • ${allVenueRoles.length} venues`}
                 </span>
               </div>
@@ -531,10 +531,12 @@ const MerchantDashboard = () => {
               <SoundSnoozeButton data-tour="sound-snooze" />
               <ThemeToggle />
               <PasswordResetDialog />
-              <Button variant="outline" size="sm" onClick={() => navigate("/merchant/billing")}>
-                <CreditCard size={16} className="mr-2" />
-                Billing
-              </Button>
+              {userRole.role === 'admin' && (
+                <Button variant="outline" size="sm" onClick={() => navigate("/merchant/billing")}>
+                  <CreditCard size={16} className="mr-2" />
+                  Billing
+                </Button>
+              )}
               <Button variant="outline" onClick={handleLogout}>
                 <LogOut size={16} className="mr-2" />
                 Logout
@@ -592,7 +594,7 @@ const MerchantDashboard = () => {
                 )}
               </TabsTrigger>
             )}
-            {hasTableReady && userRole.role === "admin" && (
+            {hasTableReady && (
               <TabsTrigger value="floor-plan" className={tabTriggerClass}>
                 <LayoutGrid size={16} />
                 Floor Plan
@@ -615,13 +617,6 @@ const MerchantDashboard = () => {
                     {analyticsLocked && <Lock size={12} className="ml-1 text-muted-foreground" />}
                   </TabsTrigger>
                 )}
-                {(hasLoyalty || loyaltyLocked) && (
-                  <TabsTrigger value="loyalty" className={tabTriggerClass}>
-                    <Gift size={16} />
-                    Loyalty
-                    {loyaltyLocked && <Lock size={12} className="ml-1 text-muted-foreground" />}
-                  </TabsTrigger>
-                )}
                 {hasPromotions && (
                   <TabsTrigger value="promotions" className={tabTriggerClass}>
                     <Megaphone size={16} />
@@ -629,6 +624,13 @@ const MerchantDashboard = () => {
                   </TabsTrigger>
                 )}
               </>
+            )}
+            {(hasLoyalty || loyaltyLocked) && (
+              <TabsTrigger value="loyalty" className={tabTriggerClass}>
+                <Gift size={16} />
+                Loyalty
+                {loyaltyLocked && <Lock size={12} className="ml-1 text-muted-foreground" />}
+              </TabsTrigger>
             )}
           </TabsList>
 
@@ -650,12 +652,37 @@ const MerchantDashboard = () => {
             </TabsContent>
           )}
 
-          {hasTableReady && userRole.role === "admin" && (
+          {hasTableReady && (
             <TabsContent value="floor-plan">
-              <FloorPlan venueId={userRole.venue_id!} />
+              <FloorPlan venueId={userRole.venue_id!} readOnly={userRole.role !== 'admin'} />
             </TabsContent>
           )}
 
+          {/* Loyalty tab - visible to all roles, settings restricted to admin */}
+          {hasLoyalty ? (
+            <TabsContent value="loyalty">
+              <LoyaltyManagement venueId={userRole.venue_id!} readOnly={userRole.role !== 'admin'} />
+            </TabsContent>
+          ) : loyaltyLocked ? (
+            <TabsContent value="loyalty">
+              <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                  <ArrowUpCircle className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <h3 className="text-lg font-semibold">Upgrade to Enterprise</h3>
+                <p className="text-muted-foreground max-w-md">
+                  Loyalty programs are available on the Enterprise plan. Upgrade to create stamp cards, rewards, and keep customers coming back.
+                </p>
+                {userRole.role === 'admin' && (
+                  <Button onClick={() => navigate(`/merchant/signup?upgrade=true&venueId=${userRole.venue_id}`)}>
+                    View Plans & Upgrade
+                  </Button>
+                )}
+              </div>
+            </TabsContent>
+          ) : null}
+
+          {/* Admin-only tab contents */}
           {userRole.role === "admin" ? (
             <>
               <TabsContent value="staff" data-tour="staff-content">
@@ -698,68 +725,13 @@ const MerchantDashboard = () => {
                 </TabsContent>
               ) : null}
 
-              {hasLoyalty ? (
-                <TabsContent value="loyalty">
-                  <LoyaltyManagement venueId={userRole.venue_id!} />
-                </TabsContent>
-              ) : loyaltyLocked ? (
-                <TabsContent value="loyalty">
-                  <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
-                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                      <ArrowUpCircle className="w-8 h-8 text-muted-foreground" />
-                    </div>
-                    <h3 className="text-lg font-semibold">Upgrade to Enterprise</h3>
-                    <p className="text-muted-foreground max-w-md">
-                      Loyalty programs are available on the Enterprise plan. Upgrade to create stamp cards, rewards, and keep customers coming back.
-                    </p>
-                    <Button onClick={() => navigate(`/merchant/signup?upgrade=true&venueId=${userRole.venue_id}`)}>
-                      View Plans & Upgrade
-                    </Button>
-                  </div>
-                </TabsContent>
-              ) : null}
-
               {hasPromotions && (
                 <TabsContent value="promotions">
                   <SponsoredAdsManager venueId={userRole.venue_id!} />
                 </TabsContent>
               )}
             </>
-          ) : (
-            <>
-              <TabsContent value="staff">
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Lock className="w-16 h-16 text-muted-foreground/50 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Admin Access Required</h3>
-                  <p className="text-muted-foreground max-w-md">
-                    You need administrator privileges to manage staff members.
-                  </p>
-                </div>
-              </TabsContent>
-
-              <TabsContent value="settings">
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Lock className="w-16 h-16 text-muted-foreground/50 mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">Admin Access Required</h3>
-                  <p className="text-muted-foreground max-w-md">
-                    You need administrator privileges to modify venue settings.
-                  </p>
-                </div>
-              </TabsContent>
-
-              {hasAnalytics && (
-                <TabsContent value="reports">
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <Lock className="w-16 h-16 text-muted-foreground/50 mb-4" />
-                    <h3 className="text-lg font-semibold mb-2">Admin Access Required</h3>
-                    <p className="text-muted-foreground max-w-md">
-                      You need administrator privileges to view reports and analytics.
-                    </p>
-                  </div>
-                </TabsContent>
-              )}
-            </>
-          )}
+          ) : null}
         </Tabs>
       </div>
 

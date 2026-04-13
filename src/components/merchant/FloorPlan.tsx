@@ -26,9 +26,10 @@ interface TableBooking {
 
 interface FloorPlanProps {
   venueId: string;
+  readOnly?: boolean;
 }
 
-export function FloorPlan({ venueId }: FloorPlanProps) {
+export function FloorPlan({ venueId, readOnly = false }: FloorPlanProps) {
   const [tables, setTables] = useState<TableConfig[]>([]);
   const [bookings, setBookings] = useState<Map<string, TableBooking[]>>(new Map());
   const [loading, setLoading] = useState(true);
@@ -187,10 +188,12 @@ export function FloorPlan({ venueId }: FloorPlanProps) {
                 {tables.length} tables • {totalCapacity} seats
               </Badge>
             )}
-            <Button size="sm" onClick={() => { resetDialog(); setDialogOpen(true); }}>
-              <Plus className="h-4 w-4 mr-1" />
-              Add Table
-            </Button>
+            {!readOnly && (
+              <Button size="sm" onClick={() => { resetDialog(); setDialogOpen(true); }}>
+                <Plus className="h-4 w-4 mr-1" />
+                Add Table
+              </Button>
+            )}
           </div>
         </div>
       </CardHeader>
@@ -217,15 +220,17 @@ export function FloorPlan({ venueId }: FloorPlanProps) {
                       : "border-muted bg-muted/20"
                   )}
                 >
-                  {/* Edit/Delete actions */}
-                  <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditTable(table)}>
-                      <Edit2 className="h-3 w-3" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteTable(table.id)}>
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
-                  </div>
+                  {/* Edit/Delete actions (admin only) */}
+                  {!readOnly && (
+                    <div className="absolute top-1 right-1 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleEditTable(table)}>
+                        <Edit2 className="h-3 w-3" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleDeleteTable(table.id)}>
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  )}
 
                   <p className="font-semibold text-sm">{table.name}</p>
                   <div className="flex items-center gap-1 text-xs text-muted-foreground">
