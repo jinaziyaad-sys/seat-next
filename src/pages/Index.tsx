@@ -98,7 +98,7 @@ const Index = () => {
 
   // Phone prompt dialog for Google Sign-In users
   const [showPhonePrompt, setShowPhonePrompt] = useState(false);
-
+  const [profileName, setProfileName] = useState<string | null>(null);
   useEffect(() => {
     const hasSeenTour = localStorage.getItem('patronTourCompleted');
     if (!hasSeenTour && user) {
@@ -231,13 +231,14 @@ const Index = () => {
     
     supabase
       .from('profiles')
-      .select('phone')
+      .select('phone, full_name')
       .eq('id', user.id)
       .single()
       .then(({ data }) => {
         if (!data?.phone) {
           setShowPhonePrompt(true);
         }
+        setProfileName(data?.full_name?.split(' ')[0] || user.email?.split('@')[0] || null);
       });
   }, [user]);
 
@@ -756,18 +757,20 @@ const Index = () => {
               className="relative h-36 w-auto drop-shadow-[0_0_40px_rgba(255,107,53,0.4)]"
             />
           </motion.div>
-          {user && (
-            <motion.p
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.3, duration: 0.4 }}
-              className="mt-3 text-sm text-white/70"
-            >
-              {new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 17 ? "Good afternoon" : "Good evening"}, {user.email?.split('@')[0] || "there"} 👋
-            </motion.p>
-          )}
         </div>
       </div>
+
+      {/* Greeting below hero */}
+      {user && profileName && (
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
+          className="text-center text-sm text-muted-foreground py-3 px-6"
+        >
+          {new Date().getHours() < 12 ? "Good morning" : new Date().getHours() < 17 ? "Good afternoon" : "Good evening"}, {profileName} 👋
+        </motion.p>
+      )}
 
       {/* Promotional Banner Carousel */}
       <div className="px-6 pt-4">
@@ -945,13 +948,13 @@ const Index = () => {
                 onClick={() => setActiveTab("food-ready")}
                 data-tour="card-food"
               >
-                <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
-                    <UtensilsCrossed size={22} />
+                <CardContent className="flex flex-col items-center gap-2 p-3 text-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
+                    <UtensilsCrossed size={20} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-sm">{t("home.foodReady")}</h3>
-                    <p className="text-xs text-muted-foreground">{t("home.trackOrderStatus")}</p>
+                    <h3 className="font-semibold text-xs">{t("home.foodReady")}</h3>
+                    <p className="text-[10px] text-muted-foreground leading-tight">{t("home.trackOrderStatus")}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -969,13 +972,13 @@ const Index = () => {
                 onClick={() => setActiveTab("table-ready")}
                 data-tour="card-table"
               >
-                <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
-                    <Users size={22} />
+                <CardContent className="flex flex-col items-center gap-2 p-3 text-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
+                    <Users size={20} />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-sm">{t("home.tableReady")}</h3>
-                    <p className="text-xs text-muted-foreground">{t("home.joinWaitlist")}</p>
+                    <h3 className="font-semibold text-xs">{t("home.tableReady")}</h3>
+                    <p className="text-[10px] text-muted-foreground leading-tight">{t("home.joinWaitlist")}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -991,13 +994,13 @@ const Index = () => {
               className="cursor-pointer shadow-card press-feedback hover:scale-105 hover:shadow-floating h-full"
               onClick={() => setActiveTab("loyalty")}
             >
-              <CardContent className="flex flex-col items-center gap-3 p-4 text-center">
-                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
-                  <Gift size={22} />
+              <CardContent className="flex flex-col items-center gap-2 p-3 text-center">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-primary to-accent text-primary-foreground shadow-button">
+                  <Gift size={20} />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-sm">{t("home.rewardsReady", "Rewards Ready")}</h3>
-                  <p className="text-xs text-muted-foreground">{t("home.loyaltyDesc", "Stamps & rewards")}</p>
+                  <h3 className="font-semibold text-xs">{t("home.rewardsReady", "Rewards Ready")}</h3>
+                  <p className="text-[10px] text-muted-foreground leading-tight">{t("home.loyaltyDesc", "Stamps & rewards")}</p>
                 </div>
               </CardContent>
             </Card>
