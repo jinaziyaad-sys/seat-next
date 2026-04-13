@@ -549,119 +549,104 @@ const Index = () => {
     return () => clearInterval(interval);
   }, [activeWaitlist]);
 
-  if (activeTab === "food-ready") {
-    return (
-      <div className="min-h-screen bg-background pb-24">
-        <FoodReadyFlow 
-          onBack={() => {
-            setActiveTab("home");
-            setSelectedOrder(null);
-            fetchActiveTracking();
-          }} 
-          initialOrder={selectedOrder}
-        />
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
-    );
-  }
-
-  if (activeTab === "table-ready") {
-    return (
-      <div className="min-h-screen bg-background pb-24">
-        <TableReadyFlow 
-          onBack={() => {
-            setActiveTab("home");
-            setSelectedOrder(null);
-            fetchActiveTracking();
-          }} 
-          initialEntry={selectedOrder}
-        />
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
-    );
-  }
-
-  if (activeTab === "profile") {
-    return (
-      <div className="min-h-screen bg-background pb-24">
-        <ProfileSection onBack={() => setActiveTab("home")} />
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
-    );
-  }
-
-  if (activeTab === "loyalty") {
-    return (
-      <div className="min-h-screen bg-background pb-24">
-        <LoyaltyReadyFlow onBack={() => setActiveTab("home")} />
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
-    );
-  }
-
-  if (activeTab === "activity") {
-    return (
-      <div className="min-h-screen bg-background pb-24">
-        <ActivityFlow
-          onBack={() => setActiveTab("home")}
-          activeOrders={activeOrders}
-          activeWaitlist={activeWaitlist}
-          unreadCounts={unreadCounts}
-          onSelectOrder={(order) => {
-            setSelectedOrder(order);
-            setActiveTab("food-ready");
-          }}
-          onSelectWaitlist={(entry) => {
-            setSelectedOrder(entry);
-            setActiveTab("table-ready");
-          }}
-          onDismissOrder={handleDismissOrder}
-          onDismissWaitlist={handleDismissWaitlist}
-          onRateItem={(item) => {
-            setRatingItem(item);
-            setRatingDialogOpen(true);
-          }}
-          onOpenMessenger={(ctx) => {
-            setCardMessengerContext(ctx);
-            setCardMessengerOpen(true);
-          }}
-          onInviteFriends={(entry) => {
-            const url = `${window.location.origin}/waitlist/${entry.venue_id}?group=${entry.id}`;
-            const text = t("home.inviteFriendsText", { venue: entry.venues?.name || '' });
-            if (navigator.share) {
-              navigator.share({ title: entry.venues?.name || '', text, url }).catch(() => {});
-            } else {
-              navigator.clipboard.writeText(`${text} ${url}`);
-              toast({ title: t("explore.linkCopied") });
-            }
-          }}
-        />
-        {/* Rating Dialog */}
-        <RatingDialog
-          open={ratingDialogOpen}
-          onOpenChange={setRatingDialogOpen}
-          type={ratingItem?.type || 'order'}
-          itemId={ratingItem?.id || ''}
-          venueId={ratingItem?.venueId || ''}
-          venueName={ratingItem?.venueName || ''}
-          userId={user?.id || null}
-          onComplete={() => {
-            if (ratingItem) handleRatingComplete(ratingItem.id, ratingItem.type);
-          }}
-        />
-        {cardMessengerContext && (
-          <Messenger
-            open={cardMessengerOpen}
-            onOpenChange={(open) => { setCardMessengerOpen(open); if (!open) setCardMessengerContext(null); }}
-            waitlistEntryId={cardMessengerContext.type === 'waitlist' ? cardMessengerContext.id : undefined}
-            orderId={cardMessengerContext.type === 'order' ? cardMessengerContext.id : undefined}
-            userType="patron"
-            userId={user?.id || ''}
-            venueName={cardMessengerContext.venueName}
+  const tabContent = () => {
+    if (activeTab === "food-ready") {
+      return (
+        <motion.div key="food" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }} className="min-h-screen bg-background pb-24">
+          <FoodReadyFlow onBack={() => { setActiveTab("home"); setSelectedOrder(null); fetchActiveTracking(); }} initialOrder={selectedOrder} />
+        </motion.div>
+      );
+    }
+    if (activeTab === "table-ready") {
+      return (
+        <motion.div key="table" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }} className="min-h-screen bg-background pb-24">
+          <TableReadyFlow onBack={() => { setActiveTab("home"); setSelectedOrder(null); fetchActiveTracking(); }} initialEntry={selectedOrder} />
+        </motion.div>
+      );
+    }
+    if (activeTab === "profile") {
+      return (
+        <motion.div key="profile" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }} className="min-h-screen bg-background pb-24">
+          <ProfileSection onBack={() => setActiveTab("home")} />
+        </motion.div>
+      );
+    }
+    if (activeTab === "loyalty") {
+      return (
+        <motion.div key="loyalty" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }} className="min-h-screen bg-background pb-24">
+          <LoyaltyReadyFlow onBack={() => setActiveTab("home")} />
+        </motion.div>
+      );
+    }
+    if (activeTab === "activity") {
+      return (
+        <motion.div key="activity" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.25 }} className="min-h-screen bg-background pb-24">
+          <ActivityFlow
+            onBack={() => setActiveTab("home")}
+            activeOrders={activeOrders}
+            activeWaitlist={activeWaitlist}
+            unreadCounts={unreadCounts}
+            onSelectOrder={(order) => { setSelectedOrder(order); setActiveTab("food-ready"); }}
+            onSelectWaitlist={(entry) => { setSelectedOrder(entry); setActiveTab("table-ready"); }}
+            onDismissOrder={handleDismissOrder}
+            onDismissWaitlist={handleDismissWaitlist}
+            onRateItem={(item) => { setRatingItem(item); setRatingDialogOpen(true); }}
+            onOpenMessenger={(ctx) => { setCardMessengerContext(ctx); setCardMessengerOpen(true); }}
+            onInviteFriends={(entry) => {
+              const url = `${window.location.origin}/waitlist/${entry.venue_id}?group=${entry.id}`;
+              const text = t("home.inviteFriendsText", { venue: entry.venues?.name || '' });
+              if (navigator.share) {
+                navigator.share({ title: entry.venues?.name || '', text, url }).catch(() => {});
+              } else {
+                navigator.clipboard.writeText(`${text} ${url}`);
+                toast({ title: t("explore.linkCopied") });
+              }
+            }}
           />
-        )}
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} />
-      </div>
+          <RatingDialog
+            open={ratingDialogOpen}
+            onOpenChange={setRatingDialogOpen}
+            type={ratingItem?.type || 'order'}
+            itemId={ratingItem?.id || ''}
+            venueId={ratingItem?.venueId || ''}
+            venueName={ratingItem?.venueName || ''}
+            userId={user?.id || null}
+            onComplete={() => { if (ratingItem) handleRatingComplete(ratingItem.id, ratingItem.type); }}
+          />
+          {cardMessengerContext && (
+            <Messenger
+              open={cardMessengerOpen}
+              onOpenChange={(open) => { setCardMessengerOpen(open); if (!open) setCardMessengerContext(null); }}
+              waitlistEntryId={cardMessengerContext.type === 'waitlist' ? cardMessengerContext.id : undefined}
+              orderId={cardMessengerContext.type === 'order' ? cardMessengerContext.id : undefined}
+              userType="patron"
+              userId={user?.id || ''}
+              venueName={cardMessengerContext.venueName}
+            />
+          )}
+        </motion.div>
+      );
+    }
+    return null;
+  };
+
+  // Compute badge counts for nav
+  const navBadges = useMemo(() => {
+    const ACTIVE_ORDER_STATUSES = ['awaiting_verification', 'placed', 'in_prep', 'ready'];
+    const ACTIVE_WAITLIST_STATUSES = ['waiting', 'ready'];
+    const activityCount = activeOrders.filter(o => ACTIVE_ORDER_STATUSES.includes(o.status)).length +
+      activeWaitlist.filter(w => ACTIVE_WAITLIST_STATUSES.includes(w.status)).length;
+    return { activity: activityCount };
+  }, [activeOrders, activeWaitlist]);
+
+  if (activeTab !== "home") {
+    return (
+      <>
+        <AnimatePresence mode="wait">
+          {tabContent()}
+        </AnimatePresence>
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} badges={navBadges} />
+      </>
     );
   }
 
