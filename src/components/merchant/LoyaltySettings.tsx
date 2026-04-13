@@ -83,6 +83,11 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
   const [cashbackFixedAmount, setCashbackFixedAmount] = useState("5");
   const [cashbackSaving, setCashbackSaving] = useState(false);
 
+  // Reward image crop
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropRewardIndex, setCropRewardIndex] = useState<number | null>(null);
+
   // Referral
   const [referralActive, setReferralActive] = useState(false);
   const [referrerRewardType, setReferrerRewardType] = useState("stamps");
