@@ -517,7 +517,7 @@ const MerchantDashboard = () => {
                   />
                 )}
                 <span className="text-sm text-muted-foreground">
-                  {userRole.role === 'admin' ? 'Full access to all features' : 'Kitchen & Waitlist access'}
+                  {userRole.role === 'admin' ? 'Full access to all features' : 'Operational access'}
                   {allVenueRoles.length > 1 && ` • ${allVenueRoles.length} venues`}
                 </span>
               </div>
@@ -531,10 +531,12 @@ const MerchantDashboard = () => {
               <SoundSnoozeButton data-tour="sound-snooze" />
               <ThemeToggle />
               <PasswordResetDialog />
-              <Button variant="outline" size="sm" onClick={() => navigate("/merchant/billing")}>
-                <CreditCard size={16} className="mr-2" />
-                Billing
-              </Button>
+              {userRole.role === 'admin' && (
+                <Button variant="outline" size="sm" onClick={() => navigate("/merchant/billing")}>
+                  <CreditCard size={16} className="mr-2" />
+                  Billing
+                </Button>
+              )}
               <Button variant="outline" onClick={handleLogout}>
                 <LogOut size={16} className="mr-2" />
                 Logout
@@ -592,7 +594,7 @@ const MerchantDashboard = () => {
                 )}
               </TabsTrigger>
             )}
-            {hasTableReady && userRole.role === "admin" && (
+            {hasTableReady && (
               <TabsTrigger value="floor-plan" className={tabTriggerClass}>
                 <LayoutGrid size={16} />
                 Floor Plan
@@ -615,13 +617,6 @@ const MerchantDashboard = () => {
                     {analyticsLocked && <Lock size={12} className="ml-1 text-muted-foreground" />}
                   </TabsTrigger>
                 )}
-                {(hasLoyalty || loyaltyLocked) && (
-                  <TabsTrigger value="loyalty" className={tabTriggerClass}>
-                    <Gift size={16} />
-                    Loyalty
-                    {loyaltyLocked && <Lock size={12} className="ml-1 text-muted-foreground" />}
-                  </TabsTrigger>
-                )}
                 {hasPromotions && (
                   <TabsTrigger value="promotions" className={tabTriggerClass}>
                     <Megaphone size={16} />
@@ -629,6 +624,13 @@ const MerchantDashboard = () => {
                   </TabsTrigger>
                 )}
               </>
+            )}
+            {(hasLoyalty || loyaltyLocked) && (
+              <TabsTrigger value="loyalty" className={tabTriggerClass}>
+                <Gift size={16} />
+                Loyalty
+                {loyaltyLocked && <Lock size={12} className="ml-1 text-muted-foreground" />}
+              </TabsTrigger>
             )}
           </TabsList>
 
