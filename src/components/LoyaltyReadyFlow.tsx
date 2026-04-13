@@ -388,7 +388,9 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
                   <Card key={vc.code} className="overflow-hidden">
                     <CardContent className="p-0">
                       {vc.image_url && (
-                        <img src={vc.image_url} alt={vc.reward_name || ''} className="w-full h-32 object-cover" />
+                        <div className="aspect-[4/3] w-full bg-muted">
+                          <img src={vc.image_url} alt={vc.reward_name || ''} className="w-full h-full object-contain" />
+                        </div>
                       )}
                       <div className="p-4 flex items-center justify-between gap-3">
                         <div className="flex-1 min-w-0">
@@ -438,7 +440,9 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
                         <Card key={`${vc.code}-history`} className="overflow-hidden opacity-60">
                           <CardContent className="p-0">
                             {vc.image_url && (
-                              <img src={vc.image_url} alt={vc.reward_name || ''} className="w-full h-32 object-cover grayscale" />
+                              <div className="aspect-[4/3] w-full bg-muted">
+                                <img src={vc.image_url} alt={vc.reward_name || ''} className="w-full h-full object-contain grayscale" />
+                              </div>
                             )}
                             <div className="p-4 flex items-center justify-between gap-3">
                               <div className="flex-1 min-w-0">

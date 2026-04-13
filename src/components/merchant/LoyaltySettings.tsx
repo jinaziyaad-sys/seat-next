@@ -13,6 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Gift, Plus, Trash2, Save, Loader2, Stamp, Star, AlertTriangle, Crown, Percent, Users, Target, Upload, Image, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { RewardImageCropDialog } from "@/components/RewardImageCropDialog";
 
 interface LoyaltyReward {
   id?: string;
@@ -81,6 +82,11 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
   const [cashbackActive, setCashbackActive] = useState(false);
   const [cashbackFixedAmount, setCashbackFixedAmount] = useState("5");
   const [cashbackSaving, setCashbackSaving] = useState(false);
+
+  // Reward image crop
+  const [cropDialogOpen, setCropDialogOpen] = useState(false);
+  const [cropImageSrc, setCropImageSrc] = useState<string | null>(null);
+  const [cropRewardIndex, setCropRewardIndex] = useState<number | null>(null);
 
   // Referral
   const [referralActive, setReferralActive] = useState(false);
@@ -485,7 +491,7 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
                             <Label className="text-xs">Reward Image</Label>
                             {reward.image_url ? (
                               <div className="relative inline-block">
-                                <img src={reward.image_url} alt={reward.name} className="h-20 w-20 rounded-lg object-cover border" />
+                                <img src={reward.image_url} alt={reward.name} className="h-20 w-28 rounded-lg object-contain border bg-muted" />
                                 <Button
                                   variant="destructive"
                                   size="icon"
@@ -503,15 +509,17 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
                                   type="file"
                                   accept="image/*"
                                   className="hidden"
-                                  onChange={async (e) => {
+                                  onChange={(e) => {
                                     const file = e.target.files?.[0];
                                     if (!file) return;
-                                    const ext = file.name.split('.').pop();
-                                    const path = `${venueId}/${Date.now()}.${ext}`;
-                                    const { error } = await supabase.storage.from('reward-images').upload(path, file);
-                                    if (error) { toast({ title: "Upload failed", description: error.message, variant: "destructive" }); return; }
-                                    const { data: urlData } = supabase.storage.from('reward-images').getPublicUrl(path);
-                                    updateReward(index, "image_url", urlData.publicUrl);
+                                    const reader = new FileReader();
+                                    reader.onload = () => {
+                                      setCropImageSrc(reader.result as string);
+                                      setCropRewardIndex(index);
+                                      setCropDialogOpen(true);
+                                    };
+                                    reader.readAsDataURL(file);
+                                    e.target.value = '';
                                   }}
                                 />
                               </label>
@@ -786,6 +794,32 @@ export const LoyaltySettings = ({ venueId }: LoyaltySettingsProps) => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {cropDialogOpen && cropImageSrc && (
+        <RewardImageCropDialog
+          open={cropDialogOpen}
+          imageSrc={cropImageSrc}
+          onClose={() => {
+            setCropDialogOpen(false);
+            setCropImageSrc(null);
+            setCropRewardIndex(null);
+          }}
+          onCropComplete={async (blob) => {
+            if (cropRewardIndex === null) return;
+            const path = `${venueId}/${Date.now()}.png`;
+            const { error } = await supabase.storage.from('reward-images').upload(path, blob);
+            if (error) {
+              toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+            } else {
+              const { data: urlData } = supabase.storage.from('reward-images').getPublicUrl(path);
+              updateReward(cropRewardIndex, "image_url", urlData.publicUrl);
+            }
+            setCropDialogOpen(false);
+            setCropImageSrc(null);
+            setCropRewardIndex(null);
+          }}
+        />
+      )}
     </div>
   );
 };
