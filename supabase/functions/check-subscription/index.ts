@@ -276,12 +276,16 @@ serve(async (req) => {
       }
     }
 
-    // No subscription found — but DON'T overwrite active DB state
-    // Only mark as inactive if DB was already inactive or missing
-    if (!dbSub || !['active', 'trial'].includes(dbSub.status)) {
-      logStep("No subscription found, returning none", { venueId });
+    // Stripe scan succeeded but found nothing active — correct stale DB state
+    if (dbSub && ['active', 'trial'].includes(dbSub.status)) {
+      logStep("Stripe scan found no active sub — correcting stale DB state to inactive", { venueId });
+      await syncSubscriptionToDb(supabaseClient, venueId, {
+        status: 'inactive',
+        stripe_customer_id: dbSub.stripe_customer_id,
+        stripe_subscription_id: dbSub.stripe_subscription_id,
+      });
     } else {
-      logStep("No Stripe sub found but DB was active — preserving DB state", { venueId });
+      logStep("No subscription found, returning none", { venueId });
     }
 
     return new Response(JSON.stringify({ subscribed: false, status: 'none' }), {
