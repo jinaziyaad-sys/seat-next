@@ -41,11 +41,34 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
   const [venues, setVenues] = useState<VenueStampData[]>([]);
   const [selectedVenue, setSelectedVenue] = useState<VenueStampData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [activeInnerTab, setActiveInnerTab] = useState<"stamps" | "vouchers">("stamps");
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
+  const withTimeout = async <T,>(
+    promise: Promise<T>,
+    timeoutMs: number,
+    label: string,
+  ): Promise<T> => {
+    let timeoutId: number | undefined;
+
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      timeoutId = window.setTimeout(() => {
+        reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+      }, timeoutMs);
+    });
+
+    try {
+      return await Promise.race([promise, timeoutPromise]);
+    } finally {
+      if (timeoutId !== undefined) {
+        window.clearTimeout(timeoutId);
+      }
+    }
+  };
+
   useEffect(() => {
-    fetchData();
+    void fetchData();
   }, []);
 
   // Real-time subscription for stamp updates
@@ -64,7 +87,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
           table: 'patron_loyalty',
           filter: `user_id=eq.${user.id}`
         }, () => {
-          fetchData();
+          void fetchData();
         })
         .on('postgres_changes', {
           event: '*',
@@ -72,12 +95,12 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
           table: 'discount_codes',
           filter: `user_id=eq.${user.id}`
         }, () => {
-          fetchData();
+          void fetchData();
         })
         .subscribe();
     };
 
-    setupRealtime();
+    void setupRealtime();
 
     return () => {
       if (channel) supabase.removeChannel(channel);
@@ -85,29 +108,55 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
   }, []);
 
   const fetchData = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setLoading(false); return; }
+    setLoading(true);
+    setLoadError(null);
 
     try {
-      const { data: loyaltyData } = await supabase
-        .from("patron_loyalty")
-        .select("*")
-        .eq("user_id", user.id);
+      const { data: { user } } = await withTimeout(
+        supabase.auth.getUser(),
+        5000,
+        "Loading loyalty user",
+      );
 
-      if (!loyaltyData?.length) { setLoading(false); return; }
+      if (!user) {
+        setVenues([]);
+        setSelectedVenue(null);
+        setView("hub");
+        return;
+      }
+
+      const { data: loyaltyData } = await withTimeout(
+        supabase
+          .from("patron_loyalty")
+          .select("*")
+          .eq("user_id", user.id),
+        6000,
+        "Loading loyalty balances",
+      );
+
+      if (!loyaltyData?.length) {
+        setVenues([]);
+        setSelectedVenue(null);
+        setView("hub");
+        return;
+      }
 
       const venueIds = loyaltyData.map(l => l.venue_id);
 
-      const [venuesRes, programsRes, codesRes, rewardsRes] = await Promise.all([
-        supabase.from("venues").select("id, name, logo_url").in("id", venueIds),
-        supabase.from("loyalty_programs").select("*").in("venue_id", venueIds).eq("is_active", true).eq("type", "stamp_card"),
-        supabase
-          .from("discount_codes")
-          .select("code, reward_name, venue_id, reward_id, expires_at, status, redeemed_at")
-          .eq("user_id", user.id)
-          .order("created_at", { ascending: false }),
-        supabase.from("loyalty_rewards").select("*").in("venue_id", venueIds).eq("is_active", true),
-      ]);
+      const [venuesRes, programsRes, codesRes, rewardsRes] = await withTimeout(
+        Promise.all([
+          supabase.from("venues").select("id, name, logo_url").in("id", venueIds),
+          supabase.from("loyalty_programs").select("*").in("venue_id", venueIds).eq("is_active", true).eq("type", "stamp_card"),
+          supabase
+            .from("discount_codes")
+            .select("code, reward_name, venue_id, reward_id, expires_at, status, redeemed_at")
+            .eq("user_id", user.id)
+            .order("created_at", { ascending: false }),
+          supabase.from("loyalty_rewards").select("*").in("venue_id", venueIds).eq("is_active", true),
+        ]),
+        8000,
+        "Loading loyalty rewards",
+      );
 
       const venueMap = new Map(venuesRes.data?.map(v => [v.id, v]) || []);
       const programMap = new Map(programsRes.data?.map(p => [p.venue_id, p]) || []);
@@ -141,7 +190,6 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
           const program = programMap.get(l.venue_id);
           if (!venue || !program) return null;
           const reward = rewardsMap.get(program.id);
-          const codes = activeCodesMap.get(l.venue_id) || [];
 
           return {
             venue_id: l.venue_id,
@@ -159,6 +207,12 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
         .filter(Boolean) as VenueStampData[];
 
       setVenues(stampVenues);
+    } catch (error) {
+      console.error("Error loading loyalty flow:", error);
+      setLoadError("We couldn't load your loyalty data right now.");
+      setVenues([]);
+      setSelectedVenue(null);
+      setView("hub");
     } finally {
       setLoading(false);
     }
@@ -181,6 +235,28 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center px-6">
+        <div className="max-w-sm text-center space-y-4">
+          <div className="mx-auto w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+            <Gift className="h-8 w-8 text-primary" />
+          </div>
+          <h1 className="text-xl font-semibold">Loyalty is taking too long</h1>
+          <p className="text-sm text-muted-foreground">{loadError}</p>
+          <div className="flex items-center justify-center gap-3">
+            <Button variant="outline" onClick={onBack}>
+              Back
+            </Button>
+            <Button onClick={() => void fetchData()}>
+              Retry
+            </Button>
+          </div>
+        </div>
       </div>
     );
   }
