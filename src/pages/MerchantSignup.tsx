@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Check, Loader2, Sparkles, Shield, X, ChefHat, Users, Calendar, Gift, BarChart3, LayoutGrid, ArrowLeft, ArrowRight, Eye, Upload, MapPin, Phone, Store, Camera, Search, MapPinned, Globe } from 'lucide-react';
+import { Check, Loader2, Sparkles, Shield, X, ChefHat, Users, Calendar, Gift, BarChart3, LayoutGrid, ArrowLeft, ArrowRight, Eye, Upload, MapPin, Phone, Store, Camera, Search, MapPinned, Globe, CreditCard } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { LogoCropDialog } from '@/components/LogoCropDialog';
