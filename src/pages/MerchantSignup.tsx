@@ -113,7 +113,7 @@ export default function MerchantSignup() {
 
   // Step 4 — Payment
   const [checkoutLoading, setCheckoutLoading] = useState(false);
-  const [paymentProvider, setPaymentProvider] = useState<'stripe' | 'payfast'>('stripe');
+  // Stripe-only payment
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -388,13 +388,6 @@ export default function MerchantSignup() {
 
       toast({ title: 'Venue Created!', description: 'Almost done — choose your payment.' });
 
-      // Auto-detect payment provider based on venue address
-      const addr = (validatedAddress?.formatted_address || venueAddress || '').toLowerCase();
-      if (addr.includes('south africa') || addr.includes(', za') || addr.includes('cape town') || addr.includes('johannesburg') || addr.includes('durban') || addr.includes('pretoria')) {
-        setPaymentProvider('payfast');
-      } else {
-        setPaymentProvider('stripe');
-      }
 
       setStep(3);
     } catch (err: any) {
@@ -404,77 +397,44 @@ export default function MerchantSignup() {
     }
   };
 
-  // Step 4: Checkout
+  // Step 4: Checkout (Stripe only)
   const handleCheckout = async () => {
     const plan = plans.find(p => p.id === selectedPlanId);
     if (!plan) return;
 
     setCheckoutLoading(true);
     try {
-      if (paymentProvider === 'payfast') {
-        if (selectedCurrency !== 'ZAR') {
-          toast({ variant: 'destructive', title: 'PayFast supports ZAR only', description: 'Please switch to Stripe for non-ZAR currencies, or change your currency to ZAR.' });
-          setCheckoutLoading(false);
-          return;
-        }
-        const { data, error } = await supabase.functions.invoke('payfast-checkout', {
-          body: {
-            planId: plan.id,
-            billingCycle: isAnnual ? 'annual' : 'monthly',
-            venueId,
-            returnUrl: `${window.location.origin}/merchant/dashboard`,
-            cancelUrl: `${window.location.origin}/merchant/signup`,
-          },
-        });
-        if (error) throw error;
-        if (data?.paymentUrl && data?.formData) {
-          const form = document.createElement('form');
-          form.method = 'POST';
-          form.action = data.paymentUrl;
-          Object.entries(data.formData as Record<string, string>).forEach(([k, v]) => {
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = k;
-            input.value = v;
-            form.appendChild(input);
-          });
-          document.body.appendChild(form);
-          form.submit();
-        }
-      } else {
-        // Check for currency override with Stripe price IDs
-        const overrideKey = `${plan.id}_${selectedCurrency}`;
-        const override = currencyOverrides[overrideKey];
-        let priceId: string | null = null;
+      // Check for currency override with Stripe price IDs
+      const overrideKey = `${plan.id}_${selectedCurrency}`;
+      const override = currencyOverrides[overrideKey];
+      let priceId: string | null = null;
 
-        if (selectedCurrency === 'ZAR') {
-          priceId = isAnnual ? plan.stripe_annual_price_id : plan.stripe_monthly_price_id;
-        } else if (override) {
-          // We need to look up stripe price IDs from the overrides table
-          const { data: overrideData } = await supabase
-            .from('plan_currency_overrides')
-            .select('stripe_monthly_price_id, stripe_annual_price_id')
-            .eq('plan_id', plan.id)
-            .eq('currency', selectedCurrency)
-            .maybeSingle();
-          if (overrideData) {
-            priceId = isAnnual ? overrideData.stripe_annual_price_id : overrideData.stripe_monthly_price_id;
-          }
+      if (selectedCurrency === 'ZAR') {
+        priceId = isAnnual ? plan.stripe_annual_price_id : plan.stripe_monthly_price_id;
+      } else if (override) {
+        const { data: overrideData } = await supabase
+          .from('plan_currency_overrides')
+          .select('stripe_monthly_price_id, stripe_annual_price_id')
+          .eq('plan_id', plan.id)
+          .eq('currency', selectedCurrency)
+          .maybeSingle();
+        if (overrideData) {
+          priceId = isAnnual ? overrideData.stripe_annual_price_id : overrideData.stripe_monthly_price_id;
         }
+      }
 
-        const { data, error } = await supabase.functions.invoke('create-checkout', {
-          body: {
-            priceIds: priceId ? [priceId] : undefined,
-            venueId,
-            currency: selectedCurrency,
-            planId: plan.id,
-            billingCycle: isAnnual ? 'annual' : 'monthly',
-          },
-        });
-        if (error) throw error;
-        if (data?.url) {
-          window.open(data.url, '_blank');
-        }
+      const { data, error } = await supabase.functions.invoke('create-checkout', {
+        body: {
+          priceIds: priceId ? [priceId] : undefined,
+          venueId,
+          currency: selectedCurrency,
+          planId: plan.id,
+          billingCycle: isAnnual ? 'annual' : 'monthly',
+        },
+      });
+      if (error) throw error;
+      if (data?.url) {
+        window.open(data.url, '_blank');
       }
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Checkout Error', description: err.message || 'Failed to start checkout' });
@@ -953,10 +913,9 @@ export default function MerchantSignup() {
                   </div>
                 )}
 
-                <div className="flex items-center justify-center gap-3">
-                  <Label className={paymentProvider === 'stripe' ? 'font-semibold' : 'text-muted-foreground'}>💳 Stripe</Label>
-                  <Switch checked={paymentProvider === 'payfast'} onCheckedChange={v => setPaymentProvider(v ? 'payfast' : 'stripe')} />
-                  <Label className={paymentProvider === 'payfast' ? 'font-semibold' : 'text-muted-foreground'}>🇿🇦 PayFast</Label>
+                <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                  <CreditCard className="h-4 w-4" />
+                  Secure payment via Stripe
                 </div>
 
                 <Button className="w-full" size="lg" onClick={handleCheckout} disabled={checkoutLoading}>
