@@ -97,7 +97,6 @@ export type Database = {
           line_items: Json
           notes: string | null
           paid_at: string | null
-          payfast_reference: string | null
           period_end: string | null
           period_start: string | null
           sent_at: string | null
@@ -116,7 +115,6 @@ export type Database = {
           line_items?: Json
           notes?: string | null
           paid_at?: string | null
-          payfast_reference?: string | null
           period_end?: string | null
           period_start?: string | null
           sent_at?: string | null
@@ -135,7 +133,6 @@ export type Database = {
           line_items?: Json
           notes?: string | null
           paid_at?: string | null
-          payfast_reference?: string | null
           period_end?: string | null
           period_start?: string | null
           sent_at?: string | null
@@ -892,8 +889,6 @@ export type Database = {
           current_period_end: string | null
           current_period_start: string | null
           id: string
-          payfast_subscription_id: string | null
-          payment_provider: string
           plan_id: string
           status: string
           stripe_customer_id: string | null
@@ -909,8 +904,6 @@ export type Database = {
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
-          payfast_subscription_id?: string | null
-          payment_provider?: string
           plan_id: string
           status?: string
           stripe_customer_id?: string | null
@@ -926,8 +919,6 @@ export type Database = {
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
-          payfast_subscription_id?: string | null
-          payment_provider?: string
           plan_id?: string
           status?: string
           stripe_customer_id?: string | null

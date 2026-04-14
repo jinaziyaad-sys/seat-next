@@ -135,11 +135,5 @@ verify_jwt = false
 [functions.update-plan-pricing]
 verify_jwt = false
 
-[functions.payfast-checkout]
-verify_jwt = false
-
-[functions.payfast-itn]
-verify_jwt = false
-
 [functions.create-promo-checkout]
 verify_jwt = false
