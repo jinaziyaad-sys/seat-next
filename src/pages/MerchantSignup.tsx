@@ -456,6 +456,10 @@ export default function MerchantSignup() {
         },
       });
       if (error) throw error;
+      if (data?.error) {
+        toast({ variant: 'destructive', title: 'Cannot Checkout', description: data.error });
+        return;
+      }
       if (data?.url) {
         window.location.href = data.url;
       }
