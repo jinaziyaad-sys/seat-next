@@ -44,7 +44,27 @@ const MerchantDashboard = () => {
   const { user, userRole, allVenueRoles, switchVenue, loading } = useMerchantAuth();
   const { features, announcement } = usePlatformConfig();
   const subscription = useMerchantSubscription(userRole?.venue_id);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
+
+  // Detect checkout=success and show welcome toast
+  useEffect(() => {
+    if (searchParams.get('checkout') === 'success') {
+      // Clear the param from URL
+      searchParams.delete('checkout');
+      setSearchParams(searchParams, { replace: true });
+      
+      // Wait briefly for subscription to refresh, then show toast
+      const timer = setTimeout(() => {
+        const planName = subscription.tierName || 'your new plan';
+        sonnerToast.success(`Payment confirmed! Welcome to ${planName}`, {
+          description: 'Your subscription is now active. Enjoy all your features!',
+          duration: 6000,
+        });
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
   
   // Helper function for announcement icon
   const getAnnouncementIcon = (type: 'info' | 'warning' | 'error' | 'maintenance') => {
