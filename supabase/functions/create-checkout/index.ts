@@ -80,6 +80,24 @@ serve(async (req) => {
         { auth: { persistSession: false } }
       );
 
+      // Same-plan guard: reject if venue already has active subscription on this plan
+      if (planId) {
+        const { data: activeSub } = await supabaseService
+          .from("merchant_subscriptions")
+          .select("plan_id, status")
+          .eq("venue_id", venueId)
+          .in("status", ["active", "trial"])
+          .maybeSingle();
+
+        if (activeSub && activeSub.plan_id === planId) {
+          logStep("Same-plan re-purchase blocked", { venueId, planId });
+          return new Response(JSON.stringify({ error: "You are already on this plan. Choose a different plan to upgrade or downgrade." }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 400,
+          });
+        }
+      }
+
       // Method 1: Cancel by DB lookup
       const { data: dbSub } = await supabaseService
         .from("merchant_subscriptions")
