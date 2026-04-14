@@ -971,7 +971,13 @@ export default function MerchantSignup() {
             <Card>
               <CardHeader className="text-center">
                 <CardTitle>{isUpgradeMode ? 'Change Your Plan' : 'Choose Your Plan'}</CardTitle>
-                <CardDescription>{isUpgradeMode ? 'Proration is handled automatically by Stripe' : 'Select a plan to get started'}</CardDescription>
+                <CardDescription>
+                  {isUpgradeMode 
+                    ? (currentPlanId && selectedPlanId && plans.find(p => p.id === selectedPlanId)?.sort_order! > (plans.find(p => p.id === currentPlanId)?.sort_order ?? 0)
+                        ? 'Upgrade takes effect immediately — only the prorated difference will be charged'
+                        : 'Downgrade takes effect at the end of your current billing period — no additional charges')
+                    : 'Select a plan to get started'}
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
                 {selectedPlan && (
