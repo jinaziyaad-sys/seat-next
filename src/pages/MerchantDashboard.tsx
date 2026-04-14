@@ -480,6 +480,25 @@ const MerchantDashboard = () => {
           <h1 className="text-2xl font-bold">
             {subscription.status === 'past_due' ? 'Payment Overdue' : 'Subscribe to Get Started'}
           </h1>
+
+          {/* Show which venue this subscription is for */}
+          <div className="space-y-2">
+            {allVenueRoles.length > 1 ? (
+              <div className="flex flex-col items-center gap-2">
+                <p className="text-sm text-muted-foreground">Subscribing for:</p>
+                <VenueSwitcher
+                  currentVenue={userRole}
+                  allVenues={allVenueRoles}
+                  onVenueChange={switchVenue}
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Subscribing for: <span className="font-semibold text-foreground">{userRole.venue_name}</span>
+              </p>
+            )}
+          </div>
+
           <p className="text-muted-foreground">
             {subscription.status === 'past_due'
               ? 'Your subscription payment failed. Please update your payment method to regain access.'
