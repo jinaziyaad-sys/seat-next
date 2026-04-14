@@ -71,7 +71,7 @@ export default function MerchantBilling() {
     }
   };
 
-  if (authLoading || subscription.loading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -129,7 +129,12 @@ export default function MerchantBilling() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            {subscription.subscribed && (
+            {subscription.loading ? (
+              <div className="flex items-center gap-2 py-2">
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Loading subscription details...</span>
+              </div>
+            ) : subscription.subscribed ? (
               <>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   <div>
@@ -145,9 +150,20 @@ export default function MerchantBilling() {
                     </p>
                   </div>
                 </div>
+
+                {subscription.pendingPlanId && subscription.pendingChangeAt && (
+                  <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50 border border-dashed">
+                    <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+                    <p className="text-sm text-muted-foreground">
+                      Your plan will change on {new Date(subscription.pendingChangeAt).toLocaleDateString()}.
+                      You'll retain full access to your current plan until then.
+                    </p>
+                  </div>
+                )}
+
                 <Separator />
               </>
-            )}
+            ) : null}
 
             <div className="flex flex-wrap gap-3">
               {!subscription.subscribed && (
