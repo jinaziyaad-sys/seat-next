@@ -1,69 +1,96 @@
+<final-text>You're right — the billing flow is not stable yet. I checked the code and logs, and there are a few concrete issues causing the slow loads, plan flipping, and repeated edge-function noise.
 
+## What’s actually going wrong
 
-## Fix Billing System End-to-End
+1. **`check-subscription` is still too heavy and too destructive**
+   - The billing page blocks on `useMerchantSubscription()`, which calls `check-subscription`.
+   - That edge function still scans Stripe customers/subscriptions and, if recovery fails, it writes the venue back to `status: none`.
+   - Your logs show this exact pattern repeatedly: stored subscription treated as inactive, then synced to `none`.
 
-### Root Cause Analysis
+2. **Multi-restaurant Stripe scoping is still not safe enough**
+   - `create-checkout` still chooses customers mainly by **email + currency**, not strictly by **venue**.
+   - `stripe-webhook` and `customer-portal` still rely too much on `stripe_customer_id`.
+   - For a user with multiple restaurants, that can cross-wire venues and make plans appear to “change”.
 
-I've identified several critical bugs and UX issues by examining Stripe data, edge function logs, and the frontend code:
+3. **Downgrade logic is wrong**
+   - `change-plan` updates Stripe immediately and also updates `merchant_subscriptions.plan_id` immediately.
+   - That means the UI can show the lower plan before the current billing cycle ends.
+   - So even when the copy says “end of cycle”, the system state is already changing now.
 
-**Bug 1: Plan got changed for "zii" — Subscription cross-contamination**
-The `check-subscription` function, when the stored subscription is canceled, calls `findVenueScopedStripeSubscription` which iterates ALL customers for the user's email. Your user has one Stripe customer (`cus_UHR5zV0JvZkHCi`) with subscriptions for multiple venues. The trialing Enterprise sub (`sub_1TLnD7RrnmiHUS0Ly6IVhUuc`) has `venue_id` metadata for one venue, but if the venue_id metadata doesn't match exactly, the recovery logic falls through and returns `status: none`. Meanwhile, the same sub might get incorrectly claimed by a different venue's check. This is why "zii's" plan appears to change.
+4. **There are duplicate subscription checks**
+   - The normal hook checks subscription status.
+   - The checkout page also polls `check-subscription` every 3 seconds for up to 5 minutes.
+   - That likely explains the “2x edge function” feeling and adds unnecessary load.
 
-**Bug 2: Same plan re-purchase allowed**
-The current plan card has `opacity-60 cursor-not-allowed` and `onClick` is guarded by `!isCurrent`, but `currentPlanId` is loaded from the `merchant_subscriptions` table. When `check-subscription` syncs `status: none`, the `plan_id` in the DB becomes stale or null, so `currentPlanId` doesn't match — allowing the user to re-purchase the same plan.
+## Fix plan
 
-**Bug 3: Billing page is slow**
-The `check-subscription` edge function makes 5+ Stripe API calls per invocation (list customers, list subscriptions for each customer, retrieve subscription). It's called on every page load AND every 60 seconds. For a user with 11 canceled subscriptions across a single customer, this is very slow.
+### 1. Make Stripe venue-scoped properly
+- Update `create-checkout` so Stripe customers are found/created by **exact venue context**, not just email reuse.
+- Store and reuse the correct venue-scoped customer/subscription path consistently.
+- Stop any fallback that can let one venue accidentally “claim” another venue’s subscription.
 
-**Bug 4: Currency not auto-detecting to ZAR**
-`detectCurrency()` uses `navigator.language` to extract region. For South Africa, the locale should be `en-ZA`, which correctly maps to ZAR. However, some browsers return `en` without a region suffix, defaulting to USD. The function needs a more robust fallback.
+### 2. Make webhook updates authoritative and venue-safe
+- Update `stripe-webhook` to resolve the venue from **subscription metadata / checkout metadata**, not customer ID alone.
+- For invoice events, resolve the related subscription first, then map back to the correct venue.
+- This becomes the main sync path so the app is not relying on slow Stripe scans on page load.
 
-**Bug 5: Stripe webhook has `payment_provider: 'stripe'` reference**
-Line 138 in `stripe-webhook/index.ts` still sets `payment_provider: 'stripe'` — but we dropped that column in the PayFast removal migration. This will cause webhook upserts to fail silently.
+### 3. Make `check-subscription` fast and non-destructive
+- Refactor it to be **DB-first** for normal page loads.
+- Only reconcile with Stripe when necessary: missing row, explicit refresh, post-checkout sync, or stale data.
+- If Stripe lookup fails, do **not** overwrite the venue to `none`.
+- Return the last known good state instead and log the failure cleanly.
 
-### Changes
+### 4. Fix upgrade vs downgrade behavior properly
+- **Upgrades:** apply immediately with proration/difference only.
+- **Downgrades:** keep the current plan active until period end, then switch.
+- **Cancellations:** retain access until the end date.
+- Add pending-change tracking so the UI can show:
+  - current plan
+  - scheduled next plan
+  - effective date
 
-#### 1. Fix webhook — remove `payment_provider` reference
-**File:** `supabase/functions/stripe-webhook/index.ts`
-- Remove `payment_provider: 'stripe'` from line 138 in the `subData` object (column was dropped)
+### 5. Reduce billing-page wait time
+- Stop making the whole billing page wait on a full Stripe reconciliation.
+- Show the billing page immediately with cached/current DB state while background sync runs.
+- Replace the aggressive 3-second checkout polling with a short bounded sync flow after return from Stripe.
 
-#### 2. Fix check-subscription performance and correctness
-**File:** `supabase/functions/check-subscription/index.ts`
-- **Performance:** Cache the Stripe customer list at the top of the function and reuse it, instead of calling `stripe.customers.list` in both the main flow and `findVenueScopedStripeSubscription`
-- **Correctness:** When the stored subscription is canceled and recovery finds a new active sub for a *different* venue, it should NOT claim it. Add stricter venue_id metadata matching — only claim subs where `metadata.venue_id === venueId` (score 3), not just DB-claimed ones (score 2)
-- **Performance:** Reduce the polling interval from 60s to 120s in the hook, since the webhook handles real-time updates
+### 6. Make the UI explicitly show billing state
+- Billing page should clearly show:
+  - current plan
+  - renewal/end date
+  - pending downgrade/cancel date
+  - whether the state is from Stripe sync or a manual/dev override
+- If a dev pricing override exists, surface it clearly instead of letting it silently look like a Stripe plan.
 
-#### 3. Prevent same-plan re-purchase
-**File:** `src/pages/MerchantSignup.tsx`
-- The `currentPlanId` lookup queries `merchant_subscriptions` which may be stale. Also query the active Stripe subscription's product to determine the real current plan
-- Alternatively, on the upgrade page, call `check-subscription` first to get the current `product_ids`, then match against plans to determine the truly active plan and disable it
-- Add a server-side guard in `create-checkout` to reject checkout if the venue already has an active subscription on the same plan
+## Technical details
 
-#### 4. Fix currency auto-detection
-**File:** `src/utils/currency.ts`
-- Enhance `detectCurrency()` to also check `Intl.DateTimeFormat().resolvedOptions().timeZone` as a fallback. If timezone is `Africa/Johannesburg`, default to ZAR
-- Add timezone-to-currency mapping as secondary detection
+### Files to update
+- `supabase/functions/check-subscription/index.ts`
+- `supabase/functions/create-checkout/index.ts`
+- `supabase/functions/change-plan/index.ts`
+- `supabase/functions/stripe-webhook/index.ts`
+- `supabase/functions/customer-portal/index.ts`
+- `src/hooks/useMerchantSubscription.ts`
+- `src/pages/MerchantBilling.tsx`
+- `src/pages/MerchantSignup.tsx`
 
-#### 5. Fix create-checkout server-side guard for same plan
-**File:** `supabase/functions/create-checkout/index.ts`
-- Before creating the checkout session, check if the venue already has an active subscription on the same plan/product. If so, return an error "You are already on this plan"
+### Likely DB change
+Add pending lifecycle fields to `merchant_subscriptions`, e.g.:
+- `pending_plan_id`
+- `pending_billing_cycle`
+- `pending_change_at`
 
-#### 6. Reduce polling frequency
-**File:** `src/hooks/useMerchantSubscription.ts`
-- Change interval from 60000ms to 120000ms
-- The webhook already handles real-time updates; polling is just a fallback
+That lets the app keep the real current plan active while still showing a scheduled downgrade or cancellation correctly.
 
-### Files Affected
+## What I’ll verify after implementing
+- Billing page loads fast
+- No plan flipping between restaurants
+- Same-plan purchase is blocked
+- Upgrade bills only the prorated difference
+- Downgrade does not reduce access early
+- Cancellation shows correct end date
+- Stripe checkout + return flow updates the current app correctly
+- Webhook and UI stay in sync
+- No duplicate/looping `check-subscription` failures in logs
 
-| File | Change |
-|------|--------|
-| `supabase/functions/stripe-webhook/index.ts` | Remove `payment_provider` column reference |
-| `supabase/functions/check-subscription/index.ts` | Performance: reuse customer list, stricter venue matching |
-| `supabase/functions/create-checkout/index.ts` | Add same-plan guard |
-| `src/pages/MerchantSignup.tsx` | Fetch current plan from subscription hook, not stale DB |
-| `src/utils/currency.ts` | Add timezone-based fallback for ZAR detection |
-| `src/hooks/useMerchantSubscription.ts` | Reduce polling to 120s |
-
-### Stripe Data Cleanup
-The user's Stripe customer `cus_UHR5zV0JvZkHCi` has the trialing Enterprise sub `sub_1TLnD7RrnmiHUS0Ly6IVhUuc`. The DB for venue `7e80a653...` still points to the canceled `sub_1TM60iRrnmiHUS0LiMA7Vu3B`. After deploying the fixed `check-subscription`, the next poll will discover and sync the correct trialing subscription.
-
+This is the right fix path for making billing stable instead of patching symptoms.</final-text>
