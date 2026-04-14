@@ -49,6 +49,15 @@ serve(async (req) => {
 
     if (campError || !campaign) throw new Error("Campaign not found");
 
+    // Only allow payment after approval
+    if (campaign.review_status !== "approved") {
+      throw new Error("Campaign must be approved before payment. Current status: " + (campaign.review_status || "pending"));
+    }
+
+    if (campaign.payment_status === "paid") {
+      throw new Error("Campaign is already paid");
+    }
+
     const amountInCents = Math.round((campaign.amount_charged || 0) * 100);
     if (amountInCents <= 0) throw new Error("Invalid campaign amount");
 
