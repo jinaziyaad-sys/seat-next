@@ -184,7 +184,7 @@ export function SponsoredAdsManager({ venueId }: Props) {
       const { data: { user } } = await supabase.auth.getUser();
       const { total: estimatedPrice } = calculatePrice(form.placements, form.start_date, form.end_date);
 
-      const { data: inserted, error } = await supabase.from('promo_campaigns').insert({
+      const { error } = await supabase.from('promo_campaigns').insert({
         venue_id: venueId,
         title: form.title,
         description: form.description || null,
@@ -198,18 +198,14 @@ export function SponsoredAdsManager({ venueId }: Props) {
         amount_charged: estimatedPrice,
         submitted_by: user?.id,
         created_by: user?.id,
-      }).select('id').single();
+      });
 
       if (error) throw error;
 
+      toast.success('Campaign submitted for review! You can pay once approved.');
       setDialogOpen(false);
       resetForm();
       fetchCampaigns();
-
-      // Initiate Stripe checkout
-      if (inserted?.id) {
-        await initiateCheckout(inserted.id);
-      }
     } catch (err: any) {
       toast.error(err.message);
     } finally {
@@ -219,9 +215,10 @@ export function SponsoredAdsManager({ venueId }: Props) {
 
   const getStatusBadge = (c: Campaign) => {
     if (c.review_status === 'rejected') return <Badge variant="destructive">Rejected</Badge>;
+    if (c.payment_status === 'refunded') return <Badge variant="destructive">Refunded</Badge>;
     if (c.review_status === 'pending') return <Badge variant="outline">Pending Review</Badge>;
-    if (c.review_status === 'approved' && c.is_active) return <Badge variant="default">Live</Badge>;
-    if (c.review_status === 'approved' && c.payment_status !== 'paid' && c.payment_status !== 'comp') return <Badge variant="secondary">Approved (Awaiting Payment)</Badge>;
+    if (c.review_status === 'approved' && c.is_active) return <Badge className="bg-success text-white">Live</Badge>;
+    if (c.review_status === 'approved' && c.payment_status !== 'paid' && c.payment_status !== 'comp') return <Badge variant="secondary" className="text-amber-600">Approved — Pay to Go Live</Badge>;
     if (c.review_status === 'approved' && !c.is_active) return <Badge variant="secondary">Approved (Inactive)</Badge>;
     return <Badge variant="outline">{c.review_status}</Badge>;
   };
@@ -333,7 +330,7 @@ export function SponsoredAdsManager({ venueId }: Props) {
               <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>Cancel</Button>
               <Button onClick={handleSubmit} disabled={saving}>
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                Pay & Submit
+                Submit for Review
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -370,8 +367,8 @@ export function SponsoredAdsManager({ venueId }: Props) {
                       <span className="flex items-center gap-1"><Eye className="h-3 w-3" /> {c.impressions_count}</span>
                       <span className="flex items-center gap-1"><MousePointer className="h-3 w-3" /> {c.clicks_count}</span>
                       <span className="flex items-center gap-1"><CalendarIcon className="h-3 w-3" /> {format(new Date(c.start_date), 'MMM d')}{c.end_date && ` – ${format(new Date(c.end_date), 'MMM d')}`}</span>
-                      {c.payment_status !== 'paid' && c.payment_status !== 'refunded' && c.review_status !== 'rejected' && (
-                        <Button variant="outline" size="sm" className="h-6 text-xs" onClick={() => initiateCheckout(c.id)}>
+                      {c.review_status === 'approved' && c.payment_status !== 'paid' && c.payment_status !== 'comp' && c.payment_status !== 'refunded' && (
+                        <Button variant="default" size="sm" className="h-6 text-xs" onClick={() => initiateCheckout(c.id)}>
                           Pay Now
                         </Button>
                       )}
