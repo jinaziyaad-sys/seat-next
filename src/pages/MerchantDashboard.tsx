@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMerchantAuth } from "@/hooks/useAuth";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { useMerchantSubscription } from "@/hooks/useMerchantSubscription";
@@ -44,7 +44,27 @@ const MerchantDashboard = () => {
   const { user, userRole, allVenueRoles, switchVenue, loading } = useMerchantAuth();
   const { features, announcement } = usePlatformConfig();
   const subscription = useMerchantSubscription(userRole?.venue_id);
+  const [searchParams, setSearchParams] = useSearchParams();
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
+
+  // Detect checkout=success and show welcome toast
+  useEffect(() => {
+    if (searchParams.get('checkout') === 'success') {
+      // Clear the param from URL
+      searchParams.delete('checkout');
+      setSearchParams(searchParams, { replace: true });
+      
+      // Wait briefly for subscription to refresh, then show toast
+      const timer = setTimeout(() => {
+        const planName = subscription.tierName || 'your new plan';
+        sonnerToast.success(`Payment confirmed! Welcome to ${planName}`, {
+          description: 'Your subscription is now active. Enjoy all your features!',
+          duration: 6000,
+        });
+      }, 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [searchParams]);
   
   // Helper function for announcement icon
   const getAnnouncementIcon = (type: 'info' | 'warning' | 'error' | 'maintenance') => {
@@ -374,7 +394,7 @@ const MerchantDashboard = () => {
   const hasAnalytics = features.analytics_enabled && subscription.hasFeature('analytics');
   const hasLoyalty = subscription.hasFeature('loyalty');
   const analyticsLocked = features.analytics_enabled && !subscription.hasFeature('analytics');
-  const loyaltyLocked = !subscription.hasFeature('loyalty') && subscription.subscribed;
+  const loyaltyLocked = !subscription.hasFeature('loyalty');
   const hasPromotions = subscription.hasFeature('analytics'); // Pro+ can create promotions
 
   // Tab trigger class for consistent sizing
@@ -625,7 +645,7 @@ const MerchantDashboard = () => {
                 )}
               </>
             )}
-            {(hasLoyalty || loyaltyLocked) && (
+            {userRole.role === 'admin' && (
               <TabsTrigger value="loyalty" className={tabTriggerClass}>
                 <Gift size={16} />
                 Loyalty
@@ -658,29 +678,29 @@ const MerchantDashboard = () => {
             </TabsContent>
           )}
 
-          {/* Loyalty tab - visible to all roles, settings restricted to admin */}
-          {hasLoyalty ? (
-            <TabsContent value="loyalty">
-              <LoyaltyManagement venueId={userRole.venue_id!} readOnly={userRole.role !== 'admin'} />
-            </TabsContent>
-          ) : loyaltyLocked ? (
-            <TabsContent value="loyalty">
-              <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                  <ArrowUpCircle className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold">Upgrade to Enterprise</h3>
-                <p className="text-muted-foreground max-w-md">
-                  Loyalty programs are available on the Enterprise plan. Upgrade to create stamp cards, rewards, and keep customers coming back.
-                </p>
-                {userRole.role === 'admin' && (
+          {/* Loyalty tab - always visible for admins, locked shows upgrade prompt */}
+          {userRole.role === 'admin' && (
+            hasLoyalty ? (
+              <TabsContent value="loyalty">
+                <LoyaltyManagement venueId={userRole.venue_id!} readOnly={false} />
+              </TabsContent>
+            ) : (
+              <TabsContent value="loyalty">
+                <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                    <ArrowUpCircle className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold">Upgrade to Enterprise</h3>
+                  <p className="text-muted-foreground max-w-md">
+                    Loyalty programs are available on the Enterprise plan. Upgrade to create stamp cards, rewards, and keep customers coming back.
+                  </p>
                   <Button onClick={() => navigate(`/merchant/signup?upgrade=true&venueId=${userRole.venue_id}`)}>
                     View Plans & Upgrade
                   </Button>
-                )}
-              </div>
-            </TabsContent>
-          ) : null}
+                </div>
+              </TabsContent>
+            )
+          )}
 
           {/* Admin-only tab contents */}
           {userRole.role === "admin" ? (
