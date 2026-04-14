@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { invokeSupabaseFunctionWithTimeout } from '@/utils/invokeWithTimeout';
 
 export interface SubscriptionPlanConfig {
   id: string;
@@ -114,14 +115,16 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
       isMountedRef.current && requestId === requestIdRef.current;
 
     try {
-      const [{ data, error }, plans] = await Promise.all([
-        supabase.functions.invoke('check-subscription', {
-          body: venueId ? { venueId, forceRefresh } : { forceRefresh },
-        }),
+      const [{ data, error, timedOut }, plans] = await Promise.all([
+        invokeSupabaseFunctionWithTimeout<any>(
+          'check-subscription',
+          venueId ? { venueId, forceRefresh } : { forceRefresh },
+          6000,
+        ),
         loadSubscriptionPlans(),
       ]);
 
-      if (error) {
+      if (timedOut || error) {
         console.error('Error checking subscription:', error);
         return;
       }
@@ -170,8 +173,8 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
 
   useEffect(() => {
     setLoading(true);
-    checkSubscription();
-    const interval = setInterval(() => checkSubscription(), 120000);
+    void checkSubscription();
+    const interval = setInterval(() => void checkSubscription(), 120000);
     return () => {
       requestIdRef.current += 1;
       clearInterval(interval);
