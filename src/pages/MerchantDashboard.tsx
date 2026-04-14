@@ -678,29 +678,29 @@ const MerchantDashboard = () => {
             </TabsContent>
           )}
 
-          {/* Loyalty tab - visible to all roles, settings restricted to admin */}
-          {hasLoyalty ? (
-            <TabsContent value="loyalty">
-              <LoyaltyManagement venueId={userRole.venue_id!} readOnly={userRole.role !== 'admin'} />
-            </TabsContent>
-          ) : loyaltyLocked ? (
-            <TabsContent value="loyalty">
-              <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
-                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
-                  <ArrowUpCircle className="w-8 h-8 text-muted-foreground" />
-                </div>
-                <h3 className="text-lg font-semibold">Upgrade to Enterprise</h3>
-                <p className="text-muted-foreground max-w-md">
-                  Loyalty programs are available on the Enterprise plan. Upgrade to create stamp cards, rewards, and keep customers coming back.
-                </p>
-                {userRole.role === 'admin' && (
+          {/* Loyalty tab - always visible for admins, locked shows upgrade prompt */}
+          {userRole.role === 'admin' && (
+            hasLoyalty ? (
+              <TabsContent value="loyalty">
+                <LoyaltyManagement venueId={userRole.venue_id!} readOnly={false} />
+              </TabsContent>
+            ) : (
+              <TabsContent value="loyalty">
+                <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
+                  <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                    <ArrowUpCircle className="w-8 h-8 text-muted-foreground" />
+                  </div>
+                  <h3 className="text-lg font-semibold">Upgrade to Enterprise</h3>
+                  <p className="text-muted-foreground max-w-md">
+                    Loyalty programs are available on the Enterprise plan. Upgrade to create stamp cards, rewards, and keep customers coming back.
+                  </p>
                   <Button onClick={() => navigate(`/merchant/signup?upgrade=true&venueId=${userRole.venue_id}`)}>
                     View Plans & Upgrade
                   </Button>
-                )}
-              </div>
-            </TabsContent>
-          ) : null}
+                </div>
+              </TabsContent>
+            )
+          )}
 
           {/* Admin-only tab contents */}
           {userRole.role === "admin" ? (
