@@ -79,12 +79,11 @@ export interface SubscriptionState {
   stripeCustomerId: string | null;
   stripeSubscriptionId: string | null;
   hasFeature: (feature: string) => boolean;
+  pendingPlanId: string | null;
+  pendingChangeAt: string | null;
+  refresh: () => void;
 }
 
-/**
- * Pass venueId to scope subscription check to a specific venue.
- * Without it, defaults to the user's first venue (legacy behavior).
- */
 export function useMerchantSubscription(venueId?: string | null): SubscriptionState {
   const [loading, setLoading] = useState(true);
   const [subscribed, setSubscribed] = useState(false);
@@ -97,6 +96,8 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
   const [stripeCustomerId, setStripeCustomerId] = useState<string | null>(null);
   const [stripeSubscriptionId, setStripeSubscriptionId] = useState<string | null>(null);
   const [entitledFeatures, setEntitledFeatures] = useState<Set<string>>(new Set());
+  const [pendingPlanId, setPendingPlanId] = useState<string | null>(null);
+  const [pendingChangeAt, setPendingChangeAt] = useState<string | null>(null);
   const requestIdRef = useRef(0);
   const isMountedRef = useRef(true);
 
@@ -107,7 +108,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
     };
   }, []);
 
-  const checkSubscription = useCallback(async () => {
+  const checkSubscription = useCallback(async (forceRefresh = false) => {
     const requestId = ++requestIdRef.current;
     const isCurrentRequest = () =>
       isMountedRef.current && requestId === requestIdRef.current;
@@ -115,7 +116,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
     try {
       const [{ data, error }, plans] = await Promise.all([
         supabase.functions.invoke('check-subscription', {
-          body: venueId ? { venueId } : undefined,
+          body: venueId ? { venueId, forceRefresh } : { forceRefresh },
         }),
         loadSubscriptionPlans(),
       ]);
@@ -125,9 +126,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
         return;
       }
 
-      if (!data || !isCurrentRequest()) {
-        return;
-      }
+      if (!data || !isCurrentRequest()) return;
 
       if (data.subscribed) {
         setSubscribed(true);
@@ -140,6 +139,8 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
         setStripeSubscriptionId(data.stripe_subscription_id);
         setTierName(getTierFromProducts(data.product_ids || [], plans));
         setEntitledFeatures(getEntitledFeatures(data.product_ids || [], plans, data.included_features));
+        setPendingPlanId(data.pending_plan_id || null);
+        setPendingChangeAt(data.pending_change_at || null);
       } else {
         setSubscribed(false);
         setStatus(data.status === 'past_due' ? 'past_due' : 'none');
@@ -151,6 +152,8 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
         setStripeCustomerId(null);
         setStripeSubscriptionId(null);
         setEntitledFeatures(new Set());
+        setPendingPlanId(null);
+        setPendingChangeAt(null);
       }
     } catch (err) {
       console.error('Error checking subscription:', err);
@@ -161,10 +164,14 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
     }
   }, [venueId]);
 
+  const refresh = useCallback(() => {
+    checkSubscription(true);
+  }, [checkSubscription]);
+
   useEffect(() => {
     setLoading(true);
     checkSubscription();
-    const interval = setInterval(checkSubscription, 120000);
+    const interval = setInterval(() => checkSubscription(), 120000);
     return () => {
       requestIdRef.current += 1;
       clearInterval(interval);
@@ -187,5 +194,8 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
     stripeCustomerId,
     stripeSubscriptionId,
     hasFeature,
+    pendingPlanId,
+    pendingChangeAt,
+    refresh,
   };
 }
