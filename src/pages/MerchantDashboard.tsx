@@ -395,7 +395,7 @@ const MerchantDashboard = () => {
   const hasLoyalty = subscription.hasFeature('loyalty');
   const analyticsLocked = features.analytics_enabled && !subscription.hasFeature('analytics');
   const loyaltyLocked = !subscription.hasFeature('loyalty');
-  const hasPromotions = subscription.hasFeature('analytics'); // Pro+ can create promotions
+  const hasPromotions = true; // Promotions available to all plans
 
   // Tab trigger class for consistent sizing
   const tabTriggerClass = "flex items-center gap-2 flex-1 min-w-fit";
