@@ -133,17 +133,40 @@ export default function MerchantSignup() {
       }
     };
 
-    // In upgrade mode, load current subscription to badge the current plan
+    // In upgrade mode, load current subscription via check-subscription for accuracy
     const loadCurrentPlan = async () => {
       if (!isUpgradeMode || !upgradeVenueId) return;
-      const { data } = await supabase
-        .from('merchant_subscriptions')
-        .select('plan_id')
-        .eq('venue_id', upgradeVenueId)
-        .in('status', ['active', 'trial'])
-        .maybeSingle();
-      if (data?.plan_id) {
-        setCurrentPlanId(data.plan_id);
+      try {
+        const { data, error } = await supabase.functions.invoke('check-subscription', {
+          body: { venueId: upgradeVenueId },
+        });
+        if (!error && data?.subscribed && data?.product_ids?.length) {
+          // Match product_ids against plans to find the real current plan
+          const { data: allPlans } = await supabase
+            .from('subscription_plans')
+            .select('id, stripe_product_id, stripe_annual_product_id')
+            .eq('is_active', true);
+          if (allPlans) {
+            for (const plan of allPlans) {
+              const planProductIds = [plan.stripe_product_id, plan.stripe_annual_product_id].filter(Boolean);
+              if (planProductIds.some((pid: string) => data.product_ids.includes(pid))) {
+                setCurrentPlanId(plan.id);
+                break;
+              }
+            }
+          }
+        }
+      } catch {
+        // Fallback to DB query
+        const { data } = await supabase
+          .from('merchant_subscriptions')
+          .select('plan_id')
+          .eq('venue_id', upgradeVenueId)
+          .in('status', ['active', 'trial'])
+          .maybeSingle();
+        if (data?.plan_id) {
+          setCurrentPlanId(data.plan_id);
+        }
       }
     };
 
