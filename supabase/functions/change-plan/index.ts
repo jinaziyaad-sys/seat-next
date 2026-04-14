@@ -71,7 +71,7 @@ serve(async (req) => {
       });
     }
 
-    // Get both current and new plan details
+    // Get plan details
     const { data: plans } = await supabaseService
       .from("subscription_plans")
       .select("id, name, monthly_price, annual_price, sort_order, stripe_product_id, stripe_annual_product_id, stripe_monthly_price_id, stripe_annual_price_id")
@@ -83,28 +83,19 @@ serve(async (req) => {
     const newPlan = plans.find(p => p.id === newPlanId);
     if (!newPlan) throw new Error("New plan not found");
 
-    // Determine if upgrade or downgrade by sort_order (higher = more expensive)
     const isUpgrade = !currentPlan || newPlan.sort_order > (currentPlan?.sort_order ?? 0);
-    const isDowngrade = currentPlan && newPlan.sort_order < currentPlan.sort_order;
 
-    logStep("Plan change", { 
-      from: currentPlan?.name, 
-      to: newPlan.name, 
-      isUpgrade, 
-      isDowngrade 
-    });
+    logStep("Plan change", { from: currentPlan?.name, to: newPlan.name, isUpgrade });
 
-    // Get the Stripe subscription to find the current item
+    // Get the Stripe subscription
     const stripeSub = await stripe.subscriptions.retrieve(currentSub.stripe_subscription_id);
     const currentItem = stripeSub.items.data[0];
-
     if (!currentItem) throw new Error("No subscription item found");
 
-    // Determine the new price ID
+    // Determine new price ID
     const effectiveBillingCycle = billingCycle || currentSub.billing_cycle || 'monthly';
     let newPriceId: string | null = null;
 
-    // Check for currency override price IDs first
     if (currency && currency !== 'ZAR') {
       const { data: override } = await supabaseService
         .from("plan_currency_overrides")
@@ -114,13 +105,12 @@ serve(async (req) => {
         .maybeSingle();
 
       if (override) {
-        newPriceId = effectiveBillingCycle === 'annual' 
-          ? override.stripe_annual_price_id 
+        newPriceId = effectiveBillingCycle === 'annual'
+          ? override.stripe_annual_price_id
           : override.stripe_monthly_price_id;
       }
     }
 
-    // Fall back to default ZAR price IDs
     if (!newPriceId) {
       newPriceId = effectiveBillingCycle === 'annual'
         ? newPlan.stripe_annual_price_id
@@ -132,27 +122,28 @@ serve(async (req) => {
     }
 
     if (isUpgrade) {
-      // UPGRADE: Apply immediately, prorate (charge difference)
+      // UPGRADE: Apply immediately with proration
       logStep("Applying upgrade with proration");
-      
-      const updated = await stripe.subscriptions.update(currentSub.stripe_subscription_id, {
-        items: [
-          { id: currentItem.id, price: newPriceId },
-        ],
+
+      await stripe.subscriptions.update(currentSub.stripe_subscription_id, {
+        items: [{ id: currentItem.id, price: newPriceId }],
         proration_behavior: 'always_invoice',
       });
 
-      // Update DB immediately
+      // Update DB immediately, clear any pending downgrade
       await supabaseService
         .from("merchant_subscriptions")
         .update({
           plan_id: newPlanId,
           billing_cycle: effectiveBillingCycle,
+          pending_plan_id: null,
+          pending_billing_cycle: null,
+          pending_change_at: null,
           updated_at: new Date().toISOString(),
         })
         .eq("venue_id", venueId);
 
-      logStep("Upgrade applied", { newPlan: newPlan.name, subscriptionId: updated.id });
+      logStep("Upgrade applied", { newPlan: newPlan.name });
 
       return new Response(JSON.stringify({
         success: true,
@@ -164,24 +155,20 @@ serve(async (req) => {
         status: 200,
       });
     } else {
-      // DOWNGRADE: Schedule change at end of current billing period
+      // DOWNGRADE: Schedule at period end using subscription_schedule
+      // DON'T change the Stripe subscription or DB plan_id now — 
+      // just record the pending change and let the webhook handle it at renewal
       logStep("Scheduling downgrade at period end");
 
-      const updated = await stripe.subscriptions.update(currentSub.stripe_subscription_id, {
-        items: [
-          { id: currentItem.id, price: newPriceId },
-        ],
-        proration_behavior: 'none',
-      });
+      const periodEnd = new Date(stripeSub.current_period_end * 1000).toISOString();
 
-      const periodEnd = new Date(updated.current_period_end * 1000).toISOString();
-
-      // Update plan_id in DB — the webhook will also fire
+      // Store pending plan change in DB — current plan stays active
       await supabaseService
         .from("merchant_subscriptions")
         .update({
-          plan_id: newPlanId,
-          billing_cycle: effectiveBillingCycle,
+          pending_plan_id: newPlanId,
+          pending_billing_cycle: effectiveBillingCycle,
+          pending_change_at: periodEnd,
           updated_at: new Date().toISOString(),
         })
         .eq("venue_id", venueId);

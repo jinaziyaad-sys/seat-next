@@ -889,6 +889,9 @@ export type Database = {
           current_period_end: string | null
           current_period_start: string | null
           id: string
+          pending_billing_cycle: string | null
+          pending_change_at: string | null
+          pending_plan_id: string | null
           plan_id: string
           status: string
           stripe_customer_id: string | null
@@ -904,6 +907,9 @@ export type Database = {
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
+          pending_billing_cycle?: string | null
+          pending_change_at?: string | null
+          pending_plan_id?: string | null
           plan_id: string
           status?: string
           stripe_customer_id?: string | null
@@ -919,6 +925,9 @@ export type Database = {
           current_period_end?: string | null
           current_period_start?: string | null
           id?: string
+          pending_billing_cycle?: string | null
+          pending_change_at?: string | null
+          pending_plan_id?: string | null
           plan_id?: string
           status?: string
           stripe_customer_id?: string | null
@@ -928,6 +937,13 @@ export type Database = {
           venue_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "merchant_subscriptions_pending_plan_id_fkey"
+            columns: ["pending_plan_id"]
+            isOneToOne: false
+            referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "merchant_subscriptions_plan_id_fkey"
             columns: ["plan_id"]
