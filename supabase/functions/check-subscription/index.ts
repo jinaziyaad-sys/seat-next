@@ -151,12 +151,16 @@ serve(async (req) => {
 
       const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
+      // Cache customer list ONCE for this request
+      const cachedCustomers = await stripe.customers.list({ email: user.email, limit: 20 });
+      const customerList = cachedCustomers.data;
+
       if (!existingSub?.stripe_subscription_id) {
         const discoveredSub = await findVenueScopedStripeSubscription(
           stripe,
           supabaseClient,
-          user.email,
-          venueId
+          venueId,
+          customerList
         );
 
         if (!discoveredSub) {
@@ -221,20 +225,17 @@ serve(async (req) => {
             const discoveredSub = await findVenueScopedStripeSubscription(
               stripe,
               supabaseClient,
-              user.email,
               venueId,
+              customerList,
               {
                 preferredCustomerId: existingSub.stripe_customer_id,
                 currentSubscriptionId: sub.id,
               }
             );
 
-            if (discoveredSub) {
+            if (discoveredSub && discoveredSub.subscription.id !== sub.id) {
               activeSub = discoveredSub.subscription;
               activeCustomerId = discoveredSub.customerId;
-            }
-
-            if (discoveredSub && discoveredSub.subscription.id !== sub.id) {
               logStep("Found newer venue-scoped subscription, cancelling old one", {
                 venueId,
                 oldSubId: sub.id,
@@ -307,8 +308,8 @@ serve(async (req) => {
           const recoveredSub = await findVenueScopedStripeSubscription(
             stripe,
             supabaseClient,
-            user.email,
             venueId,
+            customerList,
             {
               preferredCustomerId: existingSub.stripe_customer_id,
             }
@@ -395,25 +396,28 @@ serve(async (req) => {
   }
 });
 
+/**
+ * Find an active/trialing subscription scoped to a specific venue.
+ * Uses a pre-fetched customer list to avoid redundant Stripe API calls.
+ * ONLY matches subscriptions with metadata.venue_id === venueId (score 3).
+ */
 async function findVenueScopedStripeSubscription(
   stripe: any,
   client: any,
-  email: string,
   venueId: string,
+  customerList: any[],
   options?: {
     preferredCustomerId?: string | null;
     currentSubscriptionId?: string | null;
   }
 ): Promise<{ customerId: string; subscription: any } | null> {
-  const customers = await stripe.customers.list({ email, limit: 20 });
-
-  if (!customers.data.length) {
+  if (!customerList.length) {
     return null;
   }
 
   const orderedCustomers = [
-    ...customers.data.filter((customer: any) => customer.id === options?.preferredCustomerId),
-    ...customers.data.filter((customer: any) => customer.id !== options?.preferredCustomerId),
+    ...customerList.filter((customer: any) => customer.id === options?.preferredCustomerId),
+    ...customerList.filter((customer: any) => customer.id !== options?.preferredCustomerId),
   ];
 
   const candidates: Array<{
@@ -424,6 +428,7 @@ async function findVenueScopedStripeSubscription(
   }> = [];
 
   for (const customer of orderedCustomers) {
+    // Fetch active + trialing in one call using status filter
     const subscriptions = await stripe.subscriptions.list({
       customer: customer.id,
       limit: 20,
@@ -435,26 +440,22 @@ async function findVenueScopedStripeSubscription(
       }
 
       const metadataVenueId = subscription.metadata?.venue_id || null;
-      const claimedVenueId = await getClaimedVenueForSubscription(client, subscription.id);
 
-      if (claimedVenueId && claimedVenueId !== venueId) {
+      // STRICT: Only match subscriptions whose Stripe metadata explicitly matches this venue
+      if (metadataVenueId !== venueId) {
         continue;
       }
 
-      const matchScore = metadataVenueId === venueId
-        ? 3
-        : claimedVenueId === venueId
-          ? 2
-          : 0;
-
-      if (!matchScore) {
+      // Also skip if another venue in our DB has already claimed this subscription
+      const claimedVenueId = await getClaimedVenueForSubscription(client, subscription.id);
+      if (claimedVenueId && claimedVenueId !== venueId) {
         continue;
       }
 
       candidates.push({
         customerId: customer.id,
         subscription,
-        matchScore,
+        matchScore: 3, // metadata match
         currentScore: subscription.id === options?.currentSubscriptionId ? 1 : 0,
       });
     }

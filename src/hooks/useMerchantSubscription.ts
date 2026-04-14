@@ -164,7 +164,7 @@ export function useMerchantSubscription(venueId?: string | null): SubscriptionSt
   useEffect(() => {
     setLoading(true);
     checkSubscription();
-    const interval = setInterval(checkSubscription, 60000);
+    const interval = setInterval(checkSubscription, 120000);
     return () => {
       requestIdRef.current += 1;
       clearInterval(interval);

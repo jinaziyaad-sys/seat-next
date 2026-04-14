@@ -135,7 +135,6 @@ serve(async (req) => {
               stripe_subscription_id: subscriptionId,
               plan_id: planId,
               billing_cycle: interval === 'year' ? 'annual' : 'monthly',
-              payment_provider: 'stripe',
               current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
               current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
               trial_ends_at: trialEnd,

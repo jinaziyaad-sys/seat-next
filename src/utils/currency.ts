@@ -36,7 +36,8 @@ export function formatPrice(amount: number, currencyCode: string): string {
  */
 export function detectCurrency(): string {
   try {
-    const locale = navigator.language || 'en-ZA';
+    // Try locale-based detection first
+    const locale = navigator.language || '';
     const regionMap: Record<string, string> = {
       ZA: 'ZAR', US: 'USD', GB: 'GBP', AU: 'AUD', CA: 'CAD',
       DE: 'EUR', FR: 'EUR', IT: 'EUR', ES: 'EUR', NL: 'EUR',
@@ -45,7 +46,32 @@ export function detectCurrency(): string {
     };
     const parts = locale.split('-');
     const region = parts.length > 1 ? parts[1].toUpperCase() : '';
-    return regionMap[region] || 'USD';
+    if (region && regionMap[region]) {
+      return regionMap[region];
+    }
+
+    // Fallback: timezone-based detection
+    try {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const tzMap: Record<string, string> = {
+        'Africa/Johannesburg': 'ZAR',
+        'America/New_York': 'USD', 'America/Chicago': 'USD', 'America/Denver': 'USD', 'America/Los_Angeles': 'USD',
+        'Europe/London': 'GBP',
+        'Australia/Sydney': 'AUD', 'Australia/Melbourne': 'AUD',
+        'America/Toronto': 'CAD',
+        'Europe/Berlin': 'EUR', 'Europe/Paris': 'EUR', 'Europe/Rome': 'EUR', 'Europe/Madrid': 'EUR', 'Europe/Amsterdam': 'EUR',
+        'Asia/Kolkata': 'INR', 'Asia/Calcutta': 'INR',
+        'Asia/Dubai': 'AED',
+        'Africa/Lagos': 'NGN',
+        'Africa/Nairobi': 'KES',
+        'Europe/Zurich': 'CHF',
+      };
+      if (tz && tzMap[tz]) {
+        return tzMap[tz];
+      }
+    } catch { /* ignore */ }
+
+    return 'USD';
   } catch {
     return 'USD';
   }
