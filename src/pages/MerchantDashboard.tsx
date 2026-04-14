@@ -625,7 +625,7 @@ const MerchantDashboard = () => {
                 )}
               </>
             )}
-            {(hasLoyalty || loyaltyLocked) && (
+            {userRole.role === 'admin' && (
               <TabsTrigger value="loyalty" className={tabTriggerClass}>
                 <Gift size={16} />
                 Loyalty
