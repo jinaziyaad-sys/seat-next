@@ -486,28 +486,31 @@ export default function MerchantSignup() {
         return;
       }
       if (data?.url) {
-        // Open Stripe in a new tab and poll for completion
-        const stripeTab = window.open(data.url, '_blank');
+        // Open Stripe in a new tab
+        window.open(data.url, '_blank');
         toast({ title: 'Completing payment...', description: 'A new tab has opened for Stripe checkout. This page will update automatically.' });
         
-        // Poll for subscription activation
+        // Bounded polling: 10 attempts, 5s interval = 50s max
+        let attempts = 0;
+        const maxAttempts = 10;
         const pollInterval = setInterval(async () => {
+          attempts++;
           try {
             const { data: subCheck } = await supabase.functions.invoke('check-subscription', {
-              body: { venueId },
+              body: { venueId, forceRefresh: true },
             });
             if (subCheck?.subscribed && (subCheck?.status === 'active' || subCheck?.status === 'trial')) {
               clearInterval(pollInterval);
-              // Try to close the Stripe tab if still open
-              try { stripeTab?.close(); } catch {}
               toast({ title: '🎉 Payment Successful!', description: `Welcome to ${plan.name}!` });
               navigate('/merchant/dashboard?checkout=success');
             }
           } catch {}
-        }, 3000);
-        
-        // Stop polling after 5 minutes
-        setTimeout(() => clearInterval(pollInterval), 300000);
+          if (attempts >= maxAttempts) {
+            clearInterval(pollInterval);
+            toast({ title: 'Sync in progress', description: 'Your payment may take a moment to process. Check your billing page shortly.' });
+            navigate('/merchant/billing');
+          }
+        }, 5000);
       }
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Checkout Error', description: err.message || 'Failed to start checkout' });
