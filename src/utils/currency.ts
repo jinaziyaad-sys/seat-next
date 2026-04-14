@@ -36,21 +36,7 @@ export function formatPrice(amount: number, currencyCode: string): string {
  */
 export function detectCurrency(): string {
   try {
-    // Try locale-based detection first
-    const locale = navigator.language || '';
-    const regionMap: Record<string, string> = {
-      ZA: 'ZAR', US: 'USD', GB: 'GBP', AU: 'AUD', CA: 'CAD',
-      DE: 'EUR', FR: 'EUR', IT: 'EUR', ES: 'EUR', NL: 'EUR',
-      AT: 'EUR', BE: 'EUR', PT: 'EUR', IE: 'EUR', FI: 'EUR',
-      IN: 'INR', AE: 'AED', NG: 'NGN', KE: 'KES', CH: 'CHF',
-    };
-    const parts = locale.split('-');
-    const region = parts.length > 1 ? parts[1].toUpperCase() : '';
-    if (region && regionMap[region]) {
-      return regionMap[region];
-    }
-
-    // Fallback: timezone-based detection
+    // Priority 1: timezone-based detection (most reliable for actual location)
     try {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
       const tzMap: Record<string, string> = {
@@ -70,6 +56,20 @@ export function detectCurrency(): string {
         return tzMap[tz];
       }
     } catch { /* ignore */ }
+
+    // Priority 2: locale-based detection (fallback — can be wrong if browser language ≠ location)
+    const locale = navigator.language || '';
+    const regionMap: Record<string, string> = {
+      ZA: 'ZAR', US: 'USD', GB: 'GBP', AU: 'AUD', CA: 'CAD',
+      DE: 'EUR', FR: 'EUR', IT: 'EUR', ES: 'EUR', NL: 'EUR',
+      AT: 'EUR', BE: 'EUR', PT: 'EUR', IE: 'EUR', FI: 'EUR',
+      IN: 'INR', AE: 'AED', NG: 'NGN', KE: 'KES', CH: 'CHF',
+    };
+    const parts = locale.split('-');
+    const region = parts.length > 1 ? parts[1].toUpperCase() : '';
+    if (region && regionMap[region]) {
+      return regionMap[region];
+    }
 
     return 'USD';
   } catch {
