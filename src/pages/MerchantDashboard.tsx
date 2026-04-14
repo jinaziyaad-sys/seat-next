@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { useMerchantAuth } from "@/hooks/useAuth";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { useMerchantSubscription } from "@/hooks/useMerchantSubscription";
@@ -374,7 +374,7 @@ const MerchantDashboard = () => {
   const hasAnalytics = features.analytics_enabled && subscription.hasFeature('analytics');
   const hasLoyalty = subscription.hasFeature('loyalty');
   const analyticsLocked = features.analytics_enabled && !subscription.hasFeature('analytics');
-  const loyaltyLocked = !subscription.hasFeature('loyalty') && subscription.subscribed;
+  const loyaltyLocked = !subscription.hasFeature('loyalty');
   const hasPromotions = subscription.hasFeature('analytics'); // Pro+ can create promotions
 
   // Tab trigger class for consistent sizing
