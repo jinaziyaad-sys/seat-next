@@ -427,7 +427,32 @@ export default function MerchantSignup() {
 
     setCheckoutLoading(true);
     try {
-      // Check for currency override with Stripe price IDs
+      // For existing subscribers in upgrade mode, use change-plan (handles proration/scheduling)
+      if (isUpgradeMode && currentPlanId && currentPlanId !== selectedPlanId) {
+        const { data, error } = await supabase.functions.invoke('change-plan', {
+          body: {
+            venueId,
+            newPlanId: plan.id,
+            billingCycle: isAnnual ? 'annual' : 'monthly',
+            currency: selectedCurrency,
+          },
+        });
+        if (error) throw error;
+        if (data?.error) {
+          toast({ variant: 'destructive', title: 'Plan Change Failed', description: data.error });
+          return;
+        }
+        if (data?.success) {
+          toast({
+            title: data.type === 'upgrade' ? '🎉 Plan Upgraded!' : '📋 Plan Change Scheduled',
+            description: data.message,
+          });
+          navigate('/merchant/dashboard?checkout=success');
+          return;
+        }
+      }
+
+      // For new subscriptions, open Stripe checkout in a new tab
       const overrideKey = `${plan.id}_${selectedCurrency}`;
       const override = currencyOverrides[overrideKey];
       let priceId: string | null = null;
@@ -461,7 +486,28 @@ export default function MerchantSignup() {
         return;
       }
       if (data?.url) {
-        window.location.href = data.url;
+        // Open Stripe in a new tab and poll for completion
+        const stripeTab = window.open(data.url, '_blank');
+        toast({ title: 'Completing payment...', description: 'A new tab has opened for Stripe checkout. This page will update automatically.' });
+        
+        // Poll for subscription activation
+        const pollInterval = setInterval(async () => {
+          try {
+            const { data: subCheck } = await supabase.functions.invoke('check-subscription', {
+              body: { venueId },
+            });
+            if (subCheck?.subscribed && (subCheck?.status === 'active' || subCheck?.status === 'trial')) {
+              clearInterval(pollInterval);
+              // Try to close the Stripe tab if still open
+              try { stripeTab?.close(); } catch {}
+              toast({ title: '🎉 Payment Successful!', description: `Welcome to ${plan.name}!` });
+              navigate('/merchant/dashboard?checkout=success');
+            }
+          } catch {}
+        }, 3000);
+        
+        // Stop polling after 5 minutes
+        setTimeout(() => clearInterval(pollInterval), 300000);
       }
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Checkout Error', description: err.message || 'Failed to start checkout' });
