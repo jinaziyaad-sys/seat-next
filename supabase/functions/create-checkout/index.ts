@@ -72,62 +72,36 @@ serve(async (req) => {
       logStep("Found existing customer", { customerId });
     }
 
-    // Cancel existing subscription for this venue to prevent duplicates on upgrade
-    if (venueId && customerId) {
+    // Same-plan guard: reject if venue already has active subscription on this plan
+    if (venueId && planId) {
       const supabaseService = createClient(
         Deno.env.get("SUPABASE_URL") ?? "",
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
         { auth: { persistSession: false } }
       );
 
-      // Same-plan guard: reject if venue already has active subscription on this plan
-      if (planId) {
-        const { data: activeSub } = await supabaseService
-          .from("merchant_subscriptions")
-          .select("plan_id, status")
-          .eq("venue_id", venueId)
-          .in("status", ["active", "trial"])
-          .maybeSingle();
-
-        if (activeSub && activeSub.plan_id === planId) {
-          logStep("Same-plan re-purchase blocked", { venueId, planId });
-          return new Response(JSON.stringify({ error: "You are already on this plan. Choose a different plan to upgrade or downgrade." }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 400,
-          });
-        }
-      }
-
-      // Method 1: Cancel by DB lookup
-      const { data: dbSub } = await supabaseService
+      const { data: activeSub } = await supabaseService
         .from("merchant_subscriptions")
-        .select("stripe_subscription_id")
+        .select("plan_id, status")
         .eq("venue_id", venueId)
+        .in("status", ["active", "trial"])
         .maybeSingle();
 
-      if (dbSub?.stripe_subscription_id) {
-        try {
-          logStep("Cancelling existing venue subscription from DB", { subId: dbSub.stripe_subscription_id, venueId });
-          await stripe.subscriptions.cancel(dbSub.stripe_subscription_id);
-        } catch (cancelErr) {
-          logStep("Failed to cancel DB-linked sub (may already be cancelled)", { error: String(cancelErr) });
-        }
+      if (activeSub && activeSub.plan_id === planId) {
+        logStep("Same-plan re-purchase blocked", { venueId, planId });
+        return new Response(JSON.stringify({ error: "You are already on this plan. Choose a different plan to upgrade or downgrade." }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
       }
 
-      // Method 2: Cancel by metadata match across ALL customers for this email
-      for (const cust of customers.data) {
-        const existingSubs = await stripe.subscriptions.list({ customer: cust.id, status: 'active' });
-        const trialSubs = await stripe.subscriptions.list({ customer: cust.id, status: 'trialing' });
-        for (const sub of [...existingSubs.data, ...trialSubs.data]) {
-          if (sub.metadata?.venue_id === venueId) {
-            logStep("Cancelling existing venue subscription by metadata", { subId: sub.id, venueId });
-            try {
-              await stripe.subscriptions.cancel(sub.id);
-            } catch (e) {
-              logStep("Cancel by metadata failed", { error: String(e) });
-            }
-          }
-        }
+      // If venue already has an active subscription, reject — they should use change-plan instead
+      if (activeSub) {
+        logStep("Active subscription exists — use change-plan instead", { venueId });
+        return new Response(JSON.stringify({ error: "You already have an active subscription. Use 'Change Plan' from your billing page instead." }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 400,
+        });
       }
     }
 
