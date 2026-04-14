@@ -282,7 +282,11 @@ export const PromotionsManager = () => {
     }));
   };
 
-  const isArchived = (c: Campaign) => !c.is_active || (c.end_date && new Date(c.end_date) < new Date());
+  const isArchived = (c: Campaign) => {
+    // Pending-review campaigns should NOT be archived even if is_active is false
+    if (c.review_status === 'pending' || c.review_status === 'approved') return false;
+    return !c.is_active || (c.end_date && new Date(c.end_date) < new Date());
+  };
   const activeCampaigns = campaigns.filter(c => !isArchived(c));
   const archivedCampaigns = campaigns.filter(c => isArchived(c));
 
