@@ -143,59 +143,11 @@ serve(async (req) => {
     }
 
     if (venueId) {
-      const { data: pfSub } = await supabaseClient
-        .from("merchant_subscriptions")
-        .select("*, subscription_plans:plan_id(id, name, stripe_product_id, stripe_annual_product_id, included_features)")
-        .eq("venue_id", venueId)
-        .eq("payment_provider", "payfast")
-        .maybeSingle();
-
-      if (pfSub && (pfSub.status === 'active' || pfSub.status === 'trial')) {
-        const plan = pfSub.subscription_plans as any;
-        const productIds = plan ? [plan.stripe_product_id, plan.stripe_annual_product_id].filter(Boolean) : [];
-        const trialEnd = pfSub.trial_ends_at;
-        const isTrialing = pfSub.status === 'trial' && trialEnd && new Date(trialEnd) > new Date();
-
-        if (pfSub.status === 'trial' && trialEnd && new Date(trialEnd) <= new Date()) {
-          await supabaseClient
-            .from("merchant_subscriptions")
-            .update({ status: 'inactive', updated_at: new Date().toISOString() })
-            .eq("venue_id", venueId);
-          logStep("PayFast trial expired", { venueId });
-        } else {
-          logStep("PayFast subscription active", { venueId, status: pfSub.status });
-          return new Response(JSON.stringify({
-            subscribed: true,
-            status: isTrialing ? 'trial' : 'active',
-            product_ids: productIds,
-            price_ids: [],
-            subscription_end: pfSub.current_period_end,
-            stripe_customer_id: null,
-            stripe_subscription_id: null,
-            trial_end: trialEnd,
-            payment_provider: 'payfast',
-            included_features: plan?.included_features || [],
-          }), {
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-            status: 200,
-          });
-        }
-      }
-    }
-
-    if (venueId) {
       const { data: existingSub } = await supabaseClient
         .from("merchant_subscriptions")
-        .select("stripe_subscription_id, stripe_customer_id, status, payment_provider")
+        .select("stripe_subscription_id, stripe_customer_id, status")
         .eq("venue_id", venueId)
         .maybeSingle();
-
-      if (existingSub?.payment_provider === 'payfast') {
-        return new Response(JSON.stringify({ subscribed: false, status: existingSub.status === 'past_due' ? 'past_due' : 'none' }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-          status: 200,
-        });
-      }
 
       const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
 
