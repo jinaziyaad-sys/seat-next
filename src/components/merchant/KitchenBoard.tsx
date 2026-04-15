@@ -1149,6 +1149,14 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
         title="Extend Order ETA"
         description="Select extension time and provide a reason for the customer"
       />
+
+      <LinkPatronDialog
+        open={linkPatronDialogOpen}
+        onOpenChange={setLinkPatronDialogOpen}
+        orderId={linkPatronOrderId}
+        orderNumber={linkPatronOrderNumber}
+        onLinked={fetchOrders}
+      />
     </div>
   );
 };
