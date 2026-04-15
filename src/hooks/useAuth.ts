@@ -14,7 +14,7 @@ interface UserRole {
 }
 
 const withTimeout = async <T,>(
-  promise: Promise<T>,
+  thenable: PromiseLike<T> | Promise<T>,
   timeoutMs: number,
   label: string,
 ): Promise<T> => {
@@ -27,7 +27,7 @@ const withTimeout = async <T,>(
   });
 
   try {
-    return await Promise.race([promise, timeoutPromise]);
+    return await Promise.race([Promise.resolve(thenable), timeoutPromise]);
   } finally {
     if (timeoutId !== undefined) {
       window.clearTimeout(timeoutId);

@@ -28,6 +28,7 @@ import { PromoBanner } from "@/components/PromoBanner";
 import { PatronLoyaltyCard } from "@/components/PatronLoyaltyCard";
 import { LoyaltyReadyFlow } from "@/components/LoyaltyReadyFlow";
 import { ActivityFlow } from "@/components/ActivityFlow";
+import { PatronIDCard } from "@/components/PatronIDCard";
 import { PhonePromptDialog } from "@/components/PhonePromptDialog";
 import { TabNavigation } from "@/components/TabNavigation";
 import { ActiveTrackingListSkeleton } from "@/components/ui/skeleton-card";
@@ -906,6 +907,13 @@ const Index = () => {
       })()}
 
 
+
+      {/* Patron ID Card */}
+      {user && (
+        <div className="px-6">
+          <PatronIDCard userId={user.id} compact />
+        </div>
+      )}
 
       {/* Quick Actions */}
       <div className="space-y-6 p-6">

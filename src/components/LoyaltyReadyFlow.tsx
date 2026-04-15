@@ -46,7 +46,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
 
   const withTimeout = async <T,>(
-    promise: Promise<T>,
+    thenable: PromiseLike<T> | Promise<T>,
     timeoutMs: number,
     label: string,
   ): Promise<T> => {
@@ -59,7 +59,7 @@ export const LoyaltyReadyFlow = ({ onBack }: LoyaltyReadyFlowProps) => {
     });
 
     try {
-      return await Promise.race([promise, timeoutPromise]);
+      return await Promise.race([Promise.resolve(thenable), timeoutPromise]);
     } finally {
       if (timeoutId !== undefined) {
         window.clearTimeout(timeoutId);

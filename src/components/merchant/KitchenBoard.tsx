@@ -7,7 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Clock, Plus, AlertTriangle, Ticket } from "lucide-react";
+import { Clock, Plus, AlertTriangle, Ticket, UserCheck, QrCode } from "lucide-react";
+import { LinkPatronDialog } from "./LinkPatronDialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { invokeSupabaseFunctionWithTimeout } from "@/utils/invokeWithTimeout";
@@ -48,6 +49,9 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
   const [extensionOrderId, setExtensionOrderId] = useState<string>("");
   const [voucherCounts, setVoucherCounts] = useState<Map<string, number>>(new Map());
+  const [linkPatronDialogOpen, setLinkPatronDialogOpen] = useState(false);
+  const [linkPatronOrderId, setLinkPatronOrderId] = useState("");
+  const [linkPatronOrderNumber, setLinkPatronOrderNumber] = useState("");
   const { toast } = useToast();
   
   // Track warning phases for each order (to avoid duplicate warnings)
@@ -782,6 +786,17 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
           >
             {showRejected ? "Active Orders" : "Rejected Orders"}
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setLinkPatronOrderId("");
+              setLinkPatronOrderNumber("");
+              setLinkPatronDialogOpen(true);
+            }}
+          >
+            <QrCode size={16} className="mr-2" />
+            Scan Patron
+          </Button>
           <Dialog open={addOrderDialogOpen} onOpenChange={setAddOrderDialogOpen}>
           <DialogTrigger asChild>
             <Button>
@@ -952,6 +967,23 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
                 </div>
               )}
 
+              {/* Link Patron button for unlinked orders */}
+              {!order.user_id && order.status !== 'rejected' && order.status !== 'collected' && order.status !== 'cancelled' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    setLinkPatronOrderId(order.id);
+                    setLinkPatronOrderNumber(order.order_number);
+                    setLinkPatronDialogOpen(true);
+                  }}
+                >
+                  <UserCheck className="h-4 w-4 mr-2" />
+                  Link Patron
+                </Button>
+              )}
+
               {order.notes && (
                 <div className="p-2 bg-muted rounded text-sm">
                   {order.notes}
@@ -1116,6 +1148,14 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
         onConfirm={handleExtensionConfirm}
         title="Extend Order ETA"
         description="Select extension time and provide a reason for the customer"
+      />
+
+      <LinkPatronDialog
+        open={linkPatronDialogOpen}
+        onOpenChange={setLinkPatronDialogOpen}
+        orderId={linkPatronOrderId}
+        orderNumber={linkPatronOrderNumber}
+        onLinked={fetchOrders}
       />
     </div>
   );
