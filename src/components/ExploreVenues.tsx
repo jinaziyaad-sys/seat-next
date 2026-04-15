@@ -300,6 +300,8 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
         });
       } else {
         setRecommendations(data?.recommendations || []);
+        // Fetch promoted venue IDs for "Promoted" badges
+        fetchPromotedVenues();
       }
     } catch (err) {
       console.error("Error:", err);
