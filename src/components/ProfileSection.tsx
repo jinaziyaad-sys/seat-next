@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft, User, Shield, LogOut, Palette, Sparkles, Loader2, Globe } from "lucide-react";
+import { PatronIDCard } from "@/components/PatronIDCard";
 import { useTranslation } from "react-i18next";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -207,6 +208,9 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
           )}
         </CardContent>
       </Card>
+
+      {/* Patron ID / QR Code */}
+      {user && <PatronIDCard userId={user.id} />}
 
       {/* Security Section */}
       <Card className="shadow-card">
