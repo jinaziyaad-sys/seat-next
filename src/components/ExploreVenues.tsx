@@ -486,10 +486,18 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
     return true;
   });
 
-  // Merge direct search results with filtered recommendations
-  const allDisplayedVenues = searchQuery.trim().length >= 2
+  // Merge direct search results with filtered recommendations, boost promoted venues
+  const mergedVenues = searchQuery.trim().length >= 2
     ? [...filteredRecommendations, ...directSearchResults]
     : filteredRecommendations;
+  
+  // Sort: promoted venues first, then by match score
+  const allDisplayedVenues = [...mergedVenues].sort((a, b) => {
+    const aPromoted = promotedVenueIds.has(a.venue_id) ? 1 : 0;
+    const bPromoted = promotedVenueIds.has(b.venue_id) ? 1 : 0;
+    if (aPromoted !== bPromoted) return bPromoted - aPromoted;
+    return b.match_score - a.match_score;
+  });
 
   const getBusynessColor = (busyness: string) => {
     switch (busyness) {
