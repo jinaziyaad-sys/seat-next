@@ -1031,7 +1031,7 @@ const Index = () => {
 
       {/* Report Issue & Help System */}
       {user && <MessengerHub userId={user.id} />}
-      <div className="fixed bottom-4 right-4 z-50">
+      <div className="z-50">
         <HelpButton onClick={() => { setHelpOpen(true); setShowTourPulse(false); }} showPulse={showTourPulse} />
       </div>
       <HelpPanel
