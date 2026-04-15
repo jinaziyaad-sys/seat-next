@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
-import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus, Upload, Gift, Shield, ScrollText, Activity, Bell, DollarSign } from "lucide-react";
+import { Store, UserPlus, LogOut, BarChart3, Users, ShoppingBag, Trash2, UtensilsCrossed, Edit2, Save, X, Sparkles, Lock, KeyRound, Clock, CheckCircle2, XCircle, Plus, Upload, Gift, Shield, ScrollText, Activity, Bell, DollarSign, Image } from "lucide-react";
 import { VenueLogo } from "@/components/VenueLogo";
 import { LogoCropDialog } from "@/components/LogoCropDialog";
 import {
@@ -35,6 +35,7 @@ import { SystemHealthDashboard } from "@/components/dev/SystemHealthDashboard";
 import { AlertRulesPanel } from "@/components/dev/AlertRulesPanel";
 import { PromotionsManager } from "@/components/dev/PromotionsManager";
 import { BillingDashboard } from "@/components/dev/BillingDashboard";
+import { ClientLogosManager } from "@/components/dev/ClientLogosManager";
 import { LocationMap } from "@/components/LocationMap";
 import { InteractiveLocationMap } from "@/components/InteractiveLocationMap";
 import {
@@ -1053,6 +1054,10 @@ export default function DevDashboard() {
               <DollarSign className="h-3 w-3" />
               Billing
             </TabsTrigger>
+            <TabsTrigger value="client-logos" className="flex items-center gap-1">
+              <Image className="h-3 w-3" />
+              Client Logos
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="venues" className="space-y-6">
@@ -1890,6 +1895,10 @@ export default function DevDashboard() {
 
           <TabsContent value="billing">
             <BillingDashboard />
+          </TabsContent>
+
+          <TabsContent value="client-logos">
+            <ClientLogosManager />
           </TabsContent>
         </Tabs>
       </div>
