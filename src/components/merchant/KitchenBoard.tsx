@@ -786,6 +786,17 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
           >
             {showRejected ? "Active Orders" : "Rejected Orders"}
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setLinkPatronOrderId("");
+              setLinkPatronOrderNumber("");
+              setLinkPatronDialogOpen(true);
+            }}
+          >
+            <QrCode size={16} className="mr-2" />
+            Scan Patron
+          </Button>
           <Dialog open={addOrderDialogOpen} onOpenChange={setAddOrderDialogOpen}>
           <DialogTrigger asChild>
             <Button>
