@@ -1,4 +1,4 @@
-import { HelpCircle, MessageSquare, PlayCircle, Bug } from 'lucide-react';
+import { HelpCircle, PlayCircle, Bug } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -8,7 +8,6 @@ import {
   SheetTitle,
 } from '@/components/ui/sheet';
 import { FAQSection } from './FAQSection';
-import { AIAssistant } from './AIAssistant';
 import { ReportIssueForm } from './ReportIssueForm';
 import { DashboardVariant } from './types';
 import {
@@ -49,6 +48,9 @@ export function HelpPanel({
     onStartTour();
   };
 
+  // If activeTab is 'chat' (removed), default to 'faq'
+  const safeTab = activeTab === 'chat' ? 'faq' : activeTab;
+
   return (
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent className="flex w-full flex-col sm:max-w-md min-h-0 overflow-hidden">
@@ -62,18 +64,14 @@ export function HelpPanel({
         </SheetHeader>
 
         <Tabs
-          value={activeTab}
+          value={safeTab}
           onValueChange={(v) => onTabChange(v as 'faq' | 'chat' | 'tour' | 'report')}
           className="mt-4 flex flex-1 flex-col min-h-0"
         >
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="faq" className="gap-2">
               <HelpCircle className="h-4 w-4" />
               <span className="hidden sm:inline">FAQ</span>
-            </TabsTrigger>
-            <TabsTrigger value="chat" className="gap-2">
-              <MessageSquare className="h-4 w-4" />
-              <span className="hidden sm:inline">AI Chat</span>
             </TabsTrigger>
             <TabsTrigger value="tour" className="gap-2">
               <PlayCircle className="h-4 w-4" />
@@ -87,10 +85,6 @@ export function HelpPanel({
 
           <TabsContent value="faq" className="mt-4 flex-1 min-h-0 overflow-y-auto">
             <FAQSection faqs={faqs} categories={categories} />
-          </TabsContent>
-
-          <TabsContent value="chat" className="mt-4 flex-1 min-h-0 overflow-y-auto">
-            <AIAssistant variant={variant} onNavigate={onNavigate} />
           </TabsContent>
 
           <TabsContent value="tour" className="mt-4 flex-1 min-h-0 overflow-y-auto">
