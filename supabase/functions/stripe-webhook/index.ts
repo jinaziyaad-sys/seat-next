@@ -29,7 +29,7 @@ serve(async (req) => {
       const signature = req.headers.get("stripe-signature");
       if (!signature) throw new Error("No stripe-signature header");
       const body = await req.text();
-      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      event = await stripe.webhooks.constructEventAsync(body, signature, webhookSecret);
     } else {
       const body = await req.json();
       event = body as Stripe.Event;
