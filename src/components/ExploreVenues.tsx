@@ -789,6 +789,11 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
               onClick={() => onSelectVenue?.(venue.venue_id)}
             >
               <CardContent className="p-4">
+                {promotedVenueIds.has(venue.venue_id) && (
+                  <Badge variant="outline" className="absolute top-2 right-2 text-[10px] bg-background/80 backdrop-blur-sm z-10">
+                    <Megaphone className="h-3 w-3 mr-1" />Promoted
+                  </Badge>
+                )}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3 flex-1">
                     <VenueLogo logoUrl={venue.logo_url} name={venue.name} size="lg" />
