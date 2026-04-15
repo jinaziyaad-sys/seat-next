@@ -310,6 +310,25 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
     }
   };
 
+  const fetchPromotedVenues = async () => {
+    try {
+      const now = new Date().toISOString();
+      const { data } = await supabase
+        .from("promo_campaigns")
+        .select("venue_id")
+        .eq("is_active", true)
+        .contains("placements", ["explore"])
+        .lte("start_date", now)
+        .or(`end_date.is.null,end_date.gt.${now}`)
+        .limit(20);
+      if (data) {
+        setPromotedVenueIds(new Set(data.map(c => c.venue_id)));
+      }
+    } catch (err) {
+      console.error("Failed to fetch promoted venues:", err);
+    }
+  };
+
   const handleRefresh = async () => {
     setRefreshing(true);
     await fetchRecommendations();
