@@ -92,7 +92,7 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
           placement,
         });
         // Increment the campaign's impressions_count for merchant visibility
-        await supabase.rpc("increment_promo_impressions", { campaign_uuid: campaign.id });
+        await (supabase.rpc as any)("increment_promo_impressions", { campaign_uuid: campaign.id });
       }
     }
   };
@@ -106,7 +106,7 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
       clicked: true,
     });
     // Increment the campaign's clicks_count for merchant visibility
-    await supabase.rpc("increment_promo_clicks", { campaign_uuid: campaignId });
+    await (supabase.rpc as any)("increment_promo_clicks", { campaign_uuid: campaignId });
   };
 
   const handleCTAClick = (campaign: Campaign) => {
