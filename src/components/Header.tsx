@@ -18,7 +18,7 @@ export const Header = () => {
   const getHomeRoute = () => {
     if (location.pathname.startsWith("/merchant")) return "/merchant/dashboard";
     if (location.pathname.startsWith("/dev")) return "/dev/dashboard";
-    return "/"; // Patron home
+    return "/app"; // Patron home
   };
 
   return (

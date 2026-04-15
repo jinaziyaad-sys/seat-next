@@ -54,7 +54,7 @@ export default function WaitlistJoin() {
   useEffect(() => {
     const fetchVenue = async () => {
       if (!venueId) {
-        navigate("/");
+        navigate("/app");
         return;
       }
 
@@ -70,7 +70,7 @@ export default function WaitlistJoin() {
           description: t("waitlistJoin.venueNotFound"),
           variant: "destructive",
         });
-        navigate("/");
+        navigate("/app");
         return;
       }
 
@@ -151,7 +151,7 @@ export default function WaitlistJoin() {
     });
 
     // Navigate to patron app to track the waitlist
-    navigate("/");
+    navigate("/app");
   };
 
   if (isLoading) {
