@@ -49,6 +49,9 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
   const [extensionDialogOpen, setExtensionDialogOpen] = useState(false);
   const [extensionOrderId, setExtensionOrderId] = useState<string>("");
   const [voucherCounts, setVoucherCounts] = useState<Map<string, number>>(new Map());
+  const [linkPatronDialogOpen, setLinkPatronDialogOpen] = useState(false);
+  const [linkPatronOrderId, setLinkPatronOrderId] = useState("");
+  const [linkPatronOrderNumber, setLinkPatronOrderNumber] = useState("");
   const { toast } = useToast();
   
   // Track warning phases for each order (to avoid duplicate warnings)
