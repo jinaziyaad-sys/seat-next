@@ -39,12 +39,12 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
     fetchCampaigns();
   }, [placement]);
 
-  // Auto-rotate carousel with fade transition — 8s interval
+  // Auto-rotate carousel with smooth crossfade — 15s interval for comfortable reading
   useEffect(() => {
     if (campaigns.length <= 1 || paused) return;
     const interval = setInterval(() => {
       transitionTo((prev: number) => (prev + 1) % campaigns.length);
-    }, 8000);
+    }, 15000);
     return () => clearInterval(interval);
   }, [campaigns.length, paused]);
 
@@ -52,8 +52,11 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
     setIsTransitioning(true);
     setTimeout(() => {
       setCurrentIndex(getNext);
-      setIsTransitioning(false);
-    }, 400);
+      // Smooth fade in after content swap
+      requestAnimationFrame(() => {
+        setIsTransitioning(false);
+      });
+    }, 300);
   };
 
   const fetchCampaigns = async () => {
