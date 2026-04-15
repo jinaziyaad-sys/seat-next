@@ -956,6 +956,23 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
                 </div>
               )}
 
+              {/* Link Patron button for unlinked orders */}
+              {!order.user_id && order.status !== 'rejected' && order.status !== 'collected' && order.status !== 'cancelled' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full"
+                  onClick={() => {
+                    setLinkPatronOrderId(order.id);
+                    setLinkPatronOrderNumber(order.order_number);
+                    setLinkPatronDialogOpen(true);
+                  }}
+                >
+                  <UserCheck className="h-4 w-4 mr-2" />
+                  Link Patron
+                </Button>
+              )}
+
               {order.notes && (
                 <div className="p-2 bg-muted rounded text-sm">
                   {order.notes}
