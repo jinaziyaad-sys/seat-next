@@ -28,6 +28,7 @@ import { PromoBanner } from "@/components/PromoBanner";
 import { PatronLoyaltyCard } from "@/components/PatronLoyaltyCard";
 import { LoyaltyReadyFlow } from "@/components/LoyaltyReadyFlow";
 import { ActivityFlow } from "@/components/ActivityFlow";
+import { PatronIDCard } from "@/components/PatronIDCard";
 import { PhonePromptDialog } from "@/components/PhonePromptDialog";
 import { TabNavigation } from "@/components/TabNavigation";
 import { ActiveTrackingListSkeleton } from "@/components/ui/skeleton-card";
