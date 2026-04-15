@@ -31,6 +31,7 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
   const [currentIndex, setCurrentIndex] = useState(0);
   const [dismissed, setDismissed] = useState(false);
   const [paused, setPaused] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const touchStartX = useRef<number | null>(null);
   const pauseTimeout = useRef<NodeJS.Timeout | null>(null);
 
@@ -38,14 +39,22 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
     fetchCampaigns();
   }, [placement]);
 
-  // Auto-rotate carousel (pauses on interaction)
+  // Auto-rotate carousel with fade transition — 8s interval
   useEffect(() => {
     if (campaigns.length <= 1 || paused) return;
     const interval = setInterval(() => {
-      setCurrentIndex(prev => (prev + 1) % campaigns.length);
-    }, 5000);
+      transitionTo((prev: number) => (prev + 1) % campaigns.length);
+    }, 8000);
     return () => clearInterval(interval);
   }, [campaigns.length, paused]);
+
+  const transitionTo = (getNext: (prev: number) => number) => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setCurrentIndex(getNext);
+      setIsTransitioning(false);
+    }, 400);
+  };
 
   const fetchCampaigns = async () => {
     const now = new Date().toISOString();
@@ -59,7 +68,6 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
       .limit(10);
 
     if (data?.length) {
-      // Shuffle for fair rotation across patrons
       const shuffled = data.sort(() => Math.random() - 0.5);
 
       const venueIds = [...new Set(shuffled.map(c => c.venue_id))];
@@ -75,15 +83,17 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
         venue_logo: venueMap.get(c.venue_id)?.logo_url,
       })));
 
-      // Track impressions
+      // Track impressions and increment campaign counter
       const { data: { user } } = await supabase.auth.getUser();
-      shuffled.forEach(campaign => {
-        supabase.from("promo_impressions").insert({
+      for (const campaign of shuffled) {
+        await supabase.from("promo_impressions").insert({
           campaign_id: campaign.id,
           user_id: user?.id || null,
           placement,
-        }).then(() => {});
-      });
+        });
+        // Increment the campaign's impressions_count for merchant visibility
+        await (supabase.rpc as any)("increment_promo_impressions", { campaign_uuid: campaign.id });
+      }
     }
   };
 
@@ -95,6 +105,8 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
       placement,
       clicked: true,
     });
+    // Increment the campaign's clicks_count for merchant visibility
+    await (supabase.rpc as any)("increment_promo_clicks", { campaign_uuid: campaignId });
   };
 
   const handleCTAClick = (campaign: Campaign) => {
@@ -109,7 +121,7 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
   const pauseAndResume = useCallback(() => {
     setPaused(true);
     if (pauseTimeout.current) clearTimeout(pauseTimeout.current);
-    pauseTimeout.current = setTimeout(() => setPaused(false), 8000);
+    pauseTimeout.current = setTimeout(() => setPaused(false), 10000);
   }, []);
 
   const handleTouchStart = (e: React.TouchEvent) => {
@@ -122,9 +134,9 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
     if (Math.abs(diff) > 50) {
       pauseAndResume();
       if (diff > 0) {
-        setCurrentIndex(prev => (prev + 1) % campaigns.length);
+        transitionTo(prev => (prev + 1) % campaigns.length);
       } else {
-        setCurrentIndex(prev => (prev - 1 + campaigns.length) % campaigns.length);
+        transitionTo(prev => (prev - 1 + campaigns.length) % campaigns.length);
       }
     }
     touchStartX.current = null;
@@ -136,7 +148,7 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
 
   if (placement === "tracking") {
     return (
-      <div className={cn("relative rounded-lg overflow-hidden bg-gradient-to-r from-primary/10 to-accent/10 border", className)}>
+      <div className={cn("relative rounded-lg overflow-hidden bg-gradient-to-r from-primary/10 to-accent/10 border transition-opacity duration-400", isTransitioning ? "opacity-0" : "opacity-100", className)}>
         <div className="flex items-center gap-3 p-3">
           <Megaphone className="h-4 w-4 text-primary shrink-0" />
           <div className="flex-1 min-w-0">
@@ -176,53 +188,55 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
     >
       <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
         <CardContent className="p-0">
-          {campaign.banner_image_url && (
-            <div
-              className="relative w-full overflow-hidden cursor-pointer aspect-video"
-              onClick={() => handleCTAClick(campaign)}
-            >
-              <img
-                src={campaign.banner_image_url}
-                alt={campaign.title}
-                className="w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-              <div className="absolute bottom-2 left-3 right-3">
-                <p className="text-white font-bold text-lg leading-tight">{campaign.title}</p>
-              </div>
-            </div>
-          )}
-
-          <div className="p-4">
-            {!campaign.banner_image_url && (
-              <div className="flex items-center gap-2 mb-2">
-                <Megaphone className="h-4 w-4 text-primary" />
-                <p className="font-bold">{campaign.title}</p>
+          <div className={cn("transition-opacity duration-500 ease-in-out", isTransitioning ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100")}>
+            {campaign.banner_image_url && (
+              <div
+                className="relative w-full overflow-hidden cursor-pointer aspect-video"
+                onClick={() => handleCTAClick(campaign)}
+              >
+                <img
+                  src={campaign.banner_image_url}
+                  alt={campaign.title}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-2 left-3 right-3">
+                  <p className="text-white font-bold text-lg leading-tight">{campaign.title}</p>
+                </div>
               </div>
             )}
-            
-            {campaign.description && (
-              <p className="text-sm text-muted-foreground mb-3">{campaign.description}</p>
-            )}
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                {campaign.venue_logo && (
-                  <VenueLogo logoUrl={campaign.venue_logo} name={campaign.venue_name || ""} size="sm" />
-                )}
-                {campaign.venue_name && (
-                  <span className="text-sm font-medium">{campaign.venue_name}</span>
-                )}
-              </div>
-              
-              {campaign.cta_text && (
-                <Button
-                  size="sm"
-                  onClick={() => handleCTAClick(campaign)}
-                >
-                  {campaign.cta_text}
-                </Button>
+            <div className="p-4">
+              {!campaign.banner_image_url && (
+                <div className="flex items-center gap-2 mb-2">
+                  <Megaphone className="h-4 w-4 text-primary" />
+                  <p className="font-bold">{campaign.title}</p>
+                </div>
               )}
+              
+              {campaign.description && (
+                <p className="text-sm text-muted-foreground mb-3">{campaign.description}</p>
+              )}
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  {campaign.venue_logo && (
+                    <VenueLogo logoUrl={campaign.venue_logo} name={campaign.venue_name || ""} size="sm" />
+                  )}
+                  {campaign.venue_name && (
+                    <span className="text-sm font-medium">{campaign.venue_name}</span>
+                  )}
+                </div>
+                
+                {campaign.cta_text && (
+                  <Button
+                    size="sm"
+                    onClick={() => handleCTAClick(campaign)}
+                  >
+                    {campaign.cta_text}
+                  </Button>
+                )}
+              </div>
             </div>
           </div>
 
@@ -233,10 +247,10 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
                 <button
                   key={i}
                   className={cn(
-                    "h-1.5 rounded-full transition-all",
+                    "h-1.5 rounded-full transition-all duration-300",
                     i === currentIndex ? "w-6 bg-primary" : "w-1.5 bg-muted-foreground/30"
                   )}
-                  onClick={() => { setCurrentIndex(i); pauseAndResume(); }}
+                  onClick={() => { pauseAndResume(); transitionTo(() => i); }}
                 />
               ))}
             </div>
