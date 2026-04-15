@@ -269,13 +269,16 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
 
   return (
     <div
-      className={cn("relative", className)}
+      className={cn("relative group", className)}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5">
+      <Card className="overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 to-accent/5 transition-shadow duration-300 hover:shadow-md">
         <CardContent className="p-0">
-          <div className={cn("transition-opacity duration-500 ease-in-out", isTransitioning ? "opacity-0 scale-[0.98]" : "opacity-100 scale-100")}>
+          <div className={cn(
+            "transition-all duration-700 ease-[cubic-bezier(0.4,0,0.2,1)]",
+            isTransitioning ? "opacity-0 translate-y-2 scale-[0.98]" : "opacity-100 translate-y-0 scale-100"
+          )}>
             {campaign.banner_image_url && (
               <div
                 className="relative w-full overflow-hidden cursor-pointer aspect-video"
@@ -284,7 +287,7 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
                 <img
                   src={campaign.banner_image_url}
                   alt={campaign.title}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 <div className="absolute bottom-2 left-3 right-3">
@@ -327,17 +330,20 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
             </div>
           </div>
 
-          {/* Carousel dots */}
+          {/* Carousel dots with better styling */}
           {campaigns.length > 1 && (
-            <div className="flex items-center justify-center gap-1.5 pb-3">
+            <div className="flex items-center justify-center gap-2 pb-3 px-4">
               {campaigns.map((_, i) => (
                 <button
                   key={i}
                   className={cn(
-                    "h-1.5 rounded-full transition-all duration-300",
-                    i === currentIndex ? "w-6 bg-primary" : "w-1.5 bg-muted-foreground/30"
+                    "h-1.5 rounded-full transition-all duration-500 ease-out",
+                    i === currentIndex 
+                      ? "w-8 bg-primary" 
+                      : "w-1.5 bg-muted-foreground/25 hover:bg-muted-foreground/40"
                   )}
                   onClick={() => { pauseAndResume(); transitionTo(() => i); }}
+                  aria-label={`Go to promo ${i + 1}`}
                 />
               ))}
             </div>
