@@ -235,7 +235,7 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
 
   if (placement === "tracking") {
     return (
-      <div className={cn("relative rounded-lg overflow-hidden bg-gradient-to-r from-primary/10 to-accent/10 border transition-opacity duration-400", isTransitioning ? "opacity-0" : "opacity-100", className)}>
+      <div className={cn("relative rounded-lg overflow-hidden bg-gradient-to-r from-primary/10 to-accent/10 border transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]", isTransitioning ? "opacity-0 translate-y-1" : "opacity-100 translate-y-0", className)}>
         <div className="flex items-center gap-3 p-3">
           <Megaphone className="h-4 w-4 text-primary shrink-0" />
           <div className="flex-1 min-w-0">
