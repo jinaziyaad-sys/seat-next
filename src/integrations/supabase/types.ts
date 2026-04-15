@@ -1882,6 +1882,7 @@ export type Database = {
           cta_text: string | null
           description: string | null
           end_date: string | null
+          estimated_reach: number | null
           id: string
           impressions_count: number
           is_active: boolean
@@ -1893,6 +1894,7 @@ export type Database = {
           start_date: string
           stripe_payment_intent_id: string | null
           submitted_by: string | null
+          targeting_type: string
           title: string
           updated_at: string
           venue_id: string
@@ -1907,6 +1909,7 @@ export type Database = {
           cta_text?: string | null
           description?: string | null
           end_date?: string | null
+          estimated_reach?: number | null
           id?: string
           impressions_count?: number
           is_active?: boolean
@@ -1918,6 +1921,7 @@ export type Database = {
           start_date?: string
           stripe_payment_intent_id?: string | null
           submitted_by?: string | null
+          targeting_type?: string
           title: string
           updated_at?: string
           venue_id: string
@@ -1932,6 +1936,7 @@ export type Database = {
           cta_text?: string | null
           description?: string | null
           end_date?: string | null
+          estimated_reach?: number | null
           id?: string
           impressions_count?: number
           is_active?: boolean
@@ -1943,6 +1948,7 @@ export type Database = {
           start_date?: string
           stripe_payment_intent_id?: string | null
           submitted_by?: string | null
+          targeting_type?: string
           title?: string
           updated_at?: string
           venue_id?: string
@@ -1964,6 +1970,7 @@ export type Database = {
           created_at: string
           id: string
           placement: string
+          targeting_match_type: string | null
           user_id: string | null
         }
         Insert: {
@@ -1972,6 +1979,7 @@ export type Database = {
           created_at?: string
           id?: string
           placement: string
+          targeting_match_type?: string | null
           user_id?: string | null
         }
         Update: {
@@ -1980,6 +1988,7 @@ export type Database = {
           created_at?: string
           id?: string
           placement?: string
+          targeting_match_type?: string | null
           user_id?: string | null
         }
         Relationships: [
@@ -2021,6 +2030,53 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      promo_targeting_rules: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          cuisine_tags: string[] | null
+          id: string
+          location_lat: number | null
+          location_lng: number | null
+          location_radius_km: number | null
+          target_past_visitors: boolean | null
+          time_slots: Json | null
+          updated_at: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          cuisine_tags?: string[] | null
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          location_radius_km?: number | null
+          target_past_visitors?: boolean | null
+          time_slots?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          cuisine_tags?: string[] | null
+          id?: string
+          location_lat?: number | null
+          location_lng?: number | null
+          location_radius_km?: number | null
+          target_past_visitors?: boolean | null
+          time_slots?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "promo_targeting_rules_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: true
+            referencedRelation: "promo_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       referral_codes: {
         Row: {

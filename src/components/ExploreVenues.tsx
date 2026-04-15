@@ -24,6 +24,7 @@ import {
   X,
   Share2
 } from "lucide-react";
+import { Megaphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { PatronBusynessIndicator } from "@/components/PatronBusynessIndicator";
@@ -104,6 +105,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
   const [creatingInquiry, setCreatingInquiry] = useState<string | null>(null);
   const [directSearchResults, setDirectSearchResults] = useState<VenueRecommendation[]>([]);
   const [searchingVenues, setSearchingVenues] = useState(false);
+  const [promotedVenueIds, setPromotedVenueIds] = useState<Set<string>>(new Set());
   const highlightRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll to highlighted venue from promo
@@ -299,11 +301,32 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
         });
       } else {
         setRecommendations(data?.recommendations || []);
+        // Fetch promoted venue IDs for "Promoted" badges
+        fetchPromotedVenues();
       }
     } catch (err) {
       console.error("Error:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPromotedVenues = async () => {
+    try {
+      const now = new Date().toISOString();
+      const { data } = await supabase
+        .from("promo_campaigns")
+        .select("venue_id")
+        .eq("is_active", true)
+        .contains("placements", ["explore"])
+        .lte("start_date", now)
+        .or(`end_date.is.null,end_date.gt.${now}`)
+        .limit(20);
+      if (data) {
+        setPromotedVenueIds(new Set(data.map(c => c.venue_id)));
+      }
+    } catch (err) {
+      console.error("Failed to fetch promoted venues:", err);
     }
   };
 
@@ -464,10 +487,18 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
     return true;
   });
 
-  // Merge direct search results with filtered recommendations
-  const allDisplayedVenues = searchQuery.trim().length >= 2
+  // Merge direct search results with filtered recommendations, boost promoted venues
+  const mergedVenues = searchQuery.trim().length >= 2
     ? [...filteredRecommendations, ...directSearchResults]
     : filteredRecommendations;
+  
+  // Sort: promoted venues first, then by match score
+  const allDisplayedVenues = [...mergedVenues].sort((a, b) => {
+    const aPromoted = promotedVenueIds.has(a.venue_id) ? 1 : 0;
+    const bPromoted = promotedVenueIds.has(b.venue_id) ? 1 : 0;
+    if (aPromoted !== bPromoted) return bPromoted - aPromoted;
+    return b.match_score - a.match_score;
+  });
 
   const getBusynessColor = (busyness: string) => {
     switch (busyness) {
@@ -759,6 +790,11 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
               onClick={() => onSelectVenue?.(venue.venue_id)}
             >
               <CardContent className="p-4">
+                {promotedVenueIds.has(venue.venue_id) && (
+                  <Badge variant="outline" className="absolute top-2 right-2 text-[10px] bg-background/80 backdrop-blur-sm z-10">
+                    <Megaphone className="h-3 w-3 mr-1" />Promoted
+                  </Badge>
+                )}
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3 flex-1">
                     <VenueLogo logoUrl={venue.logo_url} name={venue.name} size="lg" />

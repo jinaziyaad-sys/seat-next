@@ -65,36 +65,120 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
       .contains("placements", [placement])
       .lte("start_date", now)
       .or(`end_date.is.null,end_date.gt.${now}`)
-      .limit(10);
+      .limit(20);
 
-    if (data?.length) {
-      const shuffled = data.sort(() => Math.random() - 0.5);
+    if (!data?.length) return;
 
-      const venueIds = [...new Set(shuffled.map(c => c.venue_id))];
-      const { data: venues } = await supabase
-        .from("venues")
-        .select("id, name, logo_url")
-        .in("id", venueIds);
-
-      const venueMap = new Map(venues?.map(v => [v.id, v]) || []);
-      setCampaigns(shuffled.map(c => ({
-        ...c,
-        venue_name: venueMap.get(c.venue_id)?.name,
-        venue_logo: venueMap.get(c.venue_id)?.logo_url,
-      })));
-
-      // Track impressions and increment campaign counter
-      const { data: { user } } = await supabase.auth.getUser();
-      for (const campaign of shuffled) {
-        await supabase.from("promo_impressions").insert({
-          campaign_id: campaign.id,
-          user_id: user?.id || null,
-          placement,
-        });
-        // Increment the campaign's impressions_count for merchant visibility
-        await (supabase.rpc as any)("increment_promo_impressions", { campaign_uuid: campaign.id });
+    // Get targeting rules for targeted campaigns
+    const targetedIds = data.filter(c => c.targeting_type === 'targeted').map(c => c.id);
+    let targetingMap = new Map<string, any>();
+    if (targetedIds.length > 0) {
+      const { data: rules } = await supabase
+        .from("promo_targeting_rules")
+        .select("*")
+        .in("campaign_id", targetedIds);
+      if (rules) {
+        targetingMap = new Map(rules.map(r => [r.campaign_id, r]));
       }
     }
+
+    // Get current user info for filtering
+    const { data: { user } } = await supabase.auth.getUser();
+    let patronCuisines: string[] = [];
+    let patronVisitedVenues = new Set<string>();
+
+    if (user) {
+      // Fetch patron preferences and history in parallel
+      const [{ data: prefs }, { data: orders }, { data: waitlist }] = await Promise.all([
+        supabase.from("patron_dining_preferences").select("cuisine_preferences").eq("user_id", user.id).single(),
+        supabase.from("orders").select("venue_id").eq("user_id", user.id).limit(200),
+        supabase.from("waitlist_entries").select("venue_id").eq("user_id", user.id).limit(200),
+      ]);
+      patronCuisines = (prefs?.cuisine_preferences || []).map((c: string) => c.toLowerCase());
+      for (const o of orders || []) patronVisitedVenues.add(o.venue_id);
+      for (const w of waitlist || []) patronVisitedVenues.add(w.venue_id);
+    }
+
+    // Filter campaigns by targeting rules
+    const now2 = new Date();
+    const currentHour = now2.getHours();
+    const currentDay = now2.getDay();
+
+    const matched = data.filter(campaign => {
+      if (campaign.targeting_type !== 'targeted') return true; // broad campaigns always show
+
+      const rules = targetingMap.get(campaign.id);
+      if (!rules) return true; // no rules = show
+
+      let matchType: string | null = null;
+
+      // Time-based filter
+      if (rules.time_slots && Array.isArray(rules.time_slots) && rules.time_slots.length > 0) {
+        const timeMatch = rules.time_slots.some((slot: any) => {
+          const dayMatch = !slot.days || slot.days.includes(currentDay);
+          const hourMatch = currentHour >= (slot.start_hour || 0) && currentHour <= (slot.end_hour || 23);
+          return dayMatch && hourMatch;
+        });
+        if (!timeMatch) return false;
+        matchType = 'time';
+      }
+
+      // Past visitors filter
+      if (rules.target_past_visitors && user) {
+        if (!patronVisitedVenues.has(campaign.venue_id)) return false;
+        matchType = 'past_visitor';
+      }
+
+      // Cuisine filter
+      if (rules.cuisine_tags && rules.cuisine_tags.length > 0 && user) {
+        const cuisineMatch = rules.cuisine_tags.some((tag: string) => patronCuisines.includes(tag.toLowerCase()));
+        if (!cuisineMatch) return false;
+        matchType = 'cuisine';
+      }
+
+      // Location filter is harder client-side (requires patron location), so we allow it through
+      // The server-side estimation already filtered by location
+
+      return true;
+    });
+
+    if (!matched.length) return;
+
+    const shuffled = matched.sort(() => Math.random() - 0.5).slice(0, 10);
+
+    const venueIds = [...new Set(shuffled.map(c => c.venue_id))];
+    const { data: venues } = await supabase
+      .from("venues")
+      .select("id, name, logo_url")
+      .in("id", venueIds);
+
+    const venueMap = new Map(venues?.map(v => [v.id, v]) || []);
+    setCampaigns(shuffled.map(c => ({
+      ...c,
+      venue_name: venueMap.get(c.venue_id)?.name,
+      venue_logo: venueMap.get(c.venue_id)?.logo_url,
+    })));
+
+    // Track impressions
+    for (const campaign of shuffled) {
+      const matchType = campaign.targeting_type === 'targeted' ? detectMatchType(targetingMap.get(campaign.id), patronCuisines, patronVisitedVenues, campaign.venue_id) : null;
+      await supabase.from("promo_impressions").insert({
+        campaign_id: campaign.id,
+        user_id: user?.id || null,
+        placement,
+        targeting_match_type: matchType,
+      });
+      await (supabase.rpc as any)("increment_promo_impressions", { campaign_uuid: campaign.id });
+    }
+  };
+
+  const detectMatchType = (rules: any, cuisines: string[], visited: Set<string>, venueId: string): string | null => {
+    if (!rules) return null;
+    if (rules.target_past_visitors && visited.has(venueId)) return 'past_visitor';
+    if (rules.cuisine_tags?.length && rules.cuisine_tags.some((t: string) => cuisines.includes(t.toLowerCase()))) return 'cuisine';
+    if (rules.location_radius_km) return 'location';
+    if (rules.time_slots?.length) return 'time';
+    return null;
   };
 
   const trackClick = async (campaignId: string) => {
