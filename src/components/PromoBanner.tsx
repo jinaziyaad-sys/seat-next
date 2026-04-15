@@ -48,22 +48,28 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
   }, [campaigns.length, paused]);
 
   const fetchCampaigns = async () => {
+    const now = new Date().toISOString();
     const { data } = await supabase
       .from("promo_campaigns")
       .select("*")
       .eq("is_active", true)
       .contains("placements", [placement])
-      .lte("start_date", new Date().toISOString());
+      .lte("start_date", now)
+      .or(`end_date.is.null,end_date.gt.${now}`)
+      .limit(10);
 
     if (data?.length) {
-      const venueIds = [...new Set(data.map(c => c.venue_id))];
+      // Shuffle for fair rotation across patrons
+      const shuffled = data.sort(() => Math.random() - 0.5);
+
+      const venueIds = [...new Set(shuffled.map(c => c.venue_id))];
       const { data: venues } = await supabase
         .from("venues")
         .select("id, name, logo_url")
         .in("id", venueIds);
 
       const venueMap = new Map(venues?.map(v => [v.id, v]) || []);
-      setCampaigns(data.map(c => ({
+      setCampaigns(shuffled.map(c => ({
         ...c,
         venue_name: venueMap.get(c.venue_id)?.name,
         venue_logo: venueMap.get(c.venue_id)?.logo_url,
@@ -71,7 +77,7 @@ export const PromoBanner = ({ placement, className, onDismiss, onNavigateToVenue
 
       // Track impressions
       const { data: { user } } = await supabase.auth.getUser();
-      data.forEach(campaign => {
+      shuffled.forEach(campaign => {
         supabase.from("promo_impressions").insert({
           campaign_id: campaign.id,
           user_id: user?.id || null,
