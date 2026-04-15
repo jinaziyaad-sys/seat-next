@@ -24,6 +24,7 @@ import {
   X,
   Share2
 } from "lucide-react";
+import { Megaphone } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { PatronBusynessIndicator } from "@/components/PatronBusynessIndicator";
