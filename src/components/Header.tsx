@@ -5,19 +5,20 @@ import logo from "@/assets/logo.png";
 export const Header = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const isHome = location.pathname === "/";
+  const isLanding = location.pathname === "/";
+  const isApp = location.pathname === "/app";
   
-  // Don't show header on merchant or dev dashboards (they have their own headers)
+  // Don't show header on landing page (has its own), merchant or dev dashboards
   const isMerchantDashboard = location.pathname === "/merchant/dashboard";
   const isDevDashboard = location.pathname === "/dev/dashboard";
   
-  if (isHome || isMerchantDashboard || isDevDashboard) return null;
+  if (isLanding || isApp || isMerchantDashboard || isDevDashboard) return null;
 
   // Determine which home to navigate to based on current route
   const getHomeRoute = () => {
     if (location.pathname.startsWith("/merchant")) return "/merchant/dashboard";
     if (location.pathname.startsWith("/dev")) return "/dev/dashboard";
-    return "/"; // Patron home
+    return "/app"; // Patron home
   };
 
   return (

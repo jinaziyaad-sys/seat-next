@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { Header } from "@/components/Header";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
+import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
@@ -14,7 +15,6 @@ import MerchantDashboard from "./pages/MerchantDashboard";
 import MerchantSignup from "./pages/MerchantSignup";
 import DevAuth from "./pages/DevAuth";
 import DevDashboard from "./pages/DevDashboard";
-
 
 import Privacy from "./pages/Privacy";
 import MerchantBilling from "./pages/MerchantBilling";
@@ -31,8 +31,11 @@ const App = () => (
         <BrowserRouter>
           <Header />
           <Routes>
+            {/* Public Marketing Landing Page */}
+            <Route path="/" element={<Landing />} />
+            
             {/* Patron App Routes */}
-            <Route path="/" element={<Index />} />
+            <Route path="/app" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
             
             <Route path="/privacy" element={<Privacy />} />
@@ -46,7 +49,6 @@ const App = () => (
             {/* Developer App Routes */}
             <Route path="/dev/auth" element={<DevAuth />} />
             <Route path="/dev/dashboard" element={<DevDashboard />} />
-            
             
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />

@@ -69,7 +69,7 @@ export function RoleRouter({ userId, userName }: RoleRouterProps) {
         break;
       case "patron":
       default:
-        navigate("/", { replace: true });
+        navigate("/app", { replace: true });
         break;
     }
   };
