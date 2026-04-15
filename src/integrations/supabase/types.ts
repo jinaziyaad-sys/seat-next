@@ -2839,6 +2839,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_promo_clicks: {
+        Args: { campaign_uuid: string }
+        Returns: undefined
+      }
+      increment_promo_impressions: {
+        Args: { campaign_uuid: string }
+        Returns: undefined
+      }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       log_audit_event: {
         Args: {
