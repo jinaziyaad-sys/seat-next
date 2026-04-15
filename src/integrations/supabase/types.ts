@@ -1834,6 +1834,7 @@ export type Database = {
           fcm_token: string | null
           full_name: string
           id: string
+          patron_code: string | null
           phone: string | null
           phone_verified: boolean | null
           preferred_language: string
@@ -1847,6 +1848,7 @@ export type Database = {
           fcm_token?: string | null
           full_name: string
           id: string
+          patron_code?: string | null
           phone?: string | null
           phone_verified?: boolean | null
           preferred_language?: string
@@ -1860,6 +1862,7 @@ export type Database = {
           fcm_token?: string | null
           full_name?: string
           id?: string
+          patron_code?: string | null
           phone?: string | null
           phone_verified?: boolean | null
           preferred_language?: string
@@ -2801,6 +2804,7 @@ export type Database = {
       }
       cancel_expired_ready_entries: { Args: never; Returns: undefined }
       cleanup_expired_otps: { Args: never; Returns: undefined }
+      generate_patron_code: { Args: never; Returns: string }
       get_occupied_tables: {
         Args: {
           p_buffer_minutes?: number
