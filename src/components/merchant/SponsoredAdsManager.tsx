@@ -68,6 +68,8 @@ export function SponsoredAdsManager({ venueId }: Props) {
     placements: ['home'] as string[],
     start_date: null as Date | null,
     end_date: null as Date | null,
+    cta_text: '',
+    cta_link: '',
   });
 
   const fetchCampaigns = async () => {
@@ -93,7 +95,7 @@ export function SponsoredAdsManager({ venueId }: Props) {
   useEffect(() => { fetchCampaigns(); }, [venueId]);
 
   const resetForm = () => {
-    setForm({ title: '', description: '', banner_image_url: '', placements: ['home'], start_date: null, end_date: null });
+    setForm({ title: '', description: '', banner_image_url: '', placements: ['home'], start_date: null, end_date: null, cta_text: '', cta_link: '' });
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -189,6 +191,8 @@ export function SponsoredAdsManager({ venueId }: Props) {
         title: form.title,
         description: form.description || null,
         banner_image_url: form.banner_image_url || null,
+        cta_text: form.cta_text || null,
+        cta_link: form.cta_link || null,
         placements: form.placements,
         start_date: form.start_date.toISOString(),
         end_date: form.end_date?.toISOString() || null,
@@ -277,6 +281,17 @@ export function SponsoredAdsManager({ venueId }: Props) {
                   </div>
                 )}
                 <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileSelect} />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>CTA Button Text</Label>
+                  <Input value={form.cta_text} onChange={e => setForm(p => ({ ...p, cta_text: e.target.value }))} placeholder="e.g. Visit Us" />
+                </div>
+                <div className="space-y-2">
+                  <Label>CTA Link (optional)</Label>
+                  <Input value={form.cta_link} onChange={e => setForm(p => ({ ...p, cta_link: e.target.value }))} placeholder="https://..." />
+                </div>
               </div>
 
               <div className="space-y-2">
