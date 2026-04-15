@@ -1,76 +1,52 @@
 
 
-## What You Need
+# Promo System Fix Plan
 
-A public-facing **marketing website** (like uber.com) — with About Us, How It Works, Contact, Social Media links, download badges — that is completely separate from the **in-app experience** patrons/merchants use after logging in.
+## Issues Found
 
-## How to Keep Them Separate for Mobile Apps
+### 1. Images not showing
+The `promo-banners` storage bucket only allows **super admins** to upload. When a merchant uploads a banner via SponsoredAdsManager, the upload silently fails because there's no storage policy for venue staff. The image URL gets set to a non-existent file path.
 
-The key insight: your React app currently serves everything from one codebase. When you package for Android/iOS (via Capacitor), the mobile app should launch directly into the **app experience** (the current `Index.tsx` patron flow), never showing the marketing website. Here's how:
+### 2. Promos not going live after payment
+Two problems:
+- **CHECK constraint**: The `payment_status` column has `CHECK (payment_status IN ('paid', 'pending', 'comp'))` but the webhook tries to set it to `'refunded'` in the refund flow (code references `refunded` status but the DB rejects it). More critically, the webhook correctly sets `payment_status = 'paid'` and then checks `review_status = 'approved'` to set `is_active = true` — this logic looks correct in the stripe-webhook. The likely issue is that the **webhook is not being called** because `STRIPE_WEBHOOK_SECRET` may not be configured, or the webhook endpoint URL isn't registered in Stripe.
+- **RLS blocking the update**: The webhook uses `SUPABASE_SERVICE_ROLE_KEY` which bypasses RLS, so this should work. But the `payment_status` CHECK constraint doesn't include `'refunded'` — this would cause the refund edge function to fail silently.
 
-```text
-Web visitors (browser):
-  yourdomain.com  →  Marketing Landing Page (new)
-  yourdomain.com/app  →  Patron App (current Index.tsx)
-  yourdomain.com/merchant/...  →  Merchant flows
-
-Mobile app (Capacitor):
-  App opens  →  /app  (skips landing page entirely)
-```
-
-**Two approaches exist:**
-
-1. **Same codebase, different routes** (recommended for now) — Add a `/landing` or make `/` the marketing page, move the patron app to `/app`. Configure Capacitor's start URL to `/app`. Simple, one deploy.
-
-2. **Separate codebase/subdomain** — Host marketing site on `yourdomain.com` and app on `app.yourdomain.com`. More complex, better long-term separation.
-
-We'll go with **approach 1** since it keeps everything in one project.
+### 3. How promos work / scalability concerns
+Currently promos are **not location-based** — they show to ALL patrons based on placement (home/explore/tracking). The carousel rotates every 5 seconds through all active campaigns for that placement. With hundreds of promos, every patron loads ALL of them. No randomization, no geo-filtering, no fair rotation.
 
 ## Plan
 
-### 1. Create the Landing/Marketing Page
+### Step 1: Fix storage — allow merchants to upload banners
+Add a migration with storage policies allowing venue staff (not just super admins) to upload to `promo-banners`.
 
-**New file: `src/pages/Landing.tsx`**
+### Step 2: Fix payment_status CHECK constraint
+Add `'refunded'` to the allowed values so the refund flow doesn't break. This also ensures webhooks don't fail on edge cases.
 
-A polished, scrollable marketing page with these sections:
-- **Hero** — App name, tagline ("Skip the wait. Know when you're ready."), CTA buttons (Sign Up / Log In), app store badges (placeholder links)
-- **How It Works** — 3-step visual explainer (Join waitlist → Get notified → Enjoy)
-- **About Us** — Mission statement, team/company blurb
-- **Features** — Key patron and merchant features in a grid
-- **Contact Us** — Email, social media links (Instagram, Twitter/X, Facebook, TikTok)
-- **Footer** — Privacy policy link, social icons, copyright
+### Step 3: Fix promo activation reliability
+- Add a `cta_text` and `cta_link` column check — these exist in the schema but merchants can't set them in SponsoredAdsManager. Add CTA fields to the campaign creation form.
+- Ensure the webhook endpoint is documented/configured correctly (user action — need to verify Stripe webhook URL is set).
 
-Style: Full-width sections, modern design consistent with the app's pastel/glass aesthetic.
+### Step 4: Make promos scalable and fair for hundreds of campaigns
+Modify `PromoBanner.tsx` to:
+- **Limit query to 10 random campaigns** per placement instead of loading all — use `.limit(10)` and randomize on the server or shuffle client-side
+- **Filter by end_date** — currently only checks `start_date <= now` but doesn't filter expired campaigns (the RLS policy does `end_date > now()` but the client query doesn't)
+- **Add geo-awareness** (optional column `target_radius_km` and `target_lat/lng` on `promo_campaigns`) — for future use, not blocking
 
-### 2. Move Patron App to `/app` Route
-
-**Edit: `src/App.tsx`**
-- `/` → `<Landing />` (new marketing page)
-- `/app` → `<Index />` (current patron experience)
-- All other routes stay the same
-
-### 3. Update Navigation
-
-**Edit: `src/components/Header.tsx`**
-- On the landing page, show a marketing header with Login/Sign Up buttons
-- The existing app header continues working for `/app`, `/merchant/*`, `/dev/*`
-
-**Edit: `src/pages/Auth.tsx`** (and any post-login redirects)
-- After login, redirect patrons to `/app` instead of `/`
-
-### 4. Mobile App Readiness
-
-When you later set up Capacitor for native packaging:
-- Set `server.url` to point to `/app` (or configure `capacitor.config.ts` with `"server": { "url": "https://yourdomain.com/app" }`)
-- Mobile users never see the landing page — they go straight into the app
-- The landing page lives only on the web for new visitor acquisition
+### Step 5: Add fair rotation logic
+- Shuffle the fetched campaigns randomly so different patrons see different promos first
+- Keep the 5-second auto-rotate carousel for the randomized subset
+- This ensures with 100+ promos, each patron sees a fair random sample
 
 ### Files Changed
 | File | Change |
 |------|--------|
-| `src/pages/Landing.tsx` | New marketing landing page |
-| `src/App.tsx` | Route `/` → Landing, `/app` → Index |
-| `src/components/Header.tsx` | Marketing header for landing page |
-| `src/pages/Auth.tsx` | Post-login redirect to `/app` |
-| `src/components/TabNavigation.tsx` | Update any home navigation to `/app` |
+| New migration | Add storage policies for venue staff uploads to `promo-banners`; add `'refunded'` to payment_status CHECK |
+| `src/components/PromoBanner.tsx` | Add end_date filter, limit to 10, shuffle results randomly |
+| `src/components/merchant/SponsoredAdsManager.tsx` | Add CTA text/link fields to campaign creation form |
+| `supabase/functions/stripe-webhook/index.ts` | No change needed — logic is correct |
+
+### User Action Required
+- Verify the Stripe webhook endpoint URL is configured in the Stripe dashboard pointing to `https://cuoqjgahpfymxqrdlzlf.supabase.co/functions/v1/stripe-webhook`
+- Verify `STRIPE_WEBHOOK_SECRET` is set in Supabase Edge Function secrets
 
