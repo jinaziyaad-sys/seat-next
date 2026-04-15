@@ -311,7 +311,7 @@ export function SponsoredAdsManager({ venueId }: Props) {
 
       // Save targeting rules if enabled
       if (targeting.enabled && campaign) {
-        const targetingData: Record<string, any> = {
+        const targetingData: any = {
           campaign_id: campaign.id,
         };
         if (targeting.location_enabled && venueData?.latitude && venueData?.longitude) {
@@ -326,11 +326,11 @@ export function SponsoredAdsManager({ venueId }: Props) {
           targetingData.target_past_visitors = true;
         }
         if (targeting.time_enabled) {
-          targetingData.time_slots = [{
+          targetingData.time_slots = JSON.stringify([{
             days: targeting.time_days,
             start_hour: targeting.time_start_hour,
             end_hour: targeting.time_end_hour,
-          }];
+          }]);
         }
         await supabase.from('promo_targeting_rules').insert(targetingData);
       }
