@@ -1155,6 +1155,7 @@ export const KitchenBoard = ({ venueId }: { venueId: string }) => {
         onOpenChange={setLinkPatronDialogOpen}
         orderId={linkPatronOrderId}
         orderNumber={linkPatronOrderNumber}
+        venueId={venueId}
         onLinked={fetchOrders}
       />
     </div>

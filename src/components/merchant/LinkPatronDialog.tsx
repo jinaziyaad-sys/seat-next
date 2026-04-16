@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QrCode, Search, UserCheck, Loader2, AlertCircle } from "lucide-react";
+import { QrCode, Search, UserCheck, Loader2, AlertCircle, Plus, Link } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -12,6 +12,7 @@ interface LinkPatronDialogProps {
   onOpenChange: (open: boolean) => void;
   orderId: string;
   orderNumber: string;
+  venueId: string;
   onLinked: () => void;
 }
 
@@ -20,6 +21,7 @@ export const LinkPatronDialog = ({
   onOpenChange,
   orderId,
   orderNumber,
+  venueId,
   onLinked,
 }: LinkPatronDialogProps) => {
   const [patronCode, setPatronCode] = useState("");
@@ -27,7 +29,13 @@ export const LinkPatronDialog = ({
   const [foundPatron, setFoundPatron] = useState<{ id: string; full_name: string; patron_code: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [linking, setLinking] = useState(false);
+  const [mode, setMode] = useState<"idle" | "create" | "link-existing">("idle");
+  const [newOrderNumber, setNewOrderNumber] = useState("");
+  const [unlinkedOrders, setUnlinkedOrders] = useState<{ id: string; order_number: string; created_at: string }[]>([]);
+  const [loadingUnlinked, setLoadingUnlinked] = useState(false);
   const { toast } = useToast();
+
+  const hasOrder = !!orderId;
 
   const resetState = () => {
     setPatronCode("");
@@ -35,6 +43,10 @@ export const LinkPatronDialog = ({
     setError(null);
     setSearching(false);
     setLinking(false);
+    setMode("idle");
+    setNewOrderNumber("");
+    setUnlinkedOrders([]);
+    setLoadingUnlinked(false);
   };
 
   const searchPatron = async () => {
@@ -44,8 +56,8 @@ export const LinkPatronDialog = ({
     setSearching(true);
     setError(null);
     setFoundPatron(null);
+    setMode("idle");
 
-    // Try parsing as QR JSON first
     let searchCode = code;
     try {
       const parsed = JSON.parse(code);
@@ -77,7 +89,7 @@ export const LinkPatronDialog = ({
     setFoundPatron(data as any);
   };
 
-  const linkPatron = async () => {
+  const linkPatronToOrder = async (targetOrderId: string, targetOrderNumber: string) => {
     if (!foundPatron) return;
 
     setLinking(true);
@@ -88,7 +100,7 @@ export const LinkPatronDialog = ({
         user_id: foundPatron.id,
         customer_name: foundPatron.full_name,
       })
-      .eq("id", orderId);
+      .eq("id", targetOrderId);
 
     setLinking(false);
 
@@ -103,12 +115,67 @@ export const LinkPatronDialog = ({
 
     toast({
       title: "Patron Linked",
-      description: `Order #${orderNumber} linked to ${foundPatron.full_name}`,
+      description: `Order #${targetOrderNumber} linked to ${foundPatron.full_name}`,
     });
 
     onLinked();
     onOpenChange(false);
     resetState();
+  };
+
+  const createOrderForPatron = async () => {
+    if (!foundPatron || !newOrderNumber.trim()) return;
+
+    setLinking(true);
+
+    const { error: insertError } = await supabase.from("orders").insert({
+      venue_id: venueId,
+      order_number: newOrderNumber.trim(),
+      user_id: foundPatron.id,
+      customer_name: foundPatron.full_name,
+      status: "placed" as const,
+      items: [],
+    });
+
+    setLinking(false);
+
+    if (insertError) {
+      toast({
+        title: "Error",
+        description: "Could not create order",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Order Created",
+      description: `Order #${newOrderNumber.trim()} created for ${foundPatron.full_name}`,
+    });
+
+    onLinked();
+    onOpenChange(false);
+    resetState();
+  };
+
+  const fetchUnlinkedOrders = async () => {
+    setLoadingUnlinked(true);
+    const { data } = await supabase
+      .from("orders")
+      .select("id, order_number, created_at")
+      .eq("venue_id", venueId)
+      .is("user_id", null)
+      .in("status", ["placed", "in_prep"])
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    setUnlinkedOrders(data || []);
+    setLoadingUnlinked(false);
+  };
+
+  const handleLinkExisting = () => {
+    setMode("link-existing");
+    fetchUnlinkedOrders();
   };
 
   return (
@@ -123,7 +190,7 @@ export const LinkPatronDialog = ({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserCheck className="h-5 w-5" />
-            Link Patron to Order #{orderNumber}
+            {hasOrder ? `Link Patron to Order #${orderNumber}` : "Scan Patron"}
           </DialogTitle>
         </DialogHeader>
 
@@ -138,6 +205,7 @@ export const LinkPatronDialog = ({
                   setPatronCode(e.target.value.toUpperCase());
                   setError(null);
                   setFoundPatron(null);
+                  setMode("idle");
                 }}
                 onKeyDown={(e) => e.key === "Enter" && searchPatron()}
                 className="font-mono tracking-wider"
@@ -172,19 +240,106 @@ export const LinkPatronDialog = ({
                 </div>
               </div>
 
-              <Button onClick={linkPatron} className="w-full" disabled={linking}>
-                {linking ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Linking…
-                  </>
-                ) : (
-                  <>
-                    <UserCheck className="h-4 w-4 mr-2" />
-                    Link to Order #{orderNumber}
-                  </>
-                )}
-              </Button>
+              {/* Mode A: Link to specific order */}
+              {hasOrder && (
+                <Button onClick={() => linkPatronToOrder(orderId, orderNumber)} className="w-full" disabled={linking}>
+                  {linking ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Linking…
+                    </>
+                  ) : (
+                    <>
+                      <UserCheck className="h-4 w-4 mr-2" />
+                      Link to Order #{orderNumber}
+                    </>
+                  )}
+                </Button>
+              )}
+
+              {/* Mode B: No order pre-selected — show options */}
+              {!hasOrder && mode === "idle" && (
+                <div className="grid grid-cols-2 gap-2">
+                  <Button onClick={() => setMode("create")} variant="default" className="w-full">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create Order
+                  </Button>
+                  <Button onClick={handleLinkExisting} variant="outline" className="w-full">
+                    <Link className="h-4 w-4 mr-2" />
+                    Link Existing
+                  </Button>
+                </div>
+              )}
+
+              {/* Create order form */}
+              {!hasOrder && mode === "create" && (
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <Label>Order Number</Label>
+                    <Input
+                      placeholder="e.g. 042"
+                      value={newOrderNumber}
+                      onChange={(e) => setNewOrderNumber(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && newOrderNumber.trim() && createOrderForPatron()}
+                    />
+                  </div>
+                  <Button
+                    onClick={createOrderForPatron}
+                    className="w-full"
+                    disabled={linking || !newOrderNumber.trim()}
+                  >
+                    {linking ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Creating…
+                      </>
+                    ) : (
+                      <>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Create Order for {foundPatron.full_name}
+                      </>
+                    )}
+                  </Button>
+                  <Button variant="ghost" size="sm" className="w-full" onClick={() => setMode("idle")}>
+                    Back
+                  </Button>
+                </div>
+              )}
+
+              {/* Link to existing unlinked order */}
+              {!hasOrder && mode === "link-existing" && (
+                <div className="space-y-3">
+                  {loadingUnlinked ? (
+                    <div className="flex justify-center py-4">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : unlinkedOrders.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No unlinked orders found
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {unlinkedOrders.map((order) => (
+                        <Button
+                          key={order.id}
+                          variant="outline"
+                          className="w-full justify-between"
+                          disabled={linking}
+                          onClick={() => linkPatronToOrder(order.id, order.order_number)}
+                        >
+                          <span>Order #{order.order_number}</span>
+                          <span className="text-xs text-muted-foreground">
+                            {new Date(order.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </span>
+                        </Button>
+                      ))}
+                    </div>
+                  )}
+                  <Button variant="ghost" size="sm" className="w-full" onClick={() => setMode("idle")}>
+                    Back
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>
