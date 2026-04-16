@@ -647,7 +647,7 @@ const Index = () => {
         <AnimatePresence mode="wait">
           {tabContent()}
         </AnimatePresence>
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} badges={navBadges} />
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} badges={navBadges} userId={user?.id} />
       </>
     );
   }
@@ -1074,7 +1074,7 @@ const Index = () => {
           venueName={cardMessengerContext.venueName}
         />
       )}
-      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} badges={navBadges} />
+      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} badges={navBadges} userId={user?.id} />
     </main>
   );
 };
