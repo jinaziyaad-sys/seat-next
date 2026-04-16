@@ -34,21 +34,21 @@ export const SignupEmail = ({
       <Container style={container}>
         <Heading style={h1}>Welcome to ReadyUp! 🎉</Heading>
         <Text style={text}>
-          Hey there! Thanks for joining{' '}
+          Thanks for joining{' '}
           <Link href={siteUrl} style={link}>
             <strong>{siteName}</strong>
           </Link>
-          .
+          ! We're stoked to have you.
         </Text>
         <Text style={text}>
-          Please confirm your email (
+          Please confirm your email address (
           <Link href={`mailto:${recipient}`} style={link}>
             {recipient}
           </Link>
-          ) to get started:
+          ) by tapping the button below:
         </Text>
         <Button style={button} href={confirmationUrl}>
-          Confirm My Email
+          Verify Email
         </Button>
         <Text style={footer}>
           If you didn't create an account, you can safely ignore this email.

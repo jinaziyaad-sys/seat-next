@@ -26,7 +26,8 @@ export const ReauthenticationEmail = ({ token }: ReauthenticationEmailProps) => 
         <Text style={text}>Use the code below to verify it's you:</Text>
         <Text style={codeStyle}>{token}</Text>
         <Text style={footer}>
-          This code expires shortly. Didn't request this? You can safely ignore it.
+          This code will expire shortly. If you didn't request this, you can
+          safely ignore this email.
         </Text>
       </Container>
     </Body>
