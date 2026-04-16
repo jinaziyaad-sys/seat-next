@@ -12,13 +12,13 @@ export const Header = () => {
   const isMerchantDashboard = location.pathname === "/merchant/dashboard";
   const isDevDashboard = location.pathname === "/dev/dashboard";
   
-  if (isLanding || isApp || isMerchantDashboard || isDevDashboard) return null;
+  if (isLanding || isMerchantDashboard || isDevDashboard) return null;
 
   // Determine which home to navigate to based on current route
   const getHomeRoute = () => {
     if (location.pathname.startsWith("/merchant")) return "/merchant/dashboard";
     if (location.pathname.startsWith("/dev")) return "/dev/dashboard";
-    return "/app"; // Patron home
+    return "/"; // Back to landing
   };
 
   return (
