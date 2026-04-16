@@ -76,6 +76,9 @@ export default function Landing() {
           <FloatingScene />
         </Suspense>
 
+        {/* Scroll-driven rotating fork */}
+        <ScrollFork />
+
         {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-transparent to-background pointer-events-none" />
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent pointer-events-none" />
