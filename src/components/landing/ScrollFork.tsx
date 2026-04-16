@@ -1,31 +1,33 @@
 import { motion, useScroll, useTransform } from "framer-motion";
-import { useRef } from "react";
-import goldenFork from "@/assets/golden-fork.png";
+import silverFork from "@/assets/silver-fork.png";
 
 export const ScrollFork = () => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start start", "end start"],
-  });
+  // Track scroll across the ENTIRE page
+  const { scrollYProgress } = useScroll();
 
-  // Replicate the Gucci key motion: rotation from ~-15° to ~195° as you scroll
-  const rotate = useTransform(scrollYProgress, [0, 1], [-15, 195]);
-  // Slight scale pulse
-  const scale = useTransform(scrollYProgress, [0, 0.5, 1], [0.9, 1.05, 0.95]);
-  // Subtle Y movement
-  const y = useTransform(scrollYProgress, [0, 1], [0, 60]);
+  // Gucci key motion: continuous rotation across the full page scroll
+  const rotate = useTransform(scrollYProgress, [0, 1], [-15, 360]);
+  // Scale breathes in and out as you scroll
+  const scale = useTransform(scrollYProgress, [0, 0.2, 0.5, 0.8, 1], [0.85, 1.0, 1.1, 1.0, 0.9]);
+  // 3D perspective tilt for depth
+  const rotateY = useTransform(scrollYProgress, [0, 0.5, 1], [0, 15, -10]);
+  const rotateX = useTransform(scrollYProgress, [0, 0.5, 1], [5, -5, 10]);
 
   return (
-    <div ref={containerRef} className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+    <div className="fixed inset-0 flex items-center justify-center pointer-events-none z-10" style={{ perspective: "1200px" }}>
       <motion.div
-        style={{ rotate, scale, y }}
+        style={{
+          rotate,
+          scale,
+          rotateY,
+          rotateX,
+        }}
         className="w-[280px] h-[520px] sm:w-[320px] sm:h-[600px] md:w-[380px] md:h-[700px] will-change-transform"
       >
         <img
-          src={goldenFork}
-          alt="Golden fork"
-          className="w-full h-full object-contain drop-shadow-[0_20px_60px_rgba(201,168,76,0.35)]"
+          src={silverFork}
+          alt="Silver fork"
+          className="w-full h-full object-contain drop-shadow-[0_20px_60px_rgba(120,120,130,0.4)]"
           width={512}
           height={1024}
         />
