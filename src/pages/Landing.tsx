@@ -11,6 +11,7 @@ import {
 import logo from "@/assets/logo.png";
 import { FloatingScene } from "@/components/landing/FloatingScene";
 import { AnimatedText, HighlightText, ScrollReveal, CountUp } from "@/components/landing/AnimatedText";
+import { ScrollFork } from "@/components/landing/ScrollFork";
 import { ClientLogos } from "@/components/landing/ClientLogos";
 
 export default function Landing() {
