@@ -21,7 +21,7 @@ export const ScrollFork = ({ className }: { className?: string }) => {
 
   return (
     <section ref={containerRef} className={`relative ${className}`}>
-      <div className="h-[70vh] md:h-[80vh] flex items-center justify-center overflow-hidden">
+      <div className="h-[40vh] md:h-[50vh] flex items-center justify-center overflow-hidden">
         {/* Subtle radial glow behind the fork */}
         <motion.div
           className="absolute w-[300px] h-[300px] md:w-[500px] md:h-[500px] rounded-full"
