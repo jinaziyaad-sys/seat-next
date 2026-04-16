@@ -11,6 +11,7 @@ import {
 import logo from "@/assets/logo.png";
 import { FloatingScene } from "@/components/landing/FloatingScene";
 import { AnimatedText, HighlightText, ScrollReveal, CountUp } from "@/components/landing/AnimatedText";
+import { ScrollFork } from "@/components/landing/ScrollFork";
 import { ClientLogos } from "@/components/landing/ClientLogos";
 
 export default function Landing() {
@@ -74,6 +75,9 @@ export default function Landing() {
         <Suspense fallback={null}>
           <FloatingScene />
         </Suspense>
+
+        {/* Scroll-driven rotating fork */}
+        <ScrollFork />
 
         {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-transparent to-background pointer-events-none" />
