@@ -27,6 +27,8 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
+      {/* Scroll-driven rotating fork — fixed across entire page */}
+      <ScrollFork />
       {/* Navigation */}
       <header className="fixed top-0 z-50 w-full border-b bg-background/60 backdrop-blur-xl">
         <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -76,8 +78,6 @@ export default function Landing() {
           <FloatingScene />
         </Suspense>
 
-        {/* Scroll-driven rotating fork */}
-        <ScrollFork />
 
         {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-transparent to-background pointer-events-none" />
