@@ -1,27 +1,18 @@
 
 
-# Enable Public Waitlist Join via QR Code Scan
+# Display the Venue QR Code in the Merchant Dashboard
 
-## What This Does
-Patrons scan a venue's QR code with their phone camera and land on a page where they can join that restaurant's waitlist — entering their name, party size, and seating preferences.
+## Problem
+The `VenueQRCode` component exists in `src/components/merchant/VenueQRCode.tsx` but is never imported or rendered anywhere — it's completely orphaned. Merchants have no way to see or download their waitlist QR code.
 
-## Current State
-- `WaitlistJoin.tsx` page already exists with full functionality (name, phone, party size, preferences, busyness indicator)
-- `VenueQRCode.tsx` already generates QR codes pointing to `/waitlist/{venueId}`
-- The route is simply **not registered** in `App.tsx`
+## Solution
+Add the QR code to the **Waitlist tab** in the merchant dashboard, displayed alongside the `WaitlistBoard`. This is the most logical placement since the QR code is specifically for waitlist join.
 
 ## Changes
 
-**1. `src/App.tsx`** — Add the missing route
-- Import `WaitlistJoin` from `src/pages/WaitlistJoin`
-- Add `<Route path="/waitlist/:venueId" element={<WaitlistJoin />} />` before the catch-all
+**1. `src/pages/MerchantDashboard.tsx`**
+- Import `VenueQRCode` from `@/components/merchant/VenueQRCode`
+- In the waitlist `TabsContent`, wrap the existing `WaitlistBoard` and the new `VenueQRCode` in a layout that places the QR card in a sidebar or collapsible section beside the board
 
-That's it — one file, two lines. The page and QR code generation are already built and functional.
-
-## How It Works
-1. Merchant displays the QR code (already available in their dashboard via `VenueQRCode`)
-2. Patron scans it with their phone camera
-3. Browser opens `/waitlist/{venueId}`
-4. Patron sees the venue name, busyness level, and a form to join
-5. After submitting, they're redirected to `/app` to track their position
+The QR code card already includes the venue name, a download button, and the scannable code — no changes needed to the component itself.
 
