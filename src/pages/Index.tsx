@@ -908,12 +908,6 @@ const Index = () => {
 
 
 
-      {/* Patron ID Card */}
-      {user && (
-        <div className="px-6">
-          <PatronIDCard userId={user.id} compact />
-        </div>
-      )}
 
       {/* Quick Actions */}
       <div className="space-y-6 p-6">
@@ -1012,6 +1006,13 @@ const Index = () => {
         </div>
 
       </div>
+
+      {/* Patron ID Card */}
+      {user && (
+        <div className="px-6 pb-4">
+          <PatronIDCard userId={user.id} compact />
+        </div>
+      )}
 
       {/* Rating Dialog */}
       <RatingDialog
