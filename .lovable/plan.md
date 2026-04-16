@@ -1,58 +1,43 @@
 
 
-# Fix Scan Patron: Link Error + Add "Create Order for Patron" Option
+# Add Camera-Based QR Code Scanner to Scan Patron Dialog
 
-## Problems
-1. Clicking "Scan Patron" from the header toolbar sets `orderId=""`. The dialog then tries to update an order with `id=""`, which fails silently or errors.
-2. After scanning a patron, there's no option to create a new order linked to them — only to link to an existing order.
+## Problem
+The "Scan Patron" dialog only supports manual text entry of the patron code. Patrons have a QR code on their ID card (containing `{ type: "patron", code: "ZII-4829", uid: "..." }`), but merchants have no way to scan it with their device camera.
 
 ## Solution
+Add a camera-based QR scanner to the `LinkPatronDialog` using the `html5-qrcode` library. When the merchant taps "Scan QR", the device camera opens inline in the dialog. Once a QR code is detected, it auto-parses the JSON payload and triggers the patron search automatically.
 
-### `src/components/merchant/LinkPatronDialog.tsx`
-Rework the dialog to handle two modes:
+### Changes
 
-**Mode A — Link to existing order** (when `orderId` is provided): Current behavior, works fine.
+**1. Install `html5-qrcode` package**
 
-**Mode B — No order pre-selected** (when `orderId` is empty): After finding the patron, show two action buttons:
-- **"Create Order for Patron"** — Opens an inline form (order number + optional items/notes), then inserts a new order with `user_id` and `customer_name` pre-filled
-- **"Link to Existing Order"** — Shows a dropdown/list of recent unlinked orders (where `user_id IS NULL`) for the venue, allowing the merchant to pick one
-
-### Props change
-Add `venueId` prop to `LinkPatronDialog` so it can create orders and query unlinked orders.
-
-### `src/components/merchant/KitchenBoard.tsx`
-- Pass `venueId` to the `LinkPatronDialog` component
+**2. `src/components/merchant/LinkPatronDialog.tsx`**
+- Add a "Scan QR" toggle button next to the manual input
+- When active, render an `Html5QrcodeScanner` (or `Html5Qrcode` programmatically) inside the dialog
+- On successful scan, parse the JSON value (`{ type: "patron", code, uid }`), extract the `code`, set it in the input field, and auto-trigger `searchPatron()`
+- Stop the camera when the dialog closes or scan succeeds
+- Graceful fallback: if camera access is denied, show a message asking the merchant to type the code manually
 
 ### Technical details
 
-**New order creation flow** (inside LinkPatronDialog):
 ```typescript
-// Insert new order with patron pre-linked
-const { error } = await supabase.from("orders").insert({
-  venue_id: venueId,
-  order_number: newOrderNumber,
-  user_id: foundPatron.id,
-  customer_name: foundPatron.full_name,
-  status: "placed",
-  items: [],
-});
+// On QR decode success:
+const onScanSuccess = (decodedText: string) => {
+  try {
+    const parsed = JSON.parse(decodedText);
+    if (parsed.type === "patron" && parsed.code) {
+      setPatronCode(parsed.code);
+      // Auto-trigger search
+      searchPatronByCode(parsed.code);
+    }
+  } catch {
+    // Try as raw patron code
+    setPatronCode(decodedText.toUpperCase());
+  }
+  stopScanner();
+};
 ```
 
-**Unlinked orders list** (when choosing to link existing):
-```typescript
-const { data } = await supabase
-  .from("orders")
-  .select("id, order_number, created_at")
-  .eq("venue_id", venueId)
-  .is("user_id", null)
-  .in("status", ["placed", "in_prep"])
-  .order("created_at", { ascending: false })
-  .limit(10);
-```
-
-The dialog title dynamically changes based on mode:
-- With orderId: "Link Patron to Order #XYZ"
-- Without orderId: "Scan Patron"
-
-After patron is found and action is completed, `onLinked()` is called to refresh the orders list.
+The scanner will be contained in a `div` inside the dialog, replacing the input area when active. A toggle lets merchants switch between camera scan and manual entry.
 
