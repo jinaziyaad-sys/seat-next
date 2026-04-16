@@ -647,7 +647,7 @@ const Index = () => {
         <AnimatePresence mode="wait">
           {tabContent()}
         </AnimatePresence>
-        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} badges={navBadges} />
+        <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} badges={navBadges} userId={user?.id} />
       </>
     );
   }
@@ -1008,11 +1008,6 @@ const Index = () => {
       </div>
 
       {/* Patron ID Card */}
-      {user && (
-        <div className="px-6 pb-4">
-          <PatronIDCard userId={user.id} compact />
-        </div>
-      )}
 
       {/* Rating Dialog */}
       <RatingDialog
@@ -1079,7 +1074,7 @@ const Index = () => {
           venueName={cardMessengerContext.venueName}
         />
       )}
-      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} badges={navBadges} />
+      <TabNavigation activeTab={activeTab} onTabChange={setActiveTab} badges={navBadges} userId={user?.id} />
     </main>
   );
 };
