@@ -189,10 +189,8 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* 3D Cutlery Scene — reacts to scroll */}
-      <Suspense fallback={null}>
-        <ScrollCutleryScene className="h-[50vh] md:h-[60vh] w-full" />
-      </Suspense>
+      {/* Food Carousel */}
+      <FoodCarousel className="py-16 md:py-24" />
 
       {/* How It Works */}
       <section id="how-it-works" className="py-24 md:py-32">
