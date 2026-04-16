@@ -1,139 +1,103 @@
 project_id = "cuoqjgahpfymxqrdlzlf"
 
-[functions.validate-address]
-verify_jwt = false
+[functions]
+  [functions.activate-upcoming-reservations]
+    verify_jwt = false
 
-[functions.create-merchant]
-verify_jwt = false
+    [[functions.activate-upcoming-reservations.cron]]
+      schedule = "*/5 * * * *"
+  [functions.ai-analytics-query]
+    verify_jwt = true
+  [functions.ai-error-analysis]
+    verify_jwt = true
+  [functions.ai-feature-request]
+    verify_jwt = true
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.auto-cancel-expired-waitlist]
+    verify_jwt = false
 
-[functions.get-venue-staff]
-verify_jwt = false
+    [[functions.auto-cancel-expired-waitlist.cron]]
+      schedule = "* * * * *"
+  [functions.calculate-order-eta]
+    verify_jwt = true
+  [functions.calculate-waitlist-eta]
+    verify_jwt = true
+  [functions.check-alert-thresholds]
+    verify_jwt = false
 
-[functions.delete-venue-staff]
-verify_jwt = false
+    [[functions.check-alert-thresholds.cron]]
+      schedule = "*/30 * * * *"
+  [functions.check-subscription]
+    verify_jwt = false
+  [functions.check-time-slot-availability]
+    verify_jwt = false
+  [functions.cleanup-cancelled-waitlist]
+    verify_jwt = false
 
-[functions.delete-merchant]
-verify_jwt = false
+    [[functions.cleanup-cancelled-waitlist.cron]]
+      schedule = "*/15 * * * *"
+  [functions.cleanup-rejected-orders]
+    verify_jwt = false
 
-[functions.send-sms-otp]
-verify_jwt = false
+    [[functions.cleanup-rejected-orders.cron]]
+      schedule = "*/15 * * * *"
+  [functions.create-checkout]
+    verify_jwt = false
+  [functions.create-merchant]
+    verify_jwt = false
+  [functions.create-promo-checkout]
+    verify_jwt = false
+  [functions.customer-portal]
+    verify_jwt = false
+  [functions.delete-merchant]
+    verify_jwt = false
+  [functions.delete-venue-staff]
+    verify_jwt = false
+  [functions.dev-ai-control]
+    verify_jwt = true
+  [functions.find-available-table]
+    verify_jwt = true
+  [functions.generate-daily-snapshots]
+    verify_jwt = false
+  [functions.get-patron-yearly-recap]
+    verify_jwt = true
+  [functions.get-platform-analytics]
+    verify_jwt = true
+  [functions.get-platform-patron-data]
+    verify_jwt = true
+  [functions.get-venue-analytics]
+    verify_jwt = true
+  [functions.get-venue-customer-insights]
+    verify_jwt = true
+  [functions.get-venue-efficiency-analytics]
+    verify_jwt = true
+  [functions.get-venue-recommendations]
+    verify_jwt = false
+  [functions.get-venue-staff]
+    verify_jwt = false
+  [functions.help-assistant]
+    verify_jwt = false
+  [functions.request-password-reset]
+    verify_jwt = false
+  [functions.reset-merchant-user]
+    verify_jwt = false
+  [functions.send-engagement-nudge]
+    verify_jwt = false
 
-[functions.verify-sms-otp]
-verify_jwt = false
-
-[functions.send-push-notification]
-verify_jwt = false
-
-[functions.calculate-order-eta]
-verify_jwt = true
-
-[functions.calculate-waitlist-eta]
-verify_jwt = true
-
-[functions.get-venue-analytics]
-verify_jwt = true
-
-[functions.get-platform-patron-data]
-verify_jwt = true
-
-[functions.get-venue-customer-insights]
-verify_jwt = true
-
-[functions.get-venue-efficiency-analytics]
-verify_jwt = true
-
-[functions.update-customer-segments]
-verify_jwt = false
-
-[functions.generate-daily-snapshots]
-verify_jwt = false
-
-[functions.get-platform-analytics]
-verify_jwt = true
-
-[functions.auto-cancel-expired-waitlist]
-verify_jwt = false
-
-[[functions.auto-cancel-expired-waitlist.cron]]
-schedule = "* * * * *"
-
-[functions.activate-upcoming-reservations]
-verify_jwt = false
-
-[[functions.activate-upcoming-reservations.cron]]
-schedule = "*/5 * * * *"
-
-[functions.cleanup-rejected-orders]
-verify_jwt = false
-
-[[functions.cleanup-rejected-orders.cron]]
-schedule = "*/15 * * * *"
-
-[functions.cleanup-cancelled-waitlist]
-verify_jwt = false
-
-[[functions.cleanup-cancelled-waitlist.cron]]
-schedule = "*/15 * * * *"
-
-[functions.find-available-table]
-verify_jwt = true
-
-[functions.help-assistant]
-verify_jwt = false
-
-[functions.dev-ai-control]
-verify_jwt = true
-
-[functions.ai-error-analysis]
-verify_jwt = true
-
-[functions.ai-analytics-query]
-verify_jwt = true
-
-[functions.ai-feature-request]
-verify_jwt = true
-
-[functions.send-engagement-nudge]
-verify_jwt = false
-
-[[functions.send-engagement-nudge.cron]]
-schedule = "*/30 * * * *"
-
-[functions.reset-merchant-user]
-verify_jwt = false
-
-[functions.request-password-reset]
-verify_jwt = false
-
-[functions.get-patron-yearly-recap]
-verify_jwt = true
-
-[functions.get-venue-recommendations]
-verify_jwt = false
-
-[functions.check-time-slot-availability]
-verify_jwt = false
-
-[functions.check-alert-thresholds]
-verify_jwt = false
-
-[[functions.check-alert-thresholds.cron]]
-schedule = "*/30 * * * *"
-
-[functions.create-checkout]
-verify_jwt = false
-
-[functions.check-subscription]
-verify_jwt = false
-
-[functions.customer-portal]
-verify_jwt = false
-
-[functions.stripe-webhook]
-verify_jwt = false
-
-[functions.update-plan-pricing]
-verify_jwt = false
-
-[functions.create-promo-checkout]
-verify_jwt = false
+    [[functions.send-engagement-nudge.cron]]
+      schedule = "*/30 * * * *"
+  [functions.send-push-notification]
+    verify_jwt = false
+  [functions.send-sms-otp]
+    verify_jwt = false
+  [functions.stripe-webhook]
+    verify_jwt = false
+  [functions.update-customer-segments]
+    verify_jwt = false
+  [functions.update-plan-pricing]
+    verify_jwt = false
+  [functions.validate-address]
+    verify_jwt = false
+  [functions.verify-sms-otp]
+    verify_jwt = false
