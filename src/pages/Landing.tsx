@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { FloatingScene } from "@/components/landing/FloatingScene";
-import { FoodCarousel } from "@/components/landing/FoodCarousel";
+import { ScrollFork } from "@/components/landing/ScrollFork";
 import { AnimatedText, HighlightText, ScrollReveal, CountUp } from "@/components/landing/AnimatedText";
 import { ClientLogos } from "@/components/landing/ClientLogos";
 
@@ -189,8 +189,8 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Food Carousel */}
-      <FoodCarousel className="py-16 md:py-24" />
+      {/* Scroll Fork */}
+      <ScrollFork />
 
       {/* How It Works */}
       <section id="how-it-works" className="py-24 md:py-32">
