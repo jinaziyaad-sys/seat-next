@@ -170,10 +170,9 @@ export default function Landing() {
       {/* Stats Bar */}
       <section className="py-16 border-y bg-muted/20">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto text-center">
+          <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto text-center">
             {[
               { value: 25, suffix: "+", label: "Languages" },
-              { value: 100, suffix: "%", label: "POPIA Compliant" },
               { value: 0, suffix: "", label: "Hidden Fees", prefix: "R" },
               { value: 24, suffix: "/7", label: "Real-Time Updates" },
             ].map((stat, i) => (
@@ -189,6 +188,11 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* 3D Cutlery Scene — reacts to scroll */}
+      <Suspense fallback={null}>
+        <ScrollCutleryScene className="h-[50vh] md:h-[60vh] w-full" />
+      </Suspense>
 
       {/* How It Works */}
       <section id="how-it-works" className="py-24 md:py-32">
