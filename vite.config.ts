@@ -35,7 +35,7 @@ export default defineConfig(({ mode }) => ({
       workbox: {
         navigateFallbackDenylist: [/^\/~oauth/],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        maximumFileSizeToCacheInBytes: 6 * 1024 * 1024, // 6 MB
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024, // 8 MB
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/cuoqjgahpfymxqrdlzlf\.supabase\.co\/rest\/.*/i,
