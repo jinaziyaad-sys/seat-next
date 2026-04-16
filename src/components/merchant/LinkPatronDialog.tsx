@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { QrCode, Search, UserCheck, Loader2, AlertCircle, Plus, Link } from "lucide-react";
+import { QrCode, Search, UserCheck, Loader2, AlertCircle, Plus, Link, Camera, Keyboard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { Html5Qrcode } from "html5-qrcode";
 
 interface LinkPatronDialogProps {
   open: boolean;
@@ -33,11 +34,15 @@ export const LinkPatronDialog = ({
   const [newOrderNumber, setNewOrderNumber] = useState("");
   const [unlinkedOrders, setUnlinkedOrders] = useState<{ id: string; order_number: string; created_at: string }[]>([]);
   const [loadingUnlinked, setLoadingUnlinked] = useState(false);
+  const [scannerActive, setScannerActive] = useState(false);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const scannerContainerId = "patron-qr-scanner";
   const { toast } = useToast();
 
   const hasOrder = !!orderId;
 
-  const resetState = () => {
+  const resetState = useCallback(() => {
     setPatronCode("");
     setFoundPatron(null);
     setError(null);
@@ -47,31 +52,60 @@ export const LinkPatronDialog = ({
     setNewOrderNumber("");
     setUnlinkedOrders([]);
     setLoadingUnlinked(false);
-  };
+    setScannerActive(false);
+    setCameraError(null);
+  }, []);
 
-  const searchPatron = async () => {
-    const code = patronCode.trim().toUpperCase();
-    if (!code) return;
+  const stopScanner = useCallback(async () => {
+    if (scannerRef.current) {
+      try {
+        const state = scannerRef.current.getState();
+        if (state === 2) { // SCANNING
+          await scannerRef.current.stop();
+        }
+        scannerRef.current.clear();
+      } catch {
+        // ignore cleanup errors
+      }
+      scannerRef.current = null;
+    }
+  }, []);
+
+  // Stop scanner when dialog closes
+  useEffect(() => {
+    if (!open) {
+      stopScanner();
+    }
+  }, [open, stopScanner]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => { stopScanner(); };
+  }, [stopScanner]);
+
+  const searchPatronByCode = async (code: string) => {
+    const searchCode = code.trim().toUpperCase();
+    if (!searchCode) return;
 
     setSearching(true);
     setError(null);
     setFoundPatron(null);
     setMode("idle");
 
-    let searchCode = code;
+    let finalCode = searchCode;
     try {
-      const parsed = JSON.parse(code);
+      const parsed = JSON.parse(searchCode);
       if (parsed.type === "patron" && parsed.code) {
-        searchCode = parsed.code;
+        finalCode = parsed.code;
       }
     } catch {
-      // Not JSON, use as-is
+      // Not JSON
     }
 
     const { data, error: dbError } = await supabase
       .from("profiles")
       .select("id, full_name, patron_code")
-      .eq("patron_code", searchCode)
+      .eq("patron_code", finalCode)
       .maybeSingle();
 
     setSearching(false);
@@ -82,11 +116,74 @@ export const LinkPatronDialog = ({
     }
 
     if (!data) {
-      setError(`No patron found with code "${searchCode}"`);
+      setError(`No patron found with code "${finalCode}"`);
       return;
     }
 
     setFoundPatron(data as any);
+  };
+
+  const searchPatron = () => searchPatronByCode(patronCode);
+
+  const startScanner = async () => {
+    setCameraError(null);
+    setScannerActive(true);
+
+    // Wait for DOM element to render
+    await new Promise((r) => setTimeout(r, 100));
+
+    const el = document.getElementById(scannerContainerId);
+    if (!el) {
+      setCameraError("Scanner container not found");
+      setScannerActive(false);
+      return;
+    }
+
+    try {
+      const scanner = new Html5Qrcode(scannerContainerId);
+      scannerRef.current = scanner;
+
+      await scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 220, height: 220 } },
+        (decodedText) => {
+          // Success
+          let code = decodedText;
+          try {
+            const parsed = JSON.parse(decodedText);
+            if (parsed.type === "patron" && parsed.code) {
+              code = parsed.code;
+            }
+          } catch {
+            code = decodedText.toUpperCase();
+          }
+
+          setPatronCode(code);
+          setScannerActive(false);
+          stopScanner();
+          searchPatronByCode(code);
+        },
+        () => {
+          // Ignore scan failures (no QR in frame)
+        }
+      );
+    } catch (err: any) {
+      setScannerActive(false);
+      setCameraError(
+        err?.message?.includes("Permission")
+          ? "Camera access denied. Please allow camera permissions or type the code manually."
+          : "Could not start camera. Please type the code manually."
+      );
+    }
+  };
+
+  const toggleScanner = () => {
+    if (scannerActive) {
+      setScannerActive(false);
+      stopScanner();
+    } else {
+      startScanner();
+    }
   };
 
   const linkPatronToOrder = async (targetOrderId: string, targetOrderNumber: string) => {
@@ -182,7 +279,10 @@ export const LinkPatronDialog = ({
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (!v) resetState();
+        if (!v) {
+          stopScanner();
+          resetState();
+        }
         onOpenChange(v);
       }}
     >
@@ -195,29 +295,66 @@ export const LinkPatronDialog = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Enter Patron Code</Label>
-            <div className="flex gap-2">
-              <Input
-                placeholder="e.g. ZII-4829"
-                value={patronCode}
-                onChange={(e) => {
-                  setPatronCode(e.target.value.toUpperCase());
-                  setError(null);
-                  setFoundPatron(null);
-                  setMode("idle");
-                }}
-                onKeyDown={(e) => e.key === "Enter" && searchPatron()}
-                className="font-mono tracking-wider"
+          {/* Scanner / Manual input area */}
+          {scannerActive ? (
+            <div className="space-y-2">
+              <div
+                id={scannerContainerId}
+                className="w-full rounded-lg overflow-hidden bg-black min-h-[250px]"
               />
-              <Button onClick={searchPatron} disabled={searching || !patronCode.trim()}>
-                {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              <Button
+                variant="outline"
+                size="sm"
+                className="w-full"
+                onClick={toggleScanner}
+              >
+                <Keyboard className="h-4 w-4 mr-2" />
+                Type Code Instead
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Ask the patron for their code or scan their QR code
-            </p>
-          </div>
+          ) : (
+            <div className="space-y-2">
+              <Label>Enter Patron Code</Label>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="e.g. ZII-4829"
+                  value={patronCode}
+                  onChange={(e) => {
+                    setPatronCode(e.target.value.toUpperCase());
+                    setError(null);
+                    setFoundPatron(null);
+                    setMode("idle");
+                  }}
+                  onKeyDown={(e) => e.key === "Enter" && searchPatron()}
+                  className="font-mono tracking-wider"
+                />
+                <Button onClick={searchPatron} disabled={searching || !patronCode.trim()}>
+                  {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                </Button>
+              </div>
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Ask the patron for their code or scan their QR
+                </p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={toggleScanner}
+                  className="text-xs gap-1 h-7 px-2"
+                >
+                  <Camera className="h-3.5 w-3.5" />
+                  Scan QR
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {cameraError && (
+            <div className="flex items-center gap-2 p-3 bg-destructive/10 rounded-lg text-sm text-destructive">
+              <AlertCircle className="h-4 w-4 shrink-0" />
+              {cameraError}
+            </div>
+          )}
 
           {error && (
             <div className="flex items-center gap-2 p-3 bg-destructive/10 rounded-lg text-sm text-destructive">
