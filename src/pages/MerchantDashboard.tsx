@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { KitchenBoard } from "@/components/merchant/KitchenBoard";
 import { WaitlistBoard } from "@/components/merchant/WaitlistBoard";
+import { VenueQRCode } from "@/components/merchant/VenueQRCode";
 import { ReservationCalendar } from "@/components/merchant/ReservationCalendar";
 import { MerchantSettings } from "@/components/merchant/MerchantSettings";
 import { StaffManagement } from "@/components/merchant/StaffManagement";
@@ -681,7 +682,10 @@ const MerchantDashboard = () => {
 
           {hasTableReady && (
             <TabsContent value="waitlist" data-tour="waitlist-content">
-              <WaitlistBoard venueId={userRole.venue_id!} />
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4">
+                <WaitlistBoard venueId={userRole.venue_id!} />
+                <VenueQRCode venueId={userRole.venue_id!} venueName={userRole.venue_name || "Venue"} />
+              </div>
             </TabsContent>
           )}
           
