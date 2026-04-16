@@ -10,8 +10,8 @@ import {
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { FloatingScene } from "@/components/landing/FloatingScene";
-import { AnimatedText, HighlightText, ScrollReveal, CountUp } from "@/components/landing/AnimatedText";
 import { ScrollFork } from "@/components/landing/ScrollFork";
+import { AnimatedText, HighlightText, ScrollReveal, CountUp } from "@/components/landing/AnimatedText";
 import { ClientLogos } from "@/components/landing/ClientLogos";
 
 export default function Landing() {
@@ -27,7 +27,7 @@ export default function Landing() {
 
   return (
     <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
-      {/* Scroll-driven rotating fork — fixed across entire page */}
+      {/* Fixed scroll-driven fork overlay */}
       <ScrollFork />
       {/* Navigation */}
       <header className="fixed top-0 z-50 w-full border-b bg-background/60 backdrop-blur-xl">
@@ -77,7 +77,6 @@ export default function Landing() {
         <Suspense fallback={null}>
           <FloatingScene />
         </Suspense>
-
 
         {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-transparent to-background pointer-events-none" />
@@ -173,10 +172,9 @@ export default function Landing() {
       {/* Stats Bar */}
       <section className="py-16 border-y bg-muted/20">
         <div className="container mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 max-w-4xl mx-auto text-center">
+          <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto text-center">
             {[
               { value: 25, suffix: "+", label: "Languages" },
-              { value: 100, suffix: "%", label: "POPIA Compliant" },
               { value: 0, suffix: "", label: "Hidden Fees", prefix: "R" },
               { value: 24, suffix: "/7", label: "Real-Time Updates" },
             ].map((stat, i) => (
@@ -192,6 +190,7 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
 
       {/* How It Works */}
       <section id="how-it-works" className="py-24 md:py-32">

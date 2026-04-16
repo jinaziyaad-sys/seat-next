@@ -1,43 +1,55 @@
+import { useRef } from "react";
 import { motion, useScroll, useTransform } from "framer-motion";
-import silverFork from "@/assets/silver-fork.png";
+import forkImage from "@/assets/fork.png";
 
 export const ScrollFork = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Track scroll progress across the ENTIRE page
   const { scrollYProgress } = useScroll();
 
-  // Continuous rotation across the full page
-  const rotate = useTransform(scrollYProgress, [0, 1], [-15, 360]);
+  // Fork starts tilted left, rotates clockwise as user scrolls the full page
+  const rotate = useTransform(scrollYProgress, [0, 1], [-30, 360]);
 
-  // Side-to-side weave — stays in the far margins, never over center content
+  // Fork translates vertically — starts near top, ends near bottom
+  const y = useTransform(scrollYProgress, [0, 1], ["5vh", "75vh"]);
+
+  // Slight horizontal sway
   const x = useTransform(
     scrollYProgress,
-    [0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
-    ["42vw", "-42vw", "44vw", "-40vw", "42vw", "-44vw", "40vw", "-42vw", "44vw", "-40vw", "42vw"]
+    [0, 0.25, 0.5, 0.75, 1],
+    ["0vw", "8vw", "-6vw", "5vw", "0vw"]
   );
 
-  // Scale breathes
-  const scale = useTransform(scrollYProgress, [0, 0.2, 0.5, 0.8, 1], [0.75, 0.9, 1.0, 0.9, 0.8]);
+  // Scale: subtle breathing
+  const scale = useTransform(
+    scrollYProgress,
+    [0, 0.3, 0.6, 1],
+    [0.75, 1, 1.05, 0.85]
+  );
 
-  // 3D perspective tilts
-  const rotateY = useTransform(scrollYProgress, [0, 0.5, 1], [0, 15, -10]);
-  const rotateX = useTransform(scrollYProgress, [0, 0.5, 1], [5, -5, 10]);
+  // Fade in after hero, fade out near footer
+  const opacity = useTransform(
+    scrollYProgress,
+    [0, 0.05, 0.85, 0.95],
+    [0, 0.9, 0.9, 0]
+  );
 
   return (
-    <div
-      className="fixed inset-0 flex items-center justify-center pointer-events-none z-10 overflow-hidden"
-      style={{ perspective: "1200px" }}
+    <motion.div
+      className="fixed top-0 left-1/2 -translate-x-1/2 z-30 pointer-events-none will-change-transform"
+      style={{ y, x, opacity }}
     >
-      <motion.div
-        style={{ x, rotate, scale, rotateY, rotateX }}
-        className="w-[180px] h-[360px] sm:w-[220px] sm:h-[440px] md:w-[280px] md:h-[540px] will-change-transform opacity-90"
-      >
+      <motion.div style={{ rotate, scale }}>
         <img
-          src={silverFork}
+          src={forkImage}
           alt=""
-          className="w-full h-full object-contain drop-shadow-[0_20px_60px_rgba(120,120,130,0.35)]"
           width={512}
           height={1024}
+          className="w-24 h-auto md:w-36 lg:w-44 drop-shadow-[0_25px_50px_rgba(0,0,0,0.2)] dark:drop-shadow-[0_25px_50px_rgba(255,255,255,0.1)]"
+          draggable={false}
         />
       </motion.div>
-    </div>
+    </motion.div>
   );
 };
