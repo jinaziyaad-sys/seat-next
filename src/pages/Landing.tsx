@@ -13,6 +13,8 @@ import { FloatingScene } from "@/components/landing/FloatingScene";
 import { ScrollFork } from "@/components/landing/ScrollFork";
 import { AnimatedText, HighlightText, ScrollReveal, CountUp } from "@/components/landing/AnimatedText";
 import { ClientLogos } from "@/components/landing/ClientLogos";
+import { Marquee } from "@/components/landing/Marquee";
+import { ParallaxSection, HorizontalScrollText } from "@/components/landing/ParallaxSection";
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -71,12 +73,10 @@ export default function Landing() {
 
       {/* Hero */}
       <section ref={heroRef} className="relative min-h-screen flex items-center pt-16 overflow-hidden">
-        {/* 3D Background */}
         <Suspense fallback={null}>
           <FloatingScene />
         </Suspense>
 
-        {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-b from-background/40 via-transparent to-background pointer-events-none" />
         <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-background to-transparent pointer-events-none" />
 
@@ -136,7 +136,6 @@ export default function Landing() {
               </Button>
             </motion.div>
 
-            {/* App Store Coming Soon */}
             <motion.div
               className="flex justify-center gap-4 mt-10"
               initial={{ opacity: 0 }}
@@ -150,7 +149,6 @@ export default function Landing() {
           </div>
         </motion.div>
 
-        {/* Scroll indicator */}
         <motion.div
           className="absolute bottom-8 left-1/2 -translate-x-1/2"
           initial={{ opacity: 0 }}
@@ -168,7 +166,7 @@ export default function Landing() {
       </section>
 
       {/* Stats Bar */}
-      <section className="py-16 border-y bg-muted/20">
+      <section className="py-12 border-y bg-muted/20">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-3 gap-8 max-w-3xl mx-auto text-center">
             {[
@@ -192,11 +190,15 @@ export default function Landing() {
       {/* Scroll Fork */}
       <ScrollFork />
 
+      {/* Marquee Ticker */}
+      <Marquee />
+
       {/* How It Works */}
-      <section id="how-it-works" className="py-24 md:py-32">
-        <div className="container mx-auto px-4">
+      <section id="how-it-works" className="py-16 md:py-24 relative">
+        <HorizontalScrollText text="SCAN • JOIN • TRACK • ENJOY • REPEAT •" className="absolute top-8 left-0 right-0" />
+        <div className="container mx-auto px-4 relative">
           <ScrollReveal>
-            <div className="text-center mb-20">
+            <div className="text-center mb-16">
               <p className="text-sm font-medium uppercase tracking-widest text-primary mb-3">Simple & Seamless</p>
               <h2 className="text-3xl md:text-5xl font-bold">
                 How It <HighlightText>Works</HighlightText>
@@ -205,7 +207,6 @@ export default function Landing() {
           </ScrollReveal>
 
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto relative">
-            {/* Connecting line */}
             <div className="hidden md:block absolute top-24 left-[20%] right-[20%] h-px bg-gradient-to-r from-transparent via-primary/20 to-transparent" />
 
             {[
@@ -214,22 +215,24 @@ export default function Landing() {
               { step: "03", icon: Utensils, title: "Enjoy", desc: "Walk in when your table is ready, collect your food on time — no more guessing.", color: "from-amber-400/20 to-yellow-500/20" },
             ].map((item, i) => (
               <ScrollReveal key={i} delay={i * 0.15} direction="up">
-                <Card className="relative overflow-hidden border-0 bg-gradient-to-br shadow-xl hover:shadow-2xl transition-all duration-500 h-full group hover:-translate-y-2">
-                  <div className={`absolute inset-0 bg-gradient-to-br ${item.color} opacity-60`} />
-                  <div className="absolute -top-4 -right-4 text-[120px] font-black text-primary/5 leading-none select-none">
-                    {item.step}
-                  </div>
-                  <CardContent className="relative pt-10 pb-10 px-8">
-                    <motion.div
-                      className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors duration-300"
-                      whileHover={{ rotate: 5, scale: 1.05 }}
-                    >
-                      <item.icon className="h-8 w-8 text-primary" />
-                    </motion.div>
-                    <h3 className="text-xl font-bold mb-3">{item.title}</h3>
-                    <p className="text-muted-foreground leading-relaxed">{item.desc}</p>
-                  </CardContent>
-                </Card>
+                <ParallaxSection speed={0.15 * (i + 1)}>
+                  <Card className="relative overflow-hidden border-0 bg-gradient-to-br shadow-xl hover:shadow-2xl transition-all duration-500 h-full group hover:-translate-y-2">
+                    <div className={`absolute inset-0 bg-gradient-to-br ${item.color} opacity-60`} />
+                    <div className="absolute -top-4 -right-4 text-[120px] font-black text-primary/5 leading-none select-none">
+                      {item.step}
+                    </div>
+                    <CardContent className="relative pt-10 pb-10 px-8">
+                      <motion.div
+                        className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors duration-300"
+                        whileHover={{ rotate: 5, scale: 1.05 }}
+                      >
+                        <item.icon className="h-8 w-8 text-primary" />
+                      </motion.div>
+                      <h3 className="text-xl font-bold mb-3">{item.title}</h3>
+                      <p className="text-muted-foreground leading-relaxed">{item.desc}</p>
+                    </CardContent>
+                  </Card>
+                </ParallaxSection>
               </ScrollReveal>
             ))}
           </div>
@@ -237,10 +240,11 @@ export default function Landing() {
       </section>
 
       {/* Features */}
-      <section id="features" className="py-24 md:py-32 bg-muted/20">
-        <div className="container mx-auto px-4">
+      <section id="features" className="py-16 md:py-24 bg-muted/20 relative">
+        <HorizontalScrollText text="TRACK • NOTIFY • REWARD • DISCOVER • CONNECT •" className="absolute top-6 left-0 right-0" />
+        <div className="container mx-auto px-4 relative">
           <ScrollReveal>
-            <div className="text-center mb-20">
+            <div className="text-center mb-16">
               <p className="text-sm font-medium uppercase tracking-widest text-primary mb-3">Powerful Features</p>
               <h2 className="text-3xl md:text-5xl font-bold">
                 Everything You <HighlightText>Need</HighlightText>
@@ -278,7 +282,7 @@ export default function Landing() {
 
           {/* Merchant CTA */}
           <ScrollReveal delay={0.3} direction="scale">
-            <div className="mt-20 max-w-3xl mx-auto text-center p-10 rounded-3xl bg-gradient-to-br from-primary/5 via-accent/5 to-primary/10 border border-primary/10 relative overflow-hidden">
+            <div className="mt-16 max-w-3xl mx-auto text-center p-10 rounded-3xl bg-gradient-to-br from-primary/5 via-accent/5 to-primary/10 border border-primary/10 relative overflow-hidden">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,hsl(var(--primary)/0.08),transparent_50%)]" />
               <div className="relative">
                 <motion.div
@@ -308,7 +312,8 @@ export default function Landing() {
       <ClientLogos />
 
       {/* About */}
-      <section id="about" className="py-24 md:py-32 bg-muted/20">
+      <section id="about" className="py-16 md:py-24 bg-muted/20 relative">
+        <HorizontalScrollText text="BUILT IN SOUTH AFRICA • FOR THE WORLD •" className="absolute bottom-4 left-0 right-0" />
         <div className="container mx-auto px-4">
           <div className="max-w-3xl mx-auto text-center">
             <ScrollReveal>
@@ -341,10 +346,10 @@ export default function Landing() {
       </section>
 
       {/* Contact */}
-      <section id="contact" className="py-24 md:py-32">
+      <section id="contact" className="py-16 md:py-24">
         <div className="container mx-auto px-4">
           <ScrollReveal>
-            <div className="text-center mb-14">
+            <div className="text-center mb-12">
               <p className="text-sm font-medium uppercase tracking-widest text-primary mb-3">Let's Connect</p>
               <h2 className="text-3xl md:text-5xl font-bold">
                 Get In <HighlightText>Touch</HighlightText>
@@ -363,7 +368,7 @@ export default function Landing() {
                 <span className="font-medium">hello@readyup.app</span>
               </motion.a>
 
-              <div className="flex justify-center gap-4 pt-6">
+              <div className="flex justify-center gap-4 pt-4">
                 {[
                   { icon: Instagram, href: "https://instagram.com/readyupapp", label: "Instagram" },
                   { icon: Twitter, href: "https://x.com/readyupapp", label: "X (Twitter)" },
@@ -392,7 +397,7 @@ export default function Landing() {
       </section>
 
       {/* Footer */}
-      <footer className="border-t py-12 bg-muted/10">
+      <footer className="border-t py-10 bg-muted/10">
         <div className="container mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-3">
