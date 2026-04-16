@@ -51,6 +51,9 @@ const App = () => (
             <Route path="/dev/auth" element={<DevAuth />} />
             <Route path="/dev/dashboard" element={<DevDashboard />} />
             
+            {/* Public Waitlist Join via QR Code */}
+            <Route path="/waitlist/:venueId" element={<WaitlistJoin />} />
+            
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
