@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { KitchenBoard } from "@/components/merchant/KitchenBoard";
 import { WaitlistBoard } from "@/components/merchant/WaitlistBoard";
+import { VenueQRCode } from "@/components/merchant/VenueQRCode";
 import { ReservationCalendar } from "@/components/merchant/ReservationCalendar";
 import { MerchantSettings } from "@/components/merchant/MerchantSettings";
 import { StaffManagement } from "@/components/merchant/StaffManagement";
