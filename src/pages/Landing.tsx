@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import logo from "@/assets/logo.png";
 import { FloatingScene } from "@/components/landing/FloatingScene";
+import { ScrollCutleryScene } from "@/components/landing/ScrollCutleryScene";
 import { AnimatedText, HighlightText, ScrollReveal, CountUp } from "@/components/landing/AnimatedText";
 import { ClientLogos } from "@/components/landing/ClientLogos";
 
