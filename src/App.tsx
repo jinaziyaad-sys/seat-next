@@ -10,6 +10,7 @@ import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
+import ResetPassword from "./pages/ResetPassword";
 import MerchantAuth from "./pages/MerchantAuth";
 import MerchantDashboard from "./pages/MerchantDashboard";
 import MerchantSignup from "./pages/MerchantSignup";
