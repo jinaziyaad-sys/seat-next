@@ -39,6 +39,7 @@ const App = () => (
             {/* Patron App Routes */}
             <Route path="/app" element={<Index />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             
             <Route path="/privacy" element={<Privacy />} />
             
