@@ -149,6 +149,11 @@ serve(async (req) => {
       const planId = dbSub.plan_id;
       const includedFeatures = await getIncludedFeatures(supabaseClient, planId);
 
+      await supabaseClient
+        .from("venues")
+        .update({ onboarding_completed: true, updated_at: new Date().toISOString() })
+        .eq("id", venueId);
+
       // Determine product_ids from plan
       const { data: planData } = await supabaseClient
         .from("subscription_plans")
@@ -397,6 +402,13 @@ async function syncSubscriptionToDb(
       await client.from("merchant_subscriptions").update(upsertData).eq("venue_id", venueId);
     } else if (data.plan_id) {
       await client.from("merchant_subscriptions").insert(upsertData);
+    }
+
+    if (['active', 'trial'].includes(data.status)) {
+      await client
+        .from("venues")
+        .update({ onboarding_completed: true, updated_at: new Date().toISOString() })
+        .eq("id", venueId);
     }
 
     logStep("Synced subscription to DB", { venueId, status: data.status });

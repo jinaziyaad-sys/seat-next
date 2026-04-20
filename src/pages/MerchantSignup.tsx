@@ -318,6 +318,34 @@ export default function MerchantSignup() {
     }
   }, [isUpgradeMode, user, selectedPlanId, venueId, searchParams, toast, navigate]);
 
+  useEffect(() => {
+    if (isUpgradeMode || !user || !venueId) return;
+
+    let cancelled = false;
+
+    const recoverCompletedSignup = async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke('check-subscription', {
+          body: { venueId, forceRefresh: false },
+        });
+
+        if (cancelled || error) return;
+
+        if (data?.subscribed && (data.status === 'active' || data.status === 'trial')) {
+          clearMerchantSignupState();
+          navigate('/merchant/dashboard?checkout=success', { replace: true });
+        }
+      } catch {
+      }
+    };
+
+    void recoverCompletedSignup();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isUpgradeMode, user, venueId, navigate]);
+
   // Get price for a plan in the selected currency
   const getPlanPrice = (plan: PlanFromDB, cycle: 'monthly' | 'annual'): number => {
     if (selectedCurrency === 'ZAR') {
