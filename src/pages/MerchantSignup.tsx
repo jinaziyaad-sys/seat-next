@@ -253,7 +253,18 @@ export default function MerchantSignup() {
       if (signUpError) throw signUpError;
       if (!signUpData.user) throw new Error('Registration failed');
 
-      setUser(signUpData.user);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const activeUser = sessionData.session?.user ?? signUpData.user;
+      setUser(activeUser);
+
+      if (!sessionData.session) {
+        toast({
+          title: 'Check your email',
+          description: 'Confirm your account first, then sign in to finish venue setup.',
+        });
+        return;
+      }
+
       toast({ title: 'Account Created!', description: 'Now let\'s set up your venue.' });
       setStep(2);
     } catch (err: any) {
