@@ -300,7 +300,7 @@ export default function Landing() {
                   onClick={() => navigate("/merchant/signup")}
                   className="px-8 h-13 rounded-2xl shadow-lg shadow-primary/25 hover:shadow-primary/40 transition-all"
                 >
-                  Start Free Trial <ChevronRight className="ml-1 h-4 w-4" />
+                  View Merchant Plans <ChevronRight className="ml-1 h-4 w-4" />
                 </Button>
               </div>
             </div>

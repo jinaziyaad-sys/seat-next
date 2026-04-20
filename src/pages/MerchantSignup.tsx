@@ -17,6 +17,7 @@ import { BannerCropDialog } from '@/components/BannerCropDialog';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { InteractiveLocationMap } from '@/components/InteractiveLocationMap';
 import { SUPPORTED_CURRENCIES, CURRENCY_CODES, formatPrice, detectCurrency, convertFromZAR, FALLBACK_RATES } from '@/utils/currency';
+import { getAuthRedirectUrl } from '@/utils/authRedirect';
 
 interface PlanFromDB {
   id: string;
@@ -43,6 +44,46 @@ const ALL_FEATURES = ['food_ordering', 'waitlist', 'reservations', 'loyalty', 'a
 
 const STEPS_FULL = ['Choose Plan', 'Create Account', 'Set Up Venue', 'Payment'];
 const STEPS_UPGRADE = ['Choose Plan', 'Payment'];
+const MERCHANT_SIGNUP_DRAFT_KEY = 'merchantSignupDraft';
+const POST_AUTH_REDIRECT_KEY = 'postAuthRedirect';
+const MERCHANT_SIGNUP_PATH = '/merchant/signup';
+
+interface MerchantSignupDraft {
+  selectedPlanId: string | null;
+  isAnnual: boolean;
+  selectedFeatures: string[];
+  regEmail: string;
+  regName: string;
+  venueName: string;
+  venuePhone: string;
+  venueAddress: string;
+  venueDisplayAddress: string;
+  serviceTypes: string[];
+  venueId: string | null;
+}
+
+const readMerchantSignupDraft = (): MerchantSignupDraft | null => {
+  if (typeof window === 'undefined') return null;
+
+  try {
+    const raw = window.localStorage.getItem(MERCHANT_SIGNUP_DRAFT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as MerchantSignupDraft;
+  } catch {
+    return null;
+  }
+};
+
+const persistMerchantAuthRedirect = () => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(POST_AUTH_REDIRECT_KEY, MERCHANT_SIGNUP_PATH);
+};
+
+const clearMerchantSignupState = () => {
+  if (typeof window === 'undefined') return;
+  window.localStorage.removeItem(MERCHANT_SIGNUP_DRAFT_KEY);
+  window.localStorage.removeItem(POST_AUTH_REDIRECT_KEY);
+};
 
 export default function MerchantSignup() {
   const navigate = useNavigate();
@@ -118,6 +159,24 @@ export default function MerchantSignup() {
   // Stripe-only payment
 
   useEffect(() => {
+    if (!isUpgradeMode) {
+      const draft = readMerchantSignupDraft();
+      if (draft) {
+        setSelectedPlanId(draft.selectedPlanId);
+        setIsAnnual(draft.isAnnual);
+        setSelectedFeatures(draft.selectedFeatures || []);
+        setRegEmail(draft.regEmail || '');
+        setRegName(draft.regName || '');
+        setVenueName(draft.venueName || '');
+        setVenuePhone(draft.venuePhone || '');
+        setVenueAddress(draft.venueAddress || '');
+        setVenueDisplayAddress(draft.venueDisplayAddress || '');
+        setServiceTypes(draft.serviceTypes?.length ? draft.serviceTypes : ['food_ready', 'table_ready']);
+        setVenueId(draft.venueId || null);
+        persistMerchantAuthRedirect();
+      }
+    }
+
     const fetchPlans = async () => {
       const { data } = await supabase
         .from('subscription_plans')
@@ -202,6 +261,63 @@ export default function MerchantSignup() {
     if (isUpgradeMode) loadCurrentPlan();
   }, [isUpgradeMode, upgradeVenueId]);
 
+  useEffect(() => {
+    if (isUpgradeMode || typeof window === 'undefined') return;
+
+    const draft: MerchantSignupDraft = {
+      selectedPlanId,
+      isAnnual,
+      selectedFeatures,
+      regEmail,
+      regName,
+      venueName,
+      venuePhone,
+      venueAddress,
+      venueDisplayAddress,
+      serviceTypes,
+      venueId,
+    };
+
+    window.localStorage.setItem(MERCHANT_SIGNUP_DRAFT_KEY, JSON.stringify(draft));
+
+    if (selectedPlanId || regEmail || venueName || venueAddress || venueId) {
+      persistMerchantAuthRedirect();
+    }
+  }, [
+    isUpgradeMode,
+    selectedPlanId,
+    isAnnual,
+    selectedFeatures,
+    regEmail,
+    regName,
+    venueName,
+    venuePhone,
+    venueAddress,
+    venueDisplayAddress,
+    serviceTypes,
+    venueId,
+  ]);
+
+  useEffect(() => {
+    if (isUpgradeMode || !user) return;
+
+    setAwaitingEmailVerification(false);
+
+    if (selectedPlanId && venueId) {
+      setStep(3);
+    } else if (selectedPlanId) {
+      setStep(2);
+    }
+
+    if (searchParams.get('verified') === '1') {
+      toast({
+        title: 'Email verified',
+        description: 'Your account is confirmed — continue with your venue setup and payment.',
+      });
+      navigate(MERCHANT_SIGNUP_PATH, { replace: true });
+    }
+  }, [isUpgradeMode, user, selectedPlanId, venueId, searchParams, toast, navigate]);
+
   // Get price for a plan in the selected currency
   const getPlanPrice = (plan: PlanFromDB, cycle: 'monthly' | 'annual'): number => {
     if (selectedCurrency === 'ZAR') {
@@ -239,16 +355,11 @@ export default function MerchantSignup() {
     return included.includes('loyalty');
   };
 
-  // Use the production custom domain for email verification links so they
-  // never get baked with a Lovable preview/sandbox origin.
-  const PROD_ORIGIN = 'https://readyup.site';
-  const getEmailRedirectOrigin = () => {
-    if (typeof window === 'undefined') return PROD_ORIGIN;
-    const host = window.location.hostname;
-    // Use prod for any non-localhost environment so verification always
-    // returns the user to the live site, not a preview/sandbox URL.
-    if (host === 'localhost' || host === '127.0.0.1') return window.location.origin;
-    return PROD_ORIGIN;
+  const emailVerificationRedirectUrl = getAuthRedirectUrl('/merchant/signup?verified=1');
+
+  const continueToMerchantSignIn = () => {
+    persistMerchantAuthRedirect();
+    navigate('/merchant/auth?intent=merchant');
   };
 
   const handleRegister = async (e: React.FormEvent) => {
@@ -260,7 +371,7 @@ export default function MerchantSignup() {
         password: regPassword,
         options: {
           data: { full_name: regName },
-          emailRedirectTo: `${getEmailRedirectOrigin()}/merchant/dashboard`,
+          emailRedirectTo: emailVerificationRedirectUrl,
         },
       });
       if (signUpError) throw signUpError;
@@ -271,6 +382,7 @@ export default function MerchantSignup() {
 
       if (!sessionData.session) {
         // Email confirmation required — show explicit verification screen
+        persistMerchantAuthRedirect();
         setAwaitingEmailVerification(true);
         toast({
           title: 'Verify your email',
@@ -304,7 +416,7 @@ export default function MerchantSignup() {
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email: regEmail,
-        options: { emailRedirectTo: `${getEmailRedirectOrigin()}/merchant/dashboard` },
+        options: { emailRedirectTo: emailVerificationRedirectUrl },
       });
       if (error) throw error;
       toast({ title: 'New link sent', description: `Check ${regEmail} for a fresh verification link.` });
@@ -493,6 +605,7 @@ export default function MerchantSignup() {
           return;
         }
         if (data?.success) {
+          clearMerchantSignupState();
           toast({
             title: data.type === 'upgrade' ? '🎉 Plan Upgraded!' : '📋 Plan Change Scheduled',
             description: data.message,
@@ -551,6 +664,7 @@ export default function MerchantSignup() {
             });
             if (subCheck?.subscribed && (subCheck?.status === 'active' || subCheck?.status === 'trial')) {
               clearInterval(pollInterval);
+              clearMerchantSignupState();
               toast({ title: '🎉 Payment Successful!', description: `Welcome to ${plan.name}!` });
               navigate('/merchant/dashboard?checkout=success');
             }
