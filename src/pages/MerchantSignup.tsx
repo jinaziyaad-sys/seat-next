@@ -127,9 +127,9 @@ export default function MerchantSignup() {
     };
 
     const checkUser = async () => {
-      const { data } = await supabase.auth.getUser();
-      if (data.user) {
-        setUser(data.user);
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        setUser(session.user);
       }
     };
 
@@ -253,7 +253,18 @@ export default function MerchantSignup() {
       if (signUpError) throw signUpError;
       if (!signUpData.user) throw new Error('Registration failed');
 
-      setUser(signUpData.user);
+      const { data: sessionData } = await supabase.auth.getSession();
+      const activeUser = sessionData.session?.user ?? signUpData.user;
+      setUser(activeUser);
+
+      if (!sessionData.session) {
+        toast({
+          title: 'Check your email',
+          description: 'Confirm your account first, then sign in to finish venue setup.',
+        });
+        return;
+      }
+
       toast({ title: 'Account Created!', description: 'Now let\'s set up your venue.' });
       setStep(2);
     } catch (err: any) {
@@ -359,6 +370,14 @@ export default function MerchantSignup() {
 
     setVenueLoading(true);
     try {
+      const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) throw sessionError;
+      if (!sessionData.session?.access_token) {
+        throw new Error('Please sign in after confirming your email before creating a venue.');
+      }
+
+      setUser(sessionData.session.user);
+
       const { data, error } = await supabase.functions.invoke('self-register-merchant', {
         body: {
           venueName,
@@ -410,8 +429,6 @@ export default function MerchantSignup() {
       }
 
       toast({ title: 'Venue Created!', description: 'Almost done — choose your payment.' });
-
-
       setStep(3);
     } catch (err: any) {
       toast({ variant: 'destructive', title: 'Setup Error', description: err.message || 'Failed to create venue' });
