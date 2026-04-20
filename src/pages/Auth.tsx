@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,19 @@ import { RoleRouter } from "@/components/RoleRouter";
 import { getAuthRedirectUrl } from "@/utils/authRedirect";
 import logo from "@/assets/logo.png";
 
+const POST_AUTH_REDIRECT_KEY = "postAuthRedirect";
+const MERCHANT_SIGNUP_PATH = "/merchant/signup";
+
+const getStoredPostAuthRedirect = () => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    return window.localStorage.getItem(POST_AUTH_REDIRECT_KEY);
+  } catch {
+    return null;
+  }
+};
+
 export default function Auth() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -26,9 +39,12 @@ export default function Auth() {
   // Role routing state
   const [authenticatedUserId, setAuthenticatedUserId] = useState<string | null>(null);
   const [authenticatedUserName, setAuthenticatedUserName] = useState<string | undefined>(undefined);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const authRedirectUrl = getAuthRedirectUrl('/auth');
+  const merchantIntent = searchParams.get('intent') === 'merchant' || getStoredPostAuthRedirect() === MERCHANT_SIGNUP_PATH;
+  const postAuthRedirectPath = merchantIntent ? MERCHANT_SIGNUP_PATH : null;
+  const authRedirectUrl = getAuthRedirectUrl(postAuthRedirectPath ?? '/auth');
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
@@ -43,6 +59,12 @@ export default function Auth() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (authenticatedUserId && postAuthRedirectPath) {
+      navigate(postAuthRedirectPath, { replace: true });
+    }
+  }, [authenticatedUserId, postAuthRedirectPath, navigate]);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -90,6 +112,10 @@ export default function Auth() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  if (authenticatedUserId && postAuthRedirectPath) {
+    return null;
+  }
 
   if (authenticatedUserId) {
     return <RoleRouter userId={authenticatedUserId} userName={authenticatedUserName} />;
@@ -194,6 +220,13 @@ export default function Auth() {
       setLoading(false);
       return;
     }
+
+    if (postAuthRedirectPath) {
+      navigate(postAuthRedirectPath, { replace: true });
+      setLoading(false);
+      return;
+    }
+
     setLoading(false);
   };
 

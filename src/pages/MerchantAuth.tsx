@@ -1,12 +1,13 @@
 import { useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 export default function MerchantAuth() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
-    navigate("/auth", { replace: true });
-  }, [navigate]);
+    navigate(`/auth${location.search}`, { replace: true });
+  }, [location.search, navigate]);
 
   return null;
 }
