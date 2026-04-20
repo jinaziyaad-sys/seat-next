@@ -43,7 +43,58 @@ export default function Auth() {
       setLoading(false);
     }
   };
-...
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session) {
+        setAuthenticatedUserId(session.user.id);
+        setAuthenticatedUserName(
+          session.user.user_metadata?.full_name ||
+          session.user.user_metadata?.name ||
+          undefined
+        );
+      }
+    });
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setAuthenticatedUserId(session.user.id);
+        setAuthenticatedUserName(
+          session.user.user_metadata?.full_name ||
+          session.user.user_metadata?.name ||
+          undefined
+        );
+      }
+    });
+
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const error = hashParams.get('error');
+    const errorDescription = hashParams.get('error_description');
+
+    if (error) {
+      const expired =
+        error === 'access_denied' ||
+        errorDescription?.toLowerCase().includes('expired') ||
+        errorDescription?.toLowerCase().includes('token not found') ||
+        errorDescription?.toLowerCase().includes('invalid') ||
+        errorDescription?.toLowerCase().includes('already been used');
+
+      setAuthNotice(
+        expired
+          ? "That verification link has expired or was already used. Request a fresh one below."
+          : (errorDescription || "Verification failed. Please try again.")
+      );
+      setEmailVerificationSent(true);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  if (authenticatedUserId) {
+    return <RoleRouter userId={authenticatedUserId} userName={authenticatedUserName} />;
+  }
+
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -56,7 +107,30 @@ export default function Auth() {
         data: { full_name: fullName, verification_method: "email" },
       },
     });
-...
+
+    if (error) {
+      if (
+        error.message.toLowerCase().includes('already registered') ||
+        error.message.toLowerCase().includes('already exists') ||
+        error.message.toLowerCase().includes('user already')
+      ) {
+        setAuthNotice("You've already signed up — check your email for the verification link, or request a fresh one below.");
+        setEmailVerificationSent(true);
+      } else {
+        toast({ title: "Error", description: error.message, variant: "destructive" });
+      }
+      setLoading(false);
+      return;
+    }
+
+    if (data.user) {
+      setEmailVerificationSent(true);
+      setAuthNotice(null);
+      toast({ title: "Check your email", description: `We sent a verification link to ${email}` });
+    }
+    setLoading(false);
+  };
+
   const handleResendEmailVerification = async () => {
     if (!email) {
       toast({ title: "Email required", description: "Please enter your email address.", variant: "destructive" });
