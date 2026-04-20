@@ -239,7 +239,18 @@ export default function MerchantSignup() {
     return included.includes('loyalty');
   };
 
-  // Step 2: Register
+  // Use the production custom domain for email verification links so they
+  // never get baked with a Lovable preview/sandbox origin.
+  const PROD_ORIGIN = 'https://readyup.site';
+  const getEmailRedirectOrigin = () => {
+    if (typeof window === 'undefined') return PROD_ORIGIN;
+    const host = window.location.hostname;
+    // Use prod for any non-localhost environment so verification always
+    // returns the user to the live site, not a preview/sandbox URL.
+    if (host === 'localhost' || host === '127.0.0.1') return window.location.origin;
+    return PROD_ORIGIN;
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegLoading(true);
@@ -249,7 +260,7 @@ export default function MerchantSignup() {
         password: regPassword,
         options: {
           data: { full_name: regName },
-          emailRedirectTo: `${window.location.origin}/merchant/dashboard`,
+          emailRedirectTo: `${getEmailRedirectOrigin()}/merchant/dashboard`,
         },
       });
       if (signUpError) throw signUpError;
@@ -257,16 +268,18 @@ export default function MerchantSignup() {
 
       const { data: sessionData } = await supabase.auth.getSession();
       const activeUser = sessionData.session?.user ?? signUpData.user;
-      setUser(activeUser);
 
       if (!sessionData.session) {
+        // Email confirmation required — show explicit verification screen
+        setAwaitingEmailVerification(true);
         toast({
-          title: 'Check your email',
-          description: 'Confirm your account first, then sign in to finish venue setup.',
+          title: 'Verify your email',
+          description: `We sent a verification link to ${regEmail}. Confirm it to continue.`,
         });
         return;
       }
 
+      setUser(activeUser);
       toast({ title: 'Account Created!', description: 'Now let\'s set up your venue.' });
       setStep(2);
     } catch (err: any) {
@@ -281,6 +294,24 @@ export default function MerchantSignup() {
       });
     } finally {
       setRegLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!regEmail) return;
+    setResendingVerification(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: regEmail,
+        options: { emailRedirectTo: `${getEmailRedirectOrigin()}/merchant/dashboard` },
+      });
+      if (error) throw error;
+      toast({ title: 'New link sent', description: `Check ${regEmail} for a fresh verification link.` });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Could not resend', description: err.message });
+    } finally {
+      setResendingVerification(false);
     }
   };
 
