@@ -149,6 +149,11 @@ serve(async (req) => {
       const planId = dbSub.plan_id;
       const includedFeatures = await getIncludedFeatures(supabaseClient, planId);
 
+      await supabaseClient
+        .from("venues")
+        .update({ onboarding_completed: true, updated_at: new Date().toISOString() })
+        .eq("id", venueId);
+
       // Determine product_ids from plan
       const { data: planData } = await supabaseClient
         .from("subscription_plans")
