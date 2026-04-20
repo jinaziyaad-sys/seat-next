@@ -74,6 +74,8 @@ export default function MerchantSignup() {
   const [regPassword, setRegPassword] = useState('');
   const [regName, setRegName] = useState('');
   const [regLoading, setRegLoading] = useState(false);
+  const [awaitingEmailVerification, setAwaitingEmailVerification] = useState(false);
+  const [resendingVerification, setResendingVerification] = useState(false);
 
   // Step 3 — Venue setup
   const [venueName, setVenueName] = useState('');
