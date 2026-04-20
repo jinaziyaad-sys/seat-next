@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Mail, Store, Check } from "lucide-react";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { RoleRouter } from "@/components/RoleRouter";
+import { getAuthRedirectUrl } from "@/utils/authRedirect";
 import logo from "@/assets/logo.png";
 
 export default function Auth() {
@@ -27,13 +28,14 @@ export default function Auth() {
   const [authenticatedUserName, setAuthenticatedUserName] = useState<string | undefined>(undefined);
   const navigate = useNavigate();
   const { toast } = useToast();
+  const authRedirectUrl = getAuthRedirectUrl('/auth');
 
   const handleGoogleSignIn = async () => {
     setLoading(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth`,
+        redirectTo: authRedirectUrl,
       },
     });
     if (error) {
@@ -65,7 +67,6 @@ export default function Auth() {
       }
     });
 
-    // Handle returning verification errors from URL hash quietly
     const hashParams = new URLSearchParams(window.location.hash.substring(1));
     const error = hashParams.get('error');
     const errorDescription = hashParams.get('error_description');
@@ -90,7 +91,6 @@ export default function Auth() {
     return () => subscription.unsubscribe();
   }, []);
 
-  // If authenticated, show role router
   if (authenticatedUserId) {
     return <RoleRouter userId={authenticatedUserId} userName={authenticatedUserName} />;
   }
@@ -103,7 +103,7 @@ export default function Auth() {
       email,
       password,
       options: {
-        emailRedirectTo: `${window.location.origin}/auth`,
+        emailRedirectTo: authRedirectUrl,
         data: { full_name: fullName, verification_method: "email" },
       },
     });
@@ -141,7 +141,7 @@ export default function Auth() {
       const { error } = await supabase.auth.resend({
         type: 'signup',
         email,
-        options: { emailRedirectTo: `${window.location.origin}/auth` },
+        options: { emailRedirectTo: authRedirectUrl },
       });
       if (error) throw error;
       setAuthNotice(null);
@@ -162,7 +162,7 @@ export default function Auth() {
     const { error } = await supabase.auth.resend({
       type: "signup",
       email,
-      options: { emailRedirectTo: `${window.location.origin}/auth` },
+      options: { emailRedirectTo: authRedirectUrl },
     });
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
