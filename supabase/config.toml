@@ -82,6 +82,8 @@ project_id = "cuoqjgahpfymxqrdlzlf"
     verify_jwt = false
   [functions.reset-merchant-user]
     verify_jwt = false
+  [functions.self-register-merchant]
+    verify_jwt = false
   [functions.send-engagement-nudge]
     verify_jwt = false
 
