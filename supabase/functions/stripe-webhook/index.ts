@@ -267,6 +267,13 @@ async function upsertSubscription(supabase: any, venueId: string, sub: any, cust
     await supabase.from("merchant_subscriptions").insert(subData);
   }
 
+  if (status === 'active' || status === 'trial') {
+    await supabase
+      .from("venues")
+      .update({ onboarding_completed: true, updated_at: new Date().toISOString() })
+      .eq("id", venueId);
+  }
+
   logStep("Subscription upserted", { venueId, status, planId });
 }
 

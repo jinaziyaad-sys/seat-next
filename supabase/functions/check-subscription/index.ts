@@ -399,6 +399,13 @@ async function syncSubscriptionToDb(
       await client.from("merchant_subscriptions").insert(upsertData);
     }
 
+    if (['active', 'trial'].includes(data.status)) {
+      await client
+        .from("venues")
+        .update({ onboarding_completed: true, updated_at: new Date().toISOString() })
+        .eq("id", venueId);
+    }
+
     logStep("Synced subscription to DB", { venueId, status: data.status });
   } catch (err) {
     logStep("Failed to sync subscription to DB", { error: String(err) });
