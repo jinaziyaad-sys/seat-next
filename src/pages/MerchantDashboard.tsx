@@ -225,6 +225,27 @@ const MerchantDashboard = () => {
     }
   }, [userRole?.venue_id]);
 
+  useEffect(() => {
+    if (!userRole?.venue_id || !subscription.subscribed || venueData?.onboarding_completed !== false) {
+      return;
+    }
+
+    const refreshOnboardingState = async () => {
+      const { data, error } = await supabase
+        .from("venues")
+        .select("*")
+        .eq("id", userRole.venue_id)
+        .single();
+
+      if (data && !error) {
+        setVenueData(data);
+        setVenueServiceTypes(data.service_types || ["food_ready", "table_ready"]);
+      }
+    };
+
+    void refreshOnboardingState();
+  }, [userRole?.venue_id, subscription.subscribed, venueData?.onboarding_completed]);
+
   // Fetch initial counts and subscribe to real-time updates
   useEffect(() => {
     if (!userRole?.venue_id) return;
