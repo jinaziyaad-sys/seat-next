@@ -795,7 +795,40 @@ export default function MerchantSignup() {
               <CardDescription>{user ? 'You\'re signed in — let\'s set up your venue' : 'We\'ll set up your venue next'}</CardDescription>
             </CardHeader>
             <CardContent>
-              {user ? (
+              {awaitingEmailVerification && !user ? (
+                <div className="space-y-4 text-center py-2">
+                  <div className="mx-auto h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Check className="h-7 w-7 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Verify your email</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      We sent a verification link to{' '}
+                      <span className="font-medium text-foreground">{regEmail}</span>.
+                      Click it to activate your account, then sign in to finish venue setup.
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Didn't get it? Check your spam folder, then request a fresh link.
+                  </p>
+                  <div className="space-y-2">
+                    <Button onClick={handleResendVerification} className="w-full" disabled={resendingVerification}>
+                      {resendingVerification ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Resend verification link
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={() => navigate('/merchant/auth')}>
+                      I've verified — sign in
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => setAwaitingEmailVerification(false)}
+                    >
+                      Use a different email
+                    </Button>
+                  </div>
+                </div>
+              ) : user ? (
                 <div className="space-y-4">
                   <div className="p-4 rounded-lg bg-muted text-center">
                     <p className="text-sm text-muted-foreground mb-1">Signed in as</p>
@@ -826,6 +859,9 @@ export default function MerchantSignup() {
                     <Label htmlFor="reg-password">Password</Label>
                     <Input id="reg-password" type="password" value={regPassword} onChange={e => setRegPassword(e.target.value)} required minLength={6} placeholder="Min 6 characters" />
                   </div>
+                  <p className="text-xs text-muted-foreground -mt-2">
+                    We'll email you a verification link before you can finish setup.
+                  </p>
                   <Button type="submit" className="w-full" disabled={regLoading}>
                     {regLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Create Account
