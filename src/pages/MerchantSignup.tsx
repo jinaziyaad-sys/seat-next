@@ -74,6 +74,8 @@ export default function MerchantSignup() {
   const [regPassword, setRegPassword] = useState('');
   const [regName, setRegName] = useState('');
   const [regLoading, setRegLoading] = useState(false);
+  const [awaitingEmailVerification, setAwaitingEmailVerification] = useState(false);
+  const [resendingVerification, setResendingVerification] = useState(false);
 
   // Step 3 — Venue setup
   const [venueName, setVenueName] = useState('');
@@ -237,7 +239,18 @@ export default function MerchantSignup() {
     return included.includes('loyalty');
   };
 
-  // Step 2: Register
+  // Use the production custom domain for email verification links so they
+  // never get baked with a Lovable preview/sandbox origin.
+  const PROD_ORIGIN = 'https://readyup.site';
+  const getEmailRedirectOrigin = () => {
+    if (typeof window === 'undefined') return PROD_ORIGIN;
+    const host = window.location.hostname;
+    // Use prod for any non-localhost environment so verification always
+    // returns the user to the live site, not a preview/sandbox URL.
+    if (host === 'localhost' || host === '127.0.0.1') return window.location.origin;
+    return PROD_ORIGIN;
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setRegLoading(true);
@@ -247,7 +260,7 @@ export default function MerchantSignup() {
         password: regPassword,
         options: {
           data: { full_name: regName },
-          emailRedirectTo: `${window.location.origin}/merchant/dashboard`,
+          emailRedirectTo: `${getEmailRedirectOrigin()}/merchant/dashboard`,
         },
       });
       if (signUpError) throw signUpError;
@@ -255,16 +268,18 @@ export default function MerchantSignup() {
 
       const { data: sessionData } = await supabase.auth.getSession();
       const activeUser = sessionData.session?.user ?? signUpData.user;
-      setUser(activeUser);
 
       if (!sessionData.session) {
+        // Email confirmation required — show explicit verification screen
+        setAwaitingEmailVerification(true);
         toast({
-          title: 'Check your email',
-          description: 'Confirm your account first, then sign in to finish venue setup.',
+          title: 'Verify your email',
+          description: `We sent a verification link to ${regEmail}. Confirm it to continue.`,
         });
         return;
       }
 
+      setUser(activeUser);
       toast({ title: 'Account Created!', description: 'Now let\'s set up your venue.' });
       setStep(2);
     } catch (err: any) {
@@ -279,6 +294,24 @@ export default function MerchantSignup() {
       });
     } finally {
       setRegLoading(false);
+    }
+  };
+
+  const handleResendVerification = async () => {
+    if (!regEmail) return;
+    setResendingVerification(true);
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: regEmail,
+        options: { emailRedirectTo: `${getEmailRedirectOrigin()}/merchant/dashboard` },
+      });
+      if (error) throw error;
+      toast({ title: 'New link sent', description: `Check ${regEmail} for a fresh verification link.` });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Could not resend', description: err.message });
+    } finally {
+      setResendingVerification(false);
     }
   };
 
@@ -762,7 +795,40 @@ export default function MerchantSignup() {
               <CardDescription>{user ? 'You\'re signed in — let\'s set up your venue' : 'We\'ll set up your venue next'}</CardDescription>
             </CardHeader>
             <CardContent>
-              {user ? (
+              {awaitingEmailVerification && !user ? (
+                <div className="space-y-4 text-center py-2">
+                  <div className="mx-auto h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
+                    <Check className="h-7 w-7 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold">Verify your email</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      We sent a verification link to{' '}
+                      <span className="font-medium text-foreground">{regEmail}</span>.
+                      Click it to activate your account, then sign in to finish venue setup.
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Didn't get it? Check your spam folder, then request a fresh link.
+                  </p>
+                  <div className="space-y-2">
+                    <Button onClick={handleResendVerification} className="w-full" disabled={resendingVerification}>
+                      {resendingVerification ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                      Resend verification link
+                    </Button>
+                    <Button variant="outline" className="w-full" onClick={() => navigate('/merchant/auth')}>
+                      I've verified — sign in
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      className="w-full"
+                      onClick={() => setAwaitingEmailVerification(false)}
+                    >
+                      Use a different email
+                    </Button>
+                  </div>
+                </div>
+              ) : user ? (
                 <div className="space-y-4">
                   <div className="p-4 rounded-lg bg-muted text-center">
                     <p className="text-sm text-muted-foreground mb-1">Signed in as</p>
@@ -793,6 +859,9 @@ export default function MerchantSignup() {
                     <Label htmlFor="reg-password">Password</Label>
                     <Input id="reg-password" type="password" value={regPassword} onChange={e => setRegPassword(e.target.value)} required minLength={6} placeholder="Min 6 characters" />
                   </div>
+                  <p className="text-xs text-muted-foreground -mt-2">
+                    We'll email you a verification link before you can finish setup.
+                  </p>
                   <Button type="submit" className="w-full" disabled={regLoading}>
                     {regLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                     Create Account
