@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { KeyRound, Mail, Check, AlertCircle, HelpCircle } from "lucide-react";
+import { getAuthRedirectUrl } from "@/utils/authRedirect";
 
 interface PasswordResetDialogProps {
   userEmail?: string;
@@ -39,7 +40,7 @@ export function PasswordResetDialog({ userEmail, trigger, showAdminHelpOption }:
 
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: getAuthRedirectUrl('/reset-password'),
       });
 
       if (error) throw error;
