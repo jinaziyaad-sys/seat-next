@@ -144,8 +144,12 @@ serve(async (req) => {
       .maybeSingle();
 
     // If we have a valid DB record with active/trial status and NOT forcing refresh,
-    // return it immediately without hitting Stripe
-    if (dbSub && ['active', 'trial'].includes(dbSub.status) && !forceRefresh) {
+    // return it immediately without hitting Stripe — UNLESS billing period is missing
+    // (legacy rows where current_period_end was never populated).
+    const needsPeriodBackfill = dbSub && ['active', 'trial'].includes(dbSub.status)
+      && !dbSub.current_period_end && dbSub.stripe_subscription_id;
+
+    if (dbSub && ['active', 'trial'].includes(dbSub.status) && !forceRefresh && !needsPeriodBackfill) {
       const planId = dbSub.plan_id;
       const includedFeatures = await getIncludedFeatures(supabaseClient, planId);
 
@@ -183,6 +187,10 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
+    }
+
+    if (needsPeriodBackfill) {
+      logStep("Period missing — triggering Stripe reconciliation to backfill", { venueId });
     }
 
     // If DB says past_due, return that without Stripe check
@@ -319,8 +327,12 @@ async function syncAndReturn(
     typeof item.price.product === 'string' ? item.price.product : item.price.product?.id
   ).filter(Boolean);
   const priceIds = sub.items.data.map((item: any) => item.price.id);
-  const subscriptionEnd = safeTimestamp(sub.current_period_end);
-  const subscriptionStart = safeTimestamp(sub.current_period_start);
+  // Stripe API 2025-08-27.basil: current_period_* moved to item level
+  const item = sub.items?.data?.[0];
+  const periodEndTs = sub.current_period_end ?? item?.current_period_end ?? null;
+  const periodStartTs = sub.current_period_start ?? item?.current_period_start ?? null;
+  const subscriptionEnd = safeTimestamp(periodEndTs);
+  const subscriptionStart = safeTimestamp(periodStartTs);
   const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
   const status = sub.status === 'trialing' ? 'trial' : 'active';
   const trialEnd = sub.trial_end ? safeTimestamp(sub.trial_end) : null;

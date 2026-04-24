@@ -217,6 +217,15 @@ async function resolveVenueFromInvoice(supabase: any, stripe: any, invoice: any)
   return null;
 }
 
+function getPeriodTimestamps(sub: any): { start: number | null; end: number | null } {
+  // Stripe API 2025-08-27.basil moved current_period_* to the item level.
+  // Fallback to top-level for older payloads.
+  const item = sub.items?.data?.[0];
+  const start = sub.current_period_start ?? item?.current_period_start ?? null;
+  const end = sub.current_period_end ?? item?.current_period_end ?? null;
+  return { start, end };
+}
+
 async function upsertSubscription(supabase: any, venueId: string, sub: any, customerId: string) {
   const productIds = sub.items.data.map((item: any) =>
     typeof item.price.product === 'string' ? item.price.product : item.price.product?.id
@@ -224,6 +233,7 @@ async function upsertSubscription(supabase: any, venueId: string, sub: any, cust
   const interval = sub.items?.data?.[0]?.price?.recurring?.interval;
   const trialEnd = sub.trial_end ? new Date(sub.trial_end * 1000).toISOString() : null;
   const status = sub.status === 'trialing' ? 'trial' : 'active';
+  const { start: periodStart, end: periodEnd } = getPeriodTimestamps(sub);
 
   let planId: string | null = null;
   const { data: plans } = await supabase
@@ -249,8 +259,8 @@ async function upsertSubscription(supabase: any, venueId: string, sub: any, cust
     stripe_subscription_id: sub.id,
     plan_id: planId,
     billing_cycle: interval === 'year' ? 'annual' : 'monthly',
-    current_period_start: new Date(sub.current_period_start * 1000).toISOString(),
-    current_period_end: new Date(sub.current_period_end * 1000).toISOString(),
+    current_period_start: periodStart ? new Date(periodStart * 1000).toISOString() : null,
+    current_period_end: periodEnd ? new Date(periodEnd * 1000).toISOString() : null,
     trial_ends_at: trialEnd,
     updated_at: new Date().toISOString(),
   };
