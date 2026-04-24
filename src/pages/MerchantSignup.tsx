@@ -636,7 +636,9 @@ export default function MerchantSignup() {
           clearMerchantSignupState();
           toast({
             title: data.type === 'upgrade' ? '🎉 Plan Upgraded!' : '📋 Plan Change Scheduled',
-            description: data.message,
+            description: data.type === 'upgrade'
+              ? `${data.message} The prorated amount was charged to your saved payment method.`
+              : data.message,
           });
           navigate('/merchant/dashboard?checkout=success');
           return;
