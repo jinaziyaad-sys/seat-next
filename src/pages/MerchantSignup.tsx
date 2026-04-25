@@ -633,12 +633,34 @@ export default function MerchantSignup() {
           return;
         }
         if (data?.success) {
+          if (data.type === 'upgrade' && data.url) {
+            // Open Stripe Billing Portal to confirm the upgrade and payment
+            window.open(data.url, '_blank');
+            toast({ title: 'Confirm your upgrade', description: 'A new tab has opened with Stripe to review and confirm the prorated charge. This page will update once payment completes.' });
+
+            let attempts = 0;
+            const maxAttempts = 24; // 2 min
+            const pollInterval = setInterval(async () => {
+              attempts++;
+              try {
+                const { data: subCheck } = await supabase.functions.invoke('check-subscription', {
+                  body: { venueId, forceRefresh: true },
+                });
+                if (subCheck?.product_id && subCheck.product_id !== currentPlanId) {
+                  clearInterval(pollInterval);
+                  clearMerchantSignupState();
+                  toast({ title: '🎉 Plan Upgraded!', description: `You're now on ${plan.name}.` });
+                  navigate('/merchant/dashboard?checkout=success');
+                }
+              } catch {}
+              if (attempts >= maxAttempts) clearInterval(pollInterval);
+            }, 5000);
+            return;
+          }
           clearMerchantSignupState();
           toast({
-            title: data.type === 'upgrade' ? '🎉 Plan Upgraded!' : '📋 Plan Change Scheduled',
-            description: data.type === 'upgrade'
-              ? `${data.message} The prorated amount was charged to your saved payment method.`
-              : data.message,
+            title: '📋 Plan Change Scheduled',
+            description: data.message,
           });
           navigate('/merchant/dashboard?checkout=success');
           return;
