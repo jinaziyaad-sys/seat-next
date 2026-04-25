@@ -128,7 +128,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    const occupiedTableIds = new Set((occupiedTables || []).map((t: any) => t.table_id));
+    const occupiedTableIds = new Set<string>((occupiedTables || []).map((t: any) => String(t.table_id)));
 
     console.log('Occupied tables:', Array.from(occupiedTableIds));
 
@@ -200,7 +200,7 @@ Deno.serve(async (req) => {
             p_buffer_minutes: 30
           });
 
-        const futureOccupiedIds = new Set((futureOccupied || []).map((t: any) => t.table_id));
+        const futureOccupiedIds = new Set<string>((futureOccupied || []).map((t: any) => String(t.table_id)));
         const futureAvailable = tableConfiguration.filter(
           table => !futureOccupiedIds.has(table.id) && table.capacity >= party_size
         );
