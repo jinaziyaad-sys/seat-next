@@ -122,33 +122,35 @@ serve(async (req) => {
     }
 
     if (isUpgrade) {
-      // UPGRADE: Apply immediately with proration
-      logStep("Applying upgrade with proration");
+      // UPGRADE: Send to Stripe Billing Portal subscription_update_confirm flow
+      // so the user reviews the prorated charge and confirms payment in Stripe's hosted UI.
+      logStep("Creating billing portal subscription_update_confirm flow");
 
-      await stripe.subscriptions.update(currentSub.stripe_subscription_id, {
-        items: [{ id: currentItem.id, price: newPriceId }],
-        proration_behavior: 'always_invoice',
+      const origin = req.headers.get("origin") || "";
+
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: currentSub.stripe_customer_id || (await stripe.subscriptions.retrieve(currentSub.stripe_subscription_id)).customer as string,
+        return_url: `${origin}/merchant/dashboard?checkout=success`,
+        flow_data: {
+          type: 'subscription_update_confirm',
+          subscription_update_confirm: {
+            subscription: currentSub.stripe_subscription_id,
+            items: [{ id: currentItem.id, price: newPriceId, quantity: 1 }],
+          },
+          after_completion: {
+            type: 'redirect',
+            redirect: { return_url: `${origin}/merchant/dashboard?checkout=success` },
+          },
+        },
       });
 
-      // Update DB immediately, clear any pending downgrade
-      await supabaseService
-        .from("merchant_subscriptions")
-        .update({
-          plan_id: newPlanId,
-          billing_cycle: effectiveBillingCycle,
-          pending_plan_id: null,
-          pending_billing_cycle: null,
-          pending_change_at: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("venue_id", venueId);
-
-      logStep("Upgrade applied", { newPlan: newPlan.name });
+      logStep("Portal session created", { url: portalSession.url });
 
       return new Response(JSON.stringify({
         success: true,
         type: 'upgrade',
-        message: `Upgraded to ${newPlan.name}! The prorated difference has been charged.`,
+        url: portalSession.url,
+        message: `Confirm your upgrade to ${newPlan.name} in the secure Stripe page.`,
         newPlan: newPlan.name,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
