@@ -34,7 +34,8 @@ serve(async (req) => {
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     if (!stripeKey) throw new Error("STRIPE_SECRET_KEY is not set");
 
-    const authHeader = req.headers.get("Authorization")!;
+    const authHeader = req.headers.get("Authorization");
+    if (!authHeader) throw new Error("No authorization header provided");
     const token = authHeader.replace("Bearer ", "");
     const { data } = await supabaseClient.auth.getUser(token);
     const user = data.user;
@@ -52,7 +53,7 @@ serve(async (req) => {
     // Get current subscription from DB
     const { data: currentSub } = await supabaseService
       .from("merchant_subscriptions")
-      .select("stripe_subscription_id, plan_id, status, billing_cycle")
+      .select("stripe_subscription_id, stripe_customer_id, plan_id, status, billing_cycle, current_period_end")
       .eq("venue_id", venueId)
       .maybeSingle();
 
@@ -162,11 +163,25 @@ serve(async (req) => {
       // just record the pending change and let the webhook handle it at renewal
       logStep("Scheduling downgrade at period end");
 
-      const periodEndUnix = (stripeSub as any).current_period_end
+      const rawStripePeriodEnd = (stripeSub as any).current_period_end
         ?? currentItem?.current_period_end
-        ?? stripeSub.items.data[0]?.current_period_end;
-      if (!periodEndUnix) throw new Error("Could not determine current period end from Stripe subscription");
-      const periodEnd = new Date(periodEndUnix * 1000).toISOString();
+        ?? stripeSub.items?.data?.[0]?.current_period_end;
+      const stripePeriodEndUnix = typeof rawStripePeriodEnd === 'number'
+        ? rawStripePeriodEnd
+        : typeof rawStripePeriodEnd === 'string'
+          ? Number(rawStripePeriodEnd)
+          : null;
+      const stripePeriodEnd = stripePeriodEndUnix && Number.isFinite(stripePeriodEndUnix)
+        ? new Date(stripePeriodEndUnix * 1000)
+        : null;
+      const dbPeriodEnd = currentSub.current_period_end ? new Date(currentSub.current_period_end) : null;
+      const periodEndDate = stripePeriodEnd && Number.isFinite(stripePeriodEnd.getTime())
+        ? stripePeriodEnd
+        : dbPeriodEnd && Number.isFinite(dbPeriodEnd.getTime())
+          ? dbPeriodEnd
+          : null;
+      if (!periodEndDate) throw new Error("Could not determine current period end from Stripe subscription");
+      const periodEnd = periodEndDate.toISOString();
 
       // Store pending plan change in DB — current plan stays active
       await supabaseService
