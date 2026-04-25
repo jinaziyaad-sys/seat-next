@@ -162,7 +162,11 @@ serve(async (req) => {
       // just record the pending change and let the webhook handle it at renewal
       logStep("Scheduling downgrade at period end");
 
-      const periodEnd = new Date(stripeSub.current_period_end * 1000).toISOString();
+      const periodEndUnix = (stripeSub as any).current_period_end
+        ?? currentItem?.current_period_end
+        ?? stripeSub.items.data[0]?.current_period_end;
+      if (!periodEndUnix) throw new Error("Could not determine current period end from Stripe subscription");
+      const periodEnd = new Date(periodEndUnix * 1000).toISOString();
 
       // Store pending plan change in DB — current plan stays active
       await supabaseService
