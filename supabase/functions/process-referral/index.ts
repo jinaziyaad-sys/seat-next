@@ -165,20 +165,21 @@ Deno.serve(async (req) => {
         );
 
       if (config.referrer_reward_type === "stamps") {
-        await supabase.rpc("credit_referral_stamps", {
+        const { error: creditError } = await supabase.rpc("credit_referral_stamps", {
           p_user_id: refCode.user_id,
           p_venue_id: venue_id,
           p_amount: config.referrer_reward_value,
-        }).catch(() => {
+        });
+        if (creditError) {
           // Fallback: direct update
-          supabase
+          await supabase
             .from("patron_loyalty")
             .update({
               stamps_count: refCode.uses_count + config.referrer_reward_value, // approximate
             })
             .eq("user_id", refCode.user_id)
             .eq("venue_id", venue_id);
-        });
+        }
       }
 
       // Credit referee
@@ -211,7 +212,8 @@ Deno.serve(async (req) => {
       }
     );
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message }), {
+    const errorMessage = err instanceof Error ? err.message : String(err);
+    return new Response(JSON.stringify({ error: errorMessage }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
