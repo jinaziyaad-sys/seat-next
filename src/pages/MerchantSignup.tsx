@@ -946,10 +946,6 @@ export default function MerchantSignup() {
                 {isUpgradeMode ? 'Continue to Payment' : 'Get Started'} <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
             </div>
-
-            <p className="text-xs text-center text-muted-foreground mt-4">
-              🧪 Test mode — Use card <code className="bg-muted px-1 rounded">4242 4242 4242 4242</code> with any future expiry and CVC.
-            </p>
           </div>
         )}
 
