@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { Header } from "@/components/Header";
 import { OfflineIndicator } from "@/components/OfflineIndicator";
+import { RoutePersistence } from "@/components/RoutePersistence";
 import Landing from "./pages/Landing";
 import Index from "./pages/Index";
 import NotFound from "./pages/NotFound";
@@ -31,6 +32,7 @@ const App = () => (
         <Sonner />
         <OfflineIndicator />
         <BrowserRouter>
+          <RoutePersistence />
           <Header />
           <Routes>
             {/* Public Marketing Landing Page */}
