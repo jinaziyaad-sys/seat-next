@@ -88,13 +88,34 @@ export const sendBrowserNotification = async (
   if ('vibrate' in navigator) {
     navigator.vibrate([200, 100, 200]);
   }
-  
-  // Show notification
-  new Notification(title, {
+
+  const notifOptions: NotificationOptions = {
     body,
     icon: '/favicon.ico',
+    badge: '/favicon.ico',
     ...options,
-  });
+  };
+
+  // On installed PWAs (especially iOS 16.4+), `new Notification()` is NOT
+  // allowed — only the Service Worker's showNotification() works.
+  // Try the SW path first, fall back to the constructor for desktop browsers.
+  try {
+    if ('serviceWorker' in navigator) {
+      const reg = await navigator.serviceWorker.getRegistration();
+      if (reg) {
+        await reg.showNotification(title, notifOptions);
+        return;
+      }
+    }
+  } catch (err) {
+    console.warn('SW notification failed, falling back:', err);
+  }
+
+  try {
+    new Notification(title, notifOptions);
+  } catch (err) {
+    console.warn('Notification constructor failed (likely an installed PWA on iOS):', err);
+  }
 };
 
 /**
