@@ -53,7 +53,9 @@ export const initializePushNotifications = async (_unused?: string): Promise<boo
   }
 
   try {
-    const permission = await Notification.requestPermission();
+    const permission = Notification.permission === 'granted'
+      ? 'granted'
+      : await Notification.requestPermission();
     if (permission !== 'granted') return false;
 
     const reg = await getOrRegisterSW();
