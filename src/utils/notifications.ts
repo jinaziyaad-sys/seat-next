@@ -14,6 +14,18 @@ export const getNotificationPermission = (): NotificationPermission => {
 
 export const hasNotificationPermission = (): boolean => getNotificationPermission() === 'granted';
 
+const isBlockedServiceWorkerContext = (): boolean => {
+  if (typeof window === 'undefined') return true;
+  const isPreviewHost = window.location.hostname.includes('id-preview--') || window.location.hostname.includes('lovableproject.com');
+  let isInIframe = false;
+  try {
+    isInIframe = window.self !== window.top;
+  } catch {
+    isInIframe = true;
+  }
+  return isPreviewHost || isInIframe;
+};
+
 function urlBase64ToUint8Array(base64String: string): Uint8Array {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
@@ -32,11 +44,19 @@ function bufferToBase64(buf: ArrayBuffer | null): string {
 }
 
 async function getOrRegisterSW(): Promise<ServiceWorkerRegistration | null> {
-  if (!('serviceWorker' in navigator)) return null;
+  if (!('serviceWorker' in navigator) || isBlockedServiceWorkerContext()) return null;
   try {
-    const existing = await navigator.serviceWorker.getRegistration('/push-sw.js');
-    if (existing) return existing;
-    return await navigator.serviceWorker.register('/push-sw.js');
+    const existing = await navigator.serviceWorker.getRegistration('/');
+    const isPushWorker = existing?.active?.scriptURL.endsWith('/push-sw.js')
+      || existing?.installing?.scriptURL.endsWith('/push-sw.js')
+      || existing?.waiting?.scriptURL.endsWith('/push-sw.js');
+
+    if (existing && isPushWorker) return existing;
+    if (existing && !isPushWorker) await existing.unregister();
+
+    const registration = await navigator.serviceWorker.register('/push-sw.js', { scope: '/' });
+    await navigator.serviceWorker.ready;
+    return registration;
   } catch (e) {
     console.error('SW register failed:', e);
     return null;
