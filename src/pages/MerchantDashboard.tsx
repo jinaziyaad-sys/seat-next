@@ -30,6 +30,7 @@ import { LoyaltyManagement } from "@/components/merchant/LoyaltyManagement";
 import { FloorPlan } from "@/components/merchant/FloorPlan";
 import { MerchantAnnouncementBanner } from "@/components/merchant/MerchantAnnouncementBanner";
 import { SponsoredAdsManager } from "@/components/merchant/SponsoredAdsManager";
+import { NotificationPrompt } from "@/components/NotificationPrompt";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -609,6 +610,7 @@ const MerchantDashboard = () => {
 
       {/* Targeted Merchant Announcements */}
       <MerchantAnnouncementBanner venueId={userRole.venue_id!} tierName={subscription.tierName} />
+      {user && <NotificationPrompt />}
 
       <div className="max-w-7xl mx-auto p-6">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
