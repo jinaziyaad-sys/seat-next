@@ -2988,6 +2988,15 @@ export type Database = {
         }
         Returns: undefined
       }
+      notify_venue_users_via_push: {
+        Args: {
+          p_body: string
+          p_data?: Json
+          p_title: string
+          p_venue_id: string
+        }
+        Returns: undefined
+      }
       process_stamp_card_redemption: {
         Args: { p_program_id: string; p_user_id: string; p_venue_id: string }
         Returns: undefined
