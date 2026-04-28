@@ -155,6 +155,46 @@ export function SponsoredAdsManager({ venueId }: Props) {
 
   useEffect(() => { fetchCampaigns(); }, [venueId]);
 
+  // Verify promo payment after Stripe checkout redirect (?promo=success)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('promo') !== 'success') return;
+
+    let cancelled = false;
+    (async () => {
+      toast.info('Verifying your payment...');
+      const { data: pending } = await supabase
+        .from('promo_campaigns')
+        .select('id')
+        .eq('venue_id', venueId)
+        .neq('payment_status', 'paid')
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (!pending?.length) { window.history.replaceState({}, '', '/merchant/dashboard'); return; }
+
+      for (let attempt = 0; attempt < 6 && !cancelled; attempt++) {
+        let anyPaid = false;
+        for (const c of pending) {
+          const { data } = await supabase.functions.invoke('verify-promo-payment', { body: { campaignId: c.id } });
+          if (data?.paid) anyPaid = true;
+        }
+        if (anyPaid) {
+          toast.success('Payment confirmed!');
+          await fetchCampaigns();
+          window.history.replaceState({}, '', '/merchant/dashboard');
+          return;
+        }
+        await new Promise(r => setTimeout(r, 2500));
+      }
+      if (!cancelled) {
+        toast.error('Payment not yet confirmed. Please refresh in a moment.');
+        window.history.replaceState({}, '', '/merchant/dashboard');
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [venueId]);
+
   // Debounced audience estimation
   const estimateAudience = useCallback(() => {
     if (!targeting.enabled) {
