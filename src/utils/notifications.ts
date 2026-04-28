@@ -1,93 +1,121 @@
 import { supabase } from '@/integrations/supabase/client';
 
-/**
- * Check if notifications are supported
- */
+// Public VAPID key (safe to expose). Must match the VAPID_PUBLIC_KEY secret on the server.
+const VAPID_PUBLIC_KEY = 'BGwlewQtKQLB-pr-KDpi2aAYGFGZbxDaJ2zPzRSIG1ioDlIaSi-2UJRjunBQiD_6xF3mqxWB-qmjJae16Us_R4s';
+
 export const areNotificationsSupported = (): boolean => {
-  return 'Notification' in window;
+  return typeof window !== 'undefined' && 'Notification' in window && 'serviceWorker' in navigator && 'PushManager' in window;
 };
 
-/**
- * Get current notification permission status
- */
 export const getNotificationPermission = (): NotificationPermission => {
-  if (!areNotificationsSupported()) {
-    return 'denied';
-  }
+  if (!('Notification' in window)) return 'denied';
   return Notification.permission;
 };
 
+export const hasNotificationPermission = (): boolean => getNotificationPermission() === 'granted';
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const raw = atob(base64);
+  const out = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+
+function bufferToBase64(buf: ArrayBuffer | null): string {
+  if (!buf) return '';
+  const bytes = new Uint8Array(buf);
+  let bin = '';
+  for (let i = 0; i < bytes.byteLength; i++) bin += String.fromCharCode(bytes[i]);
+  return btoa(bin);
+}
+
+async function getOrRegisterSW(): Promise<ServiceWorkerRegistration | null> {
+  if (!('serviceWorker' in navigator)) return null;
+  try {
+    const existing = await navigator.serviceWorker.getRegistration('/push-sw.js');
+    if (existing) return existing;
+    return await navigator.serviceWorker.register('/push-sw.js');
+  } catch (e) {
+    console.error('SW register failed:', e);
+    return null;
+  }
+}
+
 /**
- * Initialize push notifications for the current user
- * Simplified version - requests permission and saves to profile
+ * Initialize push notifications: ask permission, register SW, subscribe, save to DB.
  */
-export const initializePushNotifications = async (_firebaseProjectId: string): Promise<boolean> => {
+export const initializePushNotifications = async (_unused?: string): Promise<boolean> => {
   if (!areNotificationsSupported()) {
-    console.log('Notifications not supported in this browser');
+    console.log('Push not supported');
     return false;
   }
 
   try {
-    // Request notification permission
     const permission = await Notification.requestPermission();
-    
-    if (permission !== 'granted') {
-      console.log('Notification permission denied');
-      return false;
+    if (permission !== 'granted') return false;
+
+    const reg = await getOrRegisterSW();
+    if (!reg) return false;
+
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) {
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
     }
 
-    // Save permission status to user profile
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      console.log('No authenticated user');
-      return false;
-    }
+    if (!user) return false;
 
-    // Generate a simple token (in production, use FCM token)
-    const simpleToken = `browser-${user.id}-${Date.now()}`;
-    
+    const json = sub.toJSON();
+    const endpoint = json.endpoint!;
+    const p256dh = json.keys?.p256dh ?? bufferToBase64(sub.getKey('p256dh'));
+    const auth = json.keys?.auth ?? bufferToBase64(sub.getKey('auth'));
+
     const { error } = await supabase
-      .from('profiles')
-      .update({ fcm_token: simpleToken })
-      .eq('id', user.id);
+      .from('push_subscriptions')
+      .upsert(
+        {
+          user_id: user.id,
+          endpoint,
+          p256dh,
+          auth,
+          user_agent: navigator.userAgent,
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: 'endpoint' }
+      );
 
     if (error) {
-      console.error('Error saving notification token:', error);
+      console.error('Save push subscription failed:', error);
       return false;
     }
 
-    console.log('Push notifications initialized successfully');
+    // Best-effort: also flag profile so older code paths know notifications are on.
+    await supabase.from('profiles').update({ fcm_token: 'webpush' }).eq('id', user.id);
+
+    console.log('Push notifications initialized');
     return true;
-  } catch (error) {
-    console.error('Error initializing push notifications:', error);
+  } catch (e) {
+    console.error('initializePushNotifications error:', e);
     return false;
   }
 };
 
 /**
- * Send a browser notification (works when app is open)
- * Note: This does NOT request permission - permission must already be granted
+ * Show a foreground notification (app is open). Background pushes are handled by the SW.
  */
 export const sendBrowserNotification = async (
   title: string,
   body: string,
   options?: NotificationOptions
 ): Promise<void> => {
-  if (!areNotificationsSupported()) {
-    console.log('Notifications not supported');
-    return;
-  }
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
 
-  // Only send if permission is already granted - don't request again
-  if (Notification.permission !== 'granted') {
-    console.log('Notification permission not granted, skipping');
-    return;
-  }
-
-  // Vibrate first
-  if ('vibrate' in navigator) {
-    navigator.vibrate([200, 100, 200]);
-  }
+  if ('vibrate' in navigator) navigator.vibrate([200, 100, 200]);
 
   const notifOptions: NotificationOptions = {
     body,
@@ -96,12 +124,10 @@ export const sendBrowserNotification = async (
     ...options,
   };
 
-  // On installed PWAs (especially iOS 16.4+), `new Notification()` is NOT
-  // allowed — only the Service Worker's showNotification() works.
-  // Try the SW path first, fall back to the constructor for desktop browsers.
   try {
     if ('serviceWorker' in navigator) {
-      const reg = await navigator.serviceWorker.getRegistration();
+      const reg = await navigator.serviceWorker.getRegistration('/push-sw.js')
+        ?? await navigator.serviceWorker.getRegistration();
       if (reg) {
         await reg.showNotification(title, notifOptions);
         return;
@@ -114,35 +140,31 @@ export const sendBrowserNotification = async (
   try {
     new Notification(title, notifOptions);
   } catch (err) {
-    console.warn('Notification constructor failed (likely an installed PWA on iOS):', err);
+    console.warn('Notification constructor failed:', err);
   }
 };
 
-/**
- * Vibrate the phone
- */
 export const vibratePhone = (pattern: number | number[] = [200, 100, 200]): void => {
-  if ('vibrate' in navigator) {
-    navigator.vibrate(pattern);
-  }
+  if ('vibrate' in navigator) navigator.vibrate(pattern);
 };
 
 /**
- * Check if user has granted notification permission
- */
-export const hasNotificationPermission = (): boolean => {
-  return getNotificationPermission() === 'granted';
-};
-
-/**
- * Revoke notification permission (clear FCM token)
+ * Unsubscribe and remove from DB.
  */
 export const revokeNotificationPermission = async (): Promise<void> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return;
+  try {
+    const reg = await navigator.serviceWorker?.getRegistration('/push-sw.js');
+    const sub = await reg?.pushManager.getSubscription();
+    if (sub) {
+      await supabase.from('push_subscriptions').delete().eq('endpoint', sub.endpoint);
+      await sub.unsubscribe();
+    }
+  } catch (e) {
+    console.warn('Unsubscribe failed:', e);
+  }
 
-  await supabase
-    .from('profiles')
-    .update({ fcm_token: null })
-    .eq('id', user.id);
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
+    await supabase.from('profiles').update({ fcm_token: null }).eq('id', user.id);
+  }
 };

@@ -1,120 +1,126 @@
+// Real Web Push edge function — signs VAPID JWTs and POSTs to each subscription endpoint.
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import webpush from "https://esm.sh/web-push@3.6.7";
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-interface NotificationPayload {
-  fcmToken: string;
+const VAPID_PUBLIC_KEY = Deno.env.get("VAPID_PUBLIC_KEY") ?? "";
+const VAPID_PRIVATE_KEY = Deno.env.get("VAPID_PRIVATE_KEY") ?? "";
+const VAPID_SUBJECT = Deno.env.get("VAPID_SUBJECT") ?? "mailto:hello@readyup.site";
+
+if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
+  try {
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
+  } catch (e) {
+    console.error("Failed to set VAPID details:", e);
+  }
+}
+
+interface PushBody {
+  userId?: string;
+  fcmToken?: string; // legacy alias — ignored
   title: string;
   body: string;
-  data?: Record<string, any>;
+  data?: Record<string, unknown>;
+  url?: string;
+  requireInteraction?: boolean;
+  tag?: string;
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { fcmToken, title, body, data = {} }: NotificationPayload = await req.json();
-
-    // Validate inputs
-    if (!fcmToken || !title || !body) {
+    if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
       return new Response(
-        JSON.stringify({ error: 'Missing required fields: fcmToken, title, body' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: "VAPID keys not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Get Firebase credentials from environment
-    const FIREBASE_PROJECT_ID = Deno.env.get('FIREBASE_PROJECT_ID');
-    const FIREBASE_PRIVATE_KEY = Deno.env.get('FIREBASE_PRIVATE_KEY');
-    const FIREBASE_CLIENT_EMAIL = Deno.env.get('FIREBASE_CLIENT_EMAIL');
+    const payload: PushBody = await req.json();
+    const { userId, title, body, data = {}, url, requireInteraction, tag } = payload;
 
-    if (!FIREBASE_PROJECT_ID || !FIREBASE_PRIVATE_KEY || !FIREBASE_CLIENT_EMAIL) {
-      console.error('Missing Firebase credentials');
+    if (!userId || !title || !body) {
       return new Response(
-        JSON.stringify({ error: 'Firebase credentials not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: "Missing required fields: userId, title, body" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Generate OAuth2 access token for Firebase
-    const jwtHeader = btoa(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
-    const now = Math.floor(Date.now() / 1000);
-    const jwtClaimSet = btoa(JSON.stringify({
-      iss: FIREBASE_CLIENT_EMAIL,
-      scope: 'https://www.googleapis.com/auth/firebase.messaging',
-      aud: 'https://oauth2.googleapis.com/token',
-      exp: now + 3600,
-      iat: now,
-    }));
-
-    // Note: In production, you'd properly sign this JWT with the private key
-    // For now, we'll use FCM Legacy API which is simpler
-    
-    // Construct FCM message
-    const fcmPayload = {
-      message: {
-        token: fcmToken,
-        notification: {
-          title: title,
-          body: body,
-        },
-        data: data,
-        android: {
-          priority: 'high',
-          notification: {
-            sound: 'default',
-            click_action: 'FLUTTER_NOTIFICATION_CLICK',
-          },
-        },
-        apns: {
-          payload: {
-            aps: {
-              sound: 'default',
-              'content-available': 1,
-            },
-          },
-        },
-        webpush: {
-          notification: {
-            vibrate: [200, 100, 200],
-            requireInteraction: true,
-          },
-        },
-      },
-    };
-
-    // Note: This is a simplified version. In production, you would:
-    // 1. Generate a proper JWT signed with the private key
-    // 2. Exchange it for an access token via OAuth2
-    // 3. Use the access token to call FCM API
-
-    console.log('Push notification sent successfully', {
-      title,
-      body,
-      data,
-      projectId: FIREBASE_PROJECT_ID,
-    });
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Notification sent',
-        // In a real implementation, include FCM response
-      }),
-      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL") ?? "",
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
     );
 
-  } catch (error) {
-    console.error('Error sending push notification:', error);
+    const { data: subs, error } = await supabase
+      .from("push_subscriptions")
+      .select("id, endpoint, p256dh, auth")
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Failed to fetch subscriptions:", error);
+      return new Response(
+        JSON.stringify({ error: error.message }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    if (!subs || subs.length === 0) {
+      return new Response(
+        JSON.stringify({ success: true, sent: 0, message: "No subscriptions for user" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const notificationPayload = JSON.stringify({
+      title,
+      body,
+      data: { ...data, url: url || "/" },
+      requireInteraction: requireInteraction ?? true,
+      tag,
+    });
+
+    let sent = 0;
+    const expiredIds: string[] = [];
+
+    await Promise.all(
+      subs.map(async (sub) => {
+        try {
+          await webpush.sendNotification(
+            { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+            notificationPayload,
+          );
+          sent++;
+        } catch (err: any) {
+          const status = err?.statusCode;
+          console.warn("Push send failed", { endpoint: sub.endpoint, status, msg: err?.message });
+          if (status === 404 || status === 410) {
+            expiredIds.push(sub.id);
+          }
+        }
+      }),
+    );
+
+    if (expiredIds.length > 0) {
+      await supabase.from("push_subscriptions").delete().in("id", expiredIds);
+    }
+
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ success: true, sent, expired: expiredIds.length }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  } catch (error) {
+    console.error("send-push-notification error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   }
 });
