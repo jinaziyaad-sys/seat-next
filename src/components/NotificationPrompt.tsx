@@ -28,12 +28,24 @@ export function NotificationPrompt({ onDismiss }: NotificationPromptProps) {
   const checkShouldShow = async () => {
     if (!areNotificationsSupported()) return;
     const permission = getNotificationPermission();
-    if (permission === 'granted') return;
     if (permission === 'denied') {
       setIsBlocked(true);
     }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+
+    if (permission === 'granted') {
+      const { data: existingSub } = await supabase
+        .from('push_subscriptions')
+        .select('id')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (!existingSub) {
+        await initializePushNotifications('');
+      }
+      return;
+    }
+
     const dismissed = localStorage.getItem('notificationPromptDismissed');
     if (dismissed) {
       const dismissedDate = new Date(dismissed);
