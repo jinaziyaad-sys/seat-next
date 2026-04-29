@@ -25,6 +25,7 @@ import { Messenger } from "@/components/Messenger";
 import { NotificationPrompt } from "@/components/NotificationPrompt";
 import { CelebrationOverlay } from "@/components/ui/celebration-overlay";
 import { PromoBanner } from "@/components/PromoBanner";
+import { InstallAppButton } from "@/components/InstallAppButton";
 import { PatronLoyaltyCard } from "@/components/PatronLoyaltyCard";
 import { LoyaltyReadyFlow } from "@/components/LoyaltyReadyFlow";
 import { ActivityFlow } from "@/components/ActivityFlow";
@@ -761,6 +762,13 @@ const Index = () => {
         </div>
       </div>
 
+
+      {/* Install App Banner (auto-hides if installed/dismissed) */}
+      {user && (
+        <div className="px-6 pt-4">
+          <InstallAppButton variant="banner" />
+        </div>
+      )}
 
       {/* Promotional Banner Carousel */}
       <div className="px-6 pt-4">

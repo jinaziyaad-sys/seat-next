@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { PasswordResetDialog } from "@/components/PasswordResetDialog";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { PatronNotificationSettings } from "@/components/PatronNotificationSettings";
+import { InstallAppButton } from "@/components/InstallAppButton";
 import { PatronDiningPreferences } from "@/components/PatronDiningPreferences";
 import { YearlyRecap } from "@/components/YearlyRecap";
 import { PatronLoyaltyCard } from "@/components/PatronLoyaltyCard";
@@ -230,6 +231,9 @@ export function ProfileSection({ onBack }: { onBack: () => void }) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Install App Section (auto-hides if already installed) */}
+      <InstallAppButton variant="card" />
 
       {/* Notifications Section */}
       <PatronNotificationSettings />
