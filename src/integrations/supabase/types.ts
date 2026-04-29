@@ -2926,6 +2926,8 @@ export type Database = {
       }
       cancel_expired_ready_entries: { Args: never; Returns: undefined }
       cleanup_expired_otps: { Args: never; Returns: undefined }
+      extract_extension_reason: { Args: { p_notes: string }; Returns: string }
+      format_eta_time: { Args: { p_eta: string }; Returns: string }
       generate_patron_code: { Args: never; Returns: string }
       get_occupied_tables: {
         Args: {
