@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Bell, Clock, Moon, CheckCircle, XCircle, HelpCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { areNotificationsSupported, getNotificationPermission } from "@/utils/notifications";
+import { areNotificationsSupported, getNotificationPermission, initializePushNotifications, revokeNotificationPermission } from "@/utils/notifications";
 import { UnblockNotificationsDialog } from "@/components/notifications/UnblockNotificationsDialog";
 interface NotificationPreferences {
   mealtime_nudges: boolean;
@@ -40,6 +40,8 @@ export function PatronNotificationSettings() {
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [showUnblockDialog, setShowUnblockDialog] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
+  const [pushSaving, setPushSaving] = useState(false);
   const { toast } = useToast();
   
   const notificationsSupported = areNotificationsSupported();
@@ -57,6 +59,13 @@ export function PatronNotificationSettings() {
     }
     
     setUserId(user.id);
+
+    const { data: pushSub } = await supabase
+      .from('push_subscriptions')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    setPushEnabled(!!pushSub);
 
     const { data, error } = await supabase
       .from('patron_notification_preferences')
@@ -116,6 +125,33 @@ export function PatronNotificationSettings() {
     setSaving(false);
   };
 
+  const handlePushToggle = async (checked: boolean) => {
+    if (!notificationsSupported) return;
+    if (notificationPermission === 'denied') {
+      setShowUnblockDialog(true);
+      return;
+    }
+
+    setPushSaving(true);
+    if (checked) {
+      const success = await initializePushNotifications('');
+      setPushEnabled(success);
+      toast({
+        title: success ? t("notifications.enabledSuccess") : t("notifications.notEnabled"),
+        description: success ? t("notifications.enabledDesc") : t("notifications.notEnabledDesc"),
+        variant: success ? "default" : "destructive",
+      });
+    } else {
+      await revokeNotificationPermission();
+      setPushEnabled(false);
+      toast({
+        title: t("notifications.saved"),
+        description: t("notifications.pushDisabledDesc"),
+      });
+    }
+    setPushSaving(false);
+  };
+
   if (loading) {
     return (
       <Card className="shadow-card">
@@ -160,15 +196,23 @@ export function PatronNotificationSettings() {
               </Badge>
             )}
           </div>
-          {notificationPermission === 'denied' && (
-            <Button 
-              size="sm" 
-              variant="outline"
-              onClick={() => setShowUnblockDialog(true)}
-            >
-              {t("notifications.howToEnable")}
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {notificationPermission === 'denied' && (
+              <Button 
+                size="sm" 
+                variant="outline"
+                onClick={() => setShowUnblockDialog(true)}
+              >
+                {t("notifications.howToEnable")}
+              </Button>
+            )}
+            <Switch
+              id="push-notifications"
+              checked={pushEnabled && notificationPermission === 'granted'}
+              onCheckedChange={handlePushToggle}
+              disabled={pushSaving || !notificationsSupported}
+            />
+          </div>
         </div>
 
         {/* Nudge Types */}

@@ -276,6 +276,7 @@
     "browserBlocking": "Your browser is blocking notifications. Update your settings to receive alerts.",
     "enabling": "Enabling...",
     "enableNotifications": "Enable notifications",
+    "pushDisabledDesc": "Push notifications are off for this device. Toggle on to register it again.",
     "notNow": "Not now"
   },
   "privacy": {
