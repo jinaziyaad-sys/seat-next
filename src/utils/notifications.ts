@@ -174,6 +174,8 @@ export const vibratePhone = (pattern: number | number[] = [200, 100, 200]): void
  * Unsubscribe and remove from DB.
  */
 export const revokeNotificationPermission = async (): Promise<void> => {
+  const { data: { user } } = await supabase.auth.getUser();
+
   try {
     const reg = await navigator.serviceWorker?.getRegistration('/push-sw.js');
     const sub = await reg?.pushManager.getSubscription();
@@ -185,8 +187,8 @@ export const revokeNotificationPermission = async (): Promise<void> => {
     console.warn('Unsubscribe failed:', e);
   }
 
-  const { data: { user } } = await supabase.auth.getUser();
   if (user) {
+    await supabase.from('push_subscriptions').delete().eq('user_id', user.id);
     await supabase.from('profiles').update({ fcm_token: null }).eq('id', user.id);
   }
 };
