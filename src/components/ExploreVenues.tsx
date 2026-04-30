@@ -521,22 +521,23 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24" data-tour="explore-content">
+    <div className="min-h-screen overflow-x-hidden bg-background pb-24" data-tour="explore-content">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b">
-        <div className="flex items-center gap-4 p-4">
-          <Button variant="ghost" size="icon" onClick={onBack}>
+        <div className="flex items-center gap-3 p-4">
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={onBack}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold">{t("explore.title")}</h1>
-            <p className="text-sm text-muted-foreground">
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-xl font-bold">{t("explore.title")}</h1>
+            <p className="truncate text-sm text-muted-foreground">
               {user ? t("explore.personalised") : t("explore.discover")}
             </p>
           </div>
           <Button 
             variant="ghost" 
             size="icon" 
+            className="shrink-0"
             onClick={handleRefresh}
             disabled={refreshing}
           >
@@ -618,13 +619,13 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
               </div>
             </>
           ) : (
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
               <Navigation className="h-4 w-4 text-primary shrink-0" />
               {customLocation ? (
                 <>
-                  <span className="text-muted-foreground">{t("explore.searchingIn")}</span>
-                  <span className="font-medium truncate">{customLocation.label}</span>
-                  <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setShowLocationSearch(true)}>
+                  <span className="shrink-0 text-muted-foreground">{t("explore.searchingIn")}</span>
+                  <span className="min-w-0 flex-1 truncate font-medium">{customLocation.label}</span>
+                  <Button variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs" onClick={() => setShowLocationSearch(true)}>
                     <Pencil className="h-3 w-3 mr-1" />
                     {t("explore.change")}
                   </Button>
@@ -634,10 +635,10 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                 </>
               ) : (
                 <>
-                  <span className="text-muted-foreground">
+                  <span className="min-w-0 flex-1 truncate text-muted-foreground">
                     {userLocation ? t("explore.usingLocation") : t("explore.locationUnavailable")}
                   </span>
-                  <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setShowLocationSearch(true)}>
+                  <Button variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs" onClick={() => setShowLocationSearch(true)}>
                     <Pencil className="h-3 w-3 mr-1" />
                     {t("explore.change")}
                   </Button>
@@ -647,8 +648,8 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
           )}
 
           {/* Radius chips */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{t("explore.radius")}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="shrink-0 text-xs text-muted-foreground">{t("explore.radius")}</span>
             {RADIUS_OPTIONS.map((r) => (
               <button
                 key={r}
@@ -667,7 +668,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
         </div>
 
         {/* Filters */}
-        <div className="px-4 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
+        <div className="flex flex-wrap gap-2 px-4 pb-4">
           {FILTER_OPTION_IDS.map((filter) => {
             const isActive = activeFilters.includes(filter.id);
             return (
@@ -675,14 +676,14 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                 key={filter.id}
                 onClick={() => toggleFilter(filter.id)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm whitespace-nowrap transition-all",
+                  "flex max-w-full items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm leading-tight transition-all",
                   isActive 
                     ? "bg-primary text-primary-foreground border-primary" 
                     : "bg-muted/50 border-border hover:border-primary/50"
                 )}
               >
-                <span>{filter.icon}</span>
-                <span>{t(filter.labelKey)}</span>
+                <span className="shrink-0">{filter.icon}</span>
+                <span className="min-w-0 truncate">{t(filter.labelKey)}</span>
               </button>
             );
           })}
@@ -693,15 +694,15 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
       {!user && !loading && (
         <div className="mx-4 mt-4">
           <Card className="bg-gradient-to-br from-primary/10 to-background border-primary/20">
-            <CardContent className="p-4 flex items-center gap-3">
-              <Sparkles className="h-8 w-8 text-primary" />
-              <div className="flex-1">
+            <CardContent className="flex min-w-0 items-center gap-3 p-4">
+              <Sparkles className="h-8 w-8 shrink-0 text-primary" />
+              <div className="min-w-0 flex-1">
                 <p className="font-medium text-sm">{t("explore.getPersonalized")}</p>
                 <p className="text-xs text-muted-foreground">
                   {t("explore.signInSetPrefs")}
                 </p>
               </div>
-              <Button size="sm" variant="default">
+              <Button size="sm" variant="default" className="shrink-0">
                 {t("common.signIn")}
               </Button>
             </CardContent>
@@ -795,28 +796,28 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                     <Megaphone className="h-3 w-3 mr-1" />Promoted
                   </Badge>
                 )}
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex items-center gap-3 flex-1">
+                <div className="mb-3 flex min-w-0 items-start gap-2">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
                     <VenueLogo logoUrl={venue.logo_url} name={venue.name} size="lg" />
-                    <div>
-                      <h3 className="font-semibold text-lg">{venue.name}</h3>
+                    <div className="min-w-0 flex-1">
+                      <h3 className="truncate text-lg font-semibold">{venue.name}</h3>
                     {venue.address && (
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground mt-0.5">
-                        <MapPin className="h-3 w-3" />
-                        <span className="truncate max-w-[200px]">{venue.address}</span>
+                      <div className="mt-0.5 flex min-w-0 items-center gap-1 text-sm text-muted-foreground">
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        <span className="min-w-0 flex-1 truncate">{venue.address}</span>
                         {venue.distance_km !== null && (
-                          <span className="ml-1">• {venue.distance_km.toFixed(1)} km</span>
+                          <span className="shrink-0">• {venue.distance_km.toFixed(1)} km</span>
                         )}
                       </div>
                     )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex shrink-0 items-center gap-1">
                     {/* Share button */}
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-8 w-8 shrink-0"
                       onClick={(e) => {
                         e.stopPropagation();
                         const url = `${window.location.origin}/waitlist/${venue.venue_id}`;
@@ -838,7 +839,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8"
+                      className="h-8 w-8 shrink-0"
                       onClick={(e) => handleMessageVenue(venue, e)}
                       disabled={creatingInquiry === venue.venue_id}
                     >
@@ -852,7 +853,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                       <Badge 
                         variant="default" 
                         className={cn(
-                          "text-sm font-bold",
+                          "text-xs font-bold max-[420px]:hidden",
                           venue.match_score >= 80 && "bg-success text-success-foreground",
                           venue.match_score >= 60 && venue.match_score < 80 && "bg-primary text-primary-foreground",
                           venue.match_score < 60 && "bg-muted text-muted-foreground"
@@ -873,21 +874,21 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                 )}
 
                 {/* Stats row */}
-                <div className="flex items-center gap-4 text-sm mb-3">
+                <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
                   {venue.avg_rating > 0 && (
-                    <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                    <div className="flex min-w-0 items-center gap-1">
+                      <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" />
                       <span className="font-medium">{venue.avg_rating.toFixed(1)}</span>
                     </div>
                   )}
-                  <div className={cn("flex items-center gap-1", getBusynessColor(venue.busyness))}>
-                    <Users className="h-4 w-4" />
-                    <span>{getBusynessLabel(venue.busyness)}</span>
+                  <div className={cn("flex min-w-0 items-center gap-1", getBusynessColor(venue.busyness))}>
+                    <Users className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{getBusynessLabel(venue.busyness)}</span>
                   </div>
                   {venue.wait_estimate && (
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span>{venue.wait_estimate}</span>
+                    <div className="flex min-w-0 items-center gap-1 text-muted-foreground">
+                      <Clock className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{venue.wait_estimate}</span>
                     </div>
                   )}
                 </div>
