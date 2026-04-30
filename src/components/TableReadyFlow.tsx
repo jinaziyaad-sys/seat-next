@@ -633,8 +633,11 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
     checkAvailability();
   }, [step, reservationDate, partySize, selectedVenueData?.id, selectedVenueData?.settings]);
 
+  // Nearby cap (25km) only for walk-in waitlist — patrons want somewhere they can get to NOW.
+  // Reservations skip the cap (you might book somewhere further for later) and search bypasses it too.
+  const NEARBY_KM_CAP = 25;
   const filteredVenues = venues
-    .filter(venue => 
+    .filter(venue =>
       venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (venue.address && venue.address.toLowerCase().includes(searchQuery.toLowerCase()))
     )
@@ -649,8 +652,14 @@ export function TableReadyFlow({ onBack, initialEntry }: { onBack: () => void; i
           )
         : undefined
     }))
+    .filter(venue => {
+      if (activeTableTab !== 'waitlist') return true; // reservations: no cap
+      if (searchQuery.trim().length > 0) return true; // user is searching
+      if (!userLocation) return true;
+      if (venue.distance === undefined) return true;
+      return venue.distance <= NEARBY_KM_CAP;
+    })
     .sort((a, b) => {
-      // Sort by distance if available, otherwise keep original order
       if (a.distance !== undefined && b.distance !== undefined) {
         return a.distance - b.distance;
       }

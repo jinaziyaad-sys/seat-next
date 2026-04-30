@@ -68,9 +68,7 @@ const FILTER_OPTION_IDS = [
   { id: "short_wait", labelKey: "explore.shortWait", icon: "⚡" },
 ];
 
-// Tighter radius options — patrons usually want what's nearby for waitlist/food.
-// For wider exploration they can use the location search (Passport mode).
-const RADIUS_OPTIONS = [5, 10, 15, 25];
+const RADIUS_OPTIONS = [10, 25, 50, 100];
 
 interface ExploreVenuesProps {
   onBack: () => void;
@@ -92,9 +90,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
   // Location & radius state
   const [searchRadius, setSearchRadius] = useState<number>(() => {
     const saved = localStorage.getItem("explore_radius");
-    const parsed = saved ? parseInt(saved, 10) : 10;
-    // Migrate any previously-saved oversized radius (50/100) down to the new max
-    return parsed > 25 ? 25 : parsed;
+    return saved ? parseInt(saved, 10) : 25;
   });
   const [customLocation, setCustomLocation] = useState<{ lat: number; lng: number; label: string } | null>(null);
   const [showLocationSearch, setShowLocationSearch] = useState(false);
@@ -772,22 +768,13 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                 {t("explore.clearFilters")}
               </Button>
             )}
-            {searchRadius < 25 && recommendations.length === 0 && (
+            {searchRadius < 100 && recommendations.length === 0 && (
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => handleRadiusChange(25)}
+                onClick={() => handleRadiusChange(100)}
               >
-                {t("explore.expandTo", { radius: 25 })}
-              </Button>
-            )}
-            {searchRadius >= 25 && recommendations.length === 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowLocationSearch(true)}
-              >
-                Search another location
+                {t("explore.expandTo", { radius: 100 })}
               </Button>
             )}
           </div>
