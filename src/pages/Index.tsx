@@ -931,10 +931,10 @@ const Index = () => {
 
 
       {/* Quick Actions */}
-      <div className="space-y-6 p-6">
+      <div className="space-y-4 p-4 md:space-y-6 md:p-6">
         {!user && (
           <Card className="shadow-card border-2 border-primary/20">
-            <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+            <CardContent className="flex flex-col items-center gap-4 p-4 md:p-6 text-center">
               <div>
                 <h3 className="font-semibold">{t("home.signInButton")}</h3>
                 <p className="text-sm text-muted-foreground mb-4">
@@ -948,7 +948,7 @@ const Index = () => {
           </Card>
         )}
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 md:gap-3">
           {features.food_ordering_enabled && (
             <motion.div
               initial={{ opacity: 0, y: 16 }}
