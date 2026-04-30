@@ -778,13 +778,13 @@ const Index = () => {
 
       {/* Install App Banner (auto-hides if installed/dismissed) */}
       {user && (
-        <div className="px-6 pt-4">
+        <div className="px-4 md:px-6 pt-4">
           <InstallAppButton variant="banner" />
         </div>
       )}
 
       {/* Promotional Banner Carousel */}
-      <div className="px-6 pt-4">
+      <div className="px-4 md:px-6 pt-4">
         <PromoBanner placement="home" onNavigateToVenue={(venueId) => {
           setSelectedOrder({ __promoVenueId: venueId });
           setActiveTab("table-ready");
