@@ -319,8 +319,11 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
     fetchVenues();
   }, []);
 
+  // Nearby cap for food orders — patrons collect in person, so far-away venues are noise.
+  // Search by name/address still bypasses the distance cap so power users can always find a venue.
+  const NEARBY_KM_CAP = 25;
   const filteredVenues = venues
-    .filter(venue => 
+    .filter(venue =>
       venue.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (venue.address && venue.address.toLowerCase().includes(searchQuery.toLowerCase()))
     )
@@ -335,8 +338,16 @@ export function FoodReadyFlow({ onBack, initialOrder }: { onBack: () => void; in
           )
         : undefined
     }))
+    .filter(venue => {
+      // If patron is searching, never hide — let name/address matches through
+      if (searchQuery.trim().length > 0) return true;
+      // No location? show all (can't filter)
+      if (!userLocation) return true;
+      // Venue has no coords? show it (don't penalize venues without geo)
+      if (venue.distance === undefined) return true;
+      return venue.distance <= NEARBY_KM_CAP;
+    })
     .sort((a, b) => {
-      // Sort by distance if available, otherwise keep original order
       if (a.distance !== undefined && b.distance !== undefined) {
         return a.distance - b.distance;
       }
