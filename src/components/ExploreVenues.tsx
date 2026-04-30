@@ -874,21 +874,21 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                 )}
 
                 {/* Stats row */}
-                <div className="flex items-center gap-4 text-sm mb-3">
+                <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
                   {venue.avg_rating > 0 && (
-                    <div className="flex items-center gap-1">
-                      <Star className="h-4 w-4 fill-amber-400 text-amber-400" />
+                    <div className="flex min-w-0 items-center gap-1">
+                      <Star className="h-4 w-4 shrink-0 fill-amber-400 text-amber-400" />
                       <span className="font-medium">{venue.avg_rating.toFixed(1)}</span>
                     </div>
                   )}
-                  <div className={cn("flex items-center gap-1", getBusynessColor(venue.busyness))}>
-                    <Users className="h-4 w-4" />
-                    <span>{getBusynessLabel(venue.busyness)}</span>
+                  <div className={cn("flex min-w-0 items-center gap-1", getBusynessColor(venue.busyness))}>
+                    <Users className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{getBusynessLabel(venue.busyness)}</span>
                   </div>
                   {venue.wait_estimate && (
-                    <div className="flex items-center gap-1 text-muted-foreground">
-                      <Clock className="h-4 w-4" />
-                      <span>{venue.wait_estimate}</span>
+                    <div className="flex min-w-0 items-center gap-1 text-muted-foreground">
+                      <Clock className="h-4 w-4 shrink-0" />
+                      <span className="truncate">{venue.wait_estimate}</span>
                     </div>
                   )}
                 </div>
