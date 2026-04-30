@@ -421,7 +421,7 @@ const MerchantDashboard = () => {
   const hasPromotions = true; // Promotions available to all plans
 
   // Tab trigger class for consistent sizing
-  const tabTriggerClass = "flex items-center gap-2 flex-1 min-w-fit";
+  const tabTriggerClass = "flex items-center justify-center gap-1.5 text-xs sm:text-sm px-2 py-2 sm:px-3";
 
   // Set initial tab when service types are loaded
   useEffect(() => {
@@ -614,7 +614,7 @@ const MerchantDashboard = () => {
 
       <div className="max-w-7xl mx-auto p-6">
         <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="flex w-full overflow-x-auto h-auto p-1 bg-muted/50">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-9 h-auto gap-1 p-1 bg-muted/50">
             {hasKitchenBoard && (
               <TabsTrigger value="kitchen" data-tour="tab-kitchen" className={tabTriggerClass}>
                 <ChefHat size={16} />
