@@ -805,9 +805,9 @@ const Index = () => {
         if (!isLoadingTracking && activeItems.length === 0 && !isDemoMode) return null;
 
         return (
-        <div className="p-6 space-y-3" data-tour="active-tracking">
+        <div className="p-4 md:p-6 space-y-3" data-tour="active-tracking">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">
+            <h2 className="text-lg md:text-xl font-bold">
               {t("home.activeTracking")}
               {isDemoMode && <span className="ml-2 text-xs font-normal text-primary">{t("home.demoMode")}</span>}
             </h2>
