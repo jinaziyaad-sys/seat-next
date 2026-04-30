@@ -8,11 +8,11 @@ export const Header = () => {
   const isLanding = location.pathname === "/";
   const isApp = location.pathname === "/app";
   
-  // Don't show header on landing page (has its own), merchant or dev dashboards
+  // Don't show header on landing, patron app (has its own hero), merchant or dev dashboards
   const isMerchantDashboard = location.pathname === "/merchant/dashboard";
   const isDevDashboard = location.pathname === "/dev/dashboard";
   
-  if (isLanding || isMerchantDashboard || isDevDashboard) return null;
+  if (isLanding || isApp || isMerchantDashboard || isDevDashboard) return null;
 
   // Determine which home to navigate to based on current route
   const getHomeRoute = () => {
