@@ -713,51 +713,38 @@ const Index = () => {
         </div>
       )}
 
-      {/* Hero Section - Compact Black Header */}
-      <div className="relative overflow-hidden bg-black px-4 py-4 md:px-6 md:py-5 text-white" data-tour="patron-header">
+      {/* Hero Section - Black Background */}
+      <div className="relative overflow-hidden bg-black px-6 py-10 text-white" data-tour="patron-header">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,107,53,0.08),transparent_70%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,rgba(255,107,53,0.05),transparent_60%)]" />
 
-        <div className="relative z-10 flex items-center justify-between gap-2">
-          {/* Left: Back-to-landing */}
+        {/* Top-left: Back to landing */}
+        <div className="absolute top-4 left-4 z-20">
           <Button
             variant="ghost"
             size="icon"
             onClick={() => navigate("/")}
             aria-label="Back to ReadyUp home"
-            className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm h-9 w-9 shrink-0"
+            className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm transition-all"
           >
-            <Home size={18} />
+            <Home size={20} />
           </Button>
+        </div>
 
-          {/* Center: Logo */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.4, ease: "easeOut" }}
-            className="relative flex items-center justify-center flex-1"
-          >
-            <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl scale-110" />
-            <img
-              src={logo}
-              alt="ReadyUp"
-              className="relative h-10 w-auto md:h-14 drop-shadow-[0_0_20px_rgba(255,107,53,0.4)]"
-            />
-          </motion.div>
-
-          {/* Right: Profile / Sign in */}
+        {/* Top-right: Profile / Sign in */}
+        <div className="absolute top-4 right-4 z-20">
           {user ? (
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm h-9 w-9 shrink-0"
+              className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm transition-all"
               onClick={() => setActiveTab("profile")}
               data-tour="nav-profile"
               aria-label="Open profile"
             >
-              <Avatar className="h-7 w-7">
-                <AvatarFallback className="bg-primary/20 text-white text-xs font-semibold">
-                  {user.email?.charAt(0).toUpperCase() || <UserIcon size={14} />}
+              <Avatar className="h-9 w-9">
+                <AvatarFallback className="bg-primary/20 text-white font-semibold">
+                  {user.email?.charAt(0).toUpperCase() || <UserIcon size={18} />}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -765,13 +752,30 @@ const Index = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm h-9 w-9 shrink-0"
+              className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm transition-all"
               onClick={() => navigate("/auth")}
               aria-label="Sign in"
             >
-              <LogIn size={18} />
+              <LogIn size={22} />
             </Button>
           )}
+        </div>
+
+        {/* Centered big logo */}
+        <div className="relative z-10 flex flex-col items-center text-center py-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="relative"
+          >
+            <div className="absolute inset-0 bg-primary/25 rounded-full blur-[80px] animate-pulse scale-150" />
+            <img
+              src={logo}
+              alt="ReadyUp"
+              className="relative h-56 md:h-72 w-auto drop-shadow-[0_0_60px_rgba(255,107,53,0.5)]"
+            />
+          </motion.div>
         </div>
       </div>
 
