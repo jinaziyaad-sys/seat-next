@@ -92,7 +92,9 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
   // Location & radius state
   const [searchRadius, setSearchRadius] = useState<number>(() => {
     const saved = localStorage.getItem("explore_radius");
-    return saved ? parseInt(saved, 10) : 25;
+    const parsed = saved ? parseInt(saved, 10) : 10;
+    // Migrate any previously-saved oversized radius (50/100) down to the new max
+    return parsed > 25 ? 25 : parsed;
   });
   const [customLocation, setCustomLocation] = useState<{ lat: number; lng: number; label: string } | null>(null);
   const [showLocationSearch, setShowLocationSearch] = useState(false);
