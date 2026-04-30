@@ -68,9 +68,7 @@ const FILTER_OPTION_IDS = [
   { id: "short_wait", labelKey: "explore.shortWait", icon: "⚡" },
 ];
 
-// Tighter radius options — patrons usually want what's nearby for waitlist/food.
-// For wider exploration they can use the location search (Passport mode).
-const RADIUS_OPTIONS = [5, 10, 15, 25];
+const RADIUS_OPTIONS = [10, 25, 50, 100];
 
 interface ExploreVenuesProps {
   onBack: () => void;
