@@ -320,13 +320,13 @@ export function MessengerHub({ userId }: MessengerHubProps) {
         onClick={() => setIsOpen(true)}
         size="icon"
         className={cn(
-          "fixed bottom-24 right-4 z-50 h-14 w-14 rounded-full shadow-floating",
+          "fixed bottom-28 right-4 z-50 h-12 w-12 rounded-full shadow-floating",
           "bg-primary text-primary-foreground hover:bg-primary/90",
           "transition-all duration-300 hover:scale-105"
         )}
         aria-label="Open messages"
       >
-        <MessageSquare className="h-6 w-6" />
+        <MessageSquare className="h-5 w-5" />
         {totalUnread > 0 && (
           <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-xs text-white flex items-center justify-center font-medium">
             {totalUnread > 9 ? '9+' : totalUnread}

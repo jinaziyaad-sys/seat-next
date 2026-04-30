@@ -16,8 +16,8 @@ export function HelpButton({ onClick, showPulse = false, className }: HelpButton
       size="icon"
       className={cn(
         'fixed right-4 z-50 h-12 w-12 rounded-full shadow-floating',
-        // Sit above the bottom tab nav (~80px) on mobile, lower on desktop
-        'bottom-[6.5rem] md:bottom-24',
+        // Stacked above the chat button (bottom-28) which sits above the bottom nav (~88px)
+        'bottom-44',
         'bg-primary text-primary-foreground hover:bg-primary/90',
         'transition-all duration-300 hover:scale-105',
         showPulse && 'animate-pulse',
