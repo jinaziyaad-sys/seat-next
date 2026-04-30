@@ -768,22 +768,13 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                 {t("explore.clearFilters")}
               </Button>
             )}
-            {searchRadius < 25 && recommendations.length === 0 && (
+            {searchRadius < 100 && recommendations.length === 0 && (
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => handleRadiusChange(25)}
+                onClick={() => handleRadiusChange(100)}
               >
-                {t("explore.expandTo", { radius: 25 })}
-              </Button>
-            )}
-            {searchRadius >= 25 && recommendations.length === 0 && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowLocationSearch(true)}
-              >
-                Search another location
+                {t("explore.expandTo", { radius: 100 })}
               </Button>
             )}
           </div>
