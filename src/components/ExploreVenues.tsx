@@ -521,22 +521,23 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
   };
 
   return (
-    <div className="min-h-screen bg-background pb-24" data-tour="explore-content">
+    <div className="min-h-screen overflow-x-hidden bg-background pb-24" data-tour="explore-content">
       {/* Header */}
       <div className="sticky top-0 z-10 bg-background/95 backdrop-blur border-b">
-        <div className="flex items-center gap-4 p-4">
-          <Button variant="ghost" size="icon" onClick={onBack}>
+        <div className="flex items-center gap-3 p-4">
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={onBack}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div className="flex-1">
-            <h1 className="text-xl font-bold">{t("explore.title")}</h1>
-            <p className="text-sm text-muted-foreground">
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-xl font-bold">{t("explore.title")}</h1>
+            <p className="truncate text-sm text-muted-foreground">
               {user ? t("explore.personalised") : t("explore.discover")}
             </p>
           </div>
           <Button 
             variant="ghost" 
             size="icon" 
+            className="shrink-0"
             onClick={handleRefresh}
             disabled={refreshing}
           >
@@ -618,13 +619,13 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
               </div>
             </>
           ) : (
-            <div className="flex items-center gap-2 text-sm">
+            <div className="flex min-w-0 flex-wrap items-center gap-2 text-sm">
               <Navigation className="h-4 w-4 text-primary shrink-0" />
               {customLocation ? (
                 <>
-                  <span className="text-muted-foreground">{t("explore.searchingIn")}</span>
-                  <span className="font-medium truncate">{customLocation.label}</span>
-                  <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setShowLocationSearch(true)}>
+                  <span className="shrink-0 text-muted-foreground">{t("explore.searchingIn")}</span>
+                  <span className="min-w-0 flex-1 truncate font-medium">{customLocation.label}</span>
+                  <Button variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs" onClick={() => setShowLocationSearch(true)}>
                     <Pencil className="h-3 w-3 mr-1" />
                     {t("explore.change")}
                   </Button>
@@ -634,10 +635,10 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                 </>
               ) : (
                 <>
-                  <span className="text-muted-foreground">
+                  <span className="min-w-0 flex-1 truncate text-muted-foreground">
                     {userLocation ? t("explore.usingLocation") : t("explore.locationUnavailable")}
                   </span>
-                  <Button variant="ghost" size="sm" className="h-6 px-2 text-xs" onClick={() => setShowLocationSearch(true)}>
+                  <Button variant="ghost" size="sm" className="h-7 shrink-0 px-2 text-xs" onClick={() => setShowLocationSearch(true)}>
                     <Pencil className="h-3 w-3 mr-1" />
                     {t("explore.change")}
                   </Button>
@@ -647,8 +648,8 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
           )}
 
           {/* Radius chips */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{t("explore.radius")}</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="shrink-0 text-xs text-muted-foreground">{t("explore.radius")}</span>
             {RADIUS_OPTIONS.map((r) => (
               <button
                 key={r}
@@ -667,7 +668,7 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
         </div>
 
         {/* Filters */}
-        <div className="px-4 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
+        <div className="flex flex-wrap gap-2 px-4 pb-4">
           {FILTER_OPTION_IDS.map((filter) => {
             const isActive = activeFilters.includes(filter.id);
             return (
@@ -675,14 +676,14 @@ export function ExploreVenues({ onBack, onSelectVenue, initialVenueId }: Explore
                 key={filter.id}
                 onClick={() => toggleFilter(filter.id)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-sm whitespace-nowrap transition-all",
+                  "flex max-w-full items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm leading-tight transition-all",
                   isActive 
                     ? "bg-primary text-primary-foreground border-primary" 
                     : "bg-muted/50 border-border hover:border-primary/50"
                 )}
               >
-                <span>{filter.icon}</span>
-                <span>{t(filter.labelKey)}</span>
+                <span className="shrink-0">{filter.icon}</span>
+                <span className="min-w-0 truncate">{t(filter.labelKey)}</span>
               </button>
             );
           })}
