@@ -28,7 +28,7 @@ export function TabNavigation({ activeTab, onTabChange, badges = {}, userId }: T
   return (
     <>
       <Card className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl border-0 bg-card shadow-floating">
-        <nav className="flex items-center justify-around p-4" role="tablist" aria-label="Main navigation">
+        <nav className="flex items-center justify-around gap-0.5 px-1 py-2 sm:p-4" role="tablist" aria-label="Main navigation">
           {tabKeys.map((tab) => {
             const Icon = tab.icon;
             const label = t(tab.labelKey);
@@ -44,7 +44,7 @@ export function TabNavigation({ activeTab, onTabChange, badges = {}, userId }: T
                 data-tour={`nav-${tab.id === 'food-ready' ? 'food' : tab.id === 'table-ready' ? 'table' : tab.id}`}
                 onClick={() => onTabChange(tab.id)}
                 className={cn(
-                  "relative flex flex-col items-center gap-1 p-3 rounded-xl transition-colors duration-200",
+                  "relative flex flex-1 min-w-0 flex-col items-center gap-1 px-1 py-2 sm:p-3 rounded-xl transition-colors duration-200",
                   "hover:bg-primary/10 active:scale-95 focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
                   isActive 
                     ? "text-primary-foreground" 
@@ -65,7 +65,7 @@ export function TabNavigation({ activeTab, onTabChange, badges = {}, userId }: T
                     animate={{ scale: 1 }}
                     transition={{ type: "spring", stiffness: 500, damping: 20 }}
                   >
-                    <Icon size={24} aria-hidden="true" />
+                    <Icon className="h-5 w-5 sm:h-6 sm:w-6" aria-hidden="true" />
                   </motion.div>
                   {badgeCount > 0 && (
                     <motion.span
@@ -77,7 +77,7 @@ export function TabNavigation({ activeTab, onTabChange, badges = {}, userId }: T
                     </motion.span>
                   )}
                 </div>
-                <span className="relative z-10 text-xs font-medium">{label}</span>
+                <span className="relative z-10 text-[10px] sm:text-xs font-medium truncate max-w-full">{label}</span>
               </button>
             );
           })}
@@ -88,15 +88,15 @@ export function TabNavigation({ activeTab, onTabChange, badges = {}, userId }: T
               aria-label="My ID"
               onClick={() => setIdSheetOpen(true)}
               className={cn(
-                "relative flex flex-col items-center gap-1 p-3 rounded-xl transition-colors duration-200",
+                "relative flex flex-1 min-w-0 flex-col items-center gap-1 px-1 py-2 sm:p-3 rounded-xl transition-colors duration-200",
                 "hover:bg-primary/10 active:scale-95 focus-visible:outline-2 focus-visible:outline-primary focus-visible:outline-offset-2",
                 "text-muted-foreground hover:text-foreground"
               )}
             >
-              <div className="relative z-10 flex h-8 w-8 items-center justify-center rounded-full bg-primary/15 ring-2 ring-primary/30">
-                <QrCode size={20} className="text-primary" aria-hidden="true" />
+              <div className="relative z-10 flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full bg-primary/15 ring-2 ring-primary/30">
+                <QrCode className="h-4 w-4 sm:h-5 sm:w-5 text-primary" aria-hidden="true" />
               </div>
-              <span className="relative z-10 text-xs font-medium">My ID</span>
+              <span className="relative z-10 text-[10px] sm:text-xs font-medium truncate max-w-full">My ID</span>
             </button>
           )}
         </nav>
