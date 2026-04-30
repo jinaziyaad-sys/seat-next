@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { VenueLogo } from "@/components/VenueLogo";
-import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon, AlertTriangle, Info, X, Wrench, MessageSquare, Share2, Gift } from "lucide-react";
+import { UtensilsCrossed, Users, MapPin, Clock, ChefHat, LogIn, User as UserIcon, Calendar as CalendarIcon, AlertTriangle, Info, X, Wrench, MessageSquare, Share2, Gift, Home } from "lucide-react";
 import { usePlatformConfig } from "@/hooks/usePlatformConfig";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -714,37 +714,50 @@ const Index = () => {
       )}
 
       {/* Hero Section - Compact Black Header */}
-      <div className="relative overflow-hidden bg-black px-6 py-5 text-white" data-tour="patron-header">
+      <div className="relative overflow-hidden bg-black px-4 py-4 md:px-6 md:py-5 text-white" data-tour="patron-header">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,107,53,0.08),transparent_70%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,rgba(255,107,53,0.05),transparent_60%)]" />
-        
-        <div className="relative z-10 flex items-center justify-between gap-3">
+
+        <div className="relative z-10 flex items-center justify-between gap-2">
+          {/* Left: Back-to-landing */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate("/")}
+            aria-label="Back to ReadyUp home"
+            className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm h-9 w-9 shrink-0"
+          >
+            <Home size={18} />
+          </Button>
+
+          {/* Center: Logo */}
           <motion.div
-            initial={{ opacity: 0, x: -10 }}
-            animate={{ opacity: 1, x: 0 }}
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
-            className="relative flex items-center"
+            className="relative flex items-center justify-center flex-1"
           >
             <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl scale-110" />
-            <img 
-              src={logo} 
-              alt="ReadyUp" 
-              className="relative h-12 w-auto md:h-16 drop-shadow-[0_0_20px_rgba(255,107,53,0.4)]"
+            <img
+              src={logo}
+              alt="ReadyUp"
+              className="relative h-10 w-auto md:h-14 drop-shadow-[0_0_20px_rgba(255,107,53,0.4)]"
             />
           </motion.div>
 
+          {/* Right: Profile / Sign in */}
           {user ? (
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm transition-all"
+              className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm h-9 w-9 shrink-0"
               onClick={() => setActiveTab("profile")}
               data-tour="nav-profile"
               aria-label="Open profile"
             >
-              <Avatar className="h-9 w-9">
-                <AvatarFallback className="bg-primary/20 text-white font-semibold">
-                  {user.email?.charAt(0).toUpperCase() || <UserIcon size={18} />}
+              <Avatar className="h-7 w-7">
+                <AvatarFallback className="bg-primary/20 text-white text-xs font-semibold">
+                  {user.email?.charAt(0).toUpperCase() || <UserIcon size={14} />}
                 </AvatarFallback>
               </Avatar>
             </Button>
@@ -752,11 +765,11 @@ const Index = () => {
             <Button
               variant="ghost"
               size="icon"
-              className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm transition-all"
+              className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm h-9 w-9 shrink-0"
               onClick={() => navigate("/auth")}
               aria-label="Sign in"
             >
-              <LogIn size={22} />
+              <LogIn size={18} />
             </Button>
           )}
         </div>
@@ -765,13 +778,13 @@ const Index = () => {
 
       {/* Install App Banner (auto-hides if installed/dismissed) */}
       {user && (
-        <div className="px-6 pt-4">
+        <div className="px-4 md:px-6 pt-4">
           <InstallAppButton variant="banner" />
         </div>
       )}
 
       {/* Promotional Banner Carousel */}
-      <div className="px-6 pt-4">
+      <div className="px-4 md:px-6 pt-4">
         <PromoBanner placement="home" onNavigateToVenue={(venueId) => {
           setSelectedOrder({ __promoVenueId: venueId });
           setActiveTab("table-ready");
@@ -792,9 +805,9 @@ const Index = () => {
         if (!isLoadingTracking && activeItems.length === 0 && !isDemoMode) return null;
 
         return (
-        <div className="p-6 space-y-3" data-tour="active-tracking">
+        <div className="p-4 md:p-6 space-y-3" data-tour="active-tracking">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-bold">
+            <h2 className="text-lg md:text-xl font-bold">
               {t("home.activeTracking")}
               {isDemoMode && <span className="ml-2 text-xs font-normal text-primary">{t("home.demoMode")}</span>}
             </h2>
@@ -918,10 +931,10 @@ const Index = () => {
 
 
       {/* Quick Actions */}
-      <div className="space-y-6 p-6">
+      <div className="space-y-4 p-4 md:space-y-6 md:p-6">
         {!user && (
           <Card className="shadow-card border-2 border-primary/20">
-            <CardContent className="flex flex-col items-center gap-4 p-6 text-center">
+            <CardContent className="flex flex-col items-center gap-4 p-4 md:p-6 text-center">
               <div>
                 <h3 className="font-semibold">{t("home.signInButton")}</h3>
                 <p className="text-sm text-muted-foreground mb-4">
@@ -935,7 +948,7 @@ const Index = () => {
           </Card>
         )}
 
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-2 md:gap-3">
           {features.food_ordering_enabled && (
             <motion.div
               initial={{ opacity: 0, y: 16 }}
