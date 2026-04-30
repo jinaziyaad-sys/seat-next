@@ -320,7 +320,7 @@ export function MessengerHub({ userId }: MessengerHubProps) {
         onClick={() => setIsOpen(true)}
         size="icon"
         className={cn(
-          "fixed bottom-24 right-4 z-50 h-14 w-14 rounded-full shadow-floating",
+          "fixed bottom-28 right-4 z-50 h-12 w-12 rounded-full shadow-floating",
           "bg-primary text-primary-foreground hover:bg-primary/90",
           "transition-all duration-300 hover:scale-105"
         )}
