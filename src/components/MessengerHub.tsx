@@ -326,7 +326,7 @@ export function MessengerHub({ userId }: MessengerHubProps) {
         )}
         aria-label="Open messages"
       >
-        <MessageSquare className="h-6 w-6" />
+        <MessageSquare className="h-5 w-5" />
         {totalUnread > 0 && (
           <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-destructive text-xs text-white flex items-center justify-center font-medium">
             {totalUnread > 9 ? '9+' : totalUnread}
