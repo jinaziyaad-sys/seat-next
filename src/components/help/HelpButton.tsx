@@ -15,7 +15,9 @@ export function HelpButton({ onClick, showPulse = false, className }: HelpButton
       onClick={onClick}
       size="icon"
       className={cn(
-        'fixed bottom-40 right-4 z-50 h-14 w-14 rounded-full shadow-floating',
+        'fixed right-4 z-50 h-12 w-12 rounded-full shadow-floating',
+        // Sit above the bottom tab nav (~80px) on mobile, lower on desktop
+        'bottom-[6.5rem] md:bottom-24',
         'bg-primary text-primary-foreground hover:bg-primary/90',
         'transition-all duration-300 hover:scale-105',
         showPulse && 'animate-pulse',
@@ -23,7 +25,7 @@ export function HelpButton({ onClick, showPulse = false, className }: HelpButton
       )}
       aria-label="Open help center"
     >
-      <HelpCircle className="h-6 w-6" />
+      <HelpCircle className="h-5 w-5" />
     </Button>
   );
 }

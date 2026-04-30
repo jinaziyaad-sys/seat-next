@@ -713,12 +713,26 @@ const Index = () => {
         </div>
       )}
 
-      {/* Hero Section - Black Background */}
-      <div className="relative overflow-hidden bg-black px-6 py-10 text-white" data-tour="patron-header">
+      {/* Hero Section - Compact Black Header */}
+      <div className="relative overflow-hidden bg-black px-6 py-5 text-white" data-tour="patron-header">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,rgba(255,107,53,0.08),transparent_70%)]" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_70%,rgba(255,107,53,0.05),transparent_60%)]" />
         
-        <div className="absolute top-4 right-4 z-20">
+        <div className="relative z-10 flex items-center justify-between gap-3">
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+            className="relative flex items-center"
+          >
+            <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl scale-110" />
+            <img 
+              src={logo} 
+              alt="ReadyUp" 
+              className="relative h-12 w-auto md:h-16 drop-shadow-[0_0_20px_rgba(255,107,53,0.4)]"
+            />
+          </motion.div>
+
           {user ? (
             <Button
               variant="ghost"
@@ -726,6 +740,7 @@ const Index = () => {
               className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm transition-all"
               onClick={() => setActiveTab("profile")}
               data-tour="nav-profile"
+              aria-label="Open profile"
             >
               <Avatar className="h-9 w-9">
                 <AvatarFallback className="bg-primary/20 text-white font-semibold">
@@ -739,26 +754,11 @@ const Index = () => {
               size="icon"
               className="rounded-full bg-white/10 hover:bg-white/20 text-white border border-white/20 backdrop-blur-sm transition-all"
               onClick={() => navigate("/auth")}
+              aria-label="Sign in"
             >
               <LogIn size={22} />
             </Button>
           )}
-        </div>
-        
-        <div className="relative z-10 flex flex-col items-center text-center py-4">
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            className="relative"
-          >
-            <div className="absolute inset-0 bg-primary/25 rounded-full blur-[80px] animate-pulse scale-150" />
-            <img 
-              src={logo} 
-              alt="ReadyUp" 
-              className="relative h-72 w-auto drop-shadow-[0_0_60px_rgba(255,107,53,0.5)]"
-            />
-          </motion.div>
         </div>
       </div>
 
