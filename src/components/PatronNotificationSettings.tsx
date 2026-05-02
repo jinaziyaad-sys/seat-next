@@ -232,6 +232,61 @@ export function PatronNotificationSettings() {
           </div>
         </div>
 
+        {/* Delivery channels */}
+        <div className="space-y-4 pt-2 border-t">
+          <h3 className="text-sm font-medium text-muted-foreground">Delivery channels</h3>
+          <p className="text-xs text-muted-foreground">
+            Choose where you'd like to receive notifications. Standard SMS rates may apply for SMS messages.
+          </p>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5 min-w-0 pr-3">
+              <Label htmlFor="ch-push" className="flex items-center gap-2"><Bell size={16} /> Push notifications</Label>
+              <p className="text-xs text-muted-foreground">In-app and browser alerts (free)</p>
+            </div>
+            <Switch
+              id="ch-push"
+              checked={preferences.channel_push}
+              onCheckedChange={(checked) => updatePreference('channel_push', checked)}
+              disabled={saving}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5 min-w-0 pr-3">
+              <Label htmlFor="ch-sms" className="flex items-center gap-2"><MessageSquare size={16} /> SMS</Label>
+              <p className="text-xs text-muted-foreground">
+                {phoneVerified
+                  ? "Text messages to your verified phone number"
+                  : "Verify your phone number in your profile to enable SMS"}
+              </p>
+            </div>
+            <Switch
+              id="ch-sms"
+              checked={preferences.channel_sms && phoneVerified}
+              onCheckedChange={(checked) => updatePreference('channel_sms', checked)}
+              disabled={saving || !phoneVerified}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5 min-w-0 pr-3">
+              <Label htmlFor="ch-wa" className="flex items-center gap-2"><MessageCircle size={16} /> WhatsApp</Label>
+              <p className="text-xs text-muted-foreground">
+                {phoneVerified
+                  ? "WhatsApp messages to your verified phone number"
+                  : "Verify your phone number in your profile to enable WhatsApp"}
+              </p>
+            </div>
+            <Switch
+              id="ch-wa"
+              checked={preferences.channel_whatsapp && phoneVerified}
+              onCheckedChange={(checked) => updatePreference('channel_whatsapp', checked)}
+              disabled={saving || !phoneVerified}
+            />
+          </div>
+        </div>
+
         {/* Nudge Types */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-muted-foreground">{t("notifications.reminders")}</h3>
