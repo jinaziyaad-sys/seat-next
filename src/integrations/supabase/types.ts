@@ -1051,6 +1051,48 @@ export type Database = {
           },
         ]
       }
+      notification_log: {
+        Row: {
+          body: string | null
+          category: string | null
+          channel: string
+          cost_estimate: number | null
+          error: string | null
+          id: string
+          provider_sid: string | null
+          sent_at: string
+          status: string
+          title: string | null
+          user_id: string
+        }
+        Insert: {
+          body?: string | null
+          category?: string | null
+          channel: string
+          cost_estimate?: number | null
+          error?: string | null
+          id?: string
+          provider_sid?: string | null
+          sent_at?: string
+          status?: string
+          title?: string | null
+          user_id: string
+        }
+        Update: {
+          body?: string | null
+          category?: string | null
+          channel?: string
+          cost_estimate?: number | null
+          error?: string | null
+          id?: string
+          provider_sid?: string | null
+          sent_at?: string
+          status?: string
+          title?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       order_analytics: {
         Row: {
           actual_prep_time: number | null
@@ -1544,6 +1586,9 @@ export type Database = {
       }
       patron_notification_preferences: {
         Row: {
+          channel_push: boolean
+          channel_sms: boolean
+          channel_whatsapp: boolean
           created_at: string
           favorite_venue_alerts: boolean
           id: string
@@ -1553,11 +1598,16 @@ export type Database = {
           quiet_hours_end: string | null
           quiet_hours_start: string | null
           reengagement_nudges: boolean
+          sms_opted_out_at: string | null
           updated_at: string
           user_id: string
           weekend_planning_nudges: boolean
+          whatsapp_opted_out_at: string | null
         }
         Insert: {
+          channel_push?: boolean
+          channel_sms?: boolean
+          channel_whatsapp?: boolean
           created_at?: string
           favorite_venue_alerts?: boolean
           id?: string
@@ -1567,11 +1617,16 @@ export type Database = {
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           reengagement_nudges?: boolean
+          sms_opted_out_at?: string | null
           updated_at?: string
           user_id: string
           weekend_planning_nudges?: boolean
+          whatsapp_opted_out_at?: string | null
         }
         Update: {
+          channel_push?: boolean
+          channel_sms?: boolean
+          channel_whatsapp?: boolean
           created_at?: string
           favorite_venue_alerts?: boolean
           id?: string
@@ -1581,9 +1636,11 @@ export type Database = {
           quiet_hours_end?: string | null
           quiet_hours_start?: string | null
           reengagement_nudges?: boolean
+          sms_opted_out_at?: string | null
           updated_at?: string
           user_id?: string
           weekend_planning_nudges?: boolean
+          whatsapp_opted_out_at?: string | null
         }
         Relationships: []
       }

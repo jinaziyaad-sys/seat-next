@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Clock, Moon, CheckCircle, XCircle, HelpCircle } from "lucide-react";
+import { Bell, Clock, Moon, CheckCircle, XCircle, HelpCircle, MessageCircle, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { areNotificationsSupported, getNotificationPermission, initializePushNotifications, revokeNotificationPermission } from "@/utils/notifications";
@@ -20,6 +20,9 @@ interface NotificationPreferences {
   quiet_hours_end: string;
   nudge_frequency: 'daily' | 'weekly' | 'minimal';
   max_nudges_per_day: number;
+  channel_push: boolean;
+  channel_sms: boolean;
+  channel_whatsapp: boolean;
 }
 
 const defaultPreferences: NotificationPreferences = {
@@ -31,6 +34,9 @@ const defaultPreferences: NotificationPreferences = {
   quiet_hours_end: '08:00',
   nudge_frequency: 'daily',
   max_nudges_per_day: 3,
+  channel_push: true,
+  channel_sms: false,
+  channel_whatsapp: false,
 };
 
 export function PatronNotificationSettings() {
@@ -39,6 +45,7 @@ export function PatronNotificationSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [phoneVerified, setPhoneVerified] = useState(false);
   const [showUnblockDialog, setShowUnblockDialog] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushSaving, setPushSaving] = useState(false);
@@ -67,6 +74,13 @@ export function PatronNotificationSettings() {
       .maybeSingle();
     setPushEnabled(!!pushSub);
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('phone_verified')
+      .eq('id', user.id)
+      .maybeSingle();
+    setPhoneVerified(!!profile?.phone_verified);
+
     const { data, error } = await supabase
       .from('patron_notification_preferences')
       .select('*')
@@ -87,6 +101,9 @@ export function PatronNotificationSettings() {
         quiet_hours_end: data.quiet_hours_end || '08:00',
         nudge_frequency: data.nudge_frequency as 'daily' | 'weekly' | 'minimal',
         max_nudges_per_day: data.max_nudges_per_day,
+        channel_push: (data as any).channel_push ?? true,
+        channel_sms: (data as any).channel_sms ?? false,
+        channel_whatsapp: (data as any).channel_whatsapp ?? false,
       });
     }
     setLoading(false);
@@ -211,6 +228,61 @@ export function PatronNotificationSettings() {
               checked={pushEnabled && notificationPermission === 'granted'}
               onCheckedChange={handlePushToggle}
               disabled={pushSaving || !notificationsSupported}
+            />
+          </div>
+        </div>
+
+        {/* Delivery channels */}
+        <div className="space-y-4 pt-2 border-t">
+          <h3 className="text-sm font-medium text-muted-foreground">Delivery channels</h3>
+          <p className="text-xs text-muted-foreground">
+            Choose where you'd like to receive notifications. Standard SMS rates may apply for SMS messages.
+          </p>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5 min-w-0 pr-3">
+              <Label htmlFor="ch-push" className="flex items-center gap-2"><Bell size={16} /> Push notifications</Label>
+              <p className="text-xs text-muted-foreground">In-app and browser alerts (free)</p>
+            </div>
+            <Switch
+              id="ch-push"
+              checked={preferences.channel_push}
+              onCheckedChange={(checked) => updatePreference('channel_push', checked)}
+              disabled={saving}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5 min-w-0 pr-3">
+              <Label htmlFor="ch-sms" className="flex items-center gap-2"><MessageSquare size={16} /> SMS</Label>
+              <p className="text-xs text-muted-foreground">
+                {phoneVerified
+                  ? "Text messages to your verified phone number"
+                  : "Verify your phone number in your profile to enable SMS"}
+              </p>
+            </div>
+            <Switch
+              id="ch-sms"
+              checked={preferences.channel_sms && phoneVerified}
+              onCheckedChange={(checked) => updatePreference('channel_sms', checked)}
+              disabled={saving || !phoneVerified}
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="space-y-0.5 min-w-0 pr-3">
+              <Label htmlFor="ch-wa" className="flex items-center gap-2"><MessageCircle size={16} /> WhatsApp</Label>
+              <p className="text-xs text-muted-foreground">
+                {phoneVerified
+                  ? "WhatsApp messages to your verified phone number"
+                  : "Verify your phone number in your profile to enable WhatsApp"}
+              </p>
+            </div>
+            <Switch
+              id="ch-wa"
+              checked={preferences.channel_whatsapp && phoneVerified}
+              onCheckedChange={(checked) => updatePreference('channel_whatsapp', checked)}
+              disabled={saving || !phoneVerified}
             />
           </div>
         </div>
