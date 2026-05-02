@@ -91,6 +91,14 @@ project_id = "cuoqjgahpfymxqrdlzlf"
       schedule = "*/30 * * * *"
   [functions.send-push-notification]
     verify_jwt = false
+  [functions.send-sms]
+    verify_jwt = false
+  [functions.send-whatsapp]
+    verify_jwt = false
+  [functions.dispatch-notification]
+    verify_jwt = false
+  [functions.twilio-webhook]
+    verify_jwt = false
   [functions.send-sms-otp]
     verify_jwt = false
   [functions.stripe-webhook]
