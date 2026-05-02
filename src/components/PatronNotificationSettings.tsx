@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bell, Clock, Moon, CheckCircle, XCircle, HelpCircle } from "lucide-react";
+import { Bell, Clock, Moon, CheckCircle, XCircle, HelpCircle, MessageCircle, MessageSquare } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { areNotificationsSupported, getNotificationPermission, initializePushNotifications, revokeNotificationPermission } from "@/utils/notifications";
@@ -20,6 +20,9 @@ interface NotificationPreferences {
   quiet_hours_end: string;
   nudge_frequency: 'daily' | 'weekly' | 'minimal';
   max_nudges_per_day: number;
+  channel_push: boolean;
+  channel_sms: boolean;
+  channel_whatsapp: boolean;
 }
 
 const defaultPreferences: NotificationPreferences = {
@@ -31,6 +34,9 @@ const defaultPreferences: NotificationPreferences = {
   quiet_hours_end: '08:00',
   nudge_frequency: 'daily',
   max_nudges_per_day: 3,
+  channel_push: true,
+  channel_sms: false,
+  channel_whatsapp: false,
 };
 
 export function PatronNotificationSettings() {
@@ -39,6 +45,7 @@ export function PatronNotificationSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
+  const [phoneVerified, setPhoneVerified] = useState(false);
   const [showUnblockDialog, setShowUnblockDialog] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [pushSaving, setPushSaving] = useState(false);
@@ -67,6 +74,13 @@ export function PatronNotificationSettings() {
       .maybeSingle();
     setPushEnabled(!!pushSub);
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('phone_verified')
+      .eq('id', user.id)
+      .maybeSingle();
+    setPhoneVerified(!!profile?.phone_verified);
+
     const { data, error } = await supabase
       .from('patron_notification_preferences')
       .select('*')
@@ -87,6 +101,9 @@ export function PatronNotificationSettings() {
         quiet_hours_end: data.quiet_hours_end || '08:00',
         nudge_frequency: data.nudge_frequency as 'daily' | 'weekly' | 'minimal',
         max_nudges_per_day: data.max_nudges_per_day,
+        channel_push: (data as any).channel_push ?? true,
+        channel_sms: (data as any).channel_sms ?? false,
+        channel_whatsapp: (data as any).channel_whatsapp ?? false,
       });
     }
     setLoading(false);
